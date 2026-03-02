@@ -1,5 +1,5 @@
 import './globals.css';
-import NavbarClient from '@/app/components/NavbarClient';
+import NavbarClient from './components/NavbarClient';
 
 export const metadata = {
   title: 'QuietKeep — Voice-First Personal Keeper',

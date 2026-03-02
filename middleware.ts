@@ -1,7 +1,27 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-const PROTECTED_ROUTES = ['/dashboard', '/api/voice', '/api/intents', '/api/audit-log', '/api/settings']
+const PROTECTED_ROUTES = [
+  '/dashboard',
+  '/api/voice',
+  '/api/intents',
+  '/api/audit-log',
+  '/api/settings',
+]
+
+type CookieToSet = {
+  name: string
+  value: string
+  options?: {
+    domain?: string
+    path?: string
+    expires?: Date
+    maxAge?: number
+    httpOnly?: boolean
+    secure?: boolean
+    sameSite?: 'lax' | 'strict' | 'none'
+  }
+}
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -14,9 +34,13 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        setAll(cookiesToSet: CookieToSet[]) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
+
           supabaseResponse = NextResponse.next({ request })
+
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -30,7 +54,9 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isProtected = PROTECTED_ROUTES.some(route => pathname.startsWith(route))
+  const isProtected = PROTECTED_ROUTES.some(route =>
+    pathname.startsWith(route)
+  )
 
   if (isProtected && !user) {
     const loginUrl = new URL('/login', request.url)

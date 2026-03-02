@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -12,10 +12,8 @@ export default function AuthCallback() {
     let mounted = true;
 
     async function handleCallback() {
-      // Give supabase-js time to auto-process URL tokens
       await new Promise(r => setTimeout(r, 800));
-
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
 
       if (!mounted) return;
 
@@ -25,7 +23,6 @@ export default function AuthCallback() {
         return;
       }
 
-      // Listen for auth state in case PKCE exchange is in progress
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
         if (!mounted) return;
         if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && newSession) {
@@ -35,14 +32,13 @@ export default function AuthCallback() {
         }
       });
 
-      // Final fallback
       setTimeout(() => {
         if (!mounted) return;
         setStatus('Something went wrong. Redirecting to login...');
         setTimeout(() => router.replace('/login'), 1500);
       }, 5000);
 
-      return () => { subscription.unsubscribe(); };
+      return () => subscription.unsubscribe();
     }
 
     handleCallback();
@@ -61,15 +57,11 @@ export default function AuthCallback() {
         borderRadius: '12px', display: 'flex', alignItems: 'center',
         justifyContent: 'center', fontSize: '20px', fontWeight: '800', color: '#fff',
       }}>QK</div>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
-        color: '#94a3b8', fontSize: '15px',
-      }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#94a3b8', fontSize: '15px' }}>
         <span style={{
           width: '16px', height: '16px', border: '2px solid #6366f1',
           borderTopColor: 'transparent', borderRadius: '50%',
-          display: 'inline-block',
-          animation: 'spin 0.8s linear infinite',
+          display: 'inline-block', animation: 'spin 0.8s linear infinite',
         }} />
         {status}
       </div>

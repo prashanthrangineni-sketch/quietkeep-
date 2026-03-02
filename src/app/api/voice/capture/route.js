@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic'
 
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { parseIntent } from '@/lib/intent-parser'
 
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   const supabase = await createSupabaseServerClient()
 
   const {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let body: { transcript?: string; source?: string }
+  let body
 
   try {
     body = await request.json()
@@ -61,4 +61,4 @@ export async function POST(request: NextRequest) {
   })
 
   return NextResponse.json({ intent }, { status: 201 })
-}
+  

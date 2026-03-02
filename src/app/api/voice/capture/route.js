@@ -61,4 +61,4 @@ export async function POST(request) {
   })
 
   return NextResponse.json({ intent }, { status: 201 })
-  
+}

@@ -3,10 +3,8 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 export async function POST(
   request: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = context.params
-
   const supabase = await createSupabaseServerClient()
 
   const {
@@ -16,6 +14,8 @@ export async function POST(
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const { id } = params
 
   const { error } = await supabase
     .from('intents')

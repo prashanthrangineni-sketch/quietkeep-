@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 const TYPE_EMOJI = { note: '📝', reminder: '⏰', contact: '📞' };
 const STATE_COLOR = {

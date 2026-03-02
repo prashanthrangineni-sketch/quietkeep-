@@ -6,7 +6,7 @@ import { generateSuggestions } from '@/lib/suggestion-engine'
 
 export async function GET(
   request: Request,
-  { params }
+  { params }: { params: { id: string } }
 ) {
   const supabase = await createSupabaseServerClient()
 

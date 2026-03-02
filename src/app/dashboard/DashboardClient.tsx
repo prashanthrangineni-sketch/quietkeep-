@@ -3,26 +3,18 @@
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { User } from '@supabase/supabase-js'
 import VoiceCapture from '@/components/VoiceCapture'
-import IntentCard, { type Intent } from '@/components/IntentCard'
+import IntentCard from '@/components/IntentCard'
 import SettingsPanel from '@/components/SettingsPanel'
 import ActivityLog from '@/components/ActivityLog'
 
-type Tab = 'intents' | 'activity' | 'settings'
-
-interface Props {
-  user: User
-  initialIntents: Intent[]
-}
-
-export default function DashboardClient({ user, initialIntents }: Props) {
-  const [intents, setIntents] = useState<Intent[]>(initialIntents)
-  const [activeTab, setActiveTab] = useState<Tab>('intents')
+export default function DashboardClient({ user, initialIntents }) {
+  const [intents, setIntents] = useState(initialIntents)
+  const [activeTab, setActiveTab] = useState('intents')
   const [signingOut, setSigningOut] = useState(false)
   const router = useRouter()
 
-  const handleCapture = useCallback(async (transcript: string, source: 'voice' | 'text') => {
+  const handleCapture = useCallback(async (transcript, source) => {
     const res = await fetch('/api/voice/capture', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -33,14 +25,14 @@ export default function DashboardClient({ user, initialIntents }: Props) {
     setIntents(prev => [intent, ...prev])
   }, [])
 
-  const handleReview = useCallback(async (id: string) => {
+  const handleReview = useCallback(async (id) => {
     const res = await fetch(`/api/intents/${id}/review`)
     if (!res.ok) throw new Error('Review failed')
     const { intent } = await res.json()
     setIntents(prev => prev.map(i => i.id === id ? intent : i))
   }, [])
 
-  const handleConfirm = useCallback(async (id: string, chosenSuggestion?: string) => {
+  const handleConfirm = useCallback(async (id, chosenSuggestion) => {
     const res = await fetch(`/api/intents/${id}/confirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -61,7 +53,7 @@ export default function DashboardClient({ user, initialIntents }: Props) {
   const pendingCount = intents.filter(i => i.status === 'pending').length
   const confirmedCount = intents.filter(i => i.status === 'confirmed').length
 
-  const TABS: { id: Tab; label: string }[] = [
+  const TABS = [
     { id: 'intents', label: `Intents${pendingCount > 0 ? ` (${pendingCount})` : ''}` },
     { id: 'activity', label: 'Activity' },
     { id: 'settings', label: 'Settings' },
@@ -69,7 +61,6 @@ export default function DashboardClient({ user, initialIntents }: Props) {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--background)' }}>
-      {/* Top nav */}
       <header
         className="sticky top-0 z-10 flex items-center justify-between px-6 py-3"
         style={{ background: 'rgba(15,15,17,0.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border)' }}
@@ -96,7 +87,6 @@ export default function DashboardClient({ user, initialIntents }: Props) {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Stats bar */}
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: 'Total', value: intents.length },
@@ -114,10 +104,8 @@ export default function DashboardClient({ user, initialIntents }: Props) {
           ))}
         </div>
 
-        {/* Voice capture always visible */}
         <VoiceCapture onCapture={handleCapture} />
 
-        {/* Tabs */}
         <div className="flex gap-1 rounded-xl p-1" style={{ background: 'var(--surface)' }}>
           {TABS.map(t => (
             <button
@@ -134,7 +122,6 @@ export default function DashboardClient({ user, initialIntents }: Props) {
           ))}
         </div>
 
-        {/* Tab content */}
         {activeTab === 'intents' && (
           <div className="space-y-3">
             {intents.length === 0 ? (

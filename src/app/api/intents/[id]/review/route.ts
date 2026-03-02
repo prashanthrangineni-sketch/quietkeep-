@@ -6,11 +6,11 @@ import { generateSuggestions } from '@/lib/suggestion-engine'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const supabase = await createSupabaseServerClient()
+  const { id } = context.params
 
-  const id = params.id
+  const supabase = await createSupabaseServerClient()
 
   const {
     data: { user },

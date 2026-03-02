@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 
-export async function POST(request: Request) {
+export async function POST(request) {
   const supabase = await createSupabaseServerClient()
 
   const {
@@ -12,7 +12,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Extract ID manually from URL
   const url = new URL(request.url)
   const segments = url.pathname.split('/')
   const id = segments[segments.length - 2]

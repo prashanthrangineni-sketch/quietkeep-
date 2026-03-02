@@ -47,3 +47,4 @@ export async function GET(request) {
   } else {
     return NextResponse.redirect(`${origin}${next}`)
   }
+}

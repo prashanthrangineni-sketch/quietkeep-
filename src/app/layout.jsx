@@ -2,8 +2,24 @@
 
 import './globals.css';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 function Navbar() {
+  const [user, setUser] = useState(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setChecked(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <nav style={{
       position: 'sticky', top: 0, zIndex: 1000,
@@ -26,31 +42,46 @@ function Navbar() {
           }}>QK</div>
           <span style={{ fontSize: '18px', fontWeight: '700', color: '#f1f5f9' }}>QuietKeep</span>
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <Link href="/dashboard" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
-            Dashboard
-          </Link>
-          <Link href="/login" style={{
-            backgroundColor: '#6366f1', color: '#fff', textDecoration: 'none',
-            padding: '8px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600',
-          }}>Sign In</Link>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {checked && (
+            user ? (
+              <>
+                <Link href="/dashboard" style={{
+                  color: '#a5b4fc', textDecoration: 'none',
+                  fontSize: '14px', fontWeight: '600',
+                }}>
+                  My Dashboard
+                </Link>
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: '1px solid #1e293b',
+                    color: '#64748b', padding: '7px 16px',
+                    borderRadius: '8px', fontSize: '13px',
+                    cursor: 'pointer', fontWeight: '500',
+                  }}
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/dashboard" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>
+                  Dashboard
+                </Link>
+                <Link href="/login" style={{
+                  backgroundColor: '#6366f1', color: '#fff', textDecoration: 'none',
+                  padding: '8px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600',
+                }}>
+                  Sign In
+                </Link>
+              </>
+            )
+          )}
         </div>
       </div>
     </nav>
-  );
-}
-
-export default function RootLayout({ children }) {
-  return (
-    <html lang="en">
-      <body style={{
-        margin: 0, padding: 0,
-        backgroundColor: '#0a0a0f',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      }}>
-        <Navbar />
-        {children}
-      </body>
-    </html>
   );
 }

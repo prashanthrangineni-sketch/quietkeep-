@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="200" height="200" rx="40" ry="40" fill="url(#grad)" />
+
+  <!-- Subtle inner shadow overlay -->
+  <rect width="200" height="200" rx="40" ry="40" fill="rgba(255,255,255,0.05)" />
+
+  <!-- QK Letters -->
+  <text
+    x="100"
+    y="130"
+    text-anchor="middle"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="80"
+    font-weight="800"
+    fill="#ffffff"
+    filter="url(#glow)"
+    letter-spacing="-3"
+  >QK</text>
+
+  <!-- Microphone dot accent -->
+  <circle cx="100" cy="158" r="5" fill="rgba(255,255,255,0.4)" />
+</svg>

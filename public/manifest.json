@@ -1,12 +1,14 @@
 {
   "name": "QuietKeep",
   "short_name": "QuietKeep",
-  "description": "Voice-driven intention capture and management",
+  "description": "Your voice-first personal intelligence OS — keeps, reminders, finance and more",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0f0f11",
   "theme_color": "#7c6af7",
   "orientation": "portrait-primary",
+  "lang": "en-US",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -21,7 +23,25 @@
       "purpose": "maskable any"
     }
   ],
-  "categories": ["productivity", "utilities"],
-  "lang": "en-US",
-  "dir": "ltr"
+  "categories": ["productivity", "utilities", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "New Keep",
+      "short_name": "Keep",
+      "url": "/dashboard",
+      "description": "Capture a new keep"
+    },
+    {
+      "name": "Finance",
+      "short_name": "Finance",
+      "url": "/finance",
+      "description": "Log an expense"
+    },
+    {
+      "name": "Daily Brief",
+      "short_name": "Brief",
+      "url": "/daily-brief",
+      "description": "Your morning intelligence brief"
+    }
+  ]
 }

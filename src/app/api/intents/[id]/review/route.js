@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { generateSuggestions } from '@/lib/suggestion-engine'
 
-export async function GET(request: Request, context: any) {
-  const { id } = context.params as { id: string }
+export async function GET(request, context) {
+  const { id } = context.params
 
   const supabase = await createSupabaseServerClient()
 

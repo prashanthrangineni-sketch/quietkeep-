@@ -17,7 +17,7 @@ type CookieToSet = {
 }
 
 export async function GET() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies() // ✅ IMPORTANT (Next 15)
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

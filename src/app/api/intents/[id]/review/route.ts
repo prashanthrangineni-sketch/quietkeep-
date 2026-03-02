@@ -1,16 +1,16 @@
 export const dynamic = 'force-dynamic'
 
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { generateSuggestions } from '@/lib/suggestion-engine'
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }
 ) {
   const supabase = await createSupabaseServerClient()
 
-  const { id } = params
+  const id = params.id
 
   const {
     data: { user },
@@ -34,7 +34,6 @@ export async function GET(
 
   const suggestions = generateSuggestions(intent)
 
-  // Persist suggestions
   await supabase
     .from('intents')
     .update({ suggestions })

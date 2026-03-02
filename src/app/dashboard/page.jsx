@@ -51,7 +51,6 @@ export default function Dashboard() {
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [toast, setToast] = useState('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const recognitionRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -145,7 +144,6 @@ export default function Dashboard() {
     }]);
 
     if (!error) {
-      // Log to audit
       await supabase.from('audit_log').insert([{
         user_id: user.id,
         action: 'intent_created',
@@ -157,7 +155,6 @@ export default function Dashboard() {
           reminder_type: remindAt ? reminderType : null,
         },
       }]);
-
       setContent(''); setRemindAt(''); setContactInfo('');
       setReminderType('app'); setSuggestions([]);
       showToast('✅ Kept!');
@@ -171,24 +168,20 @@ export default function Dashboard() {
       state,
       ...(state === 'closed' ? { completed_at: new Date().toISOString() } : {}),
     }).eq('id', id);
-
     await supabase.from('audit_log').insert([{
       user_id: user.id, action: 'intent_state_changed',
       service: 'dashboard', details: { intent_id: id, new_state: state },
     }]);
-
     showToast(state === 'closed' ? '✅ Marked done!' : `Moved to ${state}`);
     await loadIntents(user.id);
   }
 
   async function handleDelete(id) {
     await supabase.from('intents').delete().eq('id', id);
-
     await supabase.from('audit_log').insert([{
       user_id: user.id, action: 'intent_deleted',
       service: 'dashboard', details: { intent_id: id },
     }]);
-
     showToast('🗑️ Deleted');
     await loadIntents(user.id);
   }
@@ -218,7 +211,7 @@ export default function Dashboard() {
         }}>{toast}</div>
       )}
 
-      {/* Dashboard sub-header */}
+      {/* Dashboard sub-header with all nav links */}
       <div style={{
         borderBottom: '1px solid #1e1e2e', padding: '10px 16px',
         backgroundColor: 'rgba(10,10,15,0.98)',
@@ -231,23 +224,24 @@ export default function Dashboard() {
           <span style={{ fontSize: '10px', color: '#334155' }}>{user?.email}</span>
         </div>
 
-        {/* Right: nav links + sign out */}
+        {/* Right: all nav links + sign out */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <a href="/daily-brief" style={{
             color: '#94a3b8', textDecoration: 'none', fontSize: '11px',
-            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px',
-            whiteSpace: 'nowrap',
+            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap',
           }}>📅 Brief</a>
           <a href="/finance" style={{
             color: '#94a3b8', textDecoration: 'none', fontSize: '11px',
-            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px',
-            whiteSpace: 'nowrap',
+            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap',
           }}>💰 Finance</a>
           <a href="/settings" style={{
             color: '#94a3b8', textDecoration: 'none', fontSize: '11px',
-            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px',
-            whiteSpace: 'nowrap',
+            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap',
           }}>⚙️ Settings</a>
+          <a href="/profile" style={{
+            color: '#94a3b8', textDecoration: 'none', fontSize: '11px',
+            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap',
+          }}>👤 Profile</a>
           <button onClick={() => supabase.auth.signOut()} style={{
             backgroundColor: 'transparent', border: '1px solid #1e293b',
             color: '#64748b', padding: '5px 10px', borderRadius: '6px',
@@ -284,7 +278,6 @@ export default function Dashboard() {
                 color: listening ? '#ef4444' : '#a5b4fc',
                 padding: '7px 14px', borderRadius: '8px', fontSize: '13px',
                 fontWeight: '600', cursor: 'pointer',
-                animation: listening ? 'pulse 1.2s ease-in-out infinite' : 'none',
               }}>
                 {listening ? '⏹ Stop' : '🎙️ Voice'}
               </button>
@@ -353,7 +346,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Reminder type selector — only shows when remind_at is set */}
+          {/* Reminder type — only shows when remind_at is filled */}
           {remindAt && (
             <div style={{ marginTop: '12px' }}>
               <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '8px' }}>🔔 How to remind you?</label>
@@ -378,12 +371,12 @@ export default function Dashboard() {
               </div>
               {reminderType === 'whatsapp' && (
                 <div style={{ marginTop: '8px', fontSize: '11px', color: '#f59e0b', padding: '6px 10px', backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.2)' }}>
-                  ⚠️ WhatsApp reminders will open a draft message at the reminder time. You tap Send.
+                  ⚠️ WhatsApp reminders will open a draft message at reminder time. You tap Send.
                 </div>
               )}
               {reminderType === 'alarm' && (
                 <div style={{ marginTop: '8px', fontSize: '11px', color: '#22c55e', padding: '6px 10px', backgroundColor: 'rgba(34,197,94,0.08)', borderRadius: '6px', border: '1px solid rgba(34,197,94,0.2)' }}>
-                  ⏰ Alarm will ring at the set time even if your phone is silent.
+                  ⏰ Alarm will ring at the set time even if your phone is on silent.
                 </div>
               )}
             </div>
@@ -420,9 +413,98 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* List */}
+        {/* Keeps List */}
         {displayIntents.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 24px', border: '1px dashed #1e293b', borderRadius: '14px', color: '#334155' }}>
             {activeTab === 'open'
-              ? <><div style={{ fontSize: '32px', marginBottom: '10px' }}>🎙️</div><div>Tap Voice or type to add your first keep</div></>
-              : <><div 
+              ? <><div style={{ fontSize: '32px', marginBottom: '10px' }}>🎙️</div><div>Tap Voice or type
+                : <><div style={{ fontSize: '32px', marginBottom: '10px' }}>✅</div><div>No completed keeps yet</div></>
+            }
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {displayIntents.map(intent => (
+              <IntentCard key={intent.id} intent={intent} onUpdateState={updateState} onDelete={handleDelete} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+      `}</style>
+    </div>
+  );
+}
+
+function IntentCard({ intent, onUpdateState, onDelete }) {
+  const [expanded, setExpanded] = useState(false);
+  const emoji = TYPE_EMOJI[intent.assist_mode] || TYPE_EMOJI[intent.intent_type] || '📝';
+  const color = STATE_COLOR[intent.state] || '#22c55e';
+  const isClosed = intent.state === 'closed';
+  const reminderIcons = { app: '📳', alarm: '⏰', whatsapp: '💬', email: '📧' };
+  const reminderType = intent.metadata?.reminder_type;
+
+  return (
+    <div style={{
+      backgroundColor: '#0f0f1a', border: `1px solid ${isClosed ? '#1a1a2e' : '#1e1e2e'}`,
+      borderRadius: '12px', padding: '14px', opacity: isClosed ? 0.5 : 1,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+        <span style={{ fontSize: '18px', flexShrink: 0, lineHeight: 1.4 }}>{emoji}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{
+            margin: '0 0 8px', fontSize: '15px', color: '#e2e8f0', lineHeight: 1.5,
+            textDecoration: isClosed ? 'line-through' : 'none',
+          }}>{intent.content}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: '10px', padding: '2px 8px', borderRadius: '100px', fontWeight: '700',
+              backgroundColor: `${color}18`, color, textTransform: 'uppercase',
+            }}>{intent.state}</span>
+            {intent.remind_at && (
+              <span style={{ fontSize: '11px', color: '#64748b' }}>
+                {reminderIcons[reminderType] || '⏰'} {new Date(intent.remind_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            {intent.contact_info && <span style={{ fontSize: '11px', color: '#64748b' }}>📞 {intent.contact_info}</span>}
+            <span style={{ fontSize: '11px', color: '#1e293b', marginLeft: 'auto' }}>
+              {new Date(intent.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {!isClosed && (
+        <div style={{ display: 'flex', gap: '6px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #1a1a2e', flexWrap: 'wrap' }}>
+          <button onClick={() => onUpdateState(intent.id, 'closed')} style={{
+            backgroundColor: '#052010', border: '1px solid #166534', color: '#22c55e',
+            padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '600',
+          }}>✓ Done</button>
+          <button onClick={() => setExpanded(e => !e)} style={{
+            backgroundColor: 'transparent', border: '1px solid #1e293b', color: '#64748b',
+            padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer',
+          }}>{expanded ? '▲ Less' : '▼ More'}</button>
+          <button onClick={() => onDelete(intent.id)} style={{
+            backgroundColor: 'transparent', border: '1px solid #2d1515', color: '#ef4444',
+            padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', marginLeft: 'auto',
+          }}>🗑️</button>
+        </div>
+      )}
+
+      {expanded && (
+        <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #1a1a2e', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '11px', color: '#475569', alignSelf: 'center' }}>Move to:</span>
+          {['open', 'active', 'deferred', 'blocked'].filter(s => s !== intent.state).map(s => (
+            <button key={s} onClick={() => onUpdateState(intent.id, s)} style={{
+              backgroundColor: `${STATE_COLOR[s]}15`, border: `1px solid ${STATE_COLOR[s]}40`,
+              color: STATE_COLOR[s], padding: '4px 10px', borderRadius: '6px',
+              fontSize: '11px', cursor: 'pointer', fontWeight: '600',
+            }}>{s}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+          }

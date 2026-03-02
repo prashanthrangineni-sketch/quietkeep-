@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { NextResponse, type NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { cookies } from 'next/headers'
 
 const DEFAULT_SETTINGS = {

@@ -119,7 +119,6 @@ export default function Dashboard() {
     if (!content.trim() || !user) return;
     setSaving(true);
 
-    // Call server-side rule parser + audit log
     try {
       await fetch('/api/parse-intent', {
         method: 'POST',
@@ -201,7 +200,6 @@ export default function Dashboard() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
 
-      {/* Toast */}
       {toast && (
         <div style={{
           position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)',
@@ -211,48 +209,27 @@ export default function Dashboard() {
         }}>{toast}</div>
       )}
 
-      {/* Dashboard sub-header with all nav links */}
       <div style={{
         borderBottom: '1px solid #1e1e2e', padding: '10px 16px',
         backgroundColor: 'rgba(10,10,15,0.98)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         flexWrap: 'wrap', gap: '8px',
       }}>
-        {/* Left: title + email */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontWeight: '700', fontSize: '14px', color: '#6366f1' }}>📋 My Keeps</span>
           <span style={{ fontSize: '10px', color: '#334155' }}>{user?.email}</span>
         </div>
-
-        {/* Right: all nav links + sign out */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <a href="/daily-brief" style={{
-            color: '#94a3b8', textDecoration: 'none', fontSize: '11px',
-            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap',
-          }}>📅 Brief</a>
-          <a href="/finance" style={{
-            color: '#94a3b8', textDecoration: 'none', fontSize: '11px',
-            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap',
-          }}>💰 Finance</a>
-          <a href="/settings" style={{
-            color: '#94a3b8', textDecoration: 'none', fontSize: '11px',
-            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap',
-          }}>⚙️ Settings</a>
-          <a href="/profile" style={{
-            color: '#94a3b8', textDecoration: 'none', fontSize: '11px',
-            padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap',
-          }}>👤 Profile</a>
-          <button onClick={() => supabase.auth.signOut()} style={{
-            backgroundColor: 'transparent', border: '1px solid #1e293b',
-            color: '#64748b', padding: '5px 10px', borderRadius: '6px',
-            fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap',
-          }}>Sign Out</button>
+          <a href="/daily-brief" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>📅 Brief</a>
+          <a href="/finance" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>💰 Finance</a>
+          <a href="/settings" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>⚙️ Settings</a>
+          <a href="/profile" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>👤 Profile</a>
+          <button onClick={() => supabase.auth.signOut()} style={{ backgroundColor: 'transparent', border: '1px solid #1e293b', color: '#64748b', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Sign Out</button>
         </div>
       </div>
 
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '20px 16px' }}>
 
-        {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', marginBottom: '20px' }}>
           {[
             { label: 'Open', value: openIntents.length, color: '#6366f1' },
@@ -266,7 +243,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Capture box */}
         <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e1e2e', borderRadius: '16px', padding: '18px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ fontSize: '11px', fontWeight: '700', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>+ New Keep</span>
@@ -311,7 +287,6 @@ export default function Dashboard() {
             }}
           />
 
-          {/* AI Suggestions */}
           {suggestions.length > 0 && (
             <div style={{ marginTop: '10px' }}>
               <div style={{ fontSize: '11px', color: '#475569', marginBottom: '6px' }}>✨ Smart suggestions:</div>
@@ -327,7 +302,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Type + Remind at */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '12px' }}>
             <div>
               <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '5px' }}>⏰ Remind at</label>
@@ -346,7 +320,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Reminder type — only shows when remind_at is filled */}
           {remindAt && (
             <div style={{ marginTop: '12px' }}>
               <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '8px' }}>🔔 How to remind you?</label>
@@ -401,7 +374,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Tabs */}
         <div style={{ display: 'flex', gap: '4px', marginBottom: '14px', backgroundColor: '#0f0f1a', padding: '4px', borderRadius: '10px', border: '1px solid #1e1e2e' }}>
           {[{ key: 'open', label: `Open (${openIntents.length})` }, { key: 'closed', label: `Done (${closedIntents.length})` }].map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
@@ -413,12 +385,11 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Keeps List */}
         {displayIntents.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 24px', border: '1px dashed #1e293b', borderRadius: '14px', color: '#334155' }}>
             {activeTab === 'open'
-              ? <><div style={{ fontSize: '32px', marginBottom: '10px' }}>🎙️</div><div>Tap Voice or type
-                : <><div style={{ fontSize: '32px', marginBottom: '10px' }}>✅</div><div>No completed keeps yet</div></>
+              ? <><div style={{ fontSize: '32px', marginBottom: '10px' }}>🎙️</div><div>Tap Voice or type to add your first keep</div></>
+              : <><div style={{ fontSize: '32px', marginBottom: '10px' }}>✅</div><div>No completed keeps yet</div></>
             }
           </div>
         ) : (
@@ -440,10 +411,10 @@ export default function Dashboard() {
 
 function IntentCard({ intent, onUpdateState, onDelete }) {
   const [expanded, setExpanded] = useState(false);
-  const emoji = TYPE_EMOJI[intent.assist_mode] || TYPE_EMOJI[intent.intent_type] || '📝';
+  const emoji = TYPE_EMOJI[intent.assist_mode] || TYPE_EMOJI[intent.intent_type] || 'ðŸ“';
   const color = STATE_COLOR[intent.state] || '#22c55e';
   const isClosed = intent.state === 'closed';
-  const reminderIcons = { app: '📳', alarm: '⏰', whatsapp: '💬', email: '📧' };
+  const reminderIcons = { app: 'ðŸ“³', alarm: 'â°', whatsapp: 'ðŸ’¬', email: 'ðŸ“§' };
   const reminderType = intent.metadata?.reminder_type;
 
   return (
@@ -465,10 +436,12 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
             }}>{intent.state}</span>
             {intent.remind_at && (
               <span style={{ fontSize: '11px', color: '#64748b' }}>
-                {reminderIcons[reminderType] || '⏰'} {new Date(intent.remind_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                {reminderIcons[reminderType] || 'â°'} {new Date(intent.remind_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
-            {intent.contact_info && <span style={{ fontSize: '11px', color: '#64748b' }}>📞 {intent.contact_info}</span>}
+            {intent.contact_info && (
+              <span style={{ fontSize: '11px', color: '#64748b' }}>ðŸ“ž {intent.contact_info}</span>
+            )}
             <span style={{ fontSize: '11px', color: '#1e293b', marginLeft: 'auto' }}>
               {new Date(intent.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
             </span>
@@ -481,15 +454,15 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
           <button onClick={() => onUpdateState(intent.id, 'closed')} style={{
             backgroundColor: '#052010', border: '1px solid #166534', color: '#22c55e',
             padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '600',
-          }}>✓ Done</button>
+          }}>âœ“ Done</button>
           <button onClick={() => setExpanded(e => !e)} style={{
             backgroundColor: 'transparent', border: '1px solid #1e293b', color: '#64748b',
             padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer',
-          }}>{expanded ? '▲ Less' : '▼ More'}</button>
+          }}>{expanded ? 'â–² Less' : 'â–¼ More'}</button>
           <button onClick={() => onDelete(intent.id)} style={{
             backgroundColor: 'transparent', border: '1px solid #2d1515', color: '#ef4444',
             padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', marginLeft: 'auto',
-          }}>🗑️</button>
+          }}>ðŸ—‘ï¸</button>
         </div>
       )}
 
@@ -507,4 +480,4 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
       )}
     </div>
   );
-          }
+}

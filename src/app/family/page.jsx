@@ -64,7 +64,7 @@ export default function Family() {
       setActiveMember(data);
       setShowAddForm(false);
       setNewMember({ name: '', relation: 'Father', dob: '', avatar: '\u{1F474}', phone: '', blood_group: '' });
-      showToast('Family member addprofiles);
+      showToast('Family member added successfuly);
   }
 
   const card = { backgroundColor: '#0f0f1a', border: '1px solid #1e1e2e', borderRadius: '14px', padding: '16px', marginBottom: '12px' };

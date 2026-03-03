@@ -2,10 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// NOTE: NO module-level supabase initialization here. Moved inside POST function.
 
 const RULES = [
   { pattern: /call|ring|phone|whatsapp|contact/i, type: 'contact' },
@@ -57,6 +54,12 @@ function extractDateTime(text) {
 }
 
 export async function POST(request) {
+  // supabase client created HERE inside the function — runs only at request time
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
   try {
     const { text, user_id } = await request.json();
     if (!text || !user_id) return Response.json({ error: 'Missing text or user_id' }, { status: 400 });

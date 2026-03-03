@@ -1,4 +1,4 @@
-const CACHE_NAME = 'quietkeep-v1';
+const CACHE_NAME = 'quietkeep-v2';
 const STATIC_ASSETS = [
   '/',
   '/dashboard',
@@ -6,6 +6,11 @@ const STATIC_ASSETS = [
   '/finance',
   '/settings',
   '/profile',
+  '/calendar',
+  '/driving',
+  '/kids',
+  '/family',
+  '/documents',
   '/manifest.json',
 ];
 

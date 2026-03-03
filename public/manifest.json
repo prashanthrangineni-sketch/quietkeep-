@@ -25,23 +25,10 @@
   ],
   "categories": ["productivity", "utilities", "lifestyle"],
   "shortcuts": [
-    {
-      "name": "New Keep",
-      "short_name": "Keep",
-      "url": "/dashboard",
-      "description": "Capture a new keep"
-    },
-    {
-      "name": "Finance",
-      "short_name": "Finance",
-      "url": "/finance",
-      "description": "Log an expense"
-    },
-    {
-      "name": "Daily Brief",
-      "short_name": "Brief",
-      "url": "/daily-brief",
-      "description": "Your morning intelligence brief"
-    }
+  { "name": "New Keep", "short_name": "Keep", "url": "/dashboard", "description": "Capture a new keep" },
+  { "name": "Finance", "short_name": "Finance", "url": "/finance", "description": "Log an expense" },
+  { "name": "Daily Brief", "short_name": "Brief", "url": "/daily-brief", "description": "Your morning intelligence brief" },
+  { "name": "Driving Mode", "short_name": "Drive", "url": "/driving", "description": "Hands-free driving mode" },
+  { "name": "Calendar", "short_name": "Calendar", "url": "/calendar", "description": "Indian holidays and keeps calendar" }
   ]
 }

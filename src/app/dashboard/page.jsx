@@ -4,34 +4,116 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-const TYPE_EMOJI = { note: '📝', reminder: '⏰', contact: '📞', task: '✅' };
+const TYPE_EMOJI = { note: 'ðŸ“', reminder: 'â°', contact: 'ðŸ“ž', task: 'âœ…' };
 const STATE_COLOR = {
   open: '#22c55e', active: '#3b82f6', blocked: '#ef4444',
   deferred: '#f59e0b', closed: '#64748b',
 };
 
+// â”€â”€ Smart date/time parser from voice transcript â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function parseDateTime(text) {
+  const t = text.toLowerCase();
+  const now = new Date();
+  let date = null;
+
+  // Relative days
+  if (/\btoday\b/.test(t)) date = new Date(now);
+  else if (/\btomorrow\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 1); }
+  else if (/\bday after tomorrow\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 2); }
+  else if (/\bnext week\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 7); }
+
+  // Day names
+  const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  for (let i = 0; i < days.length; i++) {
+    if (new RegExp(`\\b${days[i]}\\b`).test(t)) {
+      date = new Date(now);
+      const diff = (i - now.getDay() + 7) % 7 || 7;
+      date.setDate(date.getDate() + diff);
+      break;
+    }
+  }
+
+  // Date patterns: "25th march", "march 25", "25/3", "25-03"
+  const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+  for (let m = 0; m < monthNames.length; m++) {
+    const re1 = new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?\\s+${monthNames[m]}`);
+    const re2 = new RegExp(`${monthNames[m]}\\s+(\\d{1,2})`);
+    let match = t.match(re1) || t.match(re2);
+    if (match) {
+      date = new Date(now.getFullYear(), m, parseInt(match[1]));
+      if (date < now) date.setFullYear(date.getFullYear() + 1);
+      break;
+    }
+  }
+
+  // Numeric dates: 25/3, 25-3
+  if (!date) {
+    const numDate = t.match(/(\d{1,2})[\/\-](\d{1,2})/);
+    if (numDate) {
+      date = new Date(now.getFullYear(), parseInt(numDate[2]) - 1, parseInt(numDate[1]));
+      if (date < now) date.setFullYear(date.getFullYear() + 1);
+    }
+  }
+
+  if (!date) return null;
+
+  // Time extraction
+  let hours = 9, minutes = 0; // default 9am
+
+  const timeMatch = t.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/);
+  if (timeMatch) {
+    hours = parseInt(timeMatch[1]);
+    minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+    if (timeMatch[3] === 'pm' && hours < 12) hours += 12;
+    if (timeMatch[3] === 'am' && hours === 12) hours = 0;
+  } else if (/\bmidnight\b/.test(t)) { hours = 0; minutes = 0; }
+  else if (/\bnoon\b|\bmidday\b/.test(t)) { hours = 12; minutes = 0; }
+  else if (/\bmorning\b/.test(t)) hours = 9;
+  else if (/\bafternoon\b/.test(t)) hours = 14;
+  else if (/\bevening\b/.test(t)) hours = 18;
+  else if (/\bnight\b/.test(t)) hours = 20;
+  else {
+    // plain number without am/pm â€” guess from context
+    const plainTime = t.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\b/);
+    if (plainTime) {
+      hours = parseInt(plainTime[1]);
+      minutes = plainTime[2] ? parseInt(plainTime[2]) : 0;
+      if (hours < 7) hours += 12; // assume pm for small numbers
+    }
+  }
+
+  date.setHours(hours, minutes, 0, 0);
+  // Return as datetime-local string
+  const pad = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(hours)}:${pad(minutes)}`;
+}
+
+// â”€â”€ Auto category detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function detectCategory(text) {
+  const t = text.toLowerCase();
+  if (/call|ring|phone|contact|whatsapp|message/.test(t)) return 'contact';
+  if (/buy|order|get|purchase|pick up|shop/.test(t)) return 'task';
+  if (/meet|meeting|appointment|doctor|dentist|interview|call at|remind/.test(t)) return 'reminder';
+  return 'note';
+}
+
 function getAISuggestions(text) {
   const t = text.toLowerCase();
   const suggestions = [];
   if (/call|ring|phone|contact/.test(t)) {
-    suggestions.push({ icon: '📞', text: 'Set as Contact type', action: 'contact' });
-    suggestions.push({ icon: '⏰', text: 'Add a reminder to follow up', action: 'reminder' });
+    suggestions.push({ icon: 'ðŸ“ž', text: 'Set as Contact type', action: 'contact' });
+    suggestions.push({ icon: 'â°', text: 'Add a reminder to follow up', action: 'reminder' });
   }
-  if (/tomorrow|tonight|morning|evening|monday|tuesday|wednesday|thursday|friday|weekend/.test(t)) {
-    suggestions.push({ icon: '⏰', text: 'Set a reminder for this', action: 'reminder' });
-  }
-  if (/buy|order|get|purchase|pick up/.test(t)) {
-    suggestions.push({ icon: '🛒', text: 'Mark as a task to complete', action: 'task' });
-  }
-  if (/meet|meeting|appointment|doctor|dentist|interview/.test(t)) {
-    suggestions.push({ icon: '📅', text: 'Add to reminders with time', action: 'reminder' });
-  }
-  if (/idea|think|consider|maybe|what if/.test(t)) {
-    suggestions.push({ icon: '💡', text: 'Save as a note to revisit', action: 'note' });
-  }
-  if (/email|send|reply|respond|message/.test(t)) {
-    suggestions.push({ icon: '📧', text: 'Add contact info', action: 'contact' });
-  }
+  if (/tomorrow|tonight|morning|evening|monday|tuesday|wednesday|thursday|friday|weekend/.test(t))
+    suggestions.push({ icon: 'â°', text: 'Set a reminder for this', action: 'reminder' });
+  if (/buy|order|get|purchase|pick up/.test(t))
+    suggestions.push({ icon: 'ðŸ›’', text: 'Mark as a task to complete', action: 'task' });
+  if (/meet|meeting|appointment|doctor|dentist|interview/.test(t))
+    suggestions.push({ icon: 'ðŸ“…', text: 'Add to reminders with time', action: 'reminder' });
+  if (/idea|think|consider|maybe|what if/.test(t))
+    suggestions.push({ icon: 'ðŸ’¡', text: 'Save as a note to revisit', action: 'note' });
+  if (/email|send|reply|respond/.test(t))
+    suggestions.push({ icon: 'ðŸ“§', text: 'Add contact info', action: 'contact' });
   return suggestions.slice(0, 2);
 }
 
@@ -51,6 +133,8 @@ export default function Dashboard() {
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [toast, setToast] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [autoDetected, setAutoDetected] = useState(null); // shows what was auto-detected
   const recognitionRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -59,16 +143,13 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (content.length > 5) {
-      setSuggestions(getAISuggestions(content));
-    } else {
-      setSuggestions([]);
-    }
+    if (content.length > 5) setSuggestions(getAISuggestions(content));
+    else setSuggestions([]);
   }, [content]);
 
   function showToast(msg) {
     setToast(msg);
-    setTimeout(() => setToast(''), 2500);
+    setTimeout(() => setToast(''), 2800);
   }
 
   function startVoice() {
@@ -85,6 +166,24 @@ export default function Dashboard() {
     recognition.onresult = (e) => {
       const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
       setContent(transcript);
+
+      // Auto-detect date/time
+      const detectedDate = parseDateTime(transcript);
+      const detectedCategory = detectCategory(transcript);
+      const detected = [];
+
+      if (detectedDate) {
+        setRemindAt(detectedDate);
+        detected.push('â° reminder time');
+      }
+      if (detectedCategory !== 'note') {
+        setAssistMode(detectedCategory);
+        detected.push(`ðŸ“‹ type â†’ ${detectedCategory}`);
+      }
+      if (detected.length > 0) {
+        setAutoDetected(detected.join(' Â· '));
+        setTimeout(() => setAutoDetected(null), 4000);
+      }
     };
     recognition.start();
   }
@@ -92,6 +191,19 @@ export default function Dashboard() {
   function stopVoice() {
     recognitionRef.current?.stop();
     setListening(false);
+  }
+
+  // Also auto-parse when user types (not just voice)
+  function handleContentChange(val) {
+    setContent(val);
+    if (val.length > 8) {
+      const detectedDate = parseDateTime(val);
+      if (detectedDate && !remindAt) {
+        setRemindAt(detectedDate);
+        setAutoDetected('â° reminder time auto-detected from text');
+        setTimeout(() => setAutoDetected(null), 3000);
+      }
+    }
   }
 
   const loadIntents = useCallback(async (uid) => {
@@ -118,16 +230,13 @@ export default function Dashboard() {
   async function handleSave() {
     if (!content.trim() || !user) return;
     setSaving(true);
-
     try {
       await fetch('/api/parse-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: content.trim(), user_id: user.id }),
       });
-    } catch (e) {
-      console.log('Parser unavailable, saving directly');
-    }
+    } catch (e) { /* parser optional */ }
 
     const { error } = await supabase.from('intents').insert([{
       user_id: user.id,
@@ -155,8 +264,8 @@ export default function Dashboard() {
         },
       }]);
       setContent(''); setRemindAt(''); setContactInfo('');
-      setReminderType('app'); setSuggestions([]);
-      showToast('✅ Kept!');
+      setReminderType('app'); setSuggestions([]); setAutoDetected(null);
+      showToast('âœ… Kept!');
       await loadIntents(user.id);
     }
     setSaving(false);
@@ -171,7 +280,7 @@ export default function Dashboard() {
       user_id: user.id, action: 'intent_state_changed',
       service: 'dashboard', details: { intent_id: id, new_state: state },
     }]);
-    showToast(state === 'closed' ? '✅ Marked done!' : `Moved to ${state}`);
+    showToast(state === 'closed' ? 'âœ… Marked done!' : `Moved to ${state}`);
     await loadIntents(user.id);
   }
 
@@ -181,13 +290,24 @@ export default function Dashboard() {
       user_id: user.id, action: 'intent_deleted',
       service: 'dashboard', details: { intent_id: id },
     }]);
-    showToast('🗑️ Deleted');
+    showToast('ðŸ—‘ï¸ Deleted');
     await loadIntents(user.id);
   }
 
   const openIntents = intents.filter(i => i.state !== 'closed');
   const closedIntents = intents.filter(i => i.state === 'closed');
-  const displayIntents = activeTab === 'open' ? openIntents : closedIntents;
+
+  // Search filter
+  const filterIntents = (list) => {
+    if (!searchQuery.trim()) return list;
+    const q = searchQuery.toLowerCase();
+    return list.filter(i =>
+      i.content?.toLowerCase().includes(q) ||
+      i.assist_mode?.toLowerCase().includes(q) ||
+      i.state?.toLowerCase().includes(q)
+    );
+  };
+  const displayIntents = filterIntents(activeTab === 'open' ? openIntents : closedIntents);
 
   if (loading) return (
     <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
@@ -205,31 +325,33 @@ export default function Dashboard() {
           position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)',
           backgroundColor: '#1e1e2e', border: '1px solid #6366f1', borderRadius: '10px',
           padding: '10px 20px', color: '#f1f5f9', fontSize: '14px', zIndex: 9999,
-          boxShadow: '0 4px 24px rgba(99,102,241,0.3)',
+          boxShadow: '0 4px 24px rgba(99,102,241,0.3)', whiteSpace: 'nowrap',
         }}>{toast}</div>
       )}
 
+      {/* Sub-nav */}
       <div style={{
         borderBottom: '1px solid #1e1e2e', padding: '10px 16px',
         backgroundColor: 'rgba(10,10,15,0.98)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: '8px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontWeight: '700', fontSize: '14px', color: '#6366f1' }}>📋 My Keeps</span>
+          <span style={{ fontWeight: '700', fontSize: '14px', color: '#6366f1' }}>ðŸ“‹ My Keeps</span>
           <span style={{ fontSize: '10px', color: '#334155' }}>{user?.email}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <a href="/daily-brief" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>📅 Brief</a>
-          <a href="/finance" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>💰 Finance</a>
-          <a href="/settings" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>⚙️ Settings</a>
-          <a href="/profile" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>👤 Profile</a>
+          <a href="/calendar" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>ðŸ“… Calendar</a>
+          <a href="/daily-brief" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>ðŸŒ… Brief</a>
+          <a href="/finance" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>ðŸ’° Finance</a>
+          <a href="/settings" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>âš™ï¸ Settings</a>
+          <a href="/profile" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>ðŸ‘¤ Profile</a>
           <button onClick={() => supabase.auth.signOut()} style={{ backgroundColor: 'transparent', border: '1px solid #1e293b', color: '#64748b', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Sign Out</button>
         </div>
       </div>
 
       <div style={{ maxWidth: '680px', margin: '0 auto', padding: '20px 16px' }}>
 
+        {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', marginBottom: '20px' }}>
           {[
             { label: 'Open', value: openIntents.length, color: '#6366f1' },
@@ -243,6 +365,7 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* Capture box */}
         <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e1e2e', borderRadius: '16px', padding: '18px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ fontSize: '11px', fontWeight: '700', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>+ New Keep</span>
@@ -252,31 +375,34 @@ export default function Dashboard() {
                 backgroundColor: listening ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)',
                 border: `1px solid ${listening ? 'rgba(239,68,68,0.4)' : 'rgba(99,102,241,0.4)'}`,
                 color: listening ? '#ef4444' : '#a5b4fc',
-                padding: '7px 14px', borderRadius: '8px', fontSize: '13px',
-                fontWeight: '600', cursor: 'pointer',
+                padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
               }}>
-                {listening ? '⏹ Stop' : '🎙️ Voice'}
+                {listening ? 'â¹ Stop' : 'ðŸŽ™ï¸ Voice'}
               </button>
             )}
           </div>
 
           {listening && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px',
-              backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-              borderRadius: '8px', padding: '8px 12px',
-            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', padding: '8px 12px' }}>
               <span style={{ width: '8px', height: '8px', backgroundColor: '#ef4444', borderRadius: '50%', display: 'inline-block', animation: 'pulse 1s ease infinite' }} />
-              <span style={{ fontSize: '12px', color: '#ef4444' }}>Listening... speak now</span>
+              <span style={{ fontSize: '12px', color: '#ef4444' }}>Listening... say date/time naturally e.g. "tomorrow 3pm"</span>
+            </div>
+          )}
+
+          {/* Auto-detected banner */}
+          {autoDetected && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', backgroundColor: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', padding: '8px 12px' }}>
+              <span style={{ fontSize: '13px' }}>âœ¨</span>
+              <span style={{ fontSize: '12px', color: '#a5b4fc' }}>Auto-detected: {autoDetected}</span>
             </div>
           )}
 
           <textarea
             ref={textareaRef}
             value={content}
-            onChange={e => setContent(e.target.value)}
+            onChange={e => handleContentChange(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSave(); }}
-            placeholder="What do you want to keep... (or tap 🎙️ to speak)"
+            placeholder="What do you want to keep... (or tap ðŸŽ™ï¸ and say 'Call doctor tomorrow 3pm')"
             rows={3}
             style={{
               width: '100%', backgroundColor: '#0a0a0f',
@@ -289,7 +415,7 @@ export default function Dashboard() {
 
           {suggestions.length > 0 && (
             <div style={{ marginTop: '10px' }}>
-              <div style={{ fontSize: '11px', color: '#475569', marginBottom: '6px' }}>✨ Smart suggestions:</div>
+              <div style={{ fontSize: '11px', color: '#475569', marginBottom: '6px' }}>âœ¨ Smart suggestions:</div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {suggestions.map((s, i) => (
                   <button key={i} onClick={() => { setAssistMode(s.action); showToast(`Set to ${s.action}`); }} style={{
@@ -304,31 +430,31 @@ export default function Dashboard() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '12px' }}>
             <div>
-              <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '5px' }}>⏰ Remind at</label>
+              <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '5px' }}>â° Remind at {remindAt && <span style={{ color: '#6366f1' }}>âœ“ set</span>}</label>
               <input type="datetime-local" value={remindAt} onChange={e => setRemindAt(e.target.value)}
-                style={{ width: '100%', backgroundColor: '#0a0a0f', border: '1px solid #1e293b', borderRadius: '8px', padding: '8px', color: '#f1f5f9', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                style={{ width: '100%', backgroundColor: remindAt ? 'rgba(99,102,241,0.05)' : '#0a0a0f', border: `1px solid ${remindAt ? '#6366f150' : '#1e293b'}`, borderRadius: '8px', padding: '8px', color: '#f1f5f9', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '5px' }}>📋 Type</label>
+              <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '5px' }}>ðŸ“‹ Type</label>
               <select value={assistMode} onChange={e => setAssistMode(e.target.value)}
                 style={{ width: '100%', backgroundColor: '#0a0a0f', border: '1px solid #1e293b', borderRadius: '8px', padding: '8px', color: '#f1f5f9', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
-                <option value="note">📝 Note</option>
-                <option value="reminder">⏰ Reminder</option>
-                <option value="contact">📞 Contact</option>
-                <option value="task">✅ Task</option>
+                <option value="note">ðŸ“ Note</option>
+                <option value="reminder">â° Reminder</option>
+                <option value="contact">ðŸ“ž Contact</option>
+                <option value="task">âœ… Task</option>
               </select>
             </div>
           </div>
 
           {remindAt && (
             <div style={{ marginTop: '12px' }}>
-              <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '8px' }}>🔔 How to remind you?</label>
+              <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '8px' }}>ðŸ”” How to remind you?</label>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {[
-                  { value: 'app', icon: '📳', label: 'App + Vibration' },
-                  { value: 'alarm', icon: '⏰', label: 'Alarm Sound' },
-                  { value: 'whatsapp', icon: '💬', label: 'WhatsApp' },
-                  { value: 'email', icon: '📧', label: 'Email' },
+                  { value: 'app', icon: 'ðŸ“³', label: 'App' },
+                  { value: 'alarm', icon: 'â°', label: 'Alarm' },
+                  { value: 'whatsapp', icon: 'ðŸ’¬', label: 'WhatsApp' },
+                  { value: 'email', icon: 'ðŸ“§', label: 'Email' },
                 ].map(opt => (
                   <button key={opt.value} onClick={() => setReminderType(opt.value)} style={{
                     padding: '7px 12px', borderRadius: '8px', cursor: 'pointer',
@@ -337,19 +463,17 @@ export default function Dashboard() {
                     color: reminderType === opt.value ? '#a5b4fc' : '#64748b',
                     fontSize: '12px', fontWeight: reminderType === opt.value ? '600' : '400',
                     display: 'flex', alignItems: 'center', gap: '5px',
-                  }}>
-                    {opt.icon} {opt.label}
-                  </button>
+                  }}>{opt.icon} {opt.label}</button>
                 ))}
               </div>
               {reminderType === 'whatsapp' && (
                 <div style={{ marginTop: '8px', fontSize: '11px', color: '#f59e0b', padding: '6px 10px', backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.2)' }}>
-                  ⚠️ WhatsApp reminders will open a draft message at reminder time. You tap Send.
+                  âš ï¸ WhatsApp reminder opens a draft at reminder time. You tap Send.
                 </div>
               )}
               {reminderType === 'alarm' && (
                 <div style={{ marginTop: '8px', fontSize: '11px', color: '#22c55e', padding: '6px 10px', backgroundColor: 'rgba(34,197,94,0.08)', borderRadius: '6px', border: '1px solid rgba(34,197,94,0.2)' }}>
-                  ⏰ Alarm will ring at the set time even if your phone is on silent.
+                  â° Rings even if phone is on silent.
                 </div>
               )}
             </div>
@@ -374,6 +498,28 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Search bar */}
+        <div style={{ marginBottom: '14px', position: 'relative' }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="ðŸ” Search your keeps..."
+            style={{
+              width: '100%', backgroundColor: '#0f0f1a', border: '1px solid #1e1e2e',
+              borderRadius: '10px', padding: '10px 14px', color: '#f1f5f9',
+              fontSize: '13px', outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} style={{
+              position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: '16px',
+            }}>Ã—</button>
+          )}
+        </div>
+
+        {/* Tabs */}
         <div style={{ display: 'flex', gap: '4px', marginBottom: '14px', backgroundColor: '#0f0f1a', padding: '4px', borderRadius: '10px', border: '1px solid #1e1e2e' }}>
           {[{ key: 'open', label: `Open (${openIntents.length})` }, { key: 'closed', label: `Done (${closedIntents.length})` }].map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
@@ -385,11 +531,14 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* Keeps list */}
         {displayIntents.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 24px', border: '1px dashed #1e293b', borderRadius: '14px', color: '#334155' }}>
-            {activeTab === 'open'
-              ? <><div style={{ fontSize: '32px', marginBottom: '10px' }}>🎙️</div><div>Tap Voice or type to add your first keep</div></>
-              : <><div style={{ fontSize: '32px', marginBottom: '10px' }}>✅</div><div>No completed keeps yet</div></>
+            {searchQuery
+              ? <><div style={{ fontSize: '32px', marginBottom: '10px' }}>ðŸ”</div><div>No keeps matching "{searchQuery}"</div></>
+              : activeTab === 'open'
+                ? <><div style={{ fontSize: '32px', marginBottom: '10px' }}>ðŸŽ™ï¸</div><div>Tap Voice or type to add your first keep</div></>
+                : <><div style={{ fontSize: '32px', marginBottom: '10px' }}>âœ…</div><div>No completed keeps yet</div></>
             }
           </div>
         ) : (
@@ -418,30 +567,19 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
   const reminderType = intent.metadata?.reminder_type;
 
   return (
-    <div style={{
-      backgroundColor: '#0f0f1a', border: `1px solid ${isClosed ? '#1a1a2e' : '#1e1e2e'}`,
-      borderRadius: '12px', padding: '14px', opacity: isClosed ? 0.5 : 1,
-    }}>
+    <div style={{ backgroundColor: '#0f0f1a', border: `1px solid ${isClosed ? '#1a1a2e' : '#1e1e2e'}`, borderRadius: '12px', padding: '14px', opacity: isClosed ? 0.5 : 1 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
         <span style={{ fontSize: '18px', flexShrink: 0, lineHeight: 1.4 }}>{emoji}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{
-            margin: '0 0 8px', fontSize: '15px', color: '#e2e8f0', lineHeight: 1.5,
-            textDecoration: isClosed ? 'line-through' : 'none',
-          }}>{intent.content}</p>
+          <p style={{ margin: '0 0 8px', fontSize: '15px', color: '#e2e8f0', lineHeight: 1.5, textDecoration: isClosed ? 'line-through' : 'none' }}>{intent.content}</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <span style={{
-              fontSize: '10px', padding: '2px 8px', borderRadius: '100px', fontWeight: '700',
-              backgroundColor: `${color}18`, color, textTransform: 'uppercase',
-            }}>{intent.state}</span>
+            <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '100px', fontWeight: '700', backgroundColor: `${color}18`, color, textTransform: 'uppercase' }}>{intent.state}</span>
             {intent.remind_at && (
               <span style={{ fontSize: '11px', color: '#64748b' }}>
                 {reminderIcons[reminderType] || 'â°'} {new Date(intent.remind_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
-            {intent.contact_info && (
-              <span style={{ fontSize: '11px', color: '#64748b' }}>ðŸ“ž {intent.contact_info}</span>
-            )}
+            {intent.contact_info && <span style={{ fontSize: '11px', color: '#64748b' }}>ðŸ“ž {intent.contact_info}</span>}
             <span style={{ fontSize: '11px', color: '#1e293b', marginLeft: 'auto' }}>
               {new Date(intent.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
             </span>
@@ -451,18 +589,9 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
 
       {!isClosed && (
         <div style={{ display: 'flex', gap: '6px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #1a1a2e', flexWrap: 'wrap' }}>
-          <button onClick={() => onUpdateState(intent.id, 'closed')} style={{
-            backgroundColor: '#052010', border: '1px solid #166534', color: '#22c55e',
-            padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '600',
-          }}>âœ“ Done</button>
-          <button onClick={() => setExpanded(e => !e)} style={{
-            backgroundColor: 'transparent', border: '1px solid #1e293b', color: '#64748b',
-            padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer',
-          }}>{expanded ? 'â–² Less' : 'â–¼ More'}</button>
-          <button onClick={() => onDelete(intent.id)} style={{
-            backgroundColor: 'transparent', border: '1px solid #2d1515', color: '#ef4444',
-            padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', marginLeft: 'auto',
-          }}>ðŸ—‘ï¸</button>
+          <button onClick={() => onUpdateState(intent.id, 'closed')} style={{ backgroundColor: '#052010', border: '1px solid #166534', color: '#22c55e', padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}>âœ“ Done</button>
+          <button onClick={() => setExpanded(e => !e)} style={{ backgroundColor: 'transparent', border: '1px solid #1e293b', color: '#64748b', padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>{expanded ? 'â–² Less' : 'â–¼ More'}</button>
+          <button onClick={() => onDelete(intent.id)} style={{ backgroundColor: 'transparent', border: '1px solid #2d1515', color: '#ef4444', padding: '5px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', marginLeft: 'auto' }}>ðŸ—‘ï¸</button>
         </div>
       )}
 
@@ -472,12 +601,11 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
           {['open', 'active', 'deferred', 'blocked'].filter(s => s !== intent.state).map(s => (
             <button key={s} onClick={() => onUpdateState(intent.id, s)} style={{
               backgroundColor: `${STATE_COLOR[s]}15`, border: `1px solid ${STATE_COLOR[s]}40`,
-              color: STATE_COLOR[s], padding: '4px 10px', borderRadius: '6px',
-              fontSize: '11px', cursor: 'pointer', fontWeight: '600',
+              color: STATE_COLOR[s], padding: '4px 10px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: '600',
             }}>{s}</button>
           ))}
         </div>
       )}
     </div>
   );
-}
+                      }

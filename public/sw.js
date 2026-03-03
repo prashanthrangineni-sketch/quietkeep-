@@ -1,136 +1,45 @@
 const CACHE_NAME = 'quietkeep-v2';
-const STATIC_ASSETS = [
-  '/',
-  '/dashboard',
-  '/daily-brief',
-  '/finance',
-  '/settings',
-  '/profile',
-  '/calendar',
-  '/driving',
-  '/kids',
-  '/family',
-  '/documents',
-  '/manifest.json',
-];
+const STATIC = ['/', '/dashboard', '/daily-brief', '/calendar', '/finance', '/driving', '/profile', '/settings', '/kids', '/family', '/documents'];
 
-// Install — cache static pages
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
-  );
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(STATIC).catch(() => {})));
   self.skipWaiting();
 });
 
-// Activate — clean up old caches
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    )
-  );
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
   self.clients.claim();
 });
 
-// Fetch — network first, fall back to cache
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Skip non-GET and external requests (Supabase API etc)
-  if (request.method !== 'GET') return;
-  if (!url.origin.includes(self.location.origin)) return;
-
-  // API routes — network only, no caching
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(fetch(request).catch(() =>
-      new Response(JSON.stringify({ error: 'Offline — no network' }), {
-        headers: { 'Content-Type': 'application/json' },
-      })
-    ));
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  if (url.hostname.includes('supabase') || url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) return;
+  if (e.request.mode === 'navigate') {
+    e.respondWith(fetch(e.request).catch(() => caches.match('/dashboard')));
     return;
   }
-
-  // Pages — network first, cache fallback
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        // Cache successful responses
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      })
-      .catch(() =>
-        caches.match(request).then((cached) => {
-          if (cached) return cached;
-          // Fallback for uncached pages when offline
-          return caches.match('/dashboard');
-        })
-      )
+  e.respondWith(
+    caches.match(e.request).then(cached => cached || fetch(e.request).then(r => {
+      if (r.ok && e.request.method === 'GET') caches.open(CACHE_NAME).then(c => c.put(e.request, r.clone()));
+      return r;
+    }))
   );
 });
 
-// Push notification handler
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  let data = {};
-  try { data = event.data.json(); } catch { data = { title: 'QuietKeep', body: event.data.text() }; }
-
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'QuietKeep Reminder', {
-      body: data.body || 'You have a reminder',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: data.tag || 'quietkeep-reminder',
-      requireInteraction: true,
-      vibrate: [200, 100, 200],
-      data: { url: data.url || '/dashboard' },
-      actions: [
-        { action: 'open', title: '✅ Open' },
-        { action: 'dismiss', title: '❌ Dismiss' },
-      ],
-    })
-  );
+self.addEventListener('push', e => {
+  if (!e.data) return;
+  const d = e.data.json();
+  e.waitUntil(self.registration.showNotification(d.title || 'QuietKeep', {
+    body: d.body || 'New reminder',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: [200, 100, 200],
+    data: { url: d.url || '/dashboard' },
+    actions: [{ action: 'open', title: 'View' }, { action: 'dismiss', title: 'Dismiss' }],
+  }));
 });
 
-// Notification click handler
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  if (event.action === 'dismiss') return;
-
-  const url = event.notification.data?.url || '/dashboard';
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If app is already open, focus it
-      for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.focus();
-          client.navigate(url);
-          return;
-        }
-      }
-      // Otherwise open new window
-      if (clients.openWindow) return clients.openWindow(url);
-    })
-  );
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  if (e.action !== 'dismiss') e.waitUntil(clients.openWindow(e.notification.data?.url || '/dashboard'));
 });
-
-// Background sync for offline keeps
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-keeps') {
-    event.waitUntil(syncOfflineKeeps());
-  }
-});
-
-async function syncOfflineKeeps() {
-  // Placeholder — will sync queued offline keeps when back online
-  console.log('[QuietKeep SW] Syncing offline keeps...');
-}

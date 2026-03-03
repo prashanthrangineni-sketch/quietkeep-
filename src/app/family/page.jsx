@@ -36,7 +36,7 @@ export default function Family() {
 
   async function loadMembers(uid) {
     const { data } = await supabase
-      .from('family_members')
+      .from('family_profiles')
       .select('*')
       .eq('user_id', uid)
       .order('created_at', { ascending: true });
@@ -49,7 +49,7 @@ export default function Family() {
   async function handleAddMember() {
     if (!newMember.name.trim() || !user) { return; }
     setSaving(true);
-    const { data, error } = await supabase.from('family_members').insert([{
+    const { data, error } = await supabase.from('family_profiles').insert([{
       user_id: user.id,
       name: newMember.name.trim(),
       relation: newMember.relation,
@@ -64,9 +64,7 @@ export default function Family() {
       setActiveMember(data);
       setShowAddForm(false);
       setNewMember({ name: '', relation: 'Father', dob: '', avatar: '\u{1F474}', phone: '', blood_group: '' });
-      showToast('Family member added');
-    }
-    setSaving(false);
+      showToast('Family member addprofiles);
   }
 
   const card = { backgroundColor: '#0f0f1a', border: '1px solid #1e1e2e', borderRadius: '14px', padding: '16px', marginBottom: '12px' };

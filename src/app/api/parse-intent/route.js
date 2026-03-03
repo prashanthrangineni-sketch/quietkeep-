@@ -1,104 +1,76 @@
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 const RULES = [
-  { pattern: /\b(call|ring|phone|contact|talk to|speak to)\b/i, type: 'contact', assist: 'contact', confidence: 0.9 },
-  { pattern: /\b(remind|reminder|don't forget|remember to|alert me|notify)\b/i, type: 'reminder', assist: 'reminder', confidence: 0.9 },
-  { pattern: /\b(buy|order|purchase|get|pick up|shop|groceries|vegetables|milk|bread)\b/i, type: 'task', assist: 'note', confidence: 0.85 },
-  { pattern: /\b(meet|meeting|appointment|doctor|dentist|interview|visit|attend)\b/i, type: 'reminder', assist: 'reminder', confidence: 0.88 },
-  { pattern: /\b(trip|travel|goa|flight|hotel|train|holiday|vacation|book)\b/i, type: 'trip', assist: 'note', confidence: 0.87 },
-  { pattern: /\b(pay|payment|bill|due|emi|rent|electricity|recharge)\b/i, type: 'reminder', assist: 'reminder', confidence: 0.88 },
-  { pattern: /\b(email|send|reply|message|whatsapp|text)\b/i, type: 'contact', assist: 'contact', confidence: 0.82 },
-  { pattern: /\b(spent|paid|expense|cost|bought|charged|₹|rs\.|rupees)\b/i, type: 'expense', assist: 'note', confidence: 0.9 },
-  { pattern: /\b(idea|think|consider|maybe|what if|explore|research)\b/i, type: 'note', assist: 'note', confidence: 0.75 },
-  { pattern: /\b(medicine|tablet|pill|dose|health|symptoms|doctor|hospital)\b/i, type: 'health', assist: 'reminder', confidence: 0.88 },
+  { pattern: /call|ring|phone|whatsapp|contact/i, type: 'contact' },
+  { pattern: /buy|order|get|purchase|pick up|shop/i, type: 'task' },
+  { pattern: /remind|tomorrow|tonight|morning|evening|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next week/i, type: 'reminder' },
+  { pattern: /meet|meeting|appointment|doctor|dentist|interview/i, type: 'reminder' },
 ];
 
-function extractRemindAt(text) {
-  const now = new Date();
-  const t = text.toLowerCase();
-  if (/\btomorrow\b/.test(t)) {
-    const d = new Date(now); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0);
-    return d.toISOString();
-  }
-  if (/\btonight\b/.test(t)) {
-    const d = new Date(now); d.setHours(20, 0, 0, 0);
-    return d.toISOString();
-  }
-  if (/\bmorning\b/.test(t)) {
-    const d = new Date(now); d.setHours(8, 0, 0, 0);
-    if (d < now) d.setDate(d.getDate() + 1);
-    return d.toISOString();
-  }
-  if (/\bevening\b/.test(t)) {
-    const d = new Date(now); d.setHours(18, 0, 0, 0);
-    if (d < now) d.setDate(d.getDate() + 1);
-    return d.toISOString();
-  }
-  const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-  for (let i = 0; i < days.length; i++) {
-    if (t.includes(days[i])) {
-      const d = new Date(now);
-      const diff = (i - d.getDay() + 7) % 7 || 7;
-      d.setDate(d.getDate() + diff); d.setHours(9, 0, 0, 0);
-      return d.toISOString();
-    }
-  }
-  return null;
-}
-
-function extractAmount(text) {
-  const match = text.match(/[₹rs\.\s]*(\d+(?:\.\d{1,2})?)/i);
-  return match ? parseFloat(match[1]) : null;
-}
-
-function parseIntent(text) {
-  let bestMatch = { type: 'note', assist: 'note', confidence: 0.5 };
+function parseRules(text) {
   for (const rule of RULES) {
-    if (rule.pattern.test(text) && rule.confidence > bestMatch.confidence) {
-      bestMatch = rule;
-    }
+    if (rule.pattern.test(text)) return rule.type;
   }
-  const suggestions = [];
-  if (bestMatch.type === 'contact') suggestions.push({ icon: '⏰', text: 'Add a follow-up reminder', action: 'reminder' });
-  if (bestMatch.type === 'reminder' || extractRemindAt(text)) suggestions.push({ icon: '⏰', text: 'Set time for this reminder', action: 'reminder' });
-  if (/\b(buy|shop|order)\b/i.test(text)) suggestions.push({ icon: '🛒', text: 'Search on Cart2Save', action: 'cart2save' });
-  if (bestMatch.type === 'expense') suggestions.push({ icon: '💰', text: 'Log as expense', action: 'expense' });
-  if (bestMatch.type === 'trip') suggestions.push({ icon: '✈️', text: 'Start trip planner', action: 'trip' });
-
-  return {
-    intent_type: bestMatch.type,
-    assist_mode: bestMatch.assist,
-    confidence: bestMatch.confidence,
-    parsing_method: 'rule',
-    remind_at: extractRemindAt(text),
-    extracted_amount: extractAmount(text),
-    suggestions: suggestions.slice(0, 2),
-  };
+  return 'note';
 }
 
-export async function POST(req) {
+function extractDateTime(text) {
+  const t = text.toLowerCase();
+  const now = new Date();
+  let date = null;
+  if (/\btoday\b/.test(t)) date = new Date(now);
+  else if (/\btomorrow\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 1); }
+  else if (/\bnext week\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 7); }
+  else {
+    const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    for (let i = 0; i < days.length; i++) {
+      if (new RegExp(`\\b${days[i]}\\b`).test(t)) {
+        date = new Date(now);
+        const diff = (i - now.getDay() + 7) % 7 || 7;
+        date.setDate(date.getDate() + diff);
+        break;
+      }
+    }
+  }
+  if (!date) return null;
+  let h = 9, m = 0;
+  const timeMatch = t.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/);
+  if (timeMatch) {
+    h = parseInt(timeMatch[1]);
+    m = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+    if (timeMatch[3] === 'pm' && h < 12) h += 12;
+    if (timeMatch[3] === 'am' && h === 12) h = 0;
+  } else if (/\bmorning\b/.test(t)) h = 9;
+  else if (/\bafternoon\b/.test(t)) h = 14;
+  else if (/\bevening\b/.test(t)) h = 18;
+  else if (/\bnight\b/.test(t)) h = 20;
+  else if (/\bnoon\b/.test(t)) h = 12;
+  date.setHours(h, m, 0, 0);
+  return date.toISOString();
+}
+
+export async function POST(request) {
   try {
-    const { text, user_id } = await req.json();
-    if (!text || !user_id) return NextResponse.json({ error: 'Missing text or user_id' }, { status: 400 });
+    const { text, user_id } = await request.json();
+    if (!text || !user_id) return Response.json({ error: 'Missing text or user_id' }, { status: 400 });
 
-    const parsed = parseIntent(text);
+    const intent_type = parseRules(text);
+    const remind_at = extractDateTime(text);
 
-    // Log to audit_log
     await supabase.from('audit_log').insert([{
       user_id,
       action: 'intent_parsed',
-      service: 'rule_parser',
-      details: { text: text.substring(0, 200), ...parsed },
+      service: 'parse-intent',
+      details: { text: text.substring(0, 100), detected_type: intent_type, detected_datetime: remind_at },
     }]);
 
-    return NextResponse.json(parsed);
-  } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return Response.json({ intent_type, remind_at, method: 'rule_parser' });
+  } catch (err) {
+    return Response.json({ error: String(err) }, { status: 500 });
   }
-      }
+}

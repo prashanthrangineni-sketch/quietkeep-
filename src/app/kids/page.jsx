@@ -68,7 +68,7 @@ export default function Kids() {
   async function handleAddKid() {
     if (!newKid.name.trim() || !user) { return; }
     setSaving(true);
-    const { data, error } = await supabase.from('kids_profiles').insert([{
+    const { data, error } = await supabase.from('kids').insert([{
       user_id: user.id,
       name: newKid.name.trim(),
       dob: newKid.dob || null,

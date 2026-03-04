@@ -55,7 +55,7 @@ export default function Kids() {
 
   async function loadKids(uid) {
     const { data } = await supabase
-      .from('kids_profiles')
+      .from('kids')
       .select('*')
       .eq('user_id', uid)
       .order('created_at', { ascending: true });

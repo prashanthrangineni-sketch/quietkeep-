@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 const TYPE_EMOJI = {
   note: '\u{1F4DD}',
@@ -345,8 +346,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
-
+    <>
+      <NavbarClient />
+      <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
       {toast && (
         <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#1e1e2e', border: '1px solid #6366f1', borderRadius: '10px', padding: '10px 20px', color: '#f1f5f9', fontSize: '14px', zIndex: 9999, boxShadow: '0 4px 24px rgba(99,102,241,0.3)', whiteSpace: 'nowrap' }}>
           {toast}
@@ -542,5 +544,6 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
     <div style={{ backgroundColor: '#0f0f1a', border: '1px solid ' + (isClosed ? '#1a1a2e' : '#1e1e2e'), borderRadius: '12px', padding: '14px', opacity: isClosed ? 0.5 : 1 }}>
       ...
     </div>
-  );
+    </>
+    );
 }

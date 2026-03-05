@@ -288,6 +288,5 @@ function DocCard({ doc, days, isExpired, isExpiringSoon, catColor, onDelete }) {
         </div>
       )}
     </div>
-    </>
   );
 }

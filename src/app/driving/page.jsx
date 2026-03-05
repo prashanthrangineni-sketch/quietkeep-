@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 export default function DrivingMode() {
   const router = useRouter();
@@ -150,6 +151,8 @@ export default function DrivingMode() {
   const fmt = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   if (!active) return (
+    <>
+      <NavbarClient />
     <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ maxWidth: '400px', width: '100%', textAlign: 'center' }}>
         <div style={{ fontSize: '64px', marginBottom: '16px' }}>🚗</div>
@@ -254,5 +257,6 @@ export default function DrivingMode() {
         @keyframes glow { 0%,100% { box-shadow: 0 0 40px rgba(99,102,241,0.4); } 50% { box-shadow: 0 0 60px rgba(99,102,241,0.7); } }
       `}</style>
     </div>
+    </>
   );
-      }
+}

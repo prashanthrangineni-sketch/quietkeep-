@@ -526,8 +526,8 @@ export default function Dashboard() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-      `}</style>
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }`}
+      </style>
     </div>
   );
 }

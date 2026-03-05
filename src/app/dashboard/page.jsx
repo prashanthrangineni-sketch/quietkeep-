@@ -544,6 +544,4 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
     <div style={{ backgroundColor: '#0f0f1a', border: '1px solid ' + (isClosed ? '#1a1a2e' : '#1e1e2e'), borderRadius: '12px', padding: '14px', opacity: isClosed ? 0.5 : 1 }}>
       ...
     </div>
-    </>
     );
-}

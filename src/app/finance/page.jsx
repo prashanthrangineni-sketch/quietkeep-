@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 const CATEGORIES = ['food','transport','education','health','shopping','utilities','entertainment','other'];
 const CAT_EMOJI = { food:'🍽️', transport:'🚗', education:'📚', health:'💊', shopping:'🛍️', utilities:'💡', entertainment:'🎬', other:'📦' };
@@ -120,7 +121,9 @@ export default function Finance() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
+    <>
+      <NavbarClient />
+      <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
       {toast && <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#1e1e2e', border: '1px solid #6366f1', borderRadius: '10px', padding: '10px 20px', color: '#f1f5f9', fontSize: '14px', zIndex: 9999, boxShadow: '0 4px 24px rgba(99,102,241,0.3)', whiteSpace: 'nowrap' }}>{toast}</div>}
 
       <div style={{ borderBottom: '1px solid #1e1e2e', padding: '10px 16px', backgroundColor: 'rgba(10,10,15,0.98)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
@@ -315,5 +318,6 @@ export default function Finance() {
         )}
       </div>
     </div>
+    </>
   );
-            }
+}

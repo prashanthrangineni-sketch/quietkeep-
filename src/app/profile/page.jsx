@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 const PERSONAS = [
   { value: 'professional', label: '\u{1F4BC} Professional', desc: 'Work, meetings, travel, deadlines' },
@@ -122,6 +123,8 @@ export default function Profile() {
   );
 
   return (
+    <>
+      <NavbarClient />
     <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
       <div style={{ borderBottom: '1px solid #1e1e2e', padding: '10px 16px', backgroundColor: 'rgba(10,10,15,0.98)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontWeight: '700', fontSize: '14px', color: '#6366f1' }}>Profile</span>
@@ -291,5 +294,5 @@ export default function Profile() {
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
+    </>
   );
-}

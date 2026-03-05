@@ -292,7 +292,9 @@ export default function Profile() {
           </>
         )}
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-    </>
-  );
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}
+      </style>
+</div>
+</>
+);
+}

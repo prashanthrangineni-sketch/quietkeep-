@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 export default function DailyBrief() {
   const router = useRouter();
@@ -113,6 +114,8 @@ export default function DailyBrief() {
   );
 
   return (
+    <>
+      <NavbarClient />
     <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
       {/* Nav */}
       <div style={{ borderBottom: '1px solid #1e1e2e', padding: '10px 16px', backgroundColor: 'rgba(10,10,15,0.98)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
@@ -239,5 +242,6 @@ export default function DailyBrief() {
         </div>
       </div>
     </div>
+    </>
   );
-          }
+}

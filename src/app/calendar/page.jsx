@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -121,6 +122,8 @@ export default function CalendarPage() {
   );
 
   return (
+    <>
+      <NavbarClient />
     <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
 
       {/* Sub-nav */}
@@ -293,5 +296,6 @@ export default function CalendarPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

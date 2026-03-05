@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import BudgetComponent from './components/BudgetComponent';
 
 const CATEGORIES = [
   { name: 'Food', emoji: '🍔', color: '#ef4444' },
@@ -95,13 +96,13 @@ export default function ExpenseComponent() {
     <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9', padding: '24px 16px' }}>
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: '800', margin: '0 0 8px' }}>💰 Expenses</h1>
-          <div style={{ fontSize: '14px', color: '#94a3b8' }}>Track your spending</div>
+          <h1 style={{ fontSize: '32px', fontWeight: '800', margin: '0 0 8px' }}>💰 Finance</h1>
+          <div style={{ fontSize: '14px', color: '#94a3b8' }}>Track spending & budgets</div>
         </div>
 
         {/* Summary Card */}
         <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e293b', borderRadius: '14px', padding: '20px', marginBottom: '24px' }}>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>Total This Month</div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>Total Expenses</div>
           <div style={{ fontSize: '32px', fontWeight: '800', color: '#6366f1' }}>₹{totalExpenses.toLocaleString('en-IN')}</div>
         </div>
 
@@ -175,7 +176,7 @@ export default function ExpenseComponent() {
 
         {/* Add Expense Form */}
         {showForm && (
-          <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e293b', borderRadius: '14px', padding: '20px' }}>
+          <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e293b', borderRadius: '14px', padding: '20px', marginBottom: '24px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#f1f5f9', margin: '0 0 16px' }}>New Expense</h3>
             
             <input
@@ -268,6 +269,9 @@ export default function ExpenseComponent() {
             </div>
           </div>
         )}
+
+        {/* Budget Component */}
+        <BudgetComponent />
       </div>
     </div>
   );

@@ -531,6 +531,7 @@ export default function Dashboard() {
     </div>
     </>
   );
+}
 
 function IntentCard({ intent, onUpdateState, onDelete }) {
   const [expanded, setExpanded] = useState(false);

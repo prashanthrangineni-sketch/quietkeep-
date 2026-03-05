@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 const LANGUAGES = [
   { code: 'en-US', label: '🇮🇳 English (India)' },
@@ -126,6 +127,8 @@ export default function Settings() {
   );
 
   return (
+    <>
+      <NavbarClient />
     <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
 
       {/* Header */}
@@ -349,5 +352,6 @@ export default function Settings() {
         )}
       </div>
     </div>
+    </>
   );
-        }
+}

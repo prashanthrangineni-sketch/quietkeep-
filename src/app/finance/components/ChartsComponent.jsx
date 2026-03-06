@@ -2,16 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { BarChart, Bar, PieChart, Pie, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function ChartsComponent() {
   const [user, setUser] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('category'); // category, budget, trend
-
-  const COLORS = ['#ef4444', '#3b82f6', '#ec4899', '#f59e0b', '#8b5cf6', '#10b981', '#64748b'];
+  const [activeTab, setActiveTab] = useState('category');
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -19,14 +17,12 @@ export default function ChartsComponent() {
         setUser(session.user);
         const uid = session.user.id;
 
-        // Get expenses
         const { data: exp } = await supabase
           .from('expenses')
           .select('*')
           .eq('user_id', uid);
         setExpenses(exp || []);
 
-        // Get budgets
         const { data: bud } = await supabase
           .from('budgets')
           .select('*')
@@ -37,7 +33,6 @@ export default function ChartsComponent() {
     });
   }, []);
 
-  // Chart 1: Expenses by Category (Bar Chart)
   const getCategoryData = () => {
     const categoryMap = {};
     expenses.forEach(exp => {
@@ -53,19 +48,15 @@ export default function ChartsComponent() {
     })).sort((a, b) => b.amount - a.amount);
   };
 
-  // Chart 2: Budget vs Actual (Pie Chart)
   const getBudgetVsActualData = () => {
     const data = budgets.map(budget => {
       const spent = expenses
         .filter(e => e.category === budget.category)
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 
-      const remaining = Math.max(0, budget.limit_amount - spent);
-      
       return {
         name: budget.category,
         spent: parseFloat(spent.toFixed(0)),
-        remaining: parseFloat(remaining.toFixed(0)),
         limit: budget.limit_amount,
       };
     });
@@ -73,19 +64,16 @@ export default function ChartsComponent() {
     return data;
   };
 
-  // Chart 3: Monthly Trend (Line Chart - Last 6 months)
   const getTrendData = () => {
     const monthData = {};
     const today = new Date();
 
-    // Initialize last 6 months
     for (let i = 5; i >= 0; i--) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const key = date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
       monthData[key] = 0;
     }
 
-    // Add expenses
     expenses.forEach(exp => {
       if (exp.date) {
         const expDate = new Date(exp.date);
@@ -126,7 +114,6 @@ export default function ChartsComponent() {
     <div style={{ marginTop: '32px' }}>
       <h2 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 12px' }}>📊 Analytics</h2>
 
-      {/* Tab Buttons */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '24px' }}>
         <button
           onClick={() => setActiveTab('category')}
@@ -175,9 +162,7 @@ export default function ChartsComponent() {
         </button>
       </div>
 
-      {/* Chart Container */}
       <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', minHeight: '350px' }}>
-        {/* Bar Chart: Expenses by Category */}
         {activeTab === 'category' && categoryData.length > 0 && (
           <div>
             <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 16px', color: '#e2e8f0' }}>Expenses by Category</h3>
@@ -196,7 +181,6 @@ export default function ChartsComponent() {
           </div>
         )}
 
-        {/* Pie Chart: Budget vs Actual */}
         {activeTab === 'budget' && budgetData.length > 0 && (
           <div>
             <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 16px', color: '#e2e8f0' }}>Budget Status</h3>
@@ -224,7 +208,6 @@ export default function ChartsComponent() {
           </div>
         )}
 
-        {/* Line Chart: Trend */}
         {activeTab === 'trend' && trendData.length > 0 && (
           <div>
             <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 16px', color: '#e2e8f0' }}>Last 6 Months Trend</h3>

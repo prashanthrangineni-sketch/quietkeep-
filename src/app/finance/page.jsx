@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import BudgetComponent from './components/BudgetComponent';
+import SubscriptionComponent from './components/SubscriptionComponent';
+import ChartsComponent from './components/ChartsComponent';
 
 const CATEGORIES = [
   { name: 'Food', emoji: '🍔', color: '#ef4444' },
@@ -272,6 +274,12 @@ export default function ExpenseComponent() {
 
         {/* Budget Component */}
         <BudgetComponent />
+
+        {/* Subscription Component */}
+        <SubscriptionComponent />
+
+        {/* Charts Component */}
+        <ChartsComponent />
       </div>
     </div>
   );

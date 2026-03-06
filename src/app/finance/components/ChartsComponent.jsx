@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function ChartsComponent() {
   const [user, setUser] = useState(null);
@@ -163,24 +162,39 @@ export default function ChartsComponent() {
       </div>
 
       <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', minHeight: '350px' }}>
+        {/* Category View - Bar Chart Style */}
         {activeTab === 'category' && categoryData.length > 0 && (
           <div>
             <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 16px', color: '#e2e8f0' }}>Expenses by Category</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={categoryData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="category" stroke="#94a3b8" fontSize={12} />
-                <YAxis stroke="#94a3b8" fontSize={12} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }}
-                  formatter={(value) => `₹${value.toLocaleString('en-IN')}`}
-                />
-                <Bar dataKey="amount" fill="#6366f1" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {categoryData.map((item, idx) => {
+                const maxAmount = Math.max(...categoryData.map(d => d.amount));
+                const barWidth = (item.amount / maxAmount) * 100;
+                
+                return (
+                  <div key={idx}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '12px' }}>
+                      <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{item.category}</span>
+                      <span style={{ color: '#6366f1' }}>₹{item.amount.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div style={{ width: '100%', height: '24px', backgroundColor: '#1a1a2e', borderRadius: '6px', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          height: '100%',
+                          width: `${barWidth}%`,
+                          backgroundColor: '#6366f1',
+                          transition: 'width 0.3s',
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
+        {/* Budget View - Progress Bars */}
         {activeTab === 'budget' && budgetData.length > 0 && (
           <div>
             <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 16px', color: '#e2e8f0' }}>Budget Status</h3>
@@ -202,34 +216,44 @@ export default function ChartsComponent() {
                       }}
                     />
                   </div>
+                  <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>
+                    {Math.round((budget.spent / budget.limit) * 100)}%
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
+        {/* Trend View - Simple Line Chart */}
         {activeTab === 'trend' && trendData.length > 0 && (
           <div>
-            <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 16px', color: '#e2e8f0' }}>Last 6 Months Trend</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
-                <YAxis stroke="#94a3b8" fontSize={12} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }}
-                  formatter={(value) => `₹${value.toLocaleString('en-IN')}`}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="amount" 
-                  stroke="#6366f1" 
-                  strokeWidth={2} 
-                  dot={{ fill: '#6366f1', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 16px', color: '#e2e8f0' }}>Last 6 Months</h3>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {trendData.map((item, idx) => {
+                const maxAmount = Math.max(...trendData.map(d => d.amount));
+                const barWidth = maxAmount > 0 ? (item.amount / maxAmount) * 100 : 0;
+                
+                return (
+                  <div key={idx}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '12px' }}>
+                      <span style={{ color: '#e2e8f0', fontWeight: '600' }}>{item.month}</span>
+                      <span style={{ color: '#6366f1' }}>₹{item.amount.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div style={{ width: '100%', height: '24px', backgroundColor: '#1a1a2e', borderRadius: '6px', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          height: '100%',
+                          width: `${barWidth}%`,
+                          backgroundColor: '#8b5cf6',
+                          transition: 'width 0.3s',
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -243,4 +267,4 @@ export default function ChartsComponent() {
       </div>
     </div>
   );
-}
+    }

@@ -51,7 +51,7 @@ export default function LoginPage() {
     input: { width:'100%', background:'#1e1e2e', border:'1px solid #333', color:'#fff', padding:'13px', borderRadius:'10px', fontSize:'15px', boxSizing:'border-box', outline:'none' },
     btn: (can: boolean) => ({ width:'100%', padding:'14px', background: can ? 'linear-gradient(90deg,#6366f1,#818cf8)' : '#2a2a3a', border:'none', color: can ? '#fff' : '#666', borderRadius:'10px', fontSize:'15px', fontWeight:700, cursor: can ? 'pointer' : 'not-allowed', marginTop:'12px' }),
     error: { background:'#2a1a1a', border:'1px solid #5a2020', borderRadius:'8px', padding:'10px 12px', fontSize:'12px', color:'#ff8080', marginBottom:'12px' },
-    success: { textAlign:'center' },
+    success: { textAlign: 'center' as const },
     successIcon: { fontSize:'48px', marginBottom:'12px' },
     successTitle: { fontSize:'20px', fontWeight:700, marginBottom:'8px' },
     successSub: { fontSize:'13px', color:'#888', lineHeight:'1.6' },

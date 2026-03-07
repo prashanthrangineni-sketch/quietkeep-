@@ -114,20 +114,20 @@ export default function CalendarPage() {
 
   async function fetchEvents() {
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { router.push('/login'); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
     const { data } = await supabase
       .from('calendar_events')
       .select('*')
-      .or(`is_personal_event.eq.false,user_id.eq.${session.user.id}`);
+      .or(`is_personal_event.eq.false,user_id.eq.${user.id}`);
     setEvents(data || []);
     setLoading(false);
   }
 
   async function saveEvent() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    const { error } = await supabase.from('calendar_events').insert({ ...form, user_id: session.user.id, is_personal_event: true });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase.from('calendar_events').insert({ ...form, user_id: user.id, is_personal_event: true });
     if (!error) { setShowAddModal(false); setForm(BLANK_FORM); fetchEvents(); }
     else alert('Error saving: ' + error.message);
   }
@@ -388,4 +388,4 @@ export default function CalendarPage() {
       )}
     </div>
   );
-                  }
+    }

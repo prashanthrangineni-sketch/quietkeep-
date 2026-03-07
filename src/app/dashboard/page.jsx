@@ -234,10 +234,10 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { router.replace('/login'); return; }
-      setUser(session.user);
-      loadIntents(session.user.id).finally(() => setLoading(false));
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { router.replace('/login'); return; }
+      setUser(user);
+      loadIntents(user.id).finally(() => setLoading(false));
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') { router.replace('/'); }
@@ -270,17 +270,15 @@ export default function Dashboard() {
     }]);
 
     if (!error) {
-      await supabase.from('audit_log').insert([{
+      await supabase.from('keeps').insert({
         user_id: user.id,
-        action: 'intent_created',
-        service: 'dashboard',
-        details: {
-          content: content.trim().substring(0, 100),
-          intent_type: assistMode,
-          has_reminder: !!remindAt,
-          reminder_type: remindAt ? reminderType : null,
-        },
-      }]);
+        content: content.trim(),
+        status: 'open',
+        intent_type: assistMode,
+        color: '#6366f1',
+        show_on_brief: true,
+        is_pinned: false,
+      });
       setContent('');
       setRemindAt('');
       setContactInfo('');

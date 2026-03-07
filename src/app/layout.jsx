@@ -6,14 +6,23 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata = {
   title: 'QuietKeep — Your Personal Intelligence OS',
   description: 'Voice-first personal keeper. Reminders, finance, family, driving mode.',
-  manifest: '/manifest.json',
-  themeColor: '#6366f1',
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'QuietKeep' },
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'QuietKeep',
+  },
   icons: {
     icon: '/icon-192.png',
     apple: '/icon-192.png',
   },
+};
+
+export const viewport = {
+  themeColor: '#6366f1',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({ children }) {
@@ -21,7 +30,6 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#6366f1" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="QuietKeep" />

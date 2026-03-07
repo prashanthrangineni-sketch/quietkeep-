@@ -1,11 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 
 const KEEP_COLORS = ['#6366f1','#FF6B6B','#4ECDC4','#FFD700','#2ECC71','#E67E22','#9B59B6','#3498DB'];
 
 export default function KeepWidget({ compact = false }) {
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
   const [keeps, setKeeps] = useState([]);
   const [newText, setNewText] = useState('');
   const [loading, setLoading] = useState(false);

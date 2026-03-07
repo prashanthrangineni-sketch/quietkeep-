@@ -1,210 +1,318 @@
 'use client';
-
 import { useState, useEffect } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 
-export default function BriefPage() {
+function getSupabase() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
+
+const CAT_EMOJI = { birthday:'🎂', anniversary:'💍', festival:'🪔', holiday:'🏦', religious:'🙏', medical:'💊', work:'💼', personal:'⭐' };
+const CAT_COLOR = { birthday:'#FF6B6B', anniversary:'#FF69B4', festival:'#FFD700', holiday:'#4ECDC4', religious:'#9B59B6', medical:'#E74C3C', work:'#3498DB', personal:'#2ECC71' };
+
+const WEATHER_ICONS = { Clear:'☀️', Clouds:'☁️', Rain:'🌧️', Drizzle:'🌦️', Thunderstorm:'⛈️', Snow:'❄️', Mist:'🌫️', Fog:'🌫️', Haze:'🌫️' };
+
+function getDayGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  return 'Good Evening';
+}
+
+function getDaysUntil(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(dateStr); target.setHours(0,0,0,0);
+  // For annual events, find the next occurrence
+  const diff = Math.round((target - today) / (1000*60*60*24));
+  if (diff === 0) return 'Today! 🎉';
+  if (diff === 1) return 'Tomorrow';
+  if (diff < 0) {
+    // Already passed this year — find next year
+    target.setFullYear(today.getFullYear() + 1);
+    const diffNext = Math.round((target - today) / (1000*60*60*24));
+    return `In ${diffNext} days`;
+  }
+  return `In ${diff} days`;
+}
+
+export default function DailyBriefPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [briefSettings, setBriefSettings] = useState(null);
   const [keeps, setKeeps] = useState([]);
+  const [todayEvents, setTodayEvents] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [weather, setWeather] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    content: '',
-    intent_type: 'note',
-  });
-  const [saving, setSaving] = useState(false);
+  const [location, setLocation] = useState(null);
 
-  useEffect(() => {
-    loadKeeps();
-  }, []);
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const todayMMDD = todayStr.slice(5);
 
-  const loadKeeps = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setUser(session.user);
-        const { data, error } = await supabase
-          .from('keeps')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false });
+  useEffect(() => { init(); }, []);
 
-        if (error) throw error;
-        setKeeps(data || []);
+  async function init() {
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { router.push('/login'); return; }
+    setUser(user);
+
+    await Promise.all([
+      fetchBriefSettings(user.id, supabase),
+      fetchKeeps(user.id, supabase),
+      fetchEvents(user.id, supabase),
+    ]);
+
+    // Get weather via geolocation
+    if (navigator.geolocation) {
+      setWeatherLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          setLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+          fetchWeather(pos.coords.latitude, pos.coords.longitude);
+        },
+        () => {
+          // fallback to Hyderabad / Vijayawada
+          fetchWeather(16.5062, 80.6480);
+        }
+      );
+    } else {
+      fetchWeather(16.5062, 80.6480);
+    }
+
+    setLoading(false);
+  }
+
+  async function fetchBriefSettings(uid, supabase) {
+    const { data } = await supabase
+      .from('brief_settings')
+      .select('*')
+      .eq('user_id', uid)
+      .single();
+    setBriefSettings(data || { show_weather: true, show_reminders: true, show_finance: true });
+  }
+
+  async function fetchKeeps(uid, supabase) {
+    const { data } = await supabase
+      .from('keeps')
+      .select('id, content, color, is_pinned, reminder_at, created_at')
+      .eq('user_id', uid)
+      .eq('status', 'open')
+      .eq('show_on_brief', true)
+      .order('is_pinned', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(10);
+    setKeeps(data || []);
+  }
+
+  async function fetchEvents(uid, supabase) {
+    const in60 = new Date(today.getTime() + 60 * 24 * 60 * 60 * 1000);
+    const in60Str = in60.toISOString().split('T')[0];
+
+    const { data } = await supabase
+      .from('calendar_events')
+      .select('id, event_name, event_date, category, is_annual, description, reminder_time')
+      .or(`is_personal_event.eq.false,user_id.eq.${uid}`)
+      .order('event_date', { ascending: true });
+
+    const events = data || [];
+
+    // Separate today's events vs upcoming (next 60 days)
+    const todays = events.filter(e => {
+      if (e.event_date === todayStr) return true;
+      if (e.is_annual && e.event_date?.slice(5) === todayMMDD) return true;
+      return false;
+    });
+
+    const upcoming = events.filter(e => {
+      if (e.event_date === todayStr) return false;
+      if (e.is_annual && e.event_date?.slice(5) === todayMMDD) return false;
+      // For annual events check upcoming by MM-DD
+      if (e.is_annual) {
+        const eventMMDD = e.event_date?.slice(5);
+        const thisYearDate = `${today.getFullYear()}-${eventMMDD}`;
+        return thisYearDate > todayStr && thisYearDate <= in60Str;
       }
-    } catch (error) {
-      console.error('Error loading keeps:', error);
-      alert('Error loading keeps');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return e.event_date > todayStr && e.event_date <= in60Str;
+    }).slice(0, 8);
 
-  const handleAddKeep = async () => {
-    if (!formData.content.trim()) {
-      alert('Please enter something');
-      return;
-    }
+    setTodayEvents(todays);
+    setUpcomingEvents(upcoming);
+  }
 
-    setSaving(true);
+  async function fetchWeather(lat, lon) {
+    // Uses Open-Meteo — free, no key needed
     try {
-      const { data, error } = await supabase
-        .from('keeps')
-        .insert({
-          user_id: user.id,
-          content: formData.content,
-          intent_type: formData.intent_type,
-          status: 'open',
-          voice_text: formData.content,
-        })
-        .select()
-        .single();
+      const res = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`
+      );
+      const data = await res.json();
+      const current = data.current;
+      const code = current.weather_code;
+      // Map WMO code to description
+      let desc = 'Clear', icon = '☀️';
+      if (code === 0) { desc = 'Clear Sky'; icon = '☀️'; }
+      else if (code <= 3) { desc = 'Partly Cloudy'; icon = '⛅'; }
+      else if (code <= 49) { desc = 'Foggy'; icon = '🌫️'; }
+      else if (code <= 67) { desc = 'Rain'; icon = '🌧️'; }
+      else if (code <= 77) { desc = 'Snow'; icon = '❄️'; }
+      else if (code <= 82) { desc = 'Showers'; icon = '🌦️'; }
+      else if (code <= 99) { desc = 'Thunderstorm'; icon = '⛈️'; }
 
-      if (error) throw error;
-
-      setKeeps([data, ...keeps]);
-      setFormData({ content: '', intent_type: 'note' });
-      setShowForm(false);
-      alert('Keep added successfully!');
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error adding keep: ' + error.message);
-    } finally {
-      setSaving(false);
+      setWeather({
+        temp: Math.round(current.temperature_2m),
+        humidity: current.relative_humidity_2m,
+        wind: Math.round(current.wind_speed_10m),
+        desc, icon,
+      });
+    } catch (e) {
+      setWeather(null);
     }
+    setWeatherLoading(false);
+  }
+
+  const S = {
+    page: { minHeight:'100vh', background:'#0a0a0f', color:'#fff', fontFamily:'system-ui,sans-serif', paddingBottom:'80px' },
+    header: { padding:'16px 16px 0', borderBottom:'1px solid #1e1e2e', paddingBottom:'16px' },
+    section: { padding:'12px 16px' },
+    card: { background:'#12121a', borderRadius:'16px', padding:'16px', marginBottom:'10px' },
+    sectionTitle: { fontSize:'12px', fontWeight:700, color:'#888', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:'10px' },
+    tag: (color) => ({ display:'inline-block', padding:'2px 8px', borderRadius:'20px', fontSize:'11px', background: color || '#333', color:'#fff', fontWeight:600 }),
   };
 
-  const handleDeleteKeep = async (id) => {
-    if (!confirm('Delete this keep?')) return;
-
-    try {
-      await supabase.from('keeps').delete().eq('id', id);
-      setKeeps(keeps.filter(k => k.id !== id));
-      alert('Keep deleted');
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error deleting keep');
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'open': return '#6366f1';
-      case 'done': return '#10b981';
-      case 'reminded': return '#f59e0b';
-      default: return '#64748b';
-    }
-  };
-
-  if (loading) return <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>Loading...</div>;
-
-  const openCount = keeps.filter(k => k.status === 'open').length;
-  const doneCount = keeps.filter(k => k.status === 'done').length;
+  if (loading) return (
+    <div style={{ ...S.page, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ color:'#888', fontSize:'14px' }}>Loading your brief...</div>
+    </div>
+  );
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9', padding: '20px' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '800', margin: 0 }}>📝 Daily Brief</h1>
-          <button onClick={() => router.push('/dashboard')} style={{ backgroundColor: '#6366f1', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-            ← Back
-          </button>
+    <div style={S.page}>
+      {/* Header */}
+      <div style={S.header}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+          <div>
+            <div style={{ fontSize:'24px', fontWeight:800 }}>🌅 {getDayGreeting()}</div>
+            <div style={{ fontSize:'13px', color:'#888', marginTop:'4px' }}>
+              {today.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
+            </div>
+          </div>
+          <button onClick={() => router.back()} style={{ background:'#1e1e2e', border:'none', color:'#aaa', padding:'8px 14px', borderRadius:'10px', cursor:'pointer', fontSize:'13px' }}>← Back</button>
         </div>
+      </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-          <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#6366f1' }}>{openCount}</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Open</div>
-          </div>
-          <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#10b981' }}>{doneCount}</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Done</div>
-          </div>
-          <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e293b', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#8b5cf6' }}>{keeps.length}</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Total</div>
-          </div>
-        </div>
-
-        {keeps.length > 0 && (
-          <div style={{ marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>All Keeps</h3>
-            {keeps.map(keep => (
-              <div 
-                key={keep.id} 
-                style={{ 
-                  backgroundColor: '#0f0f1a', 
-                  border: `1px solid ${getStatusColor(keep.status)}`, 
-                  borderRadius: '10px', 
-                  padding: '14px', 
-                  marginBottom: '8px'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '4px' }}>{keep.content}</div>
-                    <div style={{ display: 'flex', gap: '8px', fontSize: '10px' }}>
-                      <span style={{ color: getStatusColor(keep.status), fontWeight: '600' }}>{keep.status.toUpperCase()}</span>
-                      <span style={{ color: '#64748b' }}>{new Date(keep.created_at).toLocaleDateString('en-IN')}</span>
-                    </div>
+      {/* Weather */}
+      {(briefSettings?.show_weather !== false) && (
+        <div style={S.section}>
+          <div style={{ ...S.card, background: 'linear-gradient(135deg, #1a1a3e, #12121a)' }}>
+            <div style={S.sectionTitle}>🌤️ Weather</div>
+            {weatherLoading ? (
+              <div style={{ color:'#666', fontSize:'13px' }}>Getting weather...</div>
+            ) : weather ? (
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div>
+                  <div style={{ fontSize:'48px', lineHeight:1 }}>{weather.icon}</div>
+                  <div style={{ fontSize:'13px', color:'#aaa', marginTop:'4px' }}>{weather.desc}</div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ fontSize:'42px', fontWeight:300 }}>{weather.temp}°C</div>
+                  <div style={{ fontSize:'12px', color:'#888' }}>
+                    💧 {weather.humidity}% · 💨 {weather.wind} km/h
                   </div>
-                  <button 
-                    onClick={() => handleDeleteKeep(keep.id)} 
-                    style={{ backgroundColor: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '12px' }}
-                  >
-                    Delete
-                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ color:'#666', fontSize:'13px' }}>Weather unavailable</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Today's Events */}
+      {todayEvents.length > 0 && (
+        <div style={S.section}>
+          <div style={S.card}>
+            <div style={S.sectionTitle}>🎉 Today</div>
+            {todayEvents.map(e => (
+              <div key={e.id} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'8px 0', borderBottom:'1px solid #1e1e2e' }}>
+                <div style={{ width:'36px', height:'36px', borderRadius:'10px', background: CAT_COLOR[e.category] || '#333', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0 }}>
+                  {CAT_EMOJI[e.category] || '📌'}
+                </div>
+                <div>
+                  <div style={{ fontWeight:700, fontSize:'15px' }}>{e.event_name}</div>
+                  {e.description && <div style={{ fontSize:'12px', color:'#888' }}>{e.description}</div>}
+                  {e.reminder_time && <div style={{ fontSize:'12px', color:'#FFD700' }}>⏰ {e.reminder_time}</div>}
                 </div>
               </div>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
-        <button 
-          onClick={() => setShowForm(!showForm)}
-          style={{ width: '100%', backgroundColor: '#6366f1', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', marginBottom: '16px' }}
-        >
-          + New Keep
-        </button>
-
-        {showForm && (
-          <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e293b', borderRadius: '14px', padding: '16px' }}>
-            <textarea 
-              placeholder="What's on your mind?" 
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: '#1a1a2e', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', minHeight: '80px', fontFamily: 'inherit', resize: 'none' }}
-            />
-            <select 
-              value={formData.intent_type}
-              onChange={(e) => setFormData({ ...formData, intent_type: e.target.value })}
-              style={{ width: '100%', padding: '10px', marginBottom: '10px', backgroundColor: '#1a1a2e', border: '1px solid #334155', color: '#f1f5f9', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box' }}
-            >
-              <option value="note">Note</option>
-              <option value="reminder">Reminder</option>
-              <option value="todo">Todo</option>
-              <option value="event">Event</option>
-            </select>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={handleAddKeep}
-                disabled={saving}
-                style={{ flex: 1, backgroundColor: '#6366f1', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
-              >
-                {saving ? 'Saving...' : 'Save Keep'}
-              </button>
-              <button 
-                onClick={() => setShowForm(false)}
-                style={{ flex: 1, backgroundColor: '#1a1a2e', color: '#94a3b8', border: '1px solid #334155', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
-              >
-                Cancel
-              </button>
-            </div>
+      {/* Upcoming Events */}
+      {upcomingEvents.length > 0 && (
+        <div style={S.section}>
+          <div style={S.card}>
+            <div style={S.sectionTitle}>📅 Coming Up (Next 60 Days)</div>
+            {upcomingEvents.map(e => {
+              const dateToUse = e.is_annual
+                ? `${today.getFullYear()}-${e.event_date?.slice(5)}`
+                : e.event_date;
+              return (
+                <div key={e.id} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'8px 0', borderBottom:'1px solid #1e1e2e' }}>
+                  <div style={{ width:'36px', height:'36px', borderRadius:'10px', background: CAT_COLOR[e.category] || '#333', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', flexShrink:0 }}>
+                    {CAT_EMOJI[e.category] || '📌'}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:600, fontSize:'14px' }}>{e.event_name}</div>
+                    <div style={{ fontSize:'12px', color:'#888' }}>
+                      {e.event_date?.slice(5).split('-').reverse().join('/')}
+                      {e.is_annual ? ' · 🔁' : ''}
+                    </div>
+                  </div>
+                  <div style={{ fontSize:'12px', color:'#818cf8', fontWeight:600, textAlign:'right', flexShrink:0 }}>
+                    {getDaysUntil(dateToUse)}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Keeps from dashboard */}
+      {keeps.length > 0 && (
+        <div style={S.section}>
+          <div style={S.card}>
+            <div style={S.sectionTitle}>📌 Your Keeps</div>
+            {keeps.map(k => (
+              <div key={k.id} style={{ padding:'8px', background:'#1a1a2e', borderRadius:'8px', marginBottom:'6px', borderLeft:`3px solid ${k.color || '#6366f1'}` }}>
+                <div style={{ fontSize:'13px', color:'#eee', lineHeight:'1.5' }}>{k.content}</div>
+                {k.reminder_at && (
+                  <div style={{ fontSize:'11px', color:'#FFD700', marginTop:'3px' }}>
+                    ⏰ {new Date(k.reminder_at).toLocaleString('en-IN')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state if nothing to show */}
+      {keeps.length === 0 && upcomingEvents.length === 0 && todayEvents.length === 0 && (
+        <div style={{ ...S.section, textAlign:'center', paddingTop:'40px' }}>
+          <div style={{ fontSize:'40px' }}>🌟</div>
+          <div style={{ color:'#888', marginTop:'12px', fontSize:'14px' }}>
+            Your brief is empty. Add keeps from the dashboard and events from the calendar.
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+      }

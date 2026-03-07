@@ -21,10 +21,10 @@ export default function KeepWidget({ compact = false }) {
   }, []);
 
   async function init() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    setUserId(session.user.id);
-    await fetchKeeps(session.user.id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setUserId(user.id);
+    await fetchKeeps(user.id);
   }
 
   async function fetchKeeps(uid) {

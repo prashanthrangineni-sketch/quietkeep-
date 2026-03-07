@@ -1,180 +1,66 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 
-// Rule-based intent parser — no LLM, fully offline-capable
-function parseIntent(text) {
-  const lower = text.toLowerCase().trim();
+// PARSE ONLY — never inserts into keeps table.
+// The dashboard does the single insert. This route caused duplicate rows.
 
-  // Intent type detection
-  let intent_type = 'note';
-  let reminder_at = null;
-  let confidence = 0.6;
-
-  // Reminder patterns
-  if (/remind|reminder|alert|notify|don.?t forget/i.test(lower)) {
-    intent_type = 'reminder';
-    confidence = 0.9;
-  } else if (/buy|purchase|order|get me|pick up|add to cart/i.test(lower)) {
-    intent_type = 'purchase';
-    confidence = 0.85;
-  } else if (/call|phone|ring|contact|reach out/i.test(lower)) {
-    intent_type = 'contact';
-    confidence = 0.85;
-  } else if (/pay|payment|transfer|send money|upi|bank/i.test(lower)) {
-    intent_type = 'expense';
-    confidence = 0.8;
-  } else if (/travel|trip|flight|hotel|book|go to|visit/i.test(lower)) {
-    intent_type = 'trip';
-    confidence = 0.8;
-  } else if (/scan|document|upload|passport|aadhaar|licence|insurance|warranty/i.test(lower)) {
-    intent_type = 'document';
-    confidence = 0.8;
-  } else if (/draft|write|message|whatsapp|email|send/i.test(lower)) {
-    intent_type = 'draft';
-    confidence = 0.75;
-  } else if (/note|write down|remember|save|keep/i.test(lower)) {
-    intent_type = 'note';
-    confidence = 0.7;
-  }
-
-  // Time extraction
+function parseDateTime(text) {
+  const t = text.toLowerCase();
   const now = new Date();
-  if (/tomorrow/i.test(lower)) {
-    const d = new Date(now);
-    d.setDate(d.getDate() + 1);
-    d.setHours(9, 0, 0, 0);
-    reminder_at = d.toISOString();
-  } else if (/tonight|this evening/i.test(lower)) {
-    const d = new Date(now);
-    d.setHours(20, 0, 0, 0);
-    reminder_at = d.toISOString();
-  } else if (/this morning/i.test(lower)) {
-    const d = new Date(now);
-    d.setHours(8, 0, 0, 0);
-    reminder_at = d.toISOString();
-  } else if (/next week/i.test(lower)) {
-    const d = new Date(now);
-    d.setDate(d.getDate() + 7);
-    d.setHours(9, 0, 0, 0);
-    reminder_at = d.toISOString();
-  } else if (/in (\d+) (hour|hr)/i.test(lower)) {
-    const match = lower.match(/in (\d+) (hour|hr)/i);
-    const d = new Date(now.getTime() + parseInt(match[1]) * 60 * 60 * 1000);
-    reminder_at = d.toISOString();
-  } else if (/in (\d+) (minute|min)/i.test(lower)) {
-    const match = lower.match(/in (\d+) (minute|min)/i);
-    const d = new Date(now.getTime() + parseInt(match[1]) * 60 * 1000);
-    reminder_at = d.toISOString();
-  }
+  let date = null;
 
-  // Smart suggestions based on intent type
-  const suggestions = [];
-  if (intent_type === 'purchase') {
-    suggestions.push({ text: 'Search on Cart2Save', action: 'cart2save_search', tier: 1 });
-  }
-  if (intent_type === 'expense') {
-    suggestions.push({ text: 'Log to Finance', action: 'log_expense', tier: 1 });
-  }
-  if (intent_type === 'document') {
-    suggestions.push({ text: 'Scan with QuickScanZ', action: 'quickscanz_scan', tier: 1 });
-  }
-  if (intent_type === 'trip') {
-    suggestions.push({ text: 'Plan trip with Cart2Save', action: 'cart2save_trip', tier: 1 });
-  }
-  if (intent_type === 'contact') {
-    suggestions.push({ text: 'Open dialer', action: 'open_dialer', tier: 1 });
-    suggestions.push({ text: 'Draft WhatsApp message', action: 'whatsapp_draft', tier: 1 });
-  }
-  if (intent_type === 'draft') {
-    suggestions.push({ text: 'Open WhatsApp', action: 'whatsapp_draft', tier: 1 });
-    suggestions.push({ text: 'Open Email', action: 'email_draft', tier: 1 });
-  }
+  if (/\btoday\b/.test(t)) { date = new Date(now); }
+  else if (/\btomorrow\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 1); }
+  else if (/\bday after tomorrow\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 2); }
+  else if (/\bnext week\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 7); }
 
-  return { intent_type, reminder_at, confidence, suggestions };
+  const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  for (let i = 0; i < days.length; i++) {
+    if (new RegExp('\\b' + days[i] + '\\b').test(t)) {
+      date = new Date(now); const diff = (i - now.getDay() + 7) % 7 || 7; date.setDate(date.getDate() + diff); break;
+    }
+  }
+  const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+  for (let m = 0; m < monthNames.length; m++) {
+    const re1 = new RegExp('(\\d{1,2})(?:st|nd|rd|th)?\\s+' + monthNames[m]);
+    const re2 = new RegExp(monthNames[m] + '\\s+(\\d{1,2})');
+    const match = t.match(re1) || t.match(re2);
+    if (match) { date = new Date(now.getFullYear(), m, parseInt(match[1])); if (date < now) date.setFullYear(date.getFullYear() + 1); break; }
+  }
+  if (!date) { const nd = t.match(/(\d{1,2})[\/\-](\d{1,2})/); if (nd) { date = new Date(now.getFullYear(), parseInt(nd[2]) - 1, parseInt(nd[1])); if (date < now) date.setFullYear(date.getFullYear() + 1); } }
+  if (!date) return null;
+
+  let hours = 9, minutes = 0;
+  // Explicit am/pm wins over everything
+  const ap = t.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
+  if (ap) { hours = parseInt(ap[1]); minutes = ap[2] ? parseInt(ap[2]) : 0; if (ap[3]==='pm' && hours<12) hours+=12; if (ap[3]==='am' && hours===12) hours=0; }
+  else { const pt = t.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\b/); if (pt) { hours=parseInt(pt[1]); minutes=pt[2]?parseInt(pt[2]):0; if(hours<7)hours+=12; } else if (/\bmidnight\b/.test(t)){hours=0;minutes=0;} else if (/\bnoon\b|\bmidday\b/.test(t)){hours=12;} else if (/\bmorning\b/.test(t)){hours=9;} else if (/\bafternoon\b/.test(t)){hours=14;} else if (/\bevening\b/.test(t)){hours=18;} else if (/\bnight\b/.test(t)){hours=20;} }
+
+  date.setHours(hours, minutes, 0, 0);
+  const pad = n => String(n).padStart(2,'0');
+  return date.getFullYear()+'-'+pad(date.getMonth()+1)+'-'+pad(date.getDate())+'T'+pad(hours)+':'+pad(minutes);
 }
 
-export async function POST(request) {
+function detectIntentType(text) {
+  const t = text.toLowerCase();
+  if (/call|ring|phone|contact|whatsapp|message/.test(t)) return { type:'contact', confidence:0.85 };
+  if (/buy|order|get|purchase|pick up|shop/.test(t)) return { type:'purchase', confidence:0.85 };
+  if (/meet|meeting|appointment|doctor|dentist|interview|conference|seminar/.test(t)) return { type:'reminder', confidence:0.9 };
+  if (/remind|remember|don.t forget/.test(t)) return { type:'reminder', confidence:0.8 };
+  if (/pay|bill|expense|spent|cost/.test(t)) return { type:'expense', confidence:0.85 };
+  if (/travel|trip|flight|hotel/.test(t)) return { type:'trip', confidence:0.8 };
+  return { type:'note', confidence:0.6 };
+}
+
+export async function POST(req) {
   try {
-    const body = await request.json();
-    const { text } = body;
-
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
-      return NextResponse.json({ error: 'text is required' }, { status: 400 });
-    }
-
-    // Parse intent server-side
-    const parsed = parseIntent(text);
-
-    // Get authenticated user
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {}
-          },
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // Save keep to DB if user is authenticated
-    let savedKeep = null;
-    if (user) {
-      const { data, error } = await supabase
-        .from('keeps')
-        .insert({
-          user_id: user.id,
-          content: text,
-          intent_type: parsed.intent_type,
-          reminder_at: parsed.reminder_at,
-          status: 'open',
-          confidence: parsed.confidence,
-          parsing_method: 'rule_based',
-          show_on_brief: true,
-          is_pinned: false,
-          color: '#6366f1',
-        })
-        .select()
-        .single();
-
-      if (!error) {
-        savedKeep = data;
-
-        // Write audit log
-        await supabase.from('audit_log').insert({
-          user_id: user.id,
-          action: 'keep_created',
-          intent_id: data.id,
-          service: 'parse-intent',
-          details: {
-            intent_type: parsed.intent_type,
-            confidence: parsed.confidence,
-            has_reminder: !!parsed.reminder_at,
-            text_length: text.length,
-          },
-        });
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      parsed,
-      keep: savedKeep,
-    });
-
+    const { text } = await req.json();
+    if (!text?.trim()) return NextResponse.json({ error:'No text' }, { status:400 });
+    const reminder_at = parseDateTime(text);
+    const { type: intent_type, confidence } = detectIntentType(text);
+    // Return parsed result only — dashboard does the insert
+    return NextResponse.json({ intent_type, confidence, reminder_at, parsed:true });
   } catch (err) {
-    console.error('[parse-intent] error:', err);
-    return NextResponse.json({ error: 'Internal server error', detail: err.message }, { status: 500 });
+    console.error('parse-intent error:', err);
+    return NextResponse.json({ error:'Parse failed' }, { status:500 });
   }
 }

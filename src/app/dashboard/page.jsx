@@ -14,6 +14,8 @@ const STATE_COLOR = {
   open: '#22c55e', active: '#3b82f6', blocked: '#ef4444', deferred: '#f59e0b', closed: '#64748b',
 };
 
+// FIX: explicit am/pm time wins over keyword time (morning/evening)
+// e.g. "Monday morning at 11 am" → 11:00, not 09:00
 function parseDateTime(text) {
   const t = text.toLowerCase();
   const now = new Date();
@@ -35,28 +37,35 @@ function parseDateTime(text) {
     const match = t.match(re1) || t.match(re2);
     if (match) { date = new Date(now.getFullYear(), m, parseInt(match[1])); if (date < now) { date.setFullYear(date.getFullYear() + 1); } break; }
   }
-  if (!date) { const numDate = t.match(/(\d{1,2})[\/\-](\d{1,2})/); if (numDate) { date = new Date(now.getFullYear(), parseInt(numDate[2]) - 1, parseInt(numDate[1])); if (date < now) { date.setFullYear(date.getFullYear() + 1); } } }
+  if (!date) { const nd = t.match(/(\d{1,2})[\/\-](\d{1,2})/); if (nd) { date = new Date(now.getFullYear(), parseInt(nd[2])-1, parseInt(nd[1])); if (date < now) date.setFullYear(date.getFullYear()+1); } }
   if (!date) return null;
   let hours = 9, minutes = 0;
-  const timeMatch = t.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/);
-  if (timeMatch) { hours = parseInt(timeMatch[1]); minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0; if (timeMatch[3] === 'pm' && hours < 12) hours += 12; if (timeMatch[3] === 'am' && hours === 12) hours = 0; }
-  else if (/\bmidnight\b/.test(t)) { hours = 0; minutes = 0; }
-  else if (/\bnoon\b|\bmidday\b/.test(t)) { hours = 12; minutes = 0; }
-  else if (/\bmorning\b/.test(t)) { hours = 9; }
-  else if (/\bafternoon\b/.test(t)) { hours = 14; }
-  else if (/\bevening\b/.test(t)) { hours = 18; }
-  else if (/\bnight\b/.test(t)) { hours = 20; }
-  else { const plainTime = t.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\b/); if (plainTime) { hours = parseInt(plainTime[1]); minutes = plainTime[2] ? parseInt(plainTime[2]) : 0; if (hours < 7) hours += 12; } }
+  // Explicit am/pm is FIRST priority — checked before any keyword fallback
+  const ap = t.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
+  if (ap) {
+    hours = parseInt(ap[1]); minutes = ap[2] ? parseInt(ap[2]) : 0;
+    if (ap[3]==='pm' && hours<12) hours+=12;
+    if (ap[3]==='am' && hours===12) hours=0;
+  } else {
+    const pt = t.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\b/);
+    if (pt) { hours=parseInt(pt[1]); minutes=pt[2]?parseInt(pt[2]):0; if(hours<7)hours+=12; }
+    else if (/\bmidnight\b/.test(t)){hours=0;minutes=0;}
+    else if (/\bnoon\b|\bmidday\b/.test(t)){hours=12;}
+    else if (/\bmorning\b/.test(t)){hours=9;}
+    else if (/\bafternoon\b/.test(t)){hours=14;}
+    else if (/\bevening\b/.test(t)){hours=18;}
+    else if (/\bnight\b/.test(t)){hours=20;}
+  }
   date.setHours(hours, minutes, 0, 0);
   const pad = n => String(n).padStart(2, '0');
-  return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' + pad(hours) + ':' + pad(minutes);
+  return date.getFullYear()+'-'+pad(date.getMonth()+1)+'-'+pad(date.getDate())+'T'+pad(hours)+':'+pad(minutes);
 }
 
 function detectCategory(text) {
   const t = text.toLowerCase();
   if (/call|ring|phone|contact|whatsapp|message/.test(t)) return 'contact';
   if (/buy|order|get|purchase|pick up|shop/.test(t)) return 'task';
-  if (/meet|meeting|appointment|doctor|dentist|interview|call at|remind/.test(t)) return 'reminder';
+  if (/meet|meeting|appointment|doctor|dentist|interview|conference|call at|remind/.test(t)) return 'reminder';
   return 'note';
 }
 
@@ -123,7 +132,7 @@ export default function Dashboard() {
   const [autoDetected, setAutoDetected] = useState(null);
   const recognitionRef = useRef(null);
   const textareaRef = useRef(null);
-  const savingRef = useRef(false); // ← double-save guard (ref = synchronous, unlike state)
+  const savingRef = useRef(false); // synchronous double-save guard
 
   useEffect(() => { setVoiceSupported('webkitSpeechRecognition' in window || 'SpeechRecognition' in window); }, []);
   useEffect(() => { if (content.length > 5) setSuggestions(getAISuggestions(content)); else setSuggestions([]); }, [content]);
@@ -154,11 +163,16 @@ export default function Dashboard() {
 
   function stopVoice() { recognitionRef.current?.stop(); setListening(false); }
 
+  // FIX: re-detects on every keystroke — not locked after first detection
   function handleContentChange(val) {
     setContent(val);
     if (val.length > 8) {
       const detectedDate = parseDateTime(val);
-      if (detectedDate && !remindAt) { setRemindAt(detectedDate); setAutoDetected('reminder time auto-detected'); setTimeout(() => setAutoDetected(null), 3000); }
+      if (detectedDate) {
+        setRemindAt(detectedDate);
+        setAutoDetected('reminder time auto-detected');
+        setTimeout(() => setAutoDetected(null), 3000);
+      }
     }
   }
 
@@ -179,18 +193,26 @@ export default function Dashboard() {
     return () => subscription.unsubscribe();
   }, [router, loadIntents]);
 
+  // FIX: savingRef guard prevents double-save; API response used to improve type/time
+  // but ONLY the single insert below creates the keep row (API is parse-only now)
   async function handleSave() {
-    // ── Double-save guard: ref is synchronous so second call sees true immediately ──
     if (savingRef.current || !content.trim() || !user) return;
     savingRef.current = true;
     setSaving(true);
+    let finalIntentType = assistMode;
+    let finalRemindAt = remindAt;
     try {
-      await fetch('/api/parse-intent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: content.trim(), user_id: user.id }) });
+      const res = await fetch('/api/parse-intent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: content.trim(), user_id: user.id }) });
+      if (res.ok) {
+        const parsed = await res.json();
+        if (assistMode === 'note' && parsed.intent_type && parsed.intent_type !== 'note') finalIntentType = parsed.intent_type;
+        if (!remindAt && parsed.reminder_at) finalRemindAt = parsed.reminder_at;
+      }
     } catch (e) { /* parser optional */ }
     const { error } = await supabase.from('keeps').insert({
       user_id: user.id, content: content.trim(), status: 'open',
-      intent_type: assistMode, voice_text: null,
-      reminder_at: remindAt || null, color: '#6366f1',
+      intent_type: finalIntentType, voice_text: null,
+      reminder_at: finalRemindAt || null, color: '#6366f1',
       show_on_brief: true, is_pinned: false,
     });
     if (!error) {
@@ -201,7 +223,7 @@ export default function Dashboard() {
       showToast('Error: ' + error.message);
     }
     setSaving(false);
-    setTimeout(() => { savingRef.current = false; }, 800); // release after 800ms
+    setTimeout(() => { savingRef.current = false; }, 800);
   }
 
   async function updateState(id, state) {
@@ -216,8 +238,7 @@ export default function Dashboard() {
     await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_deleted', intent_id: id, service: 'dashboard', details: {} }).catch(() => {});
     showToast('Deleted');
     await loadIntents(user.id);
-  }
-
+          }
   const openIntents = intents.filter(i => i.status !== 'closed');
   const closedIntents = intents.filter(i => i.status === 'closed');
 
@@ -236,19 +257,19 @@ export default function Dashboard() {
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
-      }
+  }
+
   return (
     <>
       <NavbarClient />
       <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
-
         {toast && (
           <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#1e1e2e', border: '1px solid #6366f1', borderRadius: '10px', padding: '10px 20px', color: '#f1f5f9', fontSize: '14px', zIndex: 9999, boxShadow: '0 4px 24px rgba(99,102,241,0.3)', whiteSpace: 'nowrap' }}>
             {toast}
           </div>
         )}
 
-        {/* Sub-header quick-links — horizontally scrollable on mobile/PWA */}
+        {/* Sub-header: quick nav links — Family & Kids added */}
         <div style={{ borderBottom: '1px solid #1e1e2e', padding: '10px 16px', backgroundColor: 'rgba(10,10,15,0.98)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontWeight: '700', fontSize: '14px', color: '#6366f1' }}>My Keeps</span>
@@ -256,14 +277,9 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             {[
-              ['/calendar',    'Calendar'],
-              ['/daily-brief', 'Brief'],
-              ['/documents',   'Docs'],
-              ['/finance',     'Finance'],
-              ['/family',      'Family'],
-              ['/kids',        'Kids'],
-              ['/settings',    'Settings'],
-              ['/profile',     'Profile'],
+              ['/calendar','Calendar'],['/daily-brief','Brief'],['/documents','Docs'],
+              ['/finance','Finance'],['/family','Family'],['/kids','Kids'],
+              ['/settings','Settings'],['/profile','Profile'],
             ].map(([href, label]) => (
               <a key={href} href={href} style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>{label}</a>
             ))}
@@ -293,20 +309,17 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
-
             {listening && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', padding: '8px 12px' }}>
                 <span style={{ width: '8px', height: '8px', backgroundColor: '#ef4444', borderRadius: '50%', display: 'inline-block', animation: 'pulse 1s ease infinite' }} />
                 <span style={{ fontSize: '12px', color: '#ef4444' }}>Listening... say date/time e.g. &quot;tomorrow 3pm&quot;</span>
               </div>
             )}
-
             {autoDetected && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', backgroundColor: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', padding: '8px 12px' }}>
                 <span style={{ fontSize: '12px', color: '#a5b4fc' }}>Auto-detected: {autoDetected}</span>
               </div>
             )}
-
             <textarea
               ref={textareaRef}
               value={content}
@@ -316,7 +329,6 @@ export default function Dashboard() {
               rows={3}
               style={{ width: '100%', backgroundColor: '#0a0a0f', border: '1px solid ' + (content ? '#6366f150' : '#1e293b'), borderRadius: '10px', padding: '12px', color: '#f1f5f9', fontSize: '15px', resize: 'none', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: '1.5' }}
             />
-
             {suggestions.length > 0 && (
               <div style={{ marginTop: '10px' }}>
                 <div style={{ fontSize: '11px', color: '#475569', marginBottom: '6px' }}>Smart suggestions:</div>
@@ -329,7 +341,6 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '12px' }}>
               <div>
                 <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '5px' }}>Remind at {remindAt && <span style={{ color: '#6366f1' }}>✓ set</span>}</label>
@@ -349,7 +360,6 @@ export default function Dashboard() {
                 </select>
               </div>
             </div>
-
             {remindAt && (
               <div style={{ marginTop: '12px' }}>
                 <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '8px' }}>How to remind you?</label>
@@ -364,23 +374,16 @@ export default function Dashboard() {
                 {reminderType === 'alarm' && <div style={{ marginTop: '8px', fontSize: '11px', color: '#22c55e', padding: '6px 10px', backgroundColor: 'rgba(34,197,94,0.08)', borderRadius: '6px', border: '1px solid rgba(34,197,94,0.2)' }}>Rings even if phone is on silent.</div>}
               </div>
             )}
-
             {assistMode === 'contact' && (
               <input type="text" value={contactInfo} onChange={e => setContactInfo(e.target.value)} placeholder="Phone / Email / Notes..." style={{ width: '100%', marginTop: '10px', backgroundColor: '#0a0a0f', border: '1px solid #1e293b', borderRadius: '8px', padding: '9px 12px', color: '#f1f5f9', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
             )}
-
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px' }}>
               <span style={{ fontSize: '11px', color: '#1e293b' }}>Ctrl+Enter to save</span>
-              <button
-                onClick={handleSave}
-                disabled={saving || !content.trim()}
-                style={{ backgroundColor: saving || !content.trim() ? '#1a1a2e' : '#6366f1', color: saving || !content.trim() ? '#334155' : '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: saving || !content.trim() ? 'not-allowed' : 'pointer' }}
-              >
+              <button onClick={handleSave} disabled={saving || !content.trim()} style={{ backgroundColor: saving || !content.trim() ? '#1a1a2e' : '#6366f1', color: saving || !content.trim() ? '#334155' : '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: saving || !content.trim() ? 'not-allowed' : 'pointer' }}>
                 {saving ? 'Saving...' : '+ Keep this'}
               </button>
             </div>
           </div>
-
           {/* Search */}
           <div style={{ marginBottom: '14px', position: 'relative' }}>
             <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search your keeps..." style={{ width: '100%', backgroundColor: '#0f0f1a', border: '1px solid #1e1e2e', borderRadius: '10px', padding: '10px 14px', color: '#f1f5f9', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
@@ -415,4 +418,4 @@ export default function Dashboard() {
       </div>
     </>
   );
-                      }
+}

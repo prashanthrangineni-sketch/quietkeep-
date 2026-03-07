@@ -1,391 +1,304 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import { useRouter } from 'next/navigation';
-import AddEventModal from './AddEventModal';
+import NavbarClient from '@/components/NavbarClient';
+
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const CALENDAR_TYPES = [
-  { id: 'gregorian', label: 'Gregorian', emoji: '📅' },
-  { id: 'telugu', label: 'Telugu Panchangam', emoji: '🌸' },
-  { id: 'hindi', label: 'Hindi Vikram Samvat', emoji: '🪔' },
-  { id: 'islamic', label: 'Islamic Hijri', emoji: '☪️' },
-  { id: 'christian', label: 'Christian', emoji: '✝️' },
-  { id: 'tamil', label: 'Tamil', emoji: '🌺' },
+  { id: 'gregorian',  label: 'Gregorian',         emoji: '📅', dbType: 'gregorian' },
+  { id: 'telugu',     label: 'Telugu Panchangam',  emoji: '🪔', dbType: 'telugu' },
+  { id: 'hindi',      label: 'Hindi Vikram Samvat',emoji: '🌙', dbType: 'hindi' },
+  { id: 'islamic',    label: 'Islamic Hijri',      emoji: '☪️',  dbType: null },  // no data yet
+  { id: 'christian',  label: 'Christian',          emoji: '✝️',  dbType: null },  // no data yet
+  { id: 'tamil',      label: 'Tamil',              emoji: '🎭', dbType: 'tamil' },
 ];
 
-const INDIAN_STATES = [
-  'All India','Andhra Pradesh','Telangana','Maharashtra','Karnataka',
-  'Tamil Nadu','Kerala','Gujarat','Rajasthan','Punjab','Uttar Pradesh',
-  'West Bengal','Bihar','Odisha','Madhya Pradesh','Delhi','Goa',
-];
-
-const TIMEZONES = [
-  { label: 'IST (India)', value: 'Asia/Kolkata' },
-  { label: 'UAE (Dubai)', value: 'Asia/Dubai' },
-  { label: 'UK (London)', value: 'Europe/London' },
-  { label: 'US Eastern', value: 'America/New_York' },
-  { label: 'US Pacific', value: 'America/Los_Angeles' },
-  { label: 'Singapore', value: 'Asia/Singapore' },
-];
-
-const REMINDER_CATEGORIES = [
-  { id: 'birthday', label: 'Birthday', emoji: '🎂', color: '#FF6B6B' },
-  { id: 'anniversary', label: 'Anniversary', emoji: '💍', color: '#FF69B4' },
-  { id: 'festival', label: 'Festival', emoji: '🪔', color: '#FFD700' },
-  { id: 'holiday', label: 'Bank Holiday', emoji: '🏦', color: '#4ECDC4' },
-  { id: 'religious', label: 'Religious', emoji: '🙏', color: '#9B59B6' },
-  { id: 'medical', label: 'Medical', emoji: '💊', color: '#E74C3C' },
-  { id: 'work', label: 'Work', emoji: '💼', color: '#3498DB' },
-  { id: 'personal', label: 'Personal', emoji: '⭐', color: '#2ECC71' },
-];
-
-const STATIC_HOLIDAYS = {
-  'Andhra Pradesh': [
-    { date: '2026-01-01', name: "New Year's Day" },
-    { date: '2026-01-14', name: 'Bhogi / Makara Sankranti' },
-    { date: '2026-01-26', name: 'Republic Day' },
-    { date: '2026-03-17', name: 'Ugadi (Telugu New Year)' },
-    { date: '2026-04-14', name: 'Dr. Ambedkar Jayanti' },
-    { date: '2026-04-30', name: 'Sri Rama Navami' },
-    { date: '2026-05-01', name: 'Labour Day' },
-    { date: '2026-08-15', name: 'Independence Day' },
-    { date: '2026-10-02', name: 'Gandhi Jayanti' },
-    { date: '2026-10-20', name: 'Dasara (Vijayadashami)' },
-    { date: '2026-11-01', name: 'AP Formation Day' },
-    { date: '2026-11-12', name: 'Diwali' },
-    { date: '2026-12-25', name: 'Christmas' },
-  ],
-  'Telangana': [
-    { date: '2026-01-01', name: "New Year's Day" },
-    { date: '2026-01-14', name: 'Sankranti' },
-    { date: '2026-01-26', name: 'Republic Day' },
-    { date: '2026-03-17', name: 'Ugadi' },
-    { date: '2026-06-02', name: 'Telangana Formation Day' },
-    { date: '2026-08-15', name: 'Independence Day' },
-    { date: '2026-10-02', name: 'Gandhi Jayanti' },
-    { date: '2026-11-12', name: 'Diwali' },
-    { date: '2026-12-25', name: 'Christmas' },
-  ],
-  'All India': [
-    { date: '2026-01-01', name: "New Year's Day" },
-    { date: '2026-01-26', name: 'Republic Day' },
-    { date: '2026-03-17', name: 'Holi' },
-    { date: '2026-04-14', name: 'Dr. Ambedkar Jayanti' },
-    { date: '2026-08-15', name: 'Independence Day' },
-    { date: '2026-10-02', name: 'Gandhi Jayanti' },
-    { date: '2026-10-20', name: 'Dussehra' },
-    { date: '2026-11-12', name: 'Diwali' },
-    { date: '2026-12-25', name: 'Christmas' },
-  ],
-};
-
-function getDaysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
-function getFirstDayOfMonth(year, month) { return new Date(year, month, 1).getDay(); }
+const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-const BLANK_FORM = {
-  event_name: '', event_date: '', event_type: 'personal', category: 'personal',
-  is_annual: false, is_personal_event: true, religion: 'all', reminder_time: '09:00',
-  timezone: 'Asia/Kolkata', state: 'Andhra Pradesh', calendar_type: 'gregorian',
-  description: '', color: '#6366f1',
-};
+function toISO(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
 
 export default function CalendarPage() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-  const router = useRouter();
-  const today = new Date();
-
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [events, setEvents] = useState([]);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedCal, setSelectedCal] = useState('gregorian');
+  const [view, setView] = useState('month');
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [monthEvents, setMonthEvents] = useState([]);
+  const [dayEvents, setDayEvents] = useState([]);
+  const [myEvents, setMyEvents] = useState([]);
+  const [loadingDay, setLoadingDay] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [activeCalendarType, setActiveCalendarType] = useState('gregorian');
-  const [selectedState, setSelectedState] = useState('Andhra Pradesh');
-  const [selectedTimezone, setSelectedTimezone] = useState('Asia/Kolkata');
-  const [activeTab, setActiveTab] = useState('month');
-  const [form, setForm] = useState(BLANK_FORM);
 
-  useEffect(() => { fetchEvents(); }, [currentMonth, currentYear]);
+  const today = new Date();
+  const todayISO = toISO(today.getFullYear(), today.getMonth(), today.getDate());
 
-  async function fetchEvents() {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
-    const { data } = await supabase
-      .from('calendar_events')
-      .select('*')
-      .or(`is_personal_event.eq.false,user_id.eq.${user.id}`);
-    setEvents(data || []);
-    setLoading(false);
-  }
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { window.location.href = '/login'; return; }
+      setUser(user);
+      setLoading(false);
+    });
+  }, []);
 
-  async function saveEvent() {
-    const { data: { user } } = await supabase.auth.getUser();
+  // Load dot indicators for the whole month
+  useEffect(() => {
     if (!user) return;
-    const { error } = await supabase.from('calendar_events').insert({ ...form, user_id: user.id, is_personal_event: true });
-    if (!error) { setShowAddModal(false); setForm(BLANK_FORM); fetchEvents(); }
-    else alert('Error saving: ' + error.message);
+    loadMonthEvents();
+  }, [user, year, month, selectedCal]);
+
+  async function loadMonthEvents() {
+    const start = toISO(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const end = toISO(year, month, lastDay);
+
+    const calType = CALENDAR_TYPES.find(c => c.id === selectedCal);
+
+    let q = supabase.from('calendar_events').select('event_date, event_type, calendar_type').gte('event_date', start).lte('event_date', end);
+
+    // KEY FIX: filter to selected calendar type only
+    if (calType?.dbType) {
+      q = q.eq('calendar_type', calType.dbType);
+    } else {
+      // No data for this calendar type yet — return empty
+      setMonthEvents([]);
+      return;
+    }
+
+    const { data } = await q;
+    setMonthEvents(data || []);
+
+    // Also load my personal events for the month
+    const { data: personal } = await supabase.from('calendar_events')
+      .select('event_date, event_name, event_type')
+      .eq('user_id', user.id)
+      .eq('is_personal_event', true)
+      .gte('event_date', start)
+      .lte('event_date', end);
+    setMyEvents(personal || []);
   }
 
-  async function deleteEvent(id) {
-    await supabase.from('calendar_events').delete().eq('id', id);
-    fetchEvents();
+  // Load events for a specific clicked date
+  async function loadDayEvents(dateISO) {
+    setLoadingDay(true);
+    setDayEvents([]);
+
+    const calType = CALENDAR_TYPES.find(c => c.id === selectedCal);
+
+    let panchangamEvents = [];
+    if (calType?.dbType) {
+      const { data } = await supabase.from('calendar_events')
+        .select('*')
+        .eq('event_date', dateISO)
+        .eq('calendar_type', calType.dbType)  // ← KEY FIX: only selected calendar
+        .order('event_type', { ascending: true });
+      panchangamEvents = data || [];
+    }
+
+    // Always also load personal events for this date
+    const { data: personal } = await supabase.from('calendar_events')
+      .select('*')
+      .eq('event_date', dateISO)
+      .eq('user_id', user.id)
+      .eq('is_personal_event', true);
+
+    setDayEvents([...panchangamEvents, ...(personal || [])]);
+    setLoadingDay(false);
   }
 
-  function getEventsForDate(day) {
-    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const mmdd = dateStr.slice(5);
-    return events.filter(e => e.event_date === dateStr || (e.is_annual && e.event_date?.slice(5) === mmdd));
+  function handleDayClick(dateISO) {
+    setSelectedDate(dateISO);
+    loadDayEvents(dateISO);
   }
 
-  function getHolidaysForDate(day) {
-    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    return (STATIC_HOLIDAYS[selectedState] || []).filter(h => h.date === dateStr);
+  function prevMonth() { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }
+  function nextMonth() { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); }
+
+  function getDayDots(dateISO) {
+    const hasHoliday = monthEvents.some(e => e.event_date === dateISO);
+    const hasPersonal = myEvents.some(e => e.event_date === dateISO);
+    return { hasHoliday, hasPersonal };
   }
 
-  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
-  const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
-  const prevMonth = () => { if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y-1); } else setCurrentMonth(m => m-1); };
-  const nextMonth = () => { if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y+1); } else setCurrentMonth(m => m+1); };
-
-  const selEvents = selectedDate ? getEventsForDate(selectedDate) : [];
-  const selHolidays = selectedDate ? getHolidaysForDate(selectedDate) : [];
-
-  const S = {
-    page: { minHeight:'100vh', background:'#0a0a0f', color:'#fff', fontFamily:'system-ui,sans-serif', paddingBottom:'80px' },
-    header: { padding:'16px', borderBottom:'1px solid #1e1e2e', display:'flex', alignItems:'center', justifyContent:'space-between' },
-    backBtn: { background:'#6366f1', border:'none', color:'#fff', padding:'8px 16px', borderRadius:'10px', cursor:'pointer', fontSize:'14px' },
-    scrollRow: { padding:'12px 16px 0', overflowX:'auto' },
-    innerRow: { display:'flex', gap:'8px', minWidth:'max-content' },
-    tabRow: { padding:'12px 16px', display:'flex', gap:'8px' },
-    filterRow: { padding:'0 16px 12px', display:'flex', gap:'8px', flexWrap:'wrap' },
-    select: { background:'#1e1e2e', color:'#fff', border:'1px solid #333', borderRadius:'8px', padding:'6px 10px', fontSize:'12px' },
-    card: { background:'#12121a', borderRadius:'16px', padding:'16px' },
-    navBtn: { background:'none', border:'1px solid #333', color:'#aaa', padding:'6px 12px', borderRadius:'8px', cursor:'pointer' },
-    fab: { position:'fixed', bottom:'20px', left:'16px', right:'16px' },
-    fabBtn: { width:'100%', padding:'16px', background:'#6366f1', border:'none', color:'#fff', borderRadius:'14px', fontSize:'16px', fontWeight:700, cursor:'pointer' },
-    eventRow: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px', background:'#1e1e2e', borderRadius:'8px', marginBottom:'6px' },
-    holidayRow: { display:'flex', alignItems:'center', gap:'8px', padding:'8px', background:'#1a2a2a', borderRadius:'8px', marginBottom:'6px' },
-    listItem: { background:'#12121a', borderRadius:'12px', padding:'12px', marginBottom:'8px', display:'flex', alignItems:'center', justifyContent:'space-between' },
-    catIcon: (color) => ({ width:'36px', height:'36px', borderRadius:'10px', background: color || '#333', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px' }),
-    delBtn: { background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:'18px' },
-  };
-
-  function chipBtn(isActive, label, onClick) {
-    return (
-      <button onClick={onClick} style={{ padding:'6px 12px', borderRadius:'20px', border:'none', cursor:'pointer', fontSize:'12px', whiteSpace:'nowrap',
-        background: isActive ? '#6366f1' : '#1e1e2e', color: isActive ? '#fff' : '#aaa' }}>
-        {label}
-      </button>
-    );
+  function buildCalendarGrid() {
+    const firstDay = new Date(year, month, 1).getDay();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < firstDay; i++) cells.push(null);
+    for (let d = 1; d <= lastDay; d++) cells.push(d);
+    return cells;
   }
 
-  function tabBtn(id, label, isActive) {
-    return (
-      <button onClick={() => setActiveTab(id)} style={{ padding:'6px 14px', borderRadius:'8px', border:'none', cursor:'pointer', fontSize:'13px',
-        background: isActive ? '#6366f1' : '#1e1e2e', color: isActive ? '#fff' : '#aaa' }}>
-        {label}
-      </button>
-    );
-  }
-
-  return (
-    <div style={S.page}>
-      {/* Header */}
-      <div style={S.header}>
-        <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-          <span style={{ fontSize:'28px' }}>📅</span>
-          <span style={{ fontSize:'22px', fontWeight:700 }}>Calendar</span>
-        </div>
-        <button onClick={() => router.back()} style={S.backBtn}>← Back</button>
-      </div>
-
-      {/* Calendar type chips */}
-      <div style={S.scrollRow}>
-        <div style={S.innerRow}>
-          {CALENDAR_TYPES.map(ct => chipBtn(activeCalendarType === ct.id, `${ct.emoji} ${ct.label}`, () => setActiveCalendarType(ct.id)))}
-        </div>
-      </div>
-
-      {/* View tabs */}
-      <div style={S.tabRow}>
-        {tabBtn('month', '🗓️ Month', activeTab==='month')}
-        {tabBtn('list', '📋 My Events', activeTab==='list')}
-        {tabBtn('holidays', '🏦 Holidays', activeTab==='holidays')}
-      </div>
-
-      {/* Filters */}
-      <div style={S.filterRow}>
-        <select value={selectedState} onChange={e => setSelectedState(e.target.value)} style={S.select}>
-          {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select value={selectedTimezone} onChange={e => setSelectedTimezone(e.target.value)} style={S.select}>
-          {TIMEZONES.map(tz => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-        </select>
-      </div>
-
-      {/* MONTH VIEW */}
-      {activeTab === 'month' && (
-        <div style={{ padding:'0 16px' }}>
-          <div style={S.card}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
-              <button onClick={prevMonth} style={S.navBtn}>←</button>
-              <span style={{ fontWeight:700, fontSize:'16px' }}>{MONTHS[currentMonth]} {currentYear}</span>
-              <button onClick={nextMonth} style={S.navBtn}>→</button>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'4px', marginBottom:'8px' }}>
-              {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
-                <div key={d} style={{ textAlign:'center', fontSize:'11px', color:'#666', fontWeight:600 }}>{d}</div>
-              ))}
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'4px' }}>
-              {Array.from({ length: firstDay }).map((_,i) => <div key={`e${i}`} />)}
-              {Array.from({ length: daysInMonth }).map((_,i) => {
-                const day = i + 1;
-                const isToday = day===today.getDate() && currentMonth===today.getMonth() && currentYear===today.getFullYear();
-                const isSel = selectedDate === day;
-                const hasEv = getEventsForDate(day).length > 0;
-                const hasHol = getHolidaysForDate(day).length > 0;
-                return (
-                  <button key={day} onClick={() => setSelectedDate(isSel ? null : day)}
-                    style={{ aspectRatio:'1', borderRadius:'10px', border:'none', cursor:'pointer', position:'relative',
-                      background: isSel ? '#6366f1' : isToday ? '#2a2a4a' : '#1a1a2e',
-                      color: isSel ? '#fff' : isToday ? '#818cf8' : '#ccc',
-                      fontWeight: (isToday||isSel) ? 700 : 400, fontSize:'13px' }}>
-                    {day}
-                    {(hasEv || hasHol) && (
-                      <div style={{ position:'absolute', bottom:'3px', left:'50%', transform:'translateX(-50%)', display:'flex', gap:'2px' }}>
-                        {hasHol && <div style={{ width:'4px', height:'4px', borderRadius:'50%', background:'#4ECDC4' }} />}
-                        {hasEv && <div style={{ width:'4px', height:'4px', borderRadius:'50%', background:'#FF6B6B' }} />}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Legend */}
-          <div style={{ display:'flex', gap:'12px', padding:'10px 0', flexWrap:'wrap' }}>
-            {[['#4ECDC4','Holiday'],['#FF6B6B','My Event']].map(([c,l]) => (
-              <div key={l} style={{ display:'flex', alignItems:'center', gap:'4px', fontSize:'11px', color:'#888' }}>
-                <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:c }} /> {l}
-              </div>
-            ))}
-          </div>
-
-          {/* Selected date panel */}
-          {selectedDate && (
-            <div style={{ ...S.card, marginTop:'8px' }}>
-              <div style={{ fontWeight:700, marginBottom:'12px', color:'#818cf8' }}>
-                {MONTHS[currentMonth]} {selectedDate}, {currentYear}
-              </div>
-              {selHolidays.map((h,i) => (
-                <div key={i} style={S.holidayRow}>
-                  <span>🏦</span>
-                  <div>
-                    <div style={{ fontSize:'13px', fontWeight:600 }}>{h.name}</div>
-                    <div style={{ fontSize:'11px', color:'#888' }}>Bank Holiday · {selectedState}</div>
-                  </div>
-                </div>
-              ))}
-              {selEvents.map((e,i) => {
-                const cat = REMINDER_CATEGORIES.find(c => c.id === e.category);
-                return (
-                  <div key={i} style={S.eventRow}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                      <span>{cat?.emoji || '📌'}</span>
-                      <div>
-                        <div style={{ fontSize:'13px', fontWeight:600 }}>{e.event_name}</div>
-                        {e.is_annual && <div style={{ fontSize:'11px', color:'#FFD700' }}>🔁 Yearly</div>}
-                        {e.description && <div style={{ fontSize:'11px', color:'#888' }}>{e.description}</div>}
-                      </div>
-                    </div>
-                    <button onClick={() => deleteEvent(e.id)} style={S.delBtn}>🗑️</button>
-                  </div>
-                );
-              })}
-              {selHolidays.length===0 && selEvents.length===0 && (
-                <div style={{ color:'#555', fontSize:'13px', textAlign:'center', padding:'8px' }}>No events. Tap + to add one.</div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* LIST VIEW */}
-      {activeTab === 'list' && (
-        <div style={{ padding:'0 16px' }}>
-          <div style={{ marginBottom:'12px', color:'#888', fontSize:'13px' }}>All saved events & yearly reminders</div>
-          {events.filter(e => e.is_personal_event).length === 0
-            ? <div style={{ textAlign:'center', color:'#555', padding:'40px', fontSize:'14px' }}>No events yet. Tap + Add Event.</div>
-            : events.filter(e => e.is_personal_event).sort((a,b) => a.event_date > b.event_date ? 1 : -1).map(e => {
-                const cat = REMINDER_CATEGORIES.find(c => c.id === e.category);
-                return (
-                  <div key={e.id} style={S.listItem}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                      <div style={S.catIcon(cat?.color)}>{cat?.emoji || '📌'}</div>
-                      <div>
-                        <div style={{ fontWeight:600, fontSize:'14px' }}>{e.event_name}</div>
-                        <div style={{ fontSize:'12px', color:'#888' }}>
-                          {e.event_date}{e.is_annual && ' · 🔁 Yearly'}{e.reminder_time && ` · ⏰ ${e.reminder_time}`}
-                        </div>
-                      </div>
-                    </div>
-                    <button onClick={() => deleteEvent(e.id)} style={S.delBtn}>🗑️</button>
-                  </div>
-                );
-              })
-          }
-        </div>
-      )}
-
-      {/* HOLIDAYS VIEW */}
-      {activeTab === 'holidays' && (
-        <div style={{ padding:'0 16px' }}>
-          <div style={{ marginBottom:'12px', color:'#888', fontSize:'13px' }}>Bank & public holidays · {selectedState} · {currentYear}</div>
-          {(STATIC_HOLIDAYS[selectedState] || []).map((h,i) => (
-            <div key={i} style={S.listItem}>
-              <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                <div style={S.catIcon('#1a3a3a')}>🏦</div>
-                <div>
-                  <div style={{ fontWeight:600, fontSize:'14px' }}>{h.name}</div>
-                  <div style={{ fontSize:'12px', color:'#888' }}>{h.date}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* FAB */}
-      <div style={S.fab}>
-        <button onClick={() => {
-          const d = selectedDate;
-          setForm({ ...BLANK_FORM, event_date: d ? `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}` : '' });
-          setShowAddModal(true);
-        }} style={S.fabBtn}>
-          + Add Event / Reminder
-        </button>
-      </div>
-
-      {/* MODAL */}
-      {showAddModal && (
-        <AddEventModal
-          form={form}
-          setForm={setForm}
-          onSave={saveEvent}
-          onClose={() => setShowAddModal(false)}
-          categories={REMINDER_CATEGORIES}
-          timezones={TIMEZONES}
-          calendarTypes={CALENDAR_TYPES}
-        />
-      )}
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#0f0f0f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: '#6366f1' }}>Loading…</div>
     </div>
   );
-    }
+
+  const cells = buildCalendarGrid();
+  const selCal = CALENDAR_TYPES.find(c => c.id === selectedCal);
+  const hasData = !!selCal?.dbType;
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0f0f0f', color: '#fff' }}>
+      <NavbarClient />
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '1rem 0.75rem 4rem' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '1.2rem' }}>📅</span>
+            <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>Calendar</span>
+          </div>
+          <a href="/dashboard" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, color: '#aaa', padding: '0.4rem 0.75rem', textDecoration: 'none', fontSize: '0.82rem' }}>← Back</a>
+        </div>
+        {/* Calendar type pills */}
+        <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '0.75rem', scrollbarWidth: 'none' }}>
+          {CALENDAR_TYPES.map(c => (
+            <button key={c.id} onClick={() => { setSelectedCal(c.id); setSelectedDate(null); setDayEvents([]); }}
+              style={{ flexShrink: 0, padding: '0.3rem 0.75rem', borderRadius: 20, border: 'none', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: selectedCal === c.id ? '#6366f1' : '#1a1a1a', color: selectedCal === c.id ? '#fff' : '#666', whiteSpace: 'nowrap' }}>
+              {c.emoji} {c.label}
+            </button>
+          ))}
+        </div>
+
+        {/* View tabs */}
+        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem' }}>
+          {[['month','📆 Month'],['events','📋 My Events'],['holidays','🎉 Holidays']].map(([v, label]) => (
+            <button key={v} onClick={() => setView(v)}
+              style={{ padding: '0.3rem 0.75rem', borderRadius: 8, border: 'none', background: view === v ? '#6366f1' : '#1a1a1a', color: view === v ? '#fff' : '#666', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* No data notice */}
+        {!hasData && (
+          <div style={{ background: '#1a1a1a', border: '1px solid #f59e0b44', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '0.75rem', color: '#f59e0b', fontSize: '0.82rem' }}>
+            ⚠️ {selCal?.label} data not yet seeded. Showing calendar structure only.
+          </div>
+        )}
+
+        {view === 'month' && (
+          <>
+            {/* Month navigation */}
+            <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 12, padding: '0.75rem', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                <button onClick={prevMonth} style={{ background: '#2a2a2a', border: 'none', color: '#aaa', borderRadius: 6, padding: '0.3rem 0.6rem', cursor: 'pointer', fontSize: '1rem' }}>←</button>
+                <span style={{ fontWeight: 700, fontSize: '1rem' }}>{MONTHS[month]} {year}</span>
+                <button onClick={nextMonth} style={{ background: '#2a2a2a', border: 'none', color: '#aaa', borderRadius: 6, padding: '0.3rem 0.6rem', cursor: 'pointer', fontSize: '1rem' }}>→</button>
+              </div>
+
+              {/* Day headers */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+                {DAYS.map(d => <div key={d} style={{ textAlign: 'center', color: '#444', fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem' }}>{d}</div>)}
+              </div>
+
+              {/* Date cells */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                {cells.map((day, i) => {
+                  if (!day) return <div key={i} />;
+                  const dateISO = toISO(year, month, day);
+                  const isToday = dateISO === todayISO;
+                  const isSelected = dateISO === selectedDate;
+                  const { hasHoliday, hasPersonal } = getDayDots(dateISO);
+                  return (
+                    <div key={i} onClick={() => handleDayClick(dateISO)}
+                      style={{ background: isSelected ? '#6366f1' : isToday ? '#1e1e3a' : '#111', borderRadius: 8, padding: '0.4rem 0.2rem', textAlign: 'center', cursor: 'pointer', border: isToday && !isSelected ? '1px solid #6366f144' : '1px solid transparent', minHeight: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: isToday ? 700 : 400, color: isSelected ? '#fff' : isToday ? '#6366f1' : '#ccc' }}>{day}</span>
+                      <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
+                        {hasHoliday && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />}
+                        {hasPersonal && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '0.75rem', color: '#666', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} /> Holiday</span>
+              <span style={{ fontSize: '0.75rem', color: '#666', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} /> My Event</span>
+            </div>
+
+            {/* Day detail */}
+            {selectedDate && (
+              <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 12, padding: '1rem' }}>
+                <div style={{ color: '#6366f1', fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.75rem' }}>
+                  {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </div>
+                {loadingDay ? (
+                  <div style={{ color: '#555', fontSize: '0.85rem' }}>Loading…</div>
+                ) : dayEvents.length === 0 ? (
+                  <div style={{ color: '#444', fontSize: '0.85rem' }}>{hasData ? 'No events for this date.' : 'No data available for this calendar type.'}</div>
+                ) : dayEvents.map((e, i) => (
+                  <div key={e.id || i} style={{ background: '#111', borderRadius: 8, padding: '0.7rem 0.9rem', marginBottom: '0.5rem', borderLeft: `3px solid ${e.is_personal_event ? '#f59e0b' : '#6366f1'}` }}>
+                    <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.88rem' }}>
+                      {e.event_name || `${e.tithi}${e.nakshatra ? ` · ${e.nakshatra}` : ''}`}
+                    </div>
+                    <div style={{ color: '#555', fontSize: '0.75rem', marginTop: 3, display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      {e.paksha && <span>{e.paksha}</span>}
+                      {e.tithi && <span>· {e.tithi} Tithi</span>}
+                      {e.nakshatra && <span>· {e.nakshatra} Nakshatra</span>}
+                      {e.traditional_month && <span>· {e.traditional_month} Masa</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {view === 'events' && (
+          <div>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.75rem' }}>My Events</h3>
+            {myEvents.length === 0
+              ? <div style={{ textAlign: 'center', padding: '3rem', color: '#444' }}>No personal events yet. Add one below.</div>
+              : myEvents.map((e, i) => (
+                <div key={i} style={{ background: '#1a1a1a', border: '1px solid #222', borderRadius: 10, padding: '0.8rem 1rem', marginBottom: '0.5rem' }}>
+                  <div style={{ color: '#fff', fontWeight: 500 }}>{e.event_name}</div>
+                  <div style={{ color: '#555', fontSize: '0.78rem', marginTop: 2 }}>{e.event_date}</div>
+                </div>
+              ))
+            }
+          </div>
+        )}
+
+        {view === 'holidays' && (
+          <div>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+              {selCal?.emoji} {selCal?.label} — {MONTHS[month]} {year}
+            </h3>
+            {!hasData
+              ? <div style={{ textAlign: 'center', padding: '3rem', color: '#444' }}>No data available for {selCal?.label} yet.</div>
+              : monthEvents.filter(e => e.event_type === 'festival' || e.event_type === 'national_holiday' || e.event_type === 'panchangam').length === 0
+                ? <div style={{ textAlign: 'center', padding: '3rem', color: '#444' }}>No holidays this month.</div>
+                : monthEvents.map((e, i) => (
+                  <div key={i} style={{ background: '#1a1a1a', border: '1px solid #222', borderRadius: 10, padding: '0.8rem 1rem', marginBottom: '0.4rem', display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ color: '#fff', fontSize: '0.88rem' }}>{e.event_name || 'Panchangam'}</div>
+                    <div style={{ color: '#555', fontSize: '0.78rem' }}>{e.event_date?.slice(5)}</div>
+                  </div>
+                ))
+            }
+          </div>
+        )}
+
+        {/* Add Event Button */}
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '0.75rem 1rem', background: 'linear-gradient(transparent, #0f0f0f 40%)', paddingTop: '1.5rem' }}>
+          <button onClick={() => setShowAddModal(true)}
+            style={{ width: '100%', maxWidth: 760, display: 'block', margin: '0 auto', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 12, padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer' }}>
+            + Add Event / Reminder
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+              }

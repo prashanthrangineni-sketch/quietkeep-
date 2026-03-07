@@ -80,11 +80,28 @@ function IslamicSection({ form, setForm }) {
   );
 }
 
+// buildPayload remaps UI-only field "category" → DB column "event_type" before insert
+function buildPayload(form) {
+  const payload = { ...form };
+  if ('category' in payload) {
+    if (!payload.event_type) payload.event_type = payload.category;
+    delete payload.category;
+  }
+  return payload;
+}
+
 export default function AddEventModal({ form, setForm, onSave, onClose, categories, timezones, calendarTypes }) {
   const canSave = form.event_name?.trim() && form.event_date;
   const inp = { width:'100%', background:'#1e1e2e', border:'1px solid #333', color:'#fff', padding:'10px 12px', borderRadius:'10px', fontSize:'14px', boxSizing:'border-box' };
   const lbl = { fontSize:'12px', color:'#888', display:'block', marginBottom:'6px' };
   const fw = { marginBottom:'14px' };
+
+  // Intercept Save: remap category → event_type before calling parent onSave
+  function handleSave() {
+    const correctedForm = buildPayload(form);
+    setForm(correctedForm);
+    onSave(correctedForm);
+  }
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.88)', zIndex:100, display:'flex', alignItems:'flex-end' }}>
@@ -94,7 +111,7 @@ export default function AddEventModal({ form, setForm, onSave, onClose, categori
           <button onClick={onClose} style={{ background:'none', border:'none', color:'#888', fontSize:'24px', cursor:'pointer' }}>×</button>
         </div>
 
-        {/* Category grid */}
+        {/* Category grid — form.category is UI-only state; remapped to event_type on save */}
         <div style={fw}>
           <label style={lbl}>TYPE</label>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'8px' }}>
@@ -126,10 +143,8 @@ export default function AddEventModal({ form, setForm, onSave, onClose, categori
           </select>
         </div>
 
-        {/* Panchang fields appear when Telugu/Hindi/Tamil selected */}
         <PanchangSection form={form} setForm={setForm} />
 
-        {/* Islamic fields */}
         {form.calendar_type === 'islamic' && <IslamicSection form={form} setForm={setForm} />}
 
         <div style={fw}>
@@ -150,7 +165,6 @@ export default function AddEventModal({ form, setForm, onSave, onClose, categori
             rows={2} placeholder="Optional notes..." style={{...inp, resize:'none'}} />
         </div>
 
-        {/* Yearly toggle */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px', background:'#1e1e2e', borderRadius:'10px', marginBottom:'20px' }}>
           <div>
             <div style={{ fontSize:'14px', fontWeight:600 }}>🔁 Yearly Reminder</div>
@@ -162,11 +176,11 @@ export default function AddEventModal({ form, setForm, onSave, onClose, categori
           </div>
         </div>
 
-        <button onClick={onSave} disabled={!canSave}
+        <button onClick={handleSave} disabled={!canSave}
           style={{ width:'100%', padding:'14px', border:'none', color:'#fff', borderRadius:'12px', fontSize:'16px', fontWeight:700, cursor:canSave?'pointer':'not-allowed', background:canSave?'#6366f1':'#333' }}>
           Save Event
         </button>
       </div>
     </div>
   );
-            }
+                  }

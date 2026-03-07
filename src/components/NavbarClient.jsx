@@ -1,114 +1,108 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import { createBrowserClient } from '@supabase/ssr';
 
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
-const NAV_LINKS = [
-  { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Finance', href: '/finance' },
-  { label: 'Calendar', href: '/calendar' },
-  { label: 'Brief', href: '/daily-brief' },
-  { label: 'Docs', href: '/documents' },
-  { label: 'Family', href: '/family' },
-  { label: 'Kids', href: '/kids' },
-  { label: 'Driving', href: '/drive' },
-  { label: 'Settings', href: '/settings' },
+// Primary bottom nav — 5 most used
+const PRIMARY_NAV = [
+  { href: '/dashboard',   icon: '🏠', label: 'Home'      },
+  { href: '/calendar',    icon: '📅', label: 'Calendar'  },
+  { href: '/finance',     icon: '💰', label: 'Finance'   },
+  { href: '/daily-brief', icon: '☀️', label: 'Brief'     },
+  { href: '/more',        icon: '⋯',  label: 'More'      },
 ];
+
+// All pages in the "More" drawer (everything except PRIMARY_NAV)
+const MORE_PAGES = [
+  { href: '/reminders',  icon: '⏰', label: 'Reminders',         section: 'Daily'    },
+  { href: '/mood',       icon: '🌊', label: 'Mood Log',          section: 'Daily'    },
+  { href: '/voice',      icon: '🎙️', label: 'Voice History',    section: 'Daily'    },
+  { href: '/documents',  icon: '📄', label: 'Documents',         section: 'Life'     },
+  { href: '/trips',      icon: '✈️', label: 'Trip Plans',        section: 'Life'     },
+  { href: '/driving',    icon: '🚗', label: 'Driving Mode',      section: 'Life'     },
+  { href: '/family',     icon: '👨‍👩‍👧', label: 'Family',          section: 'People'   },
+  { href: '/kids',       icon: '👶', label: 'Kids',              section: 'People'   },
+  { href: '/emergency',  icon: '🆘', label: 'Emergency',         section: 'People'   },
+  { href: '/sos',        icon: '📋', label: 'SOS History',       section: 'People'   },
+  { href: '/profile',    icon: '👤', label: 'Profile',           section: 'Settings' },
+  { href: '/settings',   icon: '⚙️', label: 'Settings',          section: 'Settings' },
+];
+
+const SECTIONS = ['Daily', 'Life', 'People', 'Settings'];
 
 export default function NavbarClient() {
   const pathname = usePathname();
-  const [user, setUser] = useState(null);
-  const [showMenu, setShowMenu] = useState(false);
+  const router = useRouter();
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
-  }, []);
+  // Determine if "More" drawer is active — any non-primary page
+  const primaryPaths = PRIMARY_NAV.filter(n => n.href !== '/more').map(n => n.href);
+  const isMoreActive = !primaryPaths.includes(pathname) && pathname !== '/';
 
-  async function signOut() {
+  // Show More drawer as a page-level overlay? No — integrate as sheet within nav.
+  // We use a simple approach: clicking "More" navigates to /more which renders the drawer inline.
+  // Actually simpler: render all nav in a 2-row layout.
+
+  async function handleSignOut() {
     await supabase.auth.signOut();
-    window.location.href = '/login';
+    router.push('/login');
   }
 
-  const initial = (user?.email || 'U')[0].toUpperCase();
-
   return (
-    <>
-      <nav style={{
-        background: '#111',
-        borderBottom: '1px solid #1e1e1e',
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        width: '100%',
-      }}>
-        {/* Top bar: logo + user */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', height: 48 }}>
-          <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none' }}>
-            <div style={{ background: '#6366f1', color: '#fff', fontWeight: 800, borderRadius: 6, padding: '2px 7px', fontSize: '0.85rem' }}>QK</div>
-            <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>QuietKeep</span>
-          </a>
-          {/* User dropdown */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              style={{ background: '#6366f1', border: 'none', borderRadius: 20, color: '#fff', padding: '0.25rem 0.75rem', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-            >
-              {user?.email?.split('@')[0]?.slice(0, 12)} ▾
-            </button>
-            {showMenu && (
-              <div style={{ position: 'absolute', right: 0, top: '110%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, minWidth: 160, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-                <a href="/profile" onClick={() => setShowMenu(false)} style={{ display: 'block', padding: '0.7rem 1rem', color: '#fff', textDecoration: 'none', fontSize: '0.88rem', borderBottom: '1px solid #222' }}>👤 Profile</a>
-                <button onClick={signOut} style={{ width: '100%', padding: '0.7rem 1rem', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', textAlign: 'left', fontSize: '0.88rem' }}>Sign Out</button>
-              </div>
-            )}
-          </div>
-        </div>
+    <nav style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+      background: 'rgba(10,10,15,0.97)',
+      borderTop: '1px solid rgba(255,255,255,0.08)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      paddingBottom: 'env(safe-area-inset-bottom)',
+    }}>
+      {/* Row 1 — Primary 4 + More */}
+      <div style={{ display: 'flex', alignItems: 'stretch' }}>
+        {PRIMARY_NAV.map(item => {
+          const isActive = item.href === '/more' ? isMoreActive : pathname === item.href;
+          return (
+            <Link key={item.href} href={item.href}
+              style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', padding: '8px 4px 6px', gap: '3px',
+                textDecoration: 'none', position: 'relative',
+              }}>
+              {isActive && (
+                <span style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: '2px', background: '#a78bfa', borderRadius: '0 0 3px 3px' }} />
+              )}
+              <span style={{ fontSize: '18px', lineHeight: 1 }}>{item.icon}</span>
+              <span style={{ fontSize: '10px', color: isActive ? '#a78bfa' : 'rgba(255,255,255,0.4)', fontFamily: "'DM Sans', sans-serif", fontWeight: isActive ? 600 : 400 }}>
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
 
-        {/* Horizontal scrollable nav links — works in both browser and PWA */}
-        <div style={{
-          display: 'flex',
-          overflowX: 'auto',
-          padding: '0 0.75rem 0.5rem',
-          gap: '0.25rem',
-          // Hide scrollbar across browsers
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          WebkitOverflowScrolling: 'touch',
-        }}>
-          {NAV_LINKS.map(({ label, href }) => {
-            const active = pathname === href;
+      {/* Row 2 — Scrollable secondary pages (shown on non-primary routes as context) */}
+      {isMoreActive && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', overflowX: 'auto', scrollbarWidth: 'none', display: 'flex', padding: '6px 10px 8px', gap: '6px' }}>
+          {MORE_PAGES.map(item => {
+            const isActive = pathname === item.href;
             return (
-              <a
-                key={href}
-                href={href}
+              <Link key={item.href} href={item.href}
                 style={{
-                  flexShrink: 0,
-                  textDecoration: 'none',
-                  padding: '0.3rem 0.75rem',
-                  borderRadius: 20,
-                  fontSize: '0.82rem',
-                  fontWeight: active ? 600 : 400,
-                  background: active ? '#6366f1' : 'transparent',
-                  color: active ? '#fff' : '#666',
-                  border: active ? 'none' : '1px solid #222',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {label}
-              </a>
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                  padding: '5px 10px', borderRadius: '10px', textDecoration: 'none', flexShrink: 0,
+                  background: isActive ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: isActive ? '1px solid rgba(167,139,250,0.35)' : '1px solid rgba(255,255,255,0.07)',
+                  minWidth: '56px',
+                }}>
+                <span style={{ fontSize: '15px', lineHeight: 1 }}>{item.icon}</span>
+                <span style={{ fontSize: '9px', color: isActive ? '#a78bfa' : 'rgba(255,255,255,0.4)', fontFamily: "'DM Sans', sans-serif", whiteSpace: 'nowrap' }}>
+                  {item.label}
+                </span>
+              </Link>
             );
           })}
         </div>
-      </nav>
-
-      {/* Close dropdown on outside click */}
-      {showMenu && <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />}
-    </>
+      )}
+    </nav>
   );
 }

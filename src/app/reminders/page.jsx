@@ -94,6 +94,7 @@ export default function RemindersPage() {
       is_active: form.is_active,
     };
 
+    if (!user) { setSaving(false); return setError('Not logged in. Please refresh.'); }
     let err;
     if (editItem) {
       ({ error: err } = await supabase.from('reminders').update(payload).eq('id', editItem.id));
@@ -101,7 +102,7 @@ export default function RemindersPage() {
       ({ error: err } = await supabase.from('reminders').insert(payload));
     }
     setSaving(false);
-    if (err) return setError(err.message);
+    if (err) { setError(err.message); return; }
     setShowForm(false);
     loadReminders(user.id);
   }

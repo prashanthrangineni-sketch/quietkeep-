@@ -27,7 +27,7 @@ export default function FinancePage() {
   const [showAddE, setShowAddE] = useState(false);
   const [showAddB, setShowAddB] = useState(false);
   const [showAddS, setShowAddS] = useState(false);
-  const [eAmt, setEAmt] = useState(''); const [eCat, setECat] = useState('Food'); const [eDesc, setEDesc] = useState(''); const [ePay, setEPay] = useState('UPI'); const [eDate, setEDate] = useState(new Date().toISOString().split('T')[0]); const [savingE, setSavingE] = useState(false);
+  const [eAmt, setEAmt] = useState(''); const [eCat, setECat] = useState('Food'); const [eDesc, setEDesc] = useState(''); const [ePay, setEPay] = useState('UPI'); const [eDate, setEDate] = useState(new Date().toISOString().split('T')[0]); const [savingE, setSavingE] = useState(false); const [eError, setEError] = useState('');
   const [bCat, setBCat] = useState('Food'); const [bLimit, setBLimit] = useState(''); const [bThresh, setBThresh] = useState(80); const [savingB, setSavingB] = useState(false);
   const [sName, setSName] = useState(''); const [sAmt, setSAmt] = useState(''); const [sCycle, setSCycle] = useState('monthly'); const [sDue, setSDue] = useState(''); const [sCat, setSCat] = useState('Entertainment'); const [savingS, setSavingS] = useState(false);
   const thisMonth = new Date().toISOString().slice(0, 7);
@@ -49,10 +49,12 @@ export default function FinancePage() {
 
   async function addExpense() {
     if (!eAmt || isNaN(parseFloat(eAmt))) return;
-    setSavingE(true);
-    const { data } = await supabase.from('expenses').insert({ user_id: user.id, amount: parseFloat(eAmt), currency: 'INR', category: eCat, description: eDesc, payment_method: ePay, expense_date: eDate }).select().single();
-    if (data) { setExpenses(p => [data, ...p]); await supabase.from('audit_log').insert({ user_id: user.id, action: 'expense_added', service: 'finance', details: { amount: parseFloat(eAmt), category: eCat } }); }
-    setEAmt(''); setEDesc(''); setSavingE(false); setShowAddE(false);
+    setSavingE(true); setEError('');
+    const descVal = eDesc.trim() || eCat;
+    const { data, error: eErr } = await supabase.from('expenses').insert({ user_id: user.id, amount: parseFloat(eAmt), currency: 'INR', category: eCat, description: descVal, payment_method: ePay, expense_date: eDate }).select().single();
+    if (eErr) { setEError(eErr.message); setSavingE(false); return; }
+    if (data) { setExpenses(p => [data, ...p]); await supabase.from('audit_log').insert({ user_id: user.id, action: 'expense_added', service: 'finance', details: { amount: parseFloat(eAmt), category: eCat } }).catch(() => {}); }
+    setEAmt(''); setEDesc(''); setEError(''); setSavingE(false); setShowAddE(false);
   }
 
   async function addBudget() {
@@ -120,9 +122,10 @@ export default function FinancePage() {
                   <div><label style={lbl}>Payment</label><select style={inp} value={ePay} onChange={e => setEPay(e.target.value)}>{PAY_METHODS.map(p => <option key={p}>{p}</option>)}</select></div>
                 </div>
                 <div style={{ marginBottom:'0.75rem' }}><label style={lbl}>Description</label><input style={inp} placeholder="What was this for?" value={eDesc} onChange={e => setEDesc(e.target.value)} /></div>
+                {eError && <div style={{ color:'#f87171', fontSize:'0.8rem', marginBottom:'0.6rem', background:'rgba(248,113,113,0.1)', padding:'6px 10px', borderRadius:6 }}>{eError}</div>}
                 <div style={{ display:'flex', gap:'0.5rem' }}>
                   <button onClick={addExpense} disabled={savingE} style={btn1}>{savingE ? 'Saving…' : 'Save'}</button>
-                  <button onClick={() => setShowAddE(false)} style={btn0}>Cancel</button>
+                  <button onClick={() => { setShowAddE(false); setEError(''); }} style={btn0}>Cancel</button>
                 </div>
               </div>
             )}

@@ -64,7 +64,7 @@ export default function MorePage() {
             Discover the best deals across groceries, electronics, fashion &amp; pharmacy — neutral, ad-free, ONDC-powered.
           </div>
           <a
-            href="https://cart2save.in"
+            href="https://www.cart2save.com"
             target="_blank"
             rel="noopener noreferrer"
             style={{ display: 'inline-block', background: '#6366f1', color: '#fff', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}

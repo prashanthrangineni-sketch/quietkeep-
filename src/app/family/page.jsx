@@ -1,137 +1,210 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
-import NavbarClient from '@/components/NavbarClient';
-
-const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-const inp = { width:'100%', background:'#111', border:'1px solid #333', borderRadius:8, color:'#fff', padding:'0.6rem 0.75rem', fontSize:'0.88rem', outline:'none', boxSizing:'border-box' };
-const btn1 = { padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'#6366f1', color:'#fff', fontSize:'0.88rem', fontWeight:600, cursor:'pointer' };
-const btn0 = { ...btn1, background:'transparent', border:'1px solid #333', color:'#aaa' };
-const SC = { pending:'#f59e0b', active:'#22c55e', rejected:'#ef4444' };
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function FamilyPage() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState([]);
-  const [sharedKeeps, setSharedKeeps] = useState([]);
-  const [tab, setTab] = useState('members');
-  const [showInvite, setShowInvite] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('member');
-  const [inviting, setInviting] = useState(false);
+  const [invites, setInvites] = useState([]);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('member');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [msg, setMsg] = useState({ text: '', type: 'success' });
+  const [pendingToken, setPendingToken] = useState(null);
+  const [accepting, setAccepting] = useState(false);
 
-  useEffect(() => { init(); }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('invite');
+    if (token) setPendingToken(token);
+    init();
+  }, []);
 
   async function init() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { window.location.href = '/login'; return; }
     setUser(user);
-    const [ownedRes, memberRes] = await Promise.all([
-      supabase.from('family_members').select('*').eq('owner_user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('family_members').select('*').eq('member_user_id', user.id),
-    ]);
-    const all = [...(ownedRes.data || []), ...(memberRes.data || [])];
-    const seen = new Set();
-    const deduped = all.filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true; });
-    setMembers(deduped);
-    const memberUids = (ownedRes.data || []).map(m => m.member_user_id).filter(Boolean);
-    if (memberUids.length > 0) {
-      const { data: keeps } = await supabase.from('keeps').select('*').in('user_id', [user.id, ...memberUids]).eq('status', 'open').order('created_at', { ascending: false }).limit(20);
-      setSharedKeeps(keeps || []);
+    if (user) {
+      await Promise.all([loadMembers(user.id), loadInvites(user.id)]);
     }
     setLoading(false);
   }
 
-  async function inviteMember() {
-    if (!inviteEmail.trim()) return;
-    setInviting(true);
-    const { data, error } = await supabase.from('family_members').insert({ owner_user_id: user.id, member_email: inviteEmail.trim(), role: inviteRole, status: 'pending' }).select().single();
-    if (!error && data) {
-      setMembers(p => [data, ...p]);
-      await supabase.from('audit_log').insert({ user_id: user.id, action: 'family_member_invited', service: 'family', details: { email: inviteEmail, role: inviteRole } });
+  async function loadMembers(uid) {
+    const { data } = await supabase
+      .from('family_members')
+      .select('*')
+      .eq('owner_user_id', uid)
+      .order('created_at', { ascending: false });
+    setMembers(data || []);
+  }
+
+  async function loadInvites(uid) {
+    const { data } = await supabase
+      .from('family_invites')
+      .select('*')
+      .eq('owner_user_id', uid)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    setInvites(data || []);
+  }
+
+  async function sendInvite() {
+    if (!email.trim()) return;
+    setSending(true);
+    setMsg({ text: '', type: 'success' });
+    const { data, error } = await supabase
+      .from('family_invites')
+      .insert({ owner_user_id: user.id, invitee_email: email.trim().toLowerCase(), role })
+      .select()
+      .single();
+    if (error) {
+      setMsg({ text: 'Error: ' + error.message, type: 'error' });
+      setSending(false);
+      return;
     }
-    setInviteEmail(''); setInviting(false); setShowInvite(false);
+    const link = `${window.location.origin}/family?invite=${data.token}`;
+    await navigator.clipboard.writeText(link).catch(() => {});
+    setMsg({ text: `Invite link copied!\n${link}`, type: 'success' });
+    setEmail('');
+    await loadInvites(user.id);
+    setSending(false);
   }
 
-  async function removeMember(id) {
-    await supabase.from('family_members').delete().eq('id', id);
-    setMembers(p => p.filter(m => m.id !== id));
-    await supabase.from('audit_log').insert({ user_id: user.id, action: 'family_member_removed', service: 'family', details: { member_id: id } });
+  async function acceptInvite() {
+    if (!pendingToken) return;
+    setAccepting(true);
+    const { data, error } = await supabase.rpc('accept_family_invite', { p_token: pendingToken });
+    if (error || !data?.success) {
+      setMsg({ text: (data?.error || error?.message || 'Could not accept invite'), type: 'error' });
+    } else {
+      setMsg({ text: 'You have joined the family space!', type: 'success' });
+      setPendingToken(null);
+      window.history.replaceState({}, '', '/family');
+      await loadMembers(user.id);
+    }
+    setAccepting(false);
   }
 
-  if (loading) return (<div style={{ minHeight:'100vh', background:'#0f0f0f', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading Family…</div></div>);
+  async function removeMember(memberId) {
+    await supabase.from('family_members').delete().eq('id', memberId);
+    setMembers(prev => prev.filter(m => m.id !== memberId));
+  }
+
+  async function cancelInvite(inviteId) {
+    await supabase.from('family_invites').update({ status: 'expired' }).eq('id', inviteId);
+    setInvites(prev => prev.filter(i => i.id !== inviteId));
+  }
+
+  function copyInviteLink(token) {
+    const link = `${window.location.origin}/family?invite=${token}`;
+    navigator.clipboard.writeText(link);
+    setMsg({ text: 'Invite link copied to clipboard!', type: 'success' });
+  }
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: '#94a3b8', fontSize: 16 }}>Loading...</div>
+    </div>
+  );
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff' }}>
-      <NavbarClient />
-      <div style={{ maxWidth:680, margin:'0 auto', padding:'1.5rem 1rem 4rem' }}>
+    <div style={{ minHeight: '100vh', background: '#0f172a', padding: '24px 16px 100px', fontFamily: 'system-ui,sans-serif' }}>
+      <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'1.5rem' }}>
-          <div>
-            <h1 style={{ fontSize:'1.4rem', fontWeight:700, marginBottom:4 }}>Family</h1>
-            <p style={{ color:'#555', fontSize:'0.85rem' }}>Share keeps and manage your family circle</p>
-          </div>
-          <button onClick={() => setShowInvite(!showInvite)} style={btn1}>+ Invite</button>
-        </div>
+        <div style={{ color: '#f1f5f9', fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Family Space</div>
+        <div style={{ color: '#64748b', fontSize: 14, marginBottom: 24 }}>Invite family members to share your QuietKeep</div>
 
-        {showInvite && (
-          <div style={{ background:'#1a1a1a', border:'1px solid #333', borderRadius:12, padding:'1.2rem', marginBottom:'1.5rem' }}>
-            <h3 style={{ color:'#fff', fontSize:'0.9rem', marginBottom:'1rem' }}>Invite Family Member</h3>
-            <div style={{ marginBottom:'0.75rem' }}><label style={{ color:'#aaa', fontSize:'0.78rem', display:'block', marginBottom:4 }}>Email</label><input style={inp} type="email" placeholder="family@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} /></div>
-            <div style={{ marginBottom:'0.75rem' }}><label style={{ color:'#aaa', fontSize:'0.78rem', display:'block', marginBottom:4 }}>Role</label>
-              <select style={inp} value={inviteRole} onChange={e => setInviteRole(e.target.value)}>
-                {['member','admin','viewer'].map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>)}
-              </select>
-            </div>
-            <div style={{ background:'#111', borderRadius:8, padding:'0.6rem 0.8rem', marginBottom:'0.75rem', fontSize:'0.8rem', color:'#666' }}>📧 An invite will be sent to their email.</div>
-            <div style={{ display:'flex', gap:'0.5rem' }}>
-              <button onClick={inviteMember} disabled={inviting} style={btn1}>{inviting ? 'Inviting…' : 'Send Invite'}</button>
-              <button onClick={() => setShowInvite(false)} style={btn0}>Cancel</button>
-            </div>
+        {/* Pending invite accept banner */}
+        {pendingToken && (
+          <div style={{ background: '#1c1400', border: '1px solid #f59e0b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+            <div style={{ color: '#fbbf24', fontWeight: 700, fontSize: 15, marginBottom: 8 }}>You have a family invite!</div>
+            <div style={{ color: '#94a3b8', fontSize: 14, marginBottom: 14 }}>Someone invited you to join their QuietKeep family space.</div>
+            <button
+              onClick={acceptInvite}
+              disabled={accepting}
+              style={{ width: '100%', padding: 12, background: accepting ? '#334155' : '#f59e0b', color: '#0f172a', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
+            >{accepting ? 'Accepting...' : 'Accept Invite'}</button>
           </div>
         )}
 
-        <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1.5rem', background:'#1a1a1a', borderRadius:10, padding:4 }}>
-          {['members','shared keeps'].map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ flex:1, padding:'0.55rem', borderRadius:8, border:'none', background:tab===t?'#6366f1':'transparent', color:tab===t?'#fff':'#666', fontSize:'0.85rem', fontWeight:600, cursor:'pointer', textTransform:'capitalize' }}>{t}</button>
-          ))}
+        {/* Message */}
+        {msg.text && (
+          <div style={{ background: msg.type === 'error' ? '#2a0a0a' : '#0a1f0a', border: `1px solid ${msg.type === 'error' ? '#dc2626' : '#166534'}`, borderRadius: 8, padding: 14, color: msg.type === 'error' ? '#f87171' : '#86efac', fontSize: 13, marginBottom: 16, whiteSpace: 'pre-wrap' }}>
+            {msg.text}
+          </div>
+        )}
+
+        {/* Send invite */}
+        <div style={{ background: '#1e293b', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid #334155' }}>
+          <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Invite a Family Member</div>
+          <input
+            type="email"
+            placeholder="their@email.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: '10px 14px', color: '#f1f5f9', fontSize: 15, boxSizing: 'border-box', outline: 'none' }}
+          />
+          <select
+            value={role}
+            onChange={e => setRole(e.target.value)}
+            style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: '10px 14px', color: '#f1f5f9', fontSize: 15, boxSizing: 'border-box', marginTop: 10 }}
+          >
+            <option value="member">Member — can view & add keeps</option>
+            <option value="viewer">Viewer — read only</option>
+            <option value="admin">Admin — full access</option>
+          </select>
+          <button
+            onClick={sendInvite}
+            disabled={sending || !email.trim()}
+            style={{ width: '100%', padding: 12, background: (sending || !email.trim()) ? '#334155' : '#6366f1', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 15, cursor: 'pointer', marginTop: 12 }}
+          >{sending ? 'Generating...' : 'Generate & Copy Invite Link'}</button>
         </div>
 
-        {tab === 'members' && (
-          members.length === 0
-            ? <div style={{ textAlign:'center', padding:'3rem', color:'#444' }}><div style={{ fontSize:'2.5rem', marginBottom:'0.75rem' }}>👨‍👩‍👧</div><div>No family members yet. Invite someone.</div></div>
-            : members.map(m => (
-              <div key={m.id} style={{ background:'#1a1a1a', border:'1px solid #222', borderRadius:10, padding:'1rem', marginBottom:'0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        {/* Pending invites */}
+        {invites.length > 0 && (
+          <div style={{ background: '#1e293b', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid #334155' }}>
+            <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Pending Invites ({invites.length})</div>
+            {invites.map(inv => (
+              <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #0f172a' }}>
                 <div>
-                  <div style={{ color:'#fff', fontWeight:500, fontSize:'0.9rem' }}>{m.member_email}</div>
-                  <div style={{ display:'flex', gap:'0.5rem', marginTop:4 }}>
-                    <span style={{ background:'#222', borderRadius:4, padding:'2px 8px', fontSize:'0.75rem', color:'#aaa', textTransform:'capitalize' }}>{m.role}</span>
-                    <span style={{ background:(SC[m.status]||'#666')+'22', borderRadius:4, padding:'2px 8px', fontSize:'0.75rem', color:SC[m.status]||'#666', textTransform:'capitalize' }}>{m.status}</span>
+                  <div style={{ color: '#f1f5f9', fontSize: 14 }}>{inv.invitee_email}</div>
+                  <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
+                    Expires {new Date(inv.expires_at).toLocaleDateString('en-IN')} · {inv.role}
                   </div>
                 </div>
-                {m.owner_user_id === user.id && (
-                  <button onClick={() => removeMember(m.id)} style={{ background:'none', border:'1px solid #333', borderRadius:6, color:'#ef4444', padding:'4px 10px', cursor:'pointer', fontSize:'0.8rem' }}>Remove</button>
-                )}
-              </div>
-            ))
-        )}
-
-        {tab === 'shared keeps' && (
-          sharedKeeps.length === 0
-            ? <div style={{ textAlign:'center', padding:'3rem', color:'#444' }}>Add family members to see shared keeps.</div>
-            : sharedKeeps.map(k => (
-              <div key={k.id} style={{ background:'#1a1a1a', border:'1px solid #222', borderRadius:10, padding:'1rem', marginBottom:'0.5rem' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                  <div style={{ color:'#fff', fontSize:'0.9rem', flex:1 }}>{k.content}</div>
-                  <span style={{ background:'#6366f122', color:'#6366f1', borderRadius:4, padding:'2px 8px', fontSize:'0.75rem', marginLeft:8 }}>{k.intent_type}</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => copyInviteLink(inv.token)} style={{ background: '#1e3a5f', color: '#60a5fa', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, cursor: 'pointer' }}>Copy</button>
+                  <button onClick={() => cancelInvite(inv.id)} style={{ background: '#3b1a1a', color: '#f87171', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                 </div>
-                {k.reminder_at && <div style={{ color:'#f59e0b', fontSize:'0.78rem', marginTop:4 }}>⏰ {new Date(k.reminder_at).toLocaleString('en-IN', { dateStyle:'medium', timeStyle:'short' })}</div>}
-                <div style={{ color:'#444', fontSize:'0.75rem', marginTop:4 }}>{k.user_id === user.id ? 'You' : 'Family'} · {new Date(k.created_at).toLocaleDateString('en-IN')}</div>
               </div>
-            ))
+            ))}
+          </div>
         )}
 
+        {/* Active members */}
+        <div style={{ background: '#1e293b', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid #334155' }}>
+          <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Active Members ({members.length})</div>
+          {members.length === 0 ? (
+            <div style={{ color: '#475569', fontSize: 14, padding: '8px 0' }}>No members yet. Send an invite above.</div>
+          ) : (
+            members.map(m => (
+              <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #0f172a' }}>
+                <div>
+                  <div style={{ color: '#f1f5f9', fontSize: 14 }}>{m.member_email}</div>
+                  <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
+                    Joined {m.joined_at ? new Date(m.joined_at).toLocaleDateString('en-IN') : 'pending'} ·
+                    <span style={{ background: '#1e3a5f', color: '#60a5fa', borderRadius: 4, padding: '1px 6px', fontSize: 11, marginLeft: 6 }}>{m.role}</span>
+                  </div>
+                </div>
+                <button onClick={() => removeMember(m.id)} style={{ background: '#3b1a1a', color: '#f87171', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>Remove</button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div style={{ color: '#334155', fontSize: 12, textAlign: 'center' }}>Invite links expire in 72 hours · Members can be removed anytime</div>
       </div>
     </div>
   );
-}
+                    }

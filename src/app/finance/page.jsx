@@ -51,9 +51,18 @@ export default function FinancePage() {
     if (!eAmt || isNaN(parseFloat(eAmt))) return;
     setSavingE(true); setEError('');
     const descVal = eDesc.trim() || eCat;
-    const { data, error: eErr } = await supabase.from('expenses').insert({ user_id: user.id, amount: parseFloat(eAmt), currency: 'INR', category: eCat, description: descVal, payment_method: ePay, expense_date: eDate }).select().single();
+    const catNorm = eCat.toLowerCase();
+    const payNorm = ePay.toLowerCase().replace(/\s+/g, '');
+    const { data, error: eErr } = await supabase.from('expenses').insert({
+      user_id: user.id, amount: parseFloat(eAmt), currency: 'INR',
+      category: catNorm, description: descVal,
+      payment_method: payNorm, expense_date: eDate
+    }).select().single();
     if (eErr) { setEError(eErr.message); setSavingE(false); return; }
-    if (data) { setExpenses(p => [data, ...p]); await supabase.from('audit_log').insert({ user_id: user.id, action: 'expense_added', service: 'finance', details: { amount: parseFloat(eAmt), category: eCat } }).catch(() => {}); }
+    if (data) {
+      setExpenses(p => [data, ...p]);
+      await supabase.from('audit_log').insert({ user_id: user.id, action: 'expense_added', service: 'finance', details: { amount: parseFloat(eAmt), category: catNorm } }).catch(() => {});
+    }
     setEAmt(''); setEDesc(''); setEError(''); setSavingE(false); setShowAddE(false);
   }
 
@@ -236,4 +245,4 @@ export default function FinancePage() {
       </div>
     </div>
   );
-}
+                                 }

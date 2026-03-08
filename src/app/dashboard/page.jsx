@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import NavbarClient from '@/components/NavbarClient';
+import ContextCards from '@/components/ContextCards';
 
 const TYPE_EMOJI = {
   note: '📝', reminder: '⏰', contact: '📞', task: '✅',
@@ -288,6 +289,7 @@ export default function Dashboard() {
         </div>
 
         <div style={{ maxWidth: '680px', margin: '0 auto', padding: '20px 16px' }}>
+          <ContextCards userId={user?.id} />
 
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', marginBottom: '20px' }}>
@@ -418,4 +420,4 @@ export default function Dashboard() {
       </div>
     </>
   );
-}
+                     }

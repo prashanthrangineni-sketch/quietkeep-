@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 const RECURRENCE = ['none', 'daily', 'weekly', 'monthly'];
 
@@ -126,6 +127,7 @@ export default function RemindersPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0d0a14', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
+      <NavbarClient />
 
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #0d0a18, #100d1a)', borderBottom: '1px solid rgba(251,191,36,0.15)', padding: '20px 16px 16px' }}>

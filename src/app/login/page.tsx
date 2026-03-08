@@ -23,7 +23,9 @@ export default function LoginPage() {
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // /auth/confirm is a CLIENT-SIDE page — works on iOS Safari/Mail
+        // /auth/callback is server-only and breaks on iOS due to PKCE cookie context loss
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
         shouldCreateUser: true,
       },
     });

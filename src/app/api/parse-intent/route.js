@@ -1,66 +1,118 @@
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-// PARSE ONLY — never inserts into keeps table.
-// The dashboard does the single insert. This route caused duplicate rows.
-
-function parseDateTime(text) {
-  const t = text.toLowerCase();
-  const now = new Date();
-  let date = null;
-
-  if (/\btoday\b/.test(t)) { date = new Date(now); }
-  else if (/\btomorrow\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 1); }
-  else if (/\bday after tomorrow\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 2); }
-  else if (/\bnext week\b/.test(t)) { date = new Date(now); date.setDate(date.getDate() + 7); }
-
-  const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-  for (let i = 0; i < days.length; i++) {
-    if (new RegExp('\\b' + days[i] + '\\b').test(t)) {
-      date = new Date(now); const diff = (i - now.getDay() + 7) % 7 || 7; date.setDate(date.getDate() + diff); break;
-    }
-  }
-  const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
-  for (let m = 0; m < monthNames.length; m++) {
-    const re1 = new RegExp('(\\d{1,2})(?:st|nd|rd|th)?\\s+' + monthNames[m]);
-    const re2 = new RegExp(monthNames[m] + '\\s+(\\d{1,2})');
-    const match = t.match(re1) || t.match(re2);
-    if (match) { date = new Date(now.getFullYear(), m, parseInt(match[1])); if (date < now) date.setFullYear(date.getFullYear() + 1); break; }
-  }
-  if (!date) { const nd = t.match(/(\d{1,2})[\/\-](\d{1,2})/); if (nd) { date = new Date(now.getFullYear(), parseInt(nd[2]) - 1, parseInt(nd[1])); if (date < now) date.setFullYear(date.getFullYear() + 1); } }
-  if (!date) return null;
-
-  let hours = 9, minutes = 0;
-  // Explicit am/pm wins over everything
-  const ap = t.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
-  if (ap) { hours = parseInt(ap[1]); minutes = ap[2] ? parseInt(ap[2]) : 0; if (ap[3]==='pm' && hours<12) hours+=12; if (ap[3]==='am' && hours===12) hours=0; }
-  else { const pt = t.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\b/); if (pt) { hours=parseInt(pt[1]); minutes=pt[2]?parseInt(pt[2]):0; if(hours<7)hours+=12; } else if (/\bmidnight\b/.test(t)){hours=0;minutes=0;} else if (/\bnoon\b|\bmidday\b/.test(t)){hours=12;} else if (/\bmorning\b/.test(t)){hours=9;} else if (/\bafternoon\b/.test(t)){hours=14;} else if (/\bevening\b/.test(t)){hours=18;} else if (/\bnight\b/.test(t)){hours=20;} }
-
-  date.setHours(hours, minutes, 0, 0);
-  const pad = n => String(n).padStart(2,'0');
-  return date.getFullYear()+'-'+pad(date.getMonth()+1)+'-'+pad(date.getDate())+'T'+pad(hours)+':'+pad(minutes);
-}
-
-function detectIntentType(text) {
-  const t = text.toLowerCase();
-  if (/call|ring|phone|contact|whatsapp|message/.test(t)) return { type:'contact', confidence:0.85 };
-  if (/buy|order|get|purchase|pick up|shop/.test(t)) return { type:'purchase', confidence:0.85 };
-  if (/meet|meeting|appointment|doctor|dentist|interview|conference|seminar/.test(t)) return { type:'reminder', confidence:0.9 };
-  if (/remind|remember|don.t forget/.test(t)) return { type:'reminder', confidence:0.8 };
-  if (/pay|bill|expense|spent|cost/.test(t)) return { type:'expense', confidence:0.85 };
-  if (/travel|trip|flight|hotel/.test(t)) return { type:'trip', confidence:0.8 };
-  return { type:'note', confidence:0.6 };
-}
-
 export async function POST(req) {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+  const { text } = body;
+  if (!text?.trim()) return NextResponse.json({ error: 'No text provided' }, { status: 400 });
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    // Fallback — save as plain note without AI
+    const { data: keep } = await supabase.from('keeps').insert({
+      user_id: user.id, content: text, intent_type: 'general',
+      category: 'general', color: '#94a3b8', confidence: 0.5,
+      parsing_method: 'fallback', status: 'pending', show_on_brief: true,
+    }).select().single();
+    return NextResponse.json({ success: true, keep, fallback: true });
+  }
+
+  // ── Pull user context ──────────────────────────────────────────────────────
+  const today = new Date().toISOString().split('T')[0];
+  const in7 = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+
+  const [
+    { data: recentKeeps },
+    { data: upcomingReminders },
+    { data: activeSubs },
+    { data: upcomingTrips },
+    { data: profile },
+  ] = await Promise.all([
+    supabase.from('keeps').select('content, intent_type').eq('user_id', user.id).order('created_at', { ascending: false }).limit(8),
+    supabase.from('keeps').select('content, reminder_at').eq('user_id', user.id).eq('status', 'pending').not('reminder_at', 'is', null).gte('reminder_at', today).lte('reminder_at', in7).order('reminder_at').limit(5),
+    supabase.from('subscriptions').select('name, amount, currency, next_due, cycle').eq('user_id', user.id).eq('is_active', true).order('next_due').limit(10),
+    supabase.from('trip_plans').select('destination, start_date, end_date').eq('user_id', user.id).gte('start_date', today).order('start_date').limit(3),
+    supabase.from('profiles').select('full_name, persona_type, language_preference').eq('user_id', user.id).single(),
+  ]);
+
+  const ctx = [];
+  if (recentKeeps?.length) ctx.push(`Recent keeps: ${recentKeeps.slice(0, 5).map(k => k.content?.slice(0, 60)).join(' | ')}`);
+  if (upcomingReminders?.length) ctx.push(`Upcoming reminders: ${upcomingReminders.map(r => `"${r.content?.slice(0, 40)}" on ${r.reminder_at?.split('T')[0]}`).join(', ')}`);
+  if (activeSubs?.length) ctx.push(`Active subscriptions: ${activeSubs.map(s => `${s.name} (${s.currency} ${s.amount}, next due ${s.next_due})`).join(', ')}`);
+  if (upcomingTrips?.length) ctx.push(`Upcoming trips: ${upcomingTrips.map(t => `${t.destination} (${t.start_date} to ${t.end_date})`).join(', ')}`);
+
+  const systemPrompt = `You are QuietKeep's intent parser for ${profile?.full_name || 'a user'} (persona: ${profile?.persona_type || 'professional'}).
+Today: ${today}
+
+USER CONTEXT:
+${ctx.length ? ctx.join('\n') : 'No prior context.'}
+
+Parse the user input and return ONLY a JSON object — no explanation, no markdown:
+{
+  "content": "cleaned version of the keep text",
+  "intent_type": "task|reminder|note|expense|subscription|trip|mood|document|general",
+  "category": "work|personal|finance|health|family|travel|home|general",
+  "color": "#ef4444|#f59e0b|#22c55e|#6366f1|#94a3b8",
+  "reminder_at": "ISO datetime string in UTC or null",
+  "confidence": 0.0-1.0,
+  "parsing_method": "claude-context-aware"
+}
+Color guide: red=urgent, amber=caution, green=done, indigo=info, gray=default.
+For reminder_at: assume IST (UTC+5:30) for relative times. "tomorrow" = next day 9am IST.`;
+
   try {
-    const { text } = await req.json();
-    if (!text?.trim()) return NextResponse.json({ error:'No text' }, { status:400 });
-    const reminder_at = parseDateTime(text);
-    const { type: intent_type, confidence } = detectIntentType(text);
-    // Return parsed result only — dashboard does the insert
-    return NextResponse.json({ intent_type, confidence, reminder_at, parsed:true });
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: text }],
+      }),
+    });
+
+    if (!aiRes.ok) throw new Error(`Claude API ${aiRes.status}`);
+    const aiData = await aiRes.json();
+    const raw = aiData.content?.[0]?.text?.trim() || '';
+    const clean = raw.replace(/^```json|^```|```$/gm, '').trim();
+    const parsed = JSON.parse(clean);
+
+    const { data: keep, error: insertErr } = await supabase.from('keeps').insert({
+      user_id: user.id,
+      content: parsed.content || text,
+      intent_type: parsed.intent_type || 'general',
+      category: parsed.category || 'general',
+      color: parsed.color || '#94a3b8',
+      reminder_at: parsed.reminder_at || null,
+      confidence: parsed.confidence || 0.8,
+      parsing_method: 'claude-context-aware',
+      status: 'pending',
+      show_on_brief: true,
+    }).select().single();
+
+    if (insertErr) throw insertErr;
+    return NextResponse.json({ success: true, keep, parsed });
+
   } catch (err) {
     console.error('parse-intent error:', err);
-    return NextResponse.json({ error:'Parse failed' }, { status:500 });
+    // Graceful fallback — still save the keep
+    const { data: keep } = await supabase.from('keeps').insert({
+      user_id: user.id, content: text, intent_type: 'general',
+      category: 'general', color: '#94a3b8', confidence: 0.5,
+      parsing_method: 'fallback', status: 'pending', show_on_brief: true,
+    }).select().single();
+    return NextResponse.json({ success: true, keep, fallback: true });
   }
 }

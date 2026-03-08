@@ -291,7 +291,7 @@ export default function CalendarPage() {
         )}
 
         {/* Add Event Button */}
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '0.75rem 1rem', background: 'linear-gradient(transparent, #0f0f0f 40%)', paddingTop: '1.5rem' }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '0.75rem 1rem 7rem', background: 'linear-gradient(transparent, #0f0f0f 30%)', paddingTop: '1.5rem' }}>
           <button onClick={() => setShowAddModal(true)}
             style={{ width: '100%', maxWidth: 760, display: 'block', margin: '0 auto', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 12, padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer' }}>
             + Add Event / Reminder
@@ -301,4 +301,4 @@ export default function CalendarPage() {
       </div>
     </div>
   );
-              }
+}

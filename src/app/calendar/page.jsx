@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import NavbarClient from '@/components/NavbarClient';
+import AddEventModal from './AddEventModal';
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -12,7 +13,7 @@ const CALENDAR_TYPES = [
   { id: 'gregorian',  label: 'Gregorian',         emoji: '📅', dbType: 'gregorian' },
   { id: 'telugu',     label: 'Telugu Panchangam',  emoji: '🪔', dbType: 'telugu' },
   { id: 'hindi',      label: 'Hindi Vikram Samvat',emoji: '🌙', dbType: 'hindi' },
-  { id: 'islamic',    label: 'Islamic Hijri',      emoji: '☪️',  dbType: null },  // no data yet
+  { id: 'islamic',    label: 'Islamic Hijri',      emoji: '☪️',  dbType: 'islamic' },
   { id: 'christian',  label: 'Christian',          emoji: '✝️',  dbType: null },  // no data yet
   { id: 'tamil',      label: 'Tamil',              emoji: '🎭', dbType: 'tamil' },
 ];
@@ -35,6 +36,10 @@ export default function CalendarPage() {
   const [myEvents, setMyEvents] = useState([]);
   const [loadingDay, setLoadingDay] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [savingEvent, setSavingEvent] = useState(false);
+  const [eventMsg, setEventMsg] = useState('');
+  const EMPTY_EVENT_FORM = { event_name: '', event_date: '', calendar_type: selectedCal, event_type: 'personal', category: 'personal', is_annual: false, description: '', reminder_time: '09:00', timezone: 'Asia/Kolkata', tithi: '', nakshatra: '', traditional_month: '', hijri_month: '', hijri_day: '' };
+  const [eventForm, setEventForm] = useState(EMPTY_EVENT_FORM);
 
   const today = new Date();
   const todayISO = toISO(today.getFullYear(), today.getMonth(), today.getDate());
@@ -133,6 +138,65 @@ export default function CalendarPage() {
     for (let i = 0; i < firstDay; i++) cells.push(null);
     for (let d = 1; d <= lastDay; d++) cells.push(d);
     return cells;
+  }
+
+  const CATEGORIES = [
+    { id:'personal', label:'Personal', emoji:'⭐', color:'#f59e0b' },
+    { id:'festival', label:'Festival', emoji:'🎉', color:'#22c55e' },
+    { id:'reminder', label:'Reminder', emoji:'🔔', color:'#6366f1' },
+    { id:'birthday', label:'Birthday', emoji:'🎂', color:'#ec4899' },
+    { id:'anniversary', label:'Anniversary', emoji:'💍', color:'#8b5cf6' },
+    { id:'meeting', label:'Meeting', emoji:'🤝', color:'#3b82f6' },
+    { id:'health', label:'Health', emoji:'🏥', color:'#ef4444' },
+    { id:'travel', label:'Travel', emoji:'✈️', color:'#06b6d4' },
+  ];
+  const TIMEZONES = [
+    { value:'Asia/Kolkata', label:'IST — India' },
+    { value:'UTC', label:'UTC' },
+    { value:'America/New_York', label:'EST — New York' },
+    { value:'America/Los_Angeles', label:'PST — Los Angeles' },
+    { value:'Europe/London', label:'GMT — London' },
+    { value:'Asia/Dubai', label:'GST — Dubai' },
+  ];
+  const CALENDAR_TYPES_FOR_MODAL = [
+    { id:'gregorian', label:'Gregorian', emoji:'📅' },
+    { id:'telugu', label:'Telugu Panchangam', emoji:'🪔' },
+    { id:'hindi', label:'Hindi Vikram Samvat', emoji:'🌙' },
+    { id:'islamic', label:'Islamic Hijri', emoji:'☪️' },
+    { id:'tamil', label:'Tamil', emoji:'🎭' },
+  ];
+
+  async function saveEvent(correctedForm) {
+    setSavingEvent(true); setEventMsg('');
+    const payload = {
+      user_id: user.id,
+      event_name: correctedForm.event_name.trim(),
+      event_date: correctedForm.event_date,
+      event_type: correctedForm.event_type || 'personal',
+      calendar_type: correctedForm.calendar_type || 'gregorian',
+      is_personal_event: true,
+      is_annual: correctedForm.is_annual || false,
+      description: correctedForm.description || null,
+      reminder_time: correctedForm.reminder_time || null,
+      timezone: correctedForm.timezone || 'Asia/Kolkata',
+      tithi: correctedForm.tithi || null,
+      nakshatra: correctedForm.nakshatra || null,
+      traditional_month: correctedForm.traditional_month || null,
+      hijri_month: correctedForm.hijri_month || null,
+      hijri_day: correctedForm.hijri_day ? parseInt(correctedForm.hijri_day) : null,
+    };
+    const { error } = await supabase.from('calendar_events').insert(payload);
+    if (error) {
+      setEventMsg('Error: ' + error.message);
+      setSavingEvent(false);
+      return;
+    }
+    setEventMsg('Event saved!');
+    setShowAddModal(false);
+    setEventForm({ ...EMPTY_EVENT_FORM, event_date: correctedForm.event_date });
+    await loadMonthEvents();
+    setTimeout(() => setEventMsg(''), 3000);
+    setSavingEvent(false);
   }
 
   if (loading) return (
@@ -292,11 +356,24 @@ export default function CalendarPage() {
 
         {/* Add Event Button */}
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '0.75rem 1rem 7rem', background: 'linear-gradient(transparent, #0f0f0f 30%)', paddingTop: '1.5rem' }}>
-          <button onClick={() => setShowAddModal(true)}
+          {eventMsg && <div style={{ textAlign:'center', color:'#86efac', fontSize:'0.82rem', marginBottom:'0.5rem' }}>{eventMsg}</div>}
+          <button onClick={() => { setEventForm({ ...EMPTY_EVENT_FORM, event_date: selectedDate || new Date().toISOString().split('T')[0], calendar_type: selectedCal }); setShowAddModal(true); }}
             style={{ width: '100%', maxWidth: 760, display: 'block', margin: '0 auto', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 12, padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer' }}>
             + Add Event / Reminder
           </button>
         </div>
+
+        {showAddModal && (
+          <AddEventModal
+            form={eventForm}
+            setForm={setEventForm}
+            onSave={saveEvent}
+            onClose={() => setShowAddModal(false)}
+            categories={CATEGORIES}
+            timezones={TIMEZONES}
+            calendarTypes={CALENDAR_TYPES_FOR_MODAL}
+          />
+        )}
 
       </div>
     </div>

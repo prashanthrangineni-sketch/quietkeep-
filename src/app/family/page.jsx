@@ -1,12 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 export default function FamilyPage() {
   const [user, setUser] = useState(null);
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [email, setEmail] = useState('');
+  const [inviteeName, setInviteeName] = useState('');
   const [role, setRole] = useState('member');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -55,7 +57,7 @@ export default function FamilyPage() {
     setMsg({ text: '', type: 'success' });
     const { data, error } = await supabase
       .from('family_invites')
-      .insert({ owner_user_id: user.id, invitee_email: email.trim().toLowerCase(), role })
+      .insert({ owner_user_id: user.id, invitee_email: email.trim().toLowerCase(), invitee_name: inviteeName.trim() || null, role })
       .select()
       .single();
     if (error) {
@@ -67,6 +69,7 @@ export default function FamilyPage() {
     await navigator.clipboard.writeText(link).catch(() => {});
     setMsg({ text: `Invite link copied!\n${link}`, type: 'success' });
     setEmail('');
+    setInviteeName('');
     await loadInvites(user.id);
     setSending(false);
   }
@@ -110,6 +113,7 @@ export default function FamilyPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f172a', padding: '24px 16px 100px', fontFamily: 'system-ui,sans-serif' }}>
+      <NavbarClient />
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
         <div style={{ color: '#f1f5f9', fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Family Space</div>
@@ -139,6 +143,13 @@ export default function FamilyPage() {
         <div style={{ background: '#1e293b', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid #334155' }}>
           <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Invite a Family Member</div>
           <input
+            type="text"
+            placeholder="Their name (optional)"
+            value={inviteeName}
+            onChange={e => setInviteeName(e.target.value)}
+            style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: '10px 14px', color: '#f1f5f9', fontSize: 15, boxSizing: 'border-box', outline: 'none', marginBottom: 10 }}
+          />
+          <input
             type="email"
             placeholder="their@email.com"
             value={email}
@@ -153,6 +164,8 @@ export default function FamilyPage() {
             <option value="member">Member — can view & add keeps</option>
             <option value="viewer">Viewer — read only</option>
             <option value="admin">Admin — full access</option>
+            <option value="child">Child — limited access</option>
+            <option value="caregiver">Caregiver — care support</option>
           </select>
           <button
             onClick={sendInvite}
@@ -168,7 +181,7 @@ export default function FamilyPage() {
             {invites.map(inv => (
               <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #0f172a' }}>
                 <div>
-                  <div style={{ color: '#f1f5f9', fontSize: 14 }}>{inv.invitee_email}</div>
+                  <div style={{ color: '#f1f5f9', fontSize: 14 }}>{inv.invitee_name ? `${inv.invitee_name} (${inv.invitee_email})` : inv.invitee_email}</div>
                   <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
                     Expires {new Date(inv.expires_at).toLocaleDateString('en-IN')} · {inv.role}
                   </div>
@@ -191,7 +204,7 @@ export default function FamilyPage() {
             members.map(m => (
               <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #0f172a' }}>
                 <div>
-                  <div style={{ color: '#f1f5f9', fontSize: 14 }}>{m.member_email}</div>
+                  <div style={{ color: '#f1f5f9', fontSize: 14 }}>{m.member_name || m.member_email}</div>
                   <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
                     Joined {m.joined_at ? new Date(m.joined_at).toLocaleDateString('en-IN') : 'pending'} ·
                     <span style={{ background: '#1e3a5f', color: '#60a5fa', borderRadius: 4, padding: '1px 6px', fontSize: 11, marginLeft: 6 }}>{m.role}</span>
@@ -207,4 +220,4 @@ export default function FamilyPage() {
       </div>
     </div>
   );
-                    }
+            }

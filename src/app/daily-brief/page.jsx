@@ -15,6 +15,7 @@ export default function DailyBriefPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [loadingAI, setLoadingAI] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
+  const [weather, setWeather] = useState(null);
 
   useEffect(() => { init(); }, []);
 
@@ -22,6 +23,18 @@ export default function DailyBriefPage() {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
     if (user) await loadBrief(user.id);
+    // Fetch weather — OpenMeteo free API, no key needed
+    try {
+      const lat = 17.385, lon = 78.487; // Hyderabad default
+      const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&timezone=Asia/Kolkata`);
+      if (wRes.ok) {
+        const wData = await wRes.json();
+        const c = wData.current;
+        const code = c.weathercode;
+        const icon = code === 0 ? '☀️' : code <= 3 ? '⛅' : code <= 48 ? '🌫️' : code <= 67 ? '🌧️' : code <= 77 ? '❄️' : code <= 82 ? '🌦️' : '⛈️';
+        setWeather({ temp: Math.round(c.temperature_2m), icon, humidity: c.relative_humidity_2m, wind: Math.round(c.windspeed_10m) });
+      }
+    } catch { /* weather optional */ }
     setLoadingData(false);
   }
 
@@ -142,13 +155,23 @@ export default function DailyBriefPage() {
         <div style={{ marginBottom: 24 }}>
           <div style={{ color: '#f1f5f9', fontSize: 22, fontWeight: 700 }}>{greeting}{name ? `, ${name}` : ''} 👋</div>
           <div style={{ color: '#64748b', fontSize: 14, marginTop: 4 }}>{dateStr}</div>
+          {weather && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, background: '#1e293b', borderRadius: 10, padding: '8px 14px', border: '1px solid #334155' }}>
+              <span style={{ fontSize: 22 }}>{weather.icon}</span>
+              <div>
+                <span style={{ color: '#f1f5f9', fontWeight: 600, fontSize: 16 }}>{weather.temp}°C</span>
+                <span style={{ color: '#64748b', fontSize: 13, marginLeft: 10 }}>💧 {weather.humidity}% · 💨 {weather.wind} km/h</span>
+              </div>
+              <span style={{ color: '#475569', fontSize: 11, marginLeft: 'auto' }}>Hyderabad</span>
+            </div>
+          )}
         </div>
 
         {/* Today's Panchang — tithi / nakshatra */}
         {brief?.todayPanchang?.length > 0 && (() => {
           const p = brief.todayPanchang[0];
           const parts = [p.tithi && `${p.tithi} Tithi`, p.nakshatra && `${p.nakshatra} Nakshatra`, p.traditional_month && `${p.traditional_month} Masa`].filter(Boolean);
-      if (!parts.length) return null;
+          if (!parts.length) return null;
           return (
             <div style={{ background: '#1a1000', border: '1px solid #f59e0b33', borderRadius: 12, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 18 }}>🪔</span>

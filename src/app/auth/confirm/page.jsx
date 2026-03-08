@@ -38,7 +38,7 @@ export default function AuthConfirmPage() {
         if (token_hash) {
           const { error } = await supabase.auth.verifyOtp({
             token_hash,
-            type: type as any,
+            type: type,
           });
           if (error) { setStatus('Login failed: ' + error.message); return; }
           router.replace('/dashboard');

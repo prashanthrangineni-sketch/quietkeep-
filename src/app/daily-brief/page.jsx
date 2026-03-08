@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 // ─────────────────────────────────────────────────────────
 // FILE: src/app/daily-brief/page.jsx  |  BLOCK 1 of 2
@@ -43,13 +44,15 @@ export default function DailyBriefPage() {
       { data: trips },
       { data: nudges },
       { data: todayEvents },
+      { data: todayPanchang },
     ] = await Promise.all([
-      supabase.from('keeps').select('id,content,category,intent_type,color,reminder_at').eq('user_id', uid).eq('show_on_brief', true).eq('status', 'pending').order('created_at', { ascending: false }).limit(8),
-      supabase.from('keeps').select('id,content,reminder_at').eq('user_id', uid).eq('status', 'pending').not('reminder_at', 'is', null).gte('reminder_at', today).lte('reminder_at', in7).order('reminder_at').limit(5),
+      supabase.from('keeps').select('id,content,category,intent_type,color,reminder_at').eq('user_id', uid).eq('show_on_brief', true).eq('status', 'open').order('created_at', { ascending: false }).limit(8),
+      supabase.from('keeps').select('id,content,reminder_at').eq('user_id', uid).eq('status', 'open').not('reminder_at', 'is', null).gte('reminder_at', today).lte('reminder_at', in7).order('reminder_at').limit(5),
       supabase.from('subscriptions').select('name,amount,currency,next_due').eq('user_id', uid).eq('is_active', true).lte('next_due', in7).gte('next_due', today).order('next_due').limit(5),
       supabase.from('trip_plans').select('destination,start_date,end_date').eq('user_id', uid).gte('start_date', today).order('start_date').limit(3),
       supabase.rpc('get_unread_nudges', { p_limit: 3 }),
-      supabase.from('calendar_events').select('event_name,event_type').eq('event_date', today).eq('calendar_type', calType).eq('is_public_holiday', true).limit(3),
+      supabase.from('calendar_events').select('event_name,event_type,tithi,nakshatra,paksha,calendar_type').eq('event_date', today).in('event_type', ['festival','national_holiday','bank_holiday','other']).limit(6),
+      supabase.from('calendar_events').select('tithi,nakshatra,paksha,traditional_month,calendar_type').eq('event_date', today).eq('event_type', 'panchangam').limit(3),
     ]);
 
     setBrief({
@@ -59,6 +62,7 @@ export default function DailyBriefPage() {
       trips: trips || [],
       nudges: nudges || [],
       todayEvents: todayEvents || [],
+      todayPanchang: todayPanchang || [],
       profile,
     });
   }
@@ -74,6 +78,7 @@ export default function DailyBriefPage() {
         body: JSON.stringify({ brief }),
       });
       const data = await res.json();
+      if (data.error) throw new Error(data.error);
       setAiSummary(data.summary || 'Could not generate summary. Please try again.');
     } catch {
       setAiSummary('Error generating summary. Check your connection.');
@@ -130,6 +135,7 @@ export default function DailyBriefPage() {
 
   return (
     <div style={page}>
+      <NavbarClient />
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
         {/* Header */}
@@ -137,6 +143,19 @@ export default function DailyBriefPage() {
           <div style={{ color: '#f1f5f9', fontSize: 22, fontWeight: 700 }}>{greeting}{name ? `, ${name}` : ''} 👋</div>
           <div style={{ color: '#64748b', fontSize: 14, marginTop: 4 }}>{dateStr}</div>
         </div>
+
+        {/* Today's Panchang — tithi / nakshatra */}
+        {brief?.todayPanchang?.length > 0 && (() => {
+          const p = brief.todayPanchang[0];
+          const parts = [p.tithi && `${p.tithi} Tithi`, p.nakshatra && `${p.nakshatra} Nakshatra`, p.traditional_month && `${p.traditional_month} Masa`].filter(Boolean);
+      if (!parts.length) return null;
+          return (
+            <div style={{ background: '#1a1000', border: '1px solid #f59e0b33', borderRadius: 12, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 18 }}>🪔</span>
+              <div style={{ color: '#fcd34d', fontSize: 13 }}>{parts.join(' · ')}</div>
+            </div>
+          );
+        })()}
 
         {/* Today's holidays / festivals */}
         {brief?.todayEvents?.length > 0 && (

@@ -24,28 +24,17 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
-  // Public routes — always allow
-  const publicPaths = ['/', '/login', '/auth/callback'];
-  if (publicPaths.includes(pathname)) return supabaseResponse;
+  // Always allow through
+  const publicPaths = ['/', '/login', '/auth', '/onboarding'];
+  if (publicPaths.some(p => pathname.startsWith(p))) return supabaseResponse;
 
   // Not logged in — send to login
   if (!user) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Logged in but not onboarded — send to onboarding
-  // Skip this check if already on /onboarding to prevent redirect loop
-  if (pathname !== '/onboarding') {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('onboarding_done')
-      .eq('user_id', user.id)
-      .single();
-
-    if (profile && profile.onboarding_done === false) {
-      return NextResponse.redirect(new URL('/onboarding', request.url));
-    }
-  }
+  // NO DB POLL HERE — onboarding redirect removed from middleware
+  // Dashboard handles onboarding check client-side on first load
 
   return supabaseResponse;
 }

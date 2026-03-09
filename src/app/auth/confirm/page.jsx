@@ -1,8 +1,7 @@
 'use client';
-// FIX: Rewritten to handle all mobile/desktop scenarios robustly
-// Primary path: token_hash (stateless OTP — works everywhere)
-// Fallback: access_token in hash (implicit flow — iOS Mail)
-// Last resort: PKCE code (desktop only, same-browser session)
+// auth/confirm — fallback handler for old magic links still in inboxes
+// Primary login is now OTP (6-digit code) on /login — no email links sent anymore
+// This page handles: token_hash (old links), access_token in hash (iOS implicit), PKCE code (desktop same-browser)
 
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
@@ -21,18 +20,16 @@ export default function AuthConfirmPage() {
     async function verify() {
       try {
         const url = new URL(window.location.href);
-
-        // Parse both query string and hash fragment
         const hash = window.location.hash.replace(/^#/, '');
         const hashParams = new URLSearchParams(hash);
 
-        const token_hash = url.searchParams.get('token_hash') || hashParams.get('token_hash');
-        const type       = url.searchParams.get('type')       || hashParams.get('type') || 'magiclink';
-        const access_token  = hashParams.get('access_token');
+        const token_hash   = url.searchParams.get('token_hash') || hashParams.get('token_hash');
+        const type         = url.searchParams.get('type') || hashParams.get('type') || 'magiclink';
+        const access_token = hashParams.get('access_token');
         const refresh_token = hashParams.get('refresh_token');
-        const code       = url.searchParams.get('code');
+        const code         = url.searchParams.get('code');
 
-        // ── PATH 1: token_hash (OTP / magic link — PRIMARY, stateless, works on all devices) ──
+        // PATH 1: token_hash — stateless OTP, works on all devices
         if (token_hash) {
           const { error } = await supabase.auth.verifyOtp({ token_hash, type });
           if (!error) { router.replace('/dashboard'); return; }
@@ -40,7 +37,7 @@ export default function AuthConfirmPage() {
           return;
         }
 
-        // ── PATH 2: access_token in hash (implicit flow — some iOS Mail clients) ──
+        // PATH 2: access_token in hash — iOS Mail implicit flow
         if (access_token && refresh_token) {
           const { error } = await supabase.auth.setSession({ access_token, refresh_token });
           if (!error) { router.replace('/dashboard'); return; }
@@ -48,16 +45,15 @@ export default function AuthConfirmPage() {
           return;
         }
 
-        // ── PATH 3: PKCE code exchange (desktop browsers only — same browser session) ──
+        // PATH 3: PKCE code — desktop only, same-browser session required
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (!error) { router.replace('/dashboard'); return; }
-          // PKCE fails cross-browser — give a clear, friendly message instead of error
-          setStatus('This link was opened in a different browser. Please request a new magic link.');
+          setStatus('This link expired or was opened in a different browser. Use the sign-in page instead.');
           return;
         }
 
-        setStatus('Invalid login link. Please request a new one.');
+        setStatus('Invalid or expired link. Please sign in again.');
       } catch (err) {
         setStatus('Something went wrong: ' + (err?.message || String(err)));
       }

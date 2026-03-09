@@ -9,12 +9,14 @@ function getSupabase() {
   );
 }
 
+const OTP_LEN = 8; // Supabase free tier sends 8-digit OTP
+
 export default function LoginPage() {
-  const [email, setEmail]   = useState('');
-  const [step, setStep]     = useState<'email' | 'otp'>('email');
-  const [otp, setOtp]       = useState(['', '', '', '', '', '']);
+  const [email, setEmail]     = useState('');
+  const [step, setStep]       = useState<'email' | 'otp'>('email');
+  const [otp, setOtp]         = useState(Array(OTP_LEN).fill(''));
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError]     = useState('');
   const [countdown, setCountdown] = useState(0);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -24,7 +26,6 @@ export default function LoginPage() {
     return () => clearTimeout(t);
   }, [countdown]);
 
-  // ── STEP 1: send OTP code (NO emailRedirectTo = Supabase sends 6-digit code, not a link) ──
   async function sendOtp() {
     if (!email.trim()) return;
     setLoading(true);
@@ -32,9 +33,7 @@ export default function LoginPage() {
     const { error: err } = await getSupabase().auth.signInWithOtp({
       email: email.trim(),
       options: { shouldCreateUser: true },
-      // ⚠️ NO emailRedirectTo here — this is the ONLY line that matters
-      // With emailRedirectTo → Supabase sends a magic link
-      // Without emailRedirectTo → Supabase sends a 6-digit OTP code
+      // NO emailRedirectTo → Supabase sends OTP code, not a magic link
     });
     setLoading(false);
     if (err) { setError(err.message); return; }
@@ -43,10 +42,9 @@ export default function LoginPage() {
     setTimeout(() => refs.current[0]?.focus(), 120);
   }
 
-  // ── STEP 2: verify the 6-digit code ──
   async function verifyOtp(digits: string[]) {
     const code = digits.join('');
-    if (code.length !== 6) return;
+    if (code.length !== OTP_LEN) return;
     setLoading(true);
     setError('');
     const { error: err } = await getSupabase().auth.verifyOtp({
@@ -57,7 +55,7 @@ export default function LoginPage() {
     setLoading(false);
     if (err) {
       setError('Incorrect code. Please try again.');
-      setOtp(['', '', '', '', '', '']);
+      setOtp(Array(OTP_LEN).fill(''));
       setTimeout(() => refs.current[0]?.focus(), 100);
       return;
     }
@@ -65,8 +63,8 @@ export default function LoginPage() {
   }
 
   function handleDigit(i: number, val: string) {
-    // Handle paste of full 6-digit code
-    if (val.length === 6 && /^\d{6}$/.test(val)) {
+    // Handle paste of full OTP code
+    if (val.length === OTP_LEN && new RegExp(`^\\d{${OTP_LEN}}$`).test(val)) {
       const d = val.split('');
       setOtp(d);
       verifyOtp(d);
@@ -76,7 +74,7 @@ export default function LoginPage() {
     const next = [...otp];
     next[i] = digit;
     setOtp(next);
-    if (digit && i < 5) refs.current[i + 1]?.focus();
+    if (digit && i < OTP_LEN - 1) refs.current[i + 1]?.focus();
     if (next.every(d => d !== '')) verifyOtp(next);
   }
 
@@ -90,7 +88,7 @@ export default function LoginPage() {
     alignItems: 'center', justifyContent: 'center', padding: '16px',
   };
   const card: React.CSSProperties = {
-    width: '100%', maxWidth: '360px', background: '#12121a',
+    width: '100%', maxWidth: '400px', background: '#12121a',
     borderRadius: '20px', padding: '32px 24px',
   };
   const btnOn: React.CSSProperties = {
@@ -103,7 +101,6 @@ export default function LoginPage() {
     ...btnOn, background: '#2a2a3a', color: '#666', cursor: 'not-allowed',
   };
 
-  // ── Email screen ──
   if (step === 'email') return (
     <div style={wrap}>
       <div style={card}>
@@ -137,14 +134,15 @@ export default function LoginPage() {
     </div>
   );
 
-  // ── OTP screen ──
+  const filled = otp.join('').length;
+
   return (
     <div style={wrap}>
       <div style={{ ...card, textAlign: 'center' }}>
         <div style={{ fontSize: '40px', marginBottom: '10px' }}>📨</div>
         <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>Enter your code</div>
         <div style={{ fontSize: '13px', color: '#888', marginBottom: '24px', lineHeight: 1.6 }}>
-          6-digit code sent to<br />
+          {OTP_LEN}-digit code sent to<br />
           <strong style={{ color: '#c4b5fd' }}>{email}</strong>
         </div>
         {error && (
@@ -152,15 +150,15 @@ export default function LoginPage() {
             ⚠️ {error}
           </div>
         )}
-        {/* OTP boxes */}
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
+        {/* OTP boxes — 2 rows of 4 on mobile */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
           {otp.map((d, i) => (
             <input
               key={i}
               ref={el => { refs.current[i] = el; }}
               type="text"
               inputMode="numeric"
-              maxLength={6}
+              maxLength={OTP_LEN}
               value={d}
               onChange={e => handleDigit(i, e.target.value)}
               onKeyDown={e => handleKey(i, e)}
@@ -169,28 +167,28 @@ export default function LoginPage() {
                 background: d ? '#1e1e3e' : '#1e1e2e',
                 border: d ? '2px solid #6366f1' : '1px solid #333',
                 borderRadius: '10px', color: '#fff',
-                fontSize: '24px', fontWeight: 700, outline: 'none',
+                fontSize: '22px', fontWeight: 700, outline: 'none',
               }}
             />
           ))}
         </div>
         <button
           onClick={() => verifyOtp(otp)}
-          disabled={loading || otp.join('').length < 6}
-          style={otp.join('').length === 6 && !loading ? btnOn : btnOff}>
+          disabled={loading || filled < OTP_LEN}
+          style={filled === OTP_LEN && !loading ? btnOn : btnOff}>
           {loading ? 'Verifying…' : 'Verify & Sign In'}
         </button>
         <div style={{ marginTop: '16px', fontSize: '13px', color: '#555' }}>
           {countdown > 0
             ? <span>Resend in {countdown}s</span>
-            : <button onClick={() => { setError(''); setOtp(['','','','','','']); sendOtp(); }}
+            : <button onClick={() => { setError(''); setOtp(Array(OTP_LEN).fill('')); sendOtp(); }}
                 style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
                 Resend code
               </button>
           }
         </div>
         <div style={{ marginTop: '8px' }}>
-          <button onClick={() => { setStep('email'); setOtp(['','','','','','']); setError(''); }}
+          <button onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); }}
             style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '12px' }}>
             ← Use different email
           </button>
@@ -198,4 +196,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-}
+      }

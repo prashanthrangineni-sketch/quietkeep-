@@ -1,18 +1,27 @@
 // File: src/app/api/keep-assist/route.js
-// NEW FILE — Per-Keep AI Assistant API
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+// FIX 2: Auth via Bearer token (not cookies) + FIX 4: await cookies() removed entirely
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
+    // FIX 2+4: Read Bearer token from Authorization header — no cookies() needed
+    const authHeader = req.headers.get('Authorization') || '';
+    const accessToken = authHeader.replace('Bearer ', '').trim();
+    if (!accessToken) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Create a user-scoped Supabase client using the access token
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      { cookies: { get: (n) => cookieStore.get(n)?.value } }
+      { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
     );
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { keepId, content, intent_type, action } = await req.json();
     if (!content) return Response.json({ error: 'content required' }, { status: 400 });
@@ -30,8 +39,16 @@ export async function POST(req) {
     const prompt = actionPrompts[action] || actionPrompts.suggest;
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300, messages: [{ role: 'user', content: prompt }] }),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }],
+      }),
     });
 
     const aiData = await response.json();
@@ -40,11 +57,14 @@ export async function POST(req) {
     try { parsed = JSON.parse(raw.replace(/```json|```/g, '').trim()); }
     catch { parsed = [raw]; }
 
-    // If breakdown action — optionally create sub-keeps
+    // If breakdown action — create sub-keeps in DB
     if (action === 'breakdown' && keepId && Array.isArray(parsed)) {
       const subKeeps = parsed.map(text => ({
-        user_id: user.id, content: text, status: 'open',
-        intent_type: 'task', parent_id: keepId,
+        user_id: user.id,
+        content: text,
+        status: 'open',
+        intent_type: 'task',
+        parent_id: keepId,
       }));
       await supabase.from('keeps').insert(subKeeps);
     }
@@ -52,6 +72,6 @@ export async function POST(req) {
     return Response.json({ result: parsed, action });
   } catch (err) {
     console.error('[keep-assist]', err);
-    return Response.json({ error: String(err) }, { status: 500 });
+    return Response.json({ error: 'Internal error' }, { status: 500 });
   }
 }

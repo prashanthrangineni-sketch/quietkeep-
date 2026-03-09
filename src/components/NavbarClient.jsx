@@ -14,23 +14,25 @@ const PRIMARY_NAV = [
 ];
 
 // All pages in the "More" drawer (everything except PRIMARY_NAV)
+// SPRINT 2 ADDITIONS: /drive, /connectors, /audit added
 const MORE_PAGES = [
-  { href: '/reminders',  icon: '⏰', label: 'Reminders',         section: 'Daily'    },
-  { href: '/mood',       icon: '🌊', label: 'Mood Log',          section: 'Daily'    },
-  { href: '/voice',      icon: '🎙️', label: 'Voice History',    section: 'Daily'    },
-  { href: '/documents',  icon: '📄', label: 'Documents',         section: 'Life'     },
-  { href: '/trips',      icon: '✈️', label: 'Trip Plans',        section: 'Life'     },
-  { href: '/driving',    icon: '🚗', label: 'Driving Mode',      section: 'Life'     },
-  { href: '/family',     icon: '👨‍👩‍👧', label: 'Family',          section: 'People'   },
-  { href: '/kids',       icon: '👶', label: 'Kids',              section: 'People'   },
-  { href: '/health',     icon: '🏃', label: 'Health Log',         section: 'Wellness' },
-  { href: '/emergency',  icon: '🆘', label: 'Emergency',         section: 'People'   },
-  { href: '/sos',        icon: '📋', label: 'SOS History',       section: 'People'   },
-  { href: '/profile',    icon: '👤', label: 'Profile',           section: 'Settings' },
-  { href: '/settings',   icon: '⚙️', label: 'Settings',          section: 'Settings' },
+  { href: '/reminders',   icon: '⏰',  label: 'Reminders',      section: 'Daily'    },
+  { href: '/mood',        icon: '🌊',  label: 'Mood Log',       section: 'Daily'    },
+  { href: '/voice',       icon: '🎙️', label: 'Voice History',  section: 'Daily'    },
+  { href: '/documents',   icon: '📄',  label: 'Documents',      section: 'Life'     },
+  { href: '/trips',       icon: '✈️',  label: 'Trip Plans',     section: 'Life'     },
+  { href: '/driving',     icon: '🚗',  label: 'Driving Mode',   section: 'Life'     },
+  { href: '/drive',       icon: '🛣️', label: 'Drive UI',       section: 'Life'     },
+  { href: '/family',      icon: '👨‍👩‍👧', label: 'Family',        section: 'People'   },
+  { href: '/kids',        icon: '👶',  label: 'Kids',           section: 'People'   },
+  { href: '/health',      icon: '🏃',  label: 'Health Log',     section: 'Wellness' },
+  { href: '/emergency',   icon: '🆘',  label: 'Emergency',      section: 'People'   },
+  { href: '/sos',         icon: '📋',  label: 'SOS History',    section: 'People'   },
+  { href: '/connectors',  icon: '🔌',  label: 'Connectors',     section: 'Settings' },
+  { href: '/audit',       icon: '📊',  label: 'Activity Log',   section: 'Settings' },
+  { href: '/profile',     icon: '👤',  label: 'Profile',        section: 'Settings' },
+  { href: '/settings',    icon: '⚙️',  label: 'Settings',       section: 'Settings' },
 ];
-
-const SECTIONS = ['Daily', 'Life', 'People', 'Settings'];
 
 export default function NavbarClient() {
   const pathname = usePathname();
@@ -39,10 +41,6 @@ export default function NavbarClient() {
   // Determine if "More" drawer is active — any non-primary page
   const primaryPaths = PRIMARY_NAV.filter(n => n.href !== '/more').map(n => n.href);
   const isMoreActive = !primaryPaths.includes(pathname) && pathname !== '/';
-
-  // Show More drawer as a page-level overlay? No — integrate as sheet within nav.
-  // We use a simple approach: clicking "More" navigates to /more which renders the drawer inline.
-  // Actually simpler: render all nav in a 2-row layout.
 
   async function handleSignOut() {
     await supabase.auth.signOut();

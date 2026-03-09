@@ -59,7 +59,7 @@ export default function AuthConfirmPage() {
 
         setStatus('Invalid login link. Please request a new one.');
       } catch (err) {
-        setStatus('Something went wrong: ' + (err as Error).message);
+        setStatus('Something went wrong: ' + (err?.message || String(err)));
       }
     }
 

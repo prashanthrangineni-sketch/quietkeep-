@@ -1,45 +1,59 @@
-const CACHE_NAME = 'quietkeep-v2';
-const STATIC = ['/', '/dashboard', '/daily-brief', '/calendar', '/finance', '/driving', '/profile', '/settings', '/kids', '/family', '/documents'];
+// File: public/sw.js — NEW FILE — Service Worker for Web Push (Sprint 2, Step 13)
+const CACHE_NAME = 'quietkeep-v1';
+const STATIC = ['/', '/dashboard', '/login'];
 
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(STATIC).catch(() => {})));
-  self.skipWaiting();
+// Cache static pages on install
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC)).then(() => self.skipWaiting()));
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
-  self.clients.claim();
+self.addEventListener('activate', event => {
+  event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-  if (url.hostname.includes('supabase') || url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) return;
-  if (e.request.mode === 'navigate') {
-    e.respondWith(fetch(e.request).catch(() => caches.match('/dashboard')));
-    return;
-  }
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request).then(r => {
-      if (r.ok && e.request.method === 'GET') caches.open(CACHE_NAME).then(c => c.put(e.request, r.clone()));
-      return r;
-    }))
+// Fetch — network first, cache fallback
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });
 
-self.addEventListener('push', e => {
-  if (!e.data) return;
-  const d = e.data.json();
-  e.waitUntil(self.registration.showNotification(d.title || 'QuietKeep', {
-    body: d.body || 'New reminder',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
-    vibrate: [200, 100, 200],
-    data: { url: d.url || '/dashboard' },
-    actions: [{ action: 'open', title: 'View' }, { action: 'dismiss', title: 'Dismiss' }],
-  }));
+// Push notification handler
+self.addEventListener('push', event => {
+  let data = { title: 'QuietKeep', body: 'You have a reminder', icon: '/icon-192.png', url: '/dashboard' };
+  try { if (event.data) data = { ...data, ...event.data.json() }; } catch {}
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon || '/icon-192.png',
+      badge: '/icon-72.png',
+      tag: data.tag || 'quietkeep-reminder',
+      requireInteraction: data.persistent || false,
+      actions: data.actions || [],
+      data: { url: data.url || '/dashboard' },
+      vibrate: [200, 100, 200],
+    })
+  );
 });
 
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  if (e.action !== 'dismiss') e.waitUntil(clients.openWindow(e.notification.data?.url || '/dashboard'));
+// Notification click — open app or specific page
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/dashboard';
+  if (event.action === 'call' && event.notification.data?.phone) {
+    clients.openWindow(`tel:${event.notification.data.phone}`);
+    return;
+  }
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
 });

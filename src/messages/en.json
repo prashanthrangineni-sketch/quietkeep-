@@ -1,0 +1,42 @@
+{
+  "nav": {
+    "home": "Home",
+    "calendar": "Calendar",
+    "finance": "Finance",
+    "brief": "Brief",
+    "more": "More"
+  },
+  "dashboard": {
+    "title": "QuietKeep",
+    "addKeep": "What's on your mind?",
+    "save": "Save",
+    "aiAssist": "AI Assist",
+    "noKeeps": "No keeps yet. Add one above."
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "language": "Primary Language",
+    "theme": "Theme",
+    "voiceTone": "Voice Tone",
+    "save": "Save Settings",
+    "saving": "Saving…"
+  },
+  "drive": {
+    "title": "Drive Mode",
+    "maps": "Maps",
+    "music": "Music",
+    "contacts": "Contacts",
+    "readKeep": "Read Keep",
+    "sos": "SOS",
+    "home": "Dashboard",
+    "safety": "Keep eyes on road."
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "back": "Back"
+  }
+}

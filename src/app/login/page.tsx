@@ -20,15 +20,20 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     const supabase = getSupabase();
+
+    // FIX: Use signInWithOtp with shouldCreateUser + no PKCE
+    // This makes Supabase send token_hash in the URL instead of a PKCE code.
+    // token_hash is STATELESS — no code_verifier stored in localStorage.
+    // Works across any browser context: Gmail app, iOS Mail, Android Chrome.
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        // /auth/confirm is a CLIENT-SIDE page — works on iOS Safari/Mail
-        // /auth/callback is server-only and breaks on iOS due to PKCE cookie context loss
         emailRedirectTo: `${window.location.origin}/auth/confirm`,
         shouldCreateUser: true,
+        // Do NOT pass 'flowType: pkce' — let it default to implicit/OTP
       },
     });
+
     if (err) {
       setError(err.message);
     } else {

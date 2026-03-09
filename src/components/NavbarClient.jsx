@@ -23,6 +23,7 @@ const MORE_PAGES = [
   { href: '/driving',    icon: '🚗', label: 'Driving Mode',      section: 'Life'     },
   { href: '/family',     icon: '👨‍👩‍👧', label: 'Family',          section: 'People'   },
   { href: '/kids',       icon: '👶', label: 'Kids',              section: 'People'   },
+  { href: '/health',     icon: '🏃', label: 'Health Log',         section: 'Wellness' },
   { href: '/emergency',  icon: '🆘', label: 'Emergency',         section: 'People'   },
   { href: '/sos',        icon: '📋', label: 'SOS History',       section: 'People'   },
   { href: '/profile',    icon: '👤', label: 'Profile',           section: 'Settings' },

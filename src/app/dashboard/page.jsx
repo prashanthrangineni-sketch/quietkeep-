@@ -16,8 +16,6 @@ const STATE_COLOR = {
   open: '#22c55e', active: '#3b82f6', blocked: '#ef4444', deferred: '#f59e0b', closed: '#64748b',
 };
 
-// FIX: explicit am/pm time wins over keyword time (morning/evening)
-// e.g. "Monday morning at 11 am" → 11:00, not 09:00
 function parseDateTime(text) {
   const t = text.toLowerCase();
   const now = new Date();
@@ -42,7 +40,6 @@ function parseDateTime(text) {
   if (!date) { const nd = t.match(/(\d{1,2})[\/\-](\d{1,2})/); if (nd) { date = new Date(now.getFullYear(), parseInt(nd[2])-1, parseInt(nd[1])); if (date < now) date.setFullYear(date.getFullYear()+1); } }
   if (!date) return null;
   let hours = 9, minutes = 0;
-  // Explicit am/pm is FIRST priority — checked before any keyword fallback
   const ap = t.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
   if (ap) {
     hours = parseInt(ap[1]); minutes = ap[2] ? parseInt(ap[2]) : 0;
@@ -82,8 +79,7 @@ function getAISuggestions(text) {
   if (/email|send|reply|respond/.test(t)) suggestions.push({ icon: '📧', text: 'Add contact info', action: 'contact' });
   return suggestions.slice(0, 2);
 }
-
-function IntentCard({ intent, onUpdateState, onDelete }) {
+function IntentCard({ intent, onUpdateState, onDelete, accessToken }) {
   const [expanded, setExpanded] = useState(false);
   const emoji = TYPE_EMOJI[intent.intent_type] || '📝';
   const color = STATE_COLOR[intent.status] || '#22c55e';
@@ -91,7 +87,7 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
   return (
     <div style={{ backgroundColor: '#0f0f1a', border: '1px solid ' + (isClosed ? '#1a1a2e' : '#1e1e2e'), borderRadius: '12px', padding: '14px', opacity: isClosed ? 0.5 : 1 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-        <span style={{ fontSize: '18px', flexShrink: 0 }}>{emoji}</span>
+        <span style={{ fontSize: '18px', flexShrink: 0, paddingTop: '2px' }}>{emoji}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '14px', color: '#f1f5f9', lineHeight: '1.4', wordBreak: 'break-word', textDecoration: isClosed ? 'line-through' : 'none' }}>{intent.content}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
@@ -101,24 +97,54 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
             <span style={{ fontSize: '10px', color: '#1e293b' }}>{new Date(intent.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
           </div>
         </div>
-        <button onClick={() => setExpanded(!expanded)} style={{ background: 'none', border: 'none', color: '#334155', cursor: 'pointer', fontSize: '18px', flexShrink: 0, padding: '0 4px' }}>{expanded ? '▲' : '▼'}</button>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            background: 'none', border: 'none',
+            color: expanded ? '#6366f1' : '#475569',
+            cursor: 'pointer', flexShrink: 0,
+            width: '44px', height: '44px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '14px', borderRadius: '8px',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >{expanded ? '▲' : '▼'}</button>
       </div>
       {expanded && (
         <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {!isClosed && <button onClick={() => onUpdateState(intent.id, 'closed')} style={{ padding: '6px 12px', borderRadius: '7px', border: '1px solid #22c55e', backgroundColor: 'rgba(34,197,94,0.1)', color: '#22c55e', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}>✓ Done</button>}
-          {isClosed && <button onClick={() => onUpdateState(intent.id, 'open')} style={{ padding: '6px 12px', borderRadius: '7px', border: '1px solid #6366f1', backgroundColor: 'rgba(99,102,241,0.1)', color: '#a5b4fc', fontSize: '12px', cursor: 'pointer' }}>↩ Reopen</button>}
-          <button onClick={() => onDelete(intent.id)} style={{ padding: '6px 12px', borderRadius: '7px', border: '1px solid #ef444460', backgroundColor: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: '12px', cursor: 'pointer' }}>🗑 Delete</button>
+          {!isClosed && (
+            <button
+              onClick={() => onUpdateState(intent.id, 'closed')}
+              style={{ padding: '10px 16px', borderRadius: '7px', border: '1px solid #22c55e', backgroundColor: 'rgba(34,197,94,0.1)', color: '#22c55e', fontSize: '13px', cursor: 'pointer', fontWeight: '600', minHeight: '44px' }}
+            >✓ Done</button>
+          )}
+          {isClosed && (
+            <button
+              onClick={() => onUpdateState(intent.id, 'open')}
+              style={{ padding: '10px 16px', borderRadius: '7px', border: '1px solid #6366f1', backgroundColor: 'rgba(99,102,241,0.1)', color: '#a5b4fc', fontSize: '13px', cursor: 'pointer', minHeight: '44px' }}
+            >↩ Reopen</button>
+          )}
+          <button
+            onClick={() => onDelete(intent.id)}
+            style={{ padding: '10px 16px', borderRadius: '7px', border: '1px solid #ef444460', backgroundColor: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: '13px', cursor: 'pointer', minHeight: '44px' }}
+          >🗑 Delete</button>
         </div>
       )}
-      {/* ✨ NEW: AI Assist — shows only when expanded */}
-      {expanded && <KeepAIAssist keepId={intent.id} content={intent.content} intentType={intent.intent_type} />}
+      {expanded && (
+        <KeepAIAssist
+          keepId={intent.id}
+          content={intent.content}
+          intentType={intent.intent_type}
+          accessToken={accessToken}
+        />
+      )}
     </div>
   );
-}
-
+      }
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [accessToken, setAccessToken] = useState('');
   const [intents, setIntents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState('');
@@ -136,7 +162,7 @@ export default function Dashboard() {
   const [autoDetected, setAutoDetected] = useState(null);
   const recognitionRef = useRef(null);
   const textareaRef = useRef(null);
-  const savingRef = useRef(false); // synchronous double-save guard
+  const savingRef = useRef(false);
 
   useEffect(() => { setVoiceSupported('webkitSpeechRecognition' in window || 'SpeechRecognition' in window); }, []);
   useEffect(() => { if (content.length > 5) setSuggestions(getAISuggestions(content)); else setSuggestions([]); }, [content]);
@@ -167,7 +193,6 @@ export default function Dashboard() {
 
   function stopVoice() { recognitionRef.current?.stop(); setListening(false); }
 
-  // FIX: re-detects on every keystroke — not locked after first detection
   function handleContentChange(val) {
     setContent(val);
     if (val.length > 8) {
@@ -186,19 +211,19 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { router.replace('/login'); return; }
-      setUser(user);
-      loadIntents(user.id).finally(() => setLoading(false));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { router.replace('/login'); return; }
+      setUser(session.user);
+      setAccessToken(session.access_token);
+      loadIntents(session.user.id).finally(() => setLoading(false));
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') router.replace('/');
+      if (session?.access_token) setAccessToken(session.access_token);
     });
     return () => subscription.unsubscribe();
   }, [router, loadIntents]);
 
-  // FIX: savingRef guard prevents double-save; API response used to improve type/time
-  // but ONLY the single insert below creates the keep row (API is parse-only now)
   async function handleSave() {
     if (savingRef.current || !content.trim() || !user) return;
     savingRef.current = true;
@@ -206,7 +231,11 @@ export default function Dashboard() {
     let finalIntentType = assistMode;
     let finalRemindAt = remindAt;
     try {
-      const res = await fetch('/api/parse-intent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: content.trim(), user_id: user.id }) });
+      const res = await fetch('/api/parse-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify({ text: content.trim(), user_id: user.id }),
+      });
       if (res.ok) {
         const parsed = await res.json();
         if (assistMode === 'note' && parsed.intent_type && parsed.intent_type !== 'note') finalIntentType = parsed.intent_type;
@@ -243,6 +272,7 @@ export default function Dashboard() {
     showToast('Deleted');
     await loadIntents(user.id);
   }
+
   const openIntents = intents.filter(i => i.status !== 'closed');
   const closedIntents = intents.filter(i => i.status === 'closed');
 
@@ -262,7 +292,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
   return (
     <>
       <NavbarClient />
@@ -273,7 +302,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Sub-header: quick nav links — Family & Kids added */}
+        {/* Sub-header: quick nav links */}
         <div style={{ borderBottom: '1px solid #1e1e2e', padding: '10px 16px', backgroundColor: 'rgba(10,10,15,0.98)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontWeight: '700', fontSize: '14px', color: '#6366f1' }}>My Keeps</span>
@@ -293,6 +322,7 @@ export default function Dashboard() {
 
         <div style={{ maxWidth: '680px', margin: '0 auto', padding: '20px 16px' }}>
           <ContextCards userId={user?.id} />
+
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', marginBottom: '20px' }}>
             {[{ label: 'Open', value: openIntents.length, color: '#6366f1' },{ label: 'Done', value: closedIntents.length, color: '#22c55e' },{ label: 'Total', value: intents.length, color: '#94a3b8' }].map((s, i) => (
@@ -412,7 +442,13 @@ export default function Dashboard() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {displayIntents.map(intent => (
-                <IntentCard key={intent.id} intent={intent} onUpdateState={updateState} onDelete={handleDelete} />
+                <IntentCard
+                  key={intent.id}
+                  intent={intent}
+                  onUpdateState={updateState}
+                  onDelete={handleDelete}
+                  accessToken={accessToken}
+                />
               ))}
             </div>
           )}
@@ -422,4 +458,4 @@ export default function Dashboard() {
       </div>
     </>
   );
-      }
+}

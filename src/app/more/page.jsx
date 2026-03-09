@@ -27,6 +27,7 @@ export default function MorePage() {
     setShareMsg('WhatsApp opened with your brief link!');
   }
 
+  // SPRINT 2 ADDITIONS: Health, Drive UI, Connectors, Audit added
   const menuRows = [
     { icon: '📅', title: 'Calendar', sub: 'Multi-calendar & panchang', href: '/calendar' },
     { icon: '📋', title: 'Daily Brief', sub: 'AI-powered morning summary', href: '/daily-brief' },
@@ -36,10 +37,14 @@ export default function MorePage() {
     { icon: '🎤', title: 'Voice History', sub: 'Past voice inputs', href: '/voice' },
     { icon: '🆘', title: 'SOS Log', sub: 'Emergency event history', href: '/sos' },
     { icon: '🚗', title: 'Driving', sub: 'Trip logs & fuel tracking', href: '/driving' },
+    { icon: '🛣️', title: 'Drive Mode UI', sub: 'Big-button driving screen', href: '/drive' },
     { icon: '📄', title: 'Documents', sub: 'Store & track expiry', href: '/documents' },
     { icon: '👨‍👩‍👧', title: 'Family', sub: 'Shared family space & invites', href: '/family' },
     { icon: '👶', title: 'Kids', sub: 'Kids profiles & content', href: '/kids' },
+    { icon: '🏃', title: 'Health Log', sub: 'Daily health streak tracker', href: '/health' },
     { icon: '🚨', title: 'Emergency', sub: 'Contacts & SOS', href: '/emergency' },
+    { icon: '🔌', title: 'Connectors', sub: 'App deep-links & integrations', href: '/connectors' },
+    { icon: '📊', title: 'Activity Log', sub: 'Your full action history', href: '/audit' },
   ];
 
   return (

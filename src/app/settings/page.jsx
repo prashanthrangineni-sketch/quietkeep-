@@ -37,6 +37,13 @@ const PERSONAS = [
   { value: 'elderly', label: '👴 Elderly / Caregiver' },
 ];
 
+// SPRINT 2 ADDITION: Theme options
+const THEMES = [
+  { value: 'dark', label: '🌑 Dark (default)' },
+  { value: 'light', label: '☀️ Light' },
+  { value: 'amoled', label: '⚫ AMOLED (pure black)' },
+];
+
 export default function SettingsPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -66,9 +73,26 @@ export default function SettingsPage() {
   const [subscriptionAlerts, setSubscriptionAlerts] = useState(true);
   const [docExpiryAlerts, setDocExpiryAlerts] = useState(true);
 
+  // SPRINT 2 ADDITION: Theme preference
+  const [theme, setTheme] = useState('dark');
+
   useEffect(() => {
     loadAll();
   }, []);
+
+  // SPRINT 2 ADDITION: Apply theme to document root
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'amoled') {
+      root.setAttribute('data-theme', 'amoled');
+    } else if (theme === 'light') {
+      root.setAttribute('data-theme', 'light');
+    } else {
+      root.setAttribute('data-theme', 'dark');
+    }
+    // Persist theme choice in localStorage for instant load next visit
+    try { localStorage.setItem('qk_theme', theme); } catch {}
+  }, [theme]);
 
   async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -96,6 +120,13 @@ export default function SettingsPage() {
       setBudgetAlerts(notif.budget_alerts !== false);
       setSubscriptionAlerts(notif.subscription_alerts !== false);
       setDocExpiryAlerts(notif.doc_expiry_alerts !== false);
+      // SPRINT 2: Load theme from DB if saved, fall back to localStorage
+      const savedTheme = settingsRes.data.theme_preference || null;
+      if (savedTheme) {
+        setTheme(savedTheme);
+      } else {
+        try { const lt = localStorage.getItem('qk_theme'); if (lt) setTheme(lt); } catch {}
+      }
     }
 
     if (briefRes.data) {
@@ -127,6 +158,8 @@ export default function SettingsPage() {
         voice_language: voiceLanguage,
         voice_tone: voiceTone,
         voice_input_enabled: voiceEnabled,
+        // SPRINT 2: theme_preference saved alongside existing fields
+        theme_preference: theme,
         notification_settings: {
           email_reminders: emailReminders,
           budget_alerts: budgetAlerts,
@@ -152,7 +185,7 @@ export default function SettingsPage() {
       user_id: user.id,
       action: 'settings_updated',
       service: 'settings',
-      details: { voice_language: voiceLanguage, persona, brief_time: briefTime },
+      details: { voice_language: voiceLanguage, persona, brief_time: briefTime, theme },
     });
 
     setSaving(false);
@@ -245,6 +278,14 @@ export default function SettingsPage() {
           <Toggle label="Voice Input Enabled" desc="Allow voice capture on dashboard" value={voiceEnabled} onChange={setVoiceEnabled} />
         </Section>
 
+        {/* SPRINT 2 ADDITION: Appearance section */}
+        <Section title="Appearance">
+          <Select label="Theme" value={theme} onChange={setTheme} options={THEMES} />
+          <div style={{ color: '#555', fontSize: '0.78rem', marginTop: -8, marginBottom: 8 }}>
+            Theme applies instantly. AMOLED is best for OLED screens to save battery.
+          </div>
+        </Section>
+
         {/* Daily Brief */}
         <Section title="Daily Brief">
           <div style={{ marginBottom: '1rem' }}>
@@ -286,4 +327,4 @@ export default function SettingsPage() {
       </div>
     </div>
   );
-            }
+}

@@ -1,69 +1,46 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ============================================================
+   SPRINT 2 ADDITION — Append these lines to end of globals.css
+   DO NOT replace existing globals.css — paste below existing content
+   ============================================================ */
 
-:root {
-  --background: #0f0f11;
+/* Theme system — data-theme attribute on <html> */
+[data-theme="light"] {
+  --background: #f8f8fc;
+  --foreground: #1a1a2e;
+  --surface: #ffffff;
+  --surface-hover: #f0f0f8;
+  --border: #e0e0ec;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-dim: rgba(99, 102, 241, 0.12);
+  --muted: #888899;
+  --success: #16a34a;
+  --warning: #d97706;
+  --error: #dc2626;
+}
+
+[data-theme="amoled"] {
+  --background: #000000;
   --foreground: #e8e8ed;
-  --surface: #1a1a1f;
-  --surface-hover: #22222a;
-  --border: #2a2a35;
+  --surface: #0a0a0a;
+  --surface-hover: #111111;
+  --border: #1a1a1a;
   --accent: #7c6af7;
   --accent-hover: #6b59e8;
-  --accent-dim: rgba(124, 106, 247, 0.15);
-  --muted: #6b6b7b;
-  --success: #34d399;
-  --warning: #fbbf24;
-  --error: #f87171;
+  --accent-dim: rgba(124, 106, 247, 0.12);
+  --muted: #5a5a6a;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-
-body {
+/* Apply theme vars to body background and text for pages using var() */
+[data-theme="light"] body {
   background-color: var(--background);
   color: var(--foreground);
-  min-height: 100vh;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .glass {
-    background: rgba(26, 26, 31, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--border);
-  }
-
-  .glow-accent {
-    box-shadow: 0 0 20px rgba(124, 106, 247, 0.3);
-  }
-}
-
-::-webkit-scrollbar {
-  width: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--surface);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 2px;
-}
-
-::selection {
-  background: var(--accent-dim);
+[data-theme="amoled"] body {
+  background-color: #000000;
+  color: var(--foreground);
 }

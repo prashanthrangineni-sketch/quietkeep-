@@ -1,14 +1,53 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import NavbarClient from '@/components/NavbarClient';
+
+
+function LocationShare({ userId }) {
+  const [sharing, setSharing] = useState(false);
+  const [pos, setPos] = useState(null);
+  const [err, setErr] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  async function shareLocation() {
+    if (!navigator.geolocation) { setErr('Geolocation not supported on this device'); return; }
+    setSharing(true); setErr('');
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      setPos({ lat, lng });
+      const { createBrowserClient } = await import('@supabase/ssr');
+      const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+      await sb.from('family_members').update({
+        location_sharing: true, last_lat: lat, last_lng: lng,
+        last_location_at: new Date().toISOString(),
+      }).eq('owner_user_id', userId);
+      setSaved(true); setSharing(false);
+    }, (e) => { setErr('Location access denied or unavailable'); setSharing(false); });
+  }
+
+  return (
+    <div>
+      {pos && saved && (
+        <div style={{ background: '#0d2d1a', border: '1px solid #22c55e33', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: '#22c55e' }}>
+          ✓ Location shared — {pos.lat.toFixed(4)}, {pos.lng.toFixed(4)}
+          <a href={`https://maps.google.com/?q=${pos.lat},${pos.lng}`} target="_blank" rel="noreferrer" style={{ color: '#22c55e', marginLeft: 8, fontSize: 11 }}>Open in Maps ↗</a>
+        </div>
+      )}
+      {err && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 8 }}>{err}</div>}
+      <button onClick={shareLocation} disabled={sharing} style={{ padding: '9px 16px', background: sharing ? '#334155' : '#10b98122', border: '1px solid #10b98133', borderRadius: 8, color: '#10b981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+        {sharing ? '📍 Getting location…' : '📍 Share My Current Location'}
+      </button>
+      <div style={{ color: '#475569', fontSize: 11, marginTop: 6 }}>Your location is only shared when you tap this button — never automatically.</div>
+    </div>
+  );
+}
 
 export default function FamilyPage() {
   const [user, setUser] = useState(null);
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [email, setEmail] = useState('');
-  const [inviteeName, setInviteeName] = useState('');
   const [role, setRole] = useState('member');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -57,7 +96,7 @@ export default function FamilyPage() {
     setMsg({ text: '', type: 'success' });
     const { data, error } = await supabase
       .from('family_invites')
-      .insert({ owner_user_id: user.id, invitee_email: email.trim().toLowerCase(), invitee_name: inviteeName.trim() || null, role })
+      .insert({ owner_user_id: user.id, invitee_email: email.trim().toLowerCase(), role })
       .select()
       .single();
     if (error) {
@@ -69,7 +108,6 @@ export default function FamilyPage() {
     await navigator.clipboard.writeText(link).catch(() => {});
     setMsg({ text: `Invite link copied!\n${link}`, type: 'success' });
     setEmail('');
-    setInviteeName('');
     await loadInvites(user.id);
     setSending(false);
   }
@@ -113,7 +151,6 @@ export default function FamilyPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f172a', padding: '24px 16px 100px', fontFamily: 'system-ui,sans-serif' }}>
-      <NavbarClient />
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
         <div style={{ color: '#f1f5f9', fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Family Space</div>
@@ -143,13 +180,6 @@ export default function FamilyPage() {
         <div style={{ background: '#1e293b', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid #334155' }}>
           <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Invite a Family Member</div>
           <input
-            type="text"
-            placeholder="Their name (optional)"
-            value={inviteeName}
-            onChange={e => setInviteeName(e.target.value)}
-            style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: '10px 14px', color: '#f1f5f9', fontSize: 15, boxSizing: 'border-box', outline: 'none', marginBottom: 10 }}
-          />
-          <input
             type="email"
             placeholder="their@email.com"
             value={email}
@@ -164,8 +194,6 @@ export default function FamilyPage() {
             <option value="member">Member — can view & add keeps</option>
             <option value="viewer">Viewer — read only</option>
             <option value="admin">Admin — full access</option>
-            <option value="child">Child — limited access</option>
-            <option value="caregiver">Caregiver — care support</option>
           </select>
           <button
             onClick={sendInvite}
@@ -181,7 +209,7 @@ export default function FamilyPage() {
             {invites.map(inv => (
               <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #0f172a' }}>
                 <div>
-                  <div style={{ color: '#f1f5f9', fontSize: 14 }}>{inv.invitee_name ? `${inv.invitee_name} (${inv.invitee_email})` : inv.invitee_email}</div>
+                  <div style={{ color: '#f1f5f9', fontSize: 14 }}>{inv.invitee_email}</div>
                   <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
                     Expires {new Date(inv.expires_at).toLocaleDateString('en-IN')} · {inv.role}
                   </div>
@@ -204,7 +232,7 @@ export default function FamilyPage() {
             members.map(m => (
               <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #0f172a' }}>
                 <div>
-                  <div style={{ color: '#f1f5f9', fontSize: 14 }}>{m.member_name || m.member_email}</div>
+                  <div style={{ color: '#f1f5f9', fontSize: 14 }}>{m.member_email}</div>
                   <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
                     Joined {m.joined_at ? new Date(m.joined_at).toLocaleDateString('en-IN') : 'pending'} ·
                     <span style={{ background: '#1e3a5f', color: '#60a5fa', borderRadius: 4, padding: '1px 6px', fontSize: 11, marginLeft: 6 }}>{m.role}</span>
@@ -216,8 +244,16 @@ export default function FamilyPage() {
           )}
         </div>
 
+
+        {/* Location Sharing — NEW */}
+        <div style={{ background: '#1e293b', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid #334155' }}>
+          <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>📍 Location Sharing (Opt-in)</div>
+          <div style={{ color: '#64748b', fontSize: 13, marginBottom: 12 }}>Share your live location with family members. Each member controls their own sharing.</div>
+          <LocationShare userId={user?.id} />
+        </div>
+
         <div style={{ color: '#334155', fontSize: 12, textAlign: 'center' }}>Invite links expire in 72 hours · Members can be removed anytime</div>
       </div>
     </div>
   );
-            }
+                    }

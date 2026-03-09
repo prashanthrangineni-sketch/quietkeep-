@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import NavbarClient from '@/components/NavbarClient';
 import ContextCards from '@/components/ContextCards';
+import KeepAIAssist from '@/components/KeepAIAssist';
 
 const TYPE_EMOJI = {
   note: '📝', reminder: '⏰', contact: '📞', task: '✅',
@@ -109,6 +110,8 @@ function IntentCard({ intent, onUpdateState, onDelete }) {
           <button onClick={() => onDelete(intent.id)} style={{ padding: '6px 12px', borderRadius: '7px', border: '1px solid #ef444460', backgroundColor: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: '12px', cursor: 'pointer' }}>🗑 Delete</button>
         </div>
       )}
+      {/* ✨ NEW: AI Assist — shows only when expanded */}
+      {expanded && <KeepAIAssist keepId={intent.id} content={intent.content} intentType={intent.intent_type} />}
     </div>
   );
 }
@@ -239,7 +242,7 @@ export default function Dashboard() {
     await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_deleted', intent_id: id, service: 'dashboard', details: {} }).catch(() => {});
     showToast('Deleted');
     await loadIntents(user.id);
-          }
+  }
   const openIntents = intents.filter(i => i.status !== 'closed');
   const closedIntents = intents.filter(i => i.status === 'closed');
 
@@ -290,7 +293,6 @@ export default function Dashboard() {
 
         <div style={{ maxWidth: '680px', margin: '0 auto', padding: '20px 16px' }}>
           <ContextCards userId={user?.id} />
-
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', marginBottom: '20px' }}>
             {[{ label: 'Open', value: openIntents.length, color: '#6366f1' },{ label: 'Done', value: closedIntents.length, color: '#22c55e' },{ label: 'Total', value: intents.length, color: '#94a3b8' }].map((s, i) => (
@@ -420,4 +422,4 @@ export default function Dashboard() {
       </div>
     </>
   );
-                     }
+      }

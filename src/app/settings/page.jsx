@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import NavbarClient from '@/components/NavbarClient';
+import WebPushSetup from '@/components/WebPushSetup';
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -267,6 +268,7 @@ export default function SettingsPage() {
           <Toggle label="Budget Alerts" desc="Alert when you hit 80% of budget" value={budgetAlerts} onChange={setBudgetAlerts} />
           <Toggle label="Subscription Renewal Alerts" desc="Alert 3 days before renewal" value={subscriptionAlerts} onChange={setSubscriptionAlerts} />
           <Toggle label="Document Expiry Alerts" desc="Alert 30/60/90 days before expiry" value={docExpiryAlerts} onChange={setDocExpiryAlerts} />
+          <div style={{ marginTop: 12 }}><WebPushSetup /></div>
         </Section>
 
         {/* Save Button */}
@@ -284,4 +286,4 @@ export default function SettingsPage() {
       </div>
     </div>
   );
-}
+            }

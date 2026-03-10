@@ -66,7 +66,7 @@ export default function AuditPage() {
   const filtered = filter === 'all' ? logs : logs.filter(l => l.action === filter);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f1f5f9', fontFamily: 'system-ui,sans-serif', paddingBottom: 80 }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f1f5f9', fontFamily: 'system-ui,sans-serif', paddingBottom: 80, paddingTop: '96px' }}>
       <NavbarClient />
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px' }}>
 

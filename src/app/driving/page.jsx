@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import NavbarClient from '@/components/NavbarClient';
 import { supabase } from '@/lib/supabase';
 
 export default function DrivingPage() {
@@ -112,7 +113,9 @@ export default function DrivingPage() {
   if (loading) return <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', minHeight: '100vh', backgroundColor: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+    <>
+      <NavbarClient />
+      <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: '112px' }}>
       <div style={{ maxWidth: '500px', textAlign: 'center' }}>
         <h1 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '8px' }}>🚗 Ready to drive?</h1>
         
@@ -168,5 +171,6 @@ export default function DrivingPage() {
         </button>
       </div>
     </div>
+    </>
   );
 }

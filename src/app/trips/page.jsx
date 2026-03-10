@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 const STATUSES = ['planning', 'confirmed', 'completed', 'cancelled'];
 const STATUS_META = {
@@ -120,7 +121,9 @@ export default function TripsPage() {
   const upcoming = trips.filter(t => t.travel_date && new Date(t.travel_date) >= new Date() && t.status !== 'cancelled');
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0a0f0d', color:'#f0f0f5', fontFamily:"'DM Sans', -apple-system, sans-serif", paddingBottom:'80px' }}>
+    <>
+      <NavbarClient />
+      <div style={{ minHeight:'100vh', background:'#0a0f0d', color:'#f0f0f5', fontFamily:"'DM Sans', -apple-system, sans-serif", paddingBottom:'80px', paddingTop:'96px' }}>
 
       {/* Header */}
       <div style={{ background:'linear-gradient(135deg,#0a1209,#0d1a10)', borderBottom:'1px solid rgba(74,222,128,0.15)', padding:'20px 16px 16px' }}>
@@ -313,5 +316,6 @@ export default function TripsPage() {
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
       `}</style>
     </div>
+    </>
   );
-      }
+}

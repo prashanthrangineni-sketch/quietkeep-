@@ -8,16 +8,10 @@ const RECURRENCE = ['none', 'daily', 'weekly', 'monthly'];
 
 function fmt(ts) {
   if (!ts) return '—';
-  return new Date(ts).toLocaleString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+  return new Date(ts).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function isOverdue(ts) {
-  return ts && new Date(ts) < new Date();
-}
-
+function isOverdue(ts) { return ts && new Date(ts) < new Date(); }
 function isSoon(ts) {
   if (!ts) return false;
   const diff = new Date(ts) - new Date();
@@ -35,7 +29,7 @@ export default function RemindersPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState('active'); // active | all | done
+  const [filter, setFilter] = useState('active');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -45,55 +39,32 @@ export default function RemindersPage() {
 
   async function loadReminders(uid) {
     setLoading(true);
-    const { data } = await supabase
-      .from('reminders')
-      .select('*')
-      .eq('user_id', uid)
-      .order('scheduled_for', { ascending: true });
+    const { data } = await supabase.from('reminders').select('*').eq('user_id', uid).order('scheduled_for', { ascending: true });
     setReminders(data || []);
     setLoading(false);
   }
 
   function openAdd() {
     setEditItem(null);
-    // Default to 1 hour from now
     const d = new Date(Date.now() + 60 * 60 * 1000);
-    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-      .toISOString().slice(0, 16);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     setForm({ ...EMPTY_FORM, scheduled_for: local });
-    setError('');
-    setShowForm(true);
+    setError(''); setShowForm(true);
   }
 
   function openEdit(r) {
     setEditItem(r);
     const d = new Date(r.scheduled_for);
-    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-      .toISOString().slice(0, 16);
-    setForm({
-      reminder_text: r.reminder_text || '',
-      scheduled_for: local,
-      recurrence: r.recurrence || 'none',
-      is_active: r.is_active !== false,
-    });
-    setError('');
-    setShowForm(true);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setForm({ reminder_text: r.reminder_text || '', scheduled_for: local, recurrence: r.recurrence || 'none', is_active: r.is_active !== false });
+    setError(''); setShowForm(true);
   }
 
   async function saveReminder() {
     if (!form.reminder_text.trim()) return setError('Reminder text is required');
     if (!form.scheduled_for) return setError('Please set a date and time');
-    setSaving(true);
-    setError('');
-
-    const payload = {
-      user_id: user.id,
-      reminder_text: form.reminder_text.trim(),
-      scheduled_for: new Date(form.scheduled_for).toISOString(),
-      recurrence: form.recurrence === 'none' ? null : form.recurrence,
-      is_active: form.is_active,
-    };
-
+    setSaving(true); setError('');
+    const payload = { user_id: user.id, reminder_text: form.reminder_text.trim(), scheduled_for: new Date(form.scheduled_for).toISOString(), recurrence: form.recurrence === 'none' ? null : form.recurrence, is_active: form.is_active };
     if (!user) { setSaving(false); return setError('Not logged in. Please refresh.'); }
     let err;
     if (editItem) {
@@ -103,8 +74,7 @@ export default function RemindersPage() {
     }
     setSaving(false);
     if (err) { setError(err.message); return; }
-    setShowForm(false);
-    loadReminders(user.id);
+    setShowForm(false); loadReminders(user.id);
   }
 
   async function toggleActive(r) {
@@ -127,187 +97,180 @@ export default function RemindersPage() {
   const overdueCount = reminders.filter(r => r.is_active && isOverdue(r.scheduled_for)).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0d0a14', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
+    <div className="qk-page">
       <NavbarClient />
+      <div className="qk-container">
 
-      {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #0d0a18, #100d1a)', borderBottom: '1px solid rgba(251,191,36,0.15)', padding: '20px 16px 16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '22px' }}>⏰</span>
-              <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Reminders</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <span style={{ fontSize: 22 }}>⏰</span>
+              <h1 style={{ fontSize: 20, fontWeight: 800, color: '#e2e8f0', letterSpacing: '-0.02em' }}>Reminders</h1>
               {overdueCount > 0 && (
-                <span style={{ fontSize: '11px', background: 'rgba(248,113,113,0.25)', color: '#f87171', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>
-                  {overdueCount} overdue
-                </span>
+                <span className="qk-badge qk-badge-red">{overdueCount} overdue</span>
               )}
             </div>
-            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
-              {reminders.filter(r => r.is_active).length} active reminder{reminders.filter(r => r.is_active).length !== 1 ? 's' : ''}
+            <p style={{ fontSize: 13, color: '#475569' }}>
+              {reminders.filter(r => r.is_active).length} active
             </p>
           </div>
-          <button
-            onClick={openAdd}
-            style={{ padding: '9px 16px', background: 'rgba(251,191,36,0.2)', border: '1px solid rgba(251,191,36,0.4)', borderRadius: '10px', color: '#fbbf24', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            + Add
-          </button>
+          <button onClick={openAdd} className="qk-btn qk-btn-primary qk-btn-sm">+ Add</button>
         </div>
-      </div>
 
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: '6px', padding: '12px 16px' }}>
-        {[['active', 'Active'], ['all', 'All'], ['done', 'Inactive']].map(([val, lbl]) => (
-          <button key={val} onClick={() => setFilter(val)}
-            style={{
-              padding: '6px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 500,
-              background: filter === val ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.05)',
-              border: filter === val ? '1px solid rgba(251,191,36,0.4)' : '1px solid rgba(255,255,255,0.1)',
-              color: filter === val ? '#fbbf24' : 'rgba(255,255,255,0.5)',
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >{lbl}</button>
-        ))}
-      </div>
-      {/* Reminders list */}
-      <div style={{ padding: '0 16px' }}>
-        {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>Loading...</div>}
+        {/* Filter tabs */}
+        <div className="qk-tabs">
+          {[['active', 'Active'], ['all', 'All'], ['done', 'Inactive']].map(([val, lbl]) => (
+            <button key={val} onClick={() => setFilter(val)} className={`qk-tab${filter === val ? ' active' : ''}`}>{lbl}</button>
+          ))}
+        </div>
 
-        {!loading && filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '48px 20px', background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '16px' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>⏰</div>
-            <p style={{ margin: '0 0 6px', fontSize: '15px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>No reminders here</p>
-            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>Add a reminder to stay on track</p>
+        {/* List */}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+            <div className="qk-spinner" />
           </div>
         )}
 
-        {filtered.map(r => {
-          const overdue = r.is_active && isOverdue(r.scheduled_for);
-          const soon = r.is_active && isSoon(r.scheduled_for);
-          const borderColor = overdue ? '#f87171' : soon ? '#fbbf24' : r.is_active ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.06)';
-
-          return (
-            <div key={r.id} style={{
-              background: overdue ? 'rgba(248,113,113,0.07)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${borderColor}`,
-              borderLeft: `3px solid ${overdue ? '#f87171' : soon ? '#fbbf24' : r.is_active ? '#fbbf24' : 'rgba(255,255,255,0.15)'}`,
-              borderRadius: '12px', padding: '13px 14px', marginBottom: '8px',
-              opacity: r.is_active ? 1 : 0.55,
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, marginRight: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '5px' }}>
-                    {overdue && <span style={{ fontSize: '10px', color: '#f87171', background: 'rgba(248,113,113,0.15)', padding: '2px 7px', borderRadius: '8px', fontWeight: 600 }}>OVERDUE</span>}
-                    {soon && !overdue && <span style={{ fontSize: '10px', color: '#fbbf24', background: 'rgba(251,191,36,0.15)', padding: '2px 7px', borderRadius: '8px', fontWeight: 600 }}>SOON</span>}
-                    {r.recurrence && r.recurrence !== 'none' && (
-                      <span style={{ fontSize: '10px', color: '#60a5fa', background: 'rgba(96,165,250,0.12)', padding: '2px 7px', borderRadius: '8px' }}>🔁 {r.recurrence}</span>
-                    )}
-                  </div>
-                  <p style={{ margin: '0 0 5px', fontSize: '14px', fontWeight: 500, color: '#fff', lineHeight: '1.4' }}>
-                    {r.reminder_text}
-                  </p>
-                  <p style={{ margin: 0, fontSize: '12px', color: overdue ? '#f87171' : 'rgba(255,255,255,0.4)' }}>
-                    📅 {fmt(r.scheduled_for)}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                  {/* Toggle */}
-                  <button
-                    onClick={() => toggleActive(r)}
-                    style={{
-                      background: r.is_active ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.06)',
-                      border: r.is_active ? '1px solid rgba(251,191,36,0.3)' : '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '8px', padding: '6px 9px',
-                      color: r.is_active ? '#fbbf24' : 'rgba(255,255,255,0.35)',
-                      cursor: 'pointer', fontSize: '13px',
-                    }}
-                  >{r.is_active ? '✓' : '○'}</button>
-                  <button onClick={() => openEdit(r)}
-                    style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '8px', padding: '6px 9px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '12px' }}>
-                    ✏️
-                  </button>
-                  <button onClick={() => deleteReminder(r.id)}
-                    style={{ background: 'rgba(255,60,60,0.08)', border: 'none', borderRadius: '8px', padding: '6px 9px', color: 'rgba(255,80,80,0.6)', cursor: 'pointer', fontSize: '12px' }}>
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Form modal */}
-      {showForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'flex-end', zIndex: 100 }}
-          onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}>
-          <div style={{ background: '#141018', borderRadius: '20px 20px 0 0', padding: '20px 20px 36px', width: '100%', maxWidth: '480px', margin: '0 auto', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '85vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#fff' }}>{editItem ? 'Edit Reminder' : 'New Reminder'}</h3>
-              <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '20px', cursor: 'pointer' }}>✕</button>
-            </div>
-
-            <label style={{ display: 'block', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What to remind</span>
-              <textarea
-                value={form.reminder_text}
-                onChange={e => setForm(f => ({ ...f, reminder_text: e.target.value }))}
-                placeholder="e.g. Call the doctor, Pay electricity bill..."
-                rows={2}
-                style={{ display: 'block', width: '100%', marginTop: '6px', padding: '10px 12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff', fontSize: '14px', fontFamily: 'inherit', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
-              />
-            </label>
-
-            <label style={{ display: 'block', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date & Time</span>
-              <input
-                type="datetime-local"
-                value={form.scheduled_for}
-                onChange={e => setForm(f => ({ ...f, scheduled_for: e.target.value }))}
-                style={{ display: 'block', width: '100%', marginTop: '6px', padding: '10px 12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff', fontSize: '14px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', colorScheme: 'dark' }}
-              />
-            </label>
-
-            <label style={{ display: 'block', marginBottom: '16px' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Repeat</span>
-              <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
-                {RECURRENCE.map(r => (
-                  <button key={r} type="button" onClick={() => setForm(f => ({ ...f, recurrence: r }))}
-                    style={{
-                      padding: '6px 14px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit',
-                      background: form.recurrence === r ? 'rgba(96,165,250,0.2)' : 'rgba(255,255,255,0.05)',
-                      border: form.recurrence === r ? '1px solid rgba(96,165,250,0.5)' : '1px solid rgba(255,255,255,0.1)',
-                      color: form.recurrence === r ? '#60a5fa' : 'rgba(255,255,255,0.45)',
-                    }}
-                  >{r === 'none' ? 'No repeat' : r.charAt(0).toUpperCase() + r.slice(1)}</button>
-                ))}
-              </div>
-            </label>
-
-            {/* Active toggle */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', cursor: 'pointer' }}>
-              <div onClick={() => setForm(f => ({ ...f, is_active: !f.is_active }))}
-                style={{ width: '42px', height: '24px', borderRadius: '12px', background: form.is_active ? 'rgba(251,191,36,0.6)' : 'rgba(255,255,255,0.1)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
-                <div style={{ position: 'absolute', top: '3px', left: form.is_active ? '21px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }} />
-              </div>
-              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Active (send notification)</span>
-            </label>
-
-            {error && <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#f87171', background: 'rgba(248,113,113,0.1)', padding: '8px 12px', borderRadius: '8px' }}>{error}</p>}
-
-            <button onClick={saveReminder} disabled={saving}
-              style={{ width: '100%', padding: '13px', background: saving ? 'rgba(251,191,36,0.2)' : 'linear-gradient(135deg,rgba(251,191,36,0.4),rgba(217,119,6,0.4))', border: '1px solid rgba(251,191,36,0.4)', borderRadius: '12px', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
-              {saving ? 'Saving...' : editItem ? 'Save Changes' : 'Add Reminder'}
-            </button>
+        {!loading && filtered.length === 0 && (
+          <div className="qk-empty">
+            <div className="qk-empty-icon">⏰</div>
+            <div className="qk-empty-title">No reminders here</div>
+            <div className="qk-empty-sub">Add a reminder to stay on track</div>
           </div>
-        </div>
-      )}
+        )}
 
-      <style>{`
-        textarea::placeholder, input::placeholder { color: rgba(255,255,255,0.25); }
-        input[type="datetime-local"]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
-      `}</style>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtered.map(r => {
+            const overdue = r.is_active && isOverdue(r.scheduled_for);
+            const soon = r.is_active && isSoon(r.scheduled_for);
+            return (
+              <div key={r.id} className="qk-card" style={{
+                padding: '13px 14px',
+                opacity: r.is_active ? 1 : 0.55,
+                borderLeft: `3px solid ${overdue ? '#ef4444' : soon ? '#f59e0b' : r.is_active ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+                background: overdue ? 'rgba(239,68,68,0.06)' : undefined,
+                animation: 'qk-fade-in 0.2s ease forwards',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1, marginRight: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 5 }}>
+                      {overdue && <span className="qk-badge qk-badge-red">Overdue</span>}
+                      {soon && !overdue && <span className="qk-badge qk-badge-amber">Soon</span>}
+                      {r.recurrence && r.recurrence !== 'none' && (
+                        <span className="qk-badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.2)' }}>
+                          🔁 {r.recurrence}
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: '#e2e8f0', lineHeight: 1.4, marginBottom: 5 }}>{r.reminder_text}</p>
+                    <p style={{ fontSize: 12, color: overdue ? '#f87171' : '#475569' }}>📅 {fmt(r.scheduled_for)}</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    <button onClick={() => toggleActive(r)} className="qk-btn qk-btn-sm" style={{
+                      background: r.is_active ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.05)',
+                      border: `1px solid ${r.is_active ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                      color: r.is_active ? '#f59e0b' : '#475569',
+                      padding: '6px 9px',
+                    }}>{r.is_active ? '✓' : '○'}</button>
+                    <button onClick={() => openEdit(r)} className="qk-btn qk-btn-ghost qk-btn-sm" style={{ padding: '6px 9px' }}>✏️</button>
+                    <button onClick={() => deleteReminder(r.id)} className="qk-btn qk-btn-danger qk-btn-sm" style={{ padding: '6px 9px' }}>🗑️</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Form modal */}
+        {showForm && (
+          <div
+            className="qk-modal-overlay"
+            onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}
+          >
+            <div className="qk-modal-sheet">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: '#e2e8f0' }}>{editItem ? 'Edit Reminder' : 'New Reminder'}</h3>
+                <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: '#475569', fontSize: 20, cursor: 'pointer' }}>✕</button>
+              </div>
+
+              <label style={{ display: 'block', marginBottom: 14 }}>
+                <span style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em' }}>What to remind</span>
+                <textarea
+                  value={form.reminder_text}
+                  onChange={e => setForm(f => ({ ...f, reminder_text: e.target.value }))}
+                  placeholder="e.g. Call the doctor, Pay electricity bill…"
+                  rows={2}
+                  className="qk-input"
+                  style={{ marginTop: 8, resize: 'vertical' }}
+                />
+              </label>
+
+              <label style={{ display: 'block', marginBottom: 14 }}>
+                <span style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Date & Time</span>
+                <input
+                  type="datetime-local"
+                  value={form.scheduled_for}
+                  onChange={e => setForm(f => ({ ...f, scheduled_for: e.target.value }))}
+                  className="qk-input"
+                  style={{ marginTop: 8 }}
+                />
+              </label>
+
+              <label style={{ display: 'block', marginBottom: 16 }}>
+                <span style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Repeat</span>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                  {RECURRENCE.map(r => (
+                    <button key={r} type="button" onClick={() => setForm(f => ({ ...f, recurrence: r }))}
+                      className="qk-btn qk-btn-sm"
+                      style={{
+                        background: form.recurrence === r ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${form.recurrence === r ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                        color: form.recurrence === r ? '#93c5fd' : '#475569',
+                      }}
+                    >
+                      {r === 'none' ? 'No repeat' : r.charAt(0).toUpperCase() + r.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </label>
+
+              {/* Active toggle */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, cursor: 'pointer' }}>
+                <div
+                  onClick={() => setForm(f => ({ ...f, is_active: !f.is_active }))}
+                  style={{
+                    width: 42, height: 24, borderRadius: 12,
+                    background: form.is_active ? '#f59e0b' : 'rgba(255,255,255,0.1)',
+                    position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute', top: 3,
+                    left: form.is_active ? 21 : 3,
+                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                    transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                  }} />
+                </div>
+                <span style={{ fontSize: 13, color: '#64748b' }}>Active (send notification)</span>
+              </label>
+
+              {error && <p style={{ margin: '0 0 12px', fontSize: 12, color: '#f87171', background: 'rgba(239,68,68,0.08)', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>{error}</p>}
+
+              <button
+                onClick={saveReminder}
+                disabled={saving}
+                className="qk-btn qk-btn-primary"
+                style={{ width: '100%', justifyContent: 'center', padding: 14 }}
+              >
+                {saving ? 'Saving…' : editItem ? 'Save Changes' : 'Add Reminder'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <style>{`textarea::placeholder,input::placeholder{color:#475569}`}</style>
+      </div>
     </div>
   );
-        }
+}

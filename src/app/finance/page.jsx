@@ -93,7 +93,7 @@ export default function FinancePage() {
   const totalSubs = subscriptions.reduce((s, sub) => s + parseFloat(sub.amount || 0), 0);
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff' }}>
+    <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff', paddingTop:'96px', paddingBottom:'80px' }}>
       <NavbarClient />
       <div style={{ maxWidth:700, margin:'0 auto', padding:'1.5rem 1rem 4rem' }}>
 
@@ -245,4 +245,4 @@ export default function FinancePage() {
       </div>
     </div>
   );
-                                 }
+                                                                              }

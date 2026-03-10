@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import NavbarClient from '@/components/NavbarClient';
-import WebPushSetup from '@/components/WebPushSetup';
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,

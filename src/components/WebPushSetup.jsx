@@ -1,5 +1,4 @@
-// File: src/components/WebPushSetup.jsx — NEW FILE — Web Push registration (Sprint 2, Step 13)
-// Usage: import WebPushSetup from '@/components/WebPushSetup'; // add to settings page
+// File: src/components/WebPushSetup.jsx
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -14,58 +13,104 @@ export default function WebPushSetup() {
     else if (Notification.permission === 'denied') setStatus('denied');
   }, []);
 
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  }
+
   async function requestPermission() {
     if (!('Notification' in window)) { setStatus('unsupported'); return; }
     setStatus('requesting');
+    setErr('');
     try {
       const reg = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
       const perm = await Notification.requestPermission();
-      if (perm === 'granted') {
-        setStatus('granted');
-        // Save push subscription to DB (VAPID key needed for server push)
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from('user_settings').update({ push_enabled: true }).eq('user_id', user.id);
-        }
-        // Test notification
-        setTimeout(() => {
-          reg.showNotification('QuietKeep ✓', {
-            body: 'Push notifications are active! You\'ll be reminded on time.',
-            icon: '/icon-192.png', vibrate: [200, 100, 200],
-          });
-        }, 500);
-      } else { setStatus('denied'); }
-    } catch (e) { setErr(String(e)); setStatus('idle'); }
+      if (perm !== 'granted') { setStatus('denied'); return; }
+      setStatus('granted');
+
+      // Subscribe to push with VAPID public key
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidPublicKey) { setErr('VAPID key not configured'); return; }
+
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+
+      // Save subscription object + push_enabled to user_settings
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('user_settings').upsert({
+          user_id: user.id,
+          push_enabled: true,
+          push_subscription: subscription.toJSON(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      }
+    } catch (e) {
+      console.error('[WebPush]', e);
+      setErr(String(e));
+      setStatus('idle');
+    }
   }
 
-  if (status === 'unsupported') return (
-    <div style={{ background:'#1a1a1a', border:'1px solid #333', borderRadius:10, padding:'12px 14px', fontSize:'13px', color:'#64748b' }}>
-      ℹ️ Push notifications not supported on this browser. Try Chrome on Android.
-    </div>
-  );
+  async function disablePush() {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+      const sub = await reg?.pushManager?.getSubscription();
+      await sub?.unsubscribe();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('user_settings').upsert({
+          user_id: user.id,
+          push_enabled: false,
+          push_subscription: null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      }
+      setStatus('idle');
+    } catch (e) { setErr(String(e)); }
+  }
 
-  if (status === 'granted') return (
-    <div style={{ background:'#0d2d1a', border:'1px solid #22c55e33', borderRadius:10, padding:'12px 14px', fontSize:'13px', color:'#22c55e' }}>
-      ✓ Push notifications are active — you'll get reminded on time
+  const btnBase = { padding: '10px 20px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer', minHeight: '44px' };
+
+  if (status === 'unsupported') return (
+    <div style={{ fontSize: '12px', color: '#64748b', padding: '8px 12px', background: 'rgba(100,116,139,0.08)', borderRadius: '8px' }}>
+      Push notifications not supported on this browser.
     </div>
   );
 
   if (status === 'denied') return (
-    <div style={{ background:'#2d1a1a', border:'1px solid #ef444433', borderRadius:10, padding:'12px 14px', fontSize:'13px', color:'#ef4444' }}>
-      ✕ Notifications blocked. Go to browser settings → Site Settings → Notifications → Allow quietkeep.com
+    <div style={{ fontSize: '12px', color: '#f59e0b', padding: '8px 12px', background: 'rgba(245,158,11,0.08)', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.2)' }}>
+      Notifications blocked. Enable in browser settings → Site Settings → Notifications.
+    </div>
+  );
+
+  if (status === 'granted') return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: err ? '8px' : 0 }}>
+        <span style={{ fontSize: '13px', color: '#22c55e' }}>✓ Push notifications active</span>
+        <button onClick={disablePush} style={{ ...btnBase, background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '6px 12px' }}>
+          Disable
+        </button>
+      </div>
+      {err && <div style={{ fontSize: '11px', color: '#ef4444' }}>{err}</div>}
     </div>
   );
 
   return (
-    <div style={{ background:'#1a1a2e', border:'1px solid #6366f130', borderRadius:10, padding:'14px' }}>
-      <div style={{ fontSize:'13px', color:'#94a3b8', marginBottom:'10px' }}>
-        🔔 Enable push notifications to get reminders even when the app is closed
-      </div>
-      {err && <div style={{ color:'#ef4444', fontSize:'12px', marginBottom:'8px' }}>{err}</div>}
-      <button onClick={requestPermission} disabled={status==='requesting'} style={{ padding:'8px 16px', borderRadius:8, border:'none', background:'#6366f1', color:'#fff', fontSize:'13px', fontWeight:600, cursor:'pointer', opacity: status==='requesting' ? 0.7 : 1 }}>
-        {status === 'requesting' ? 'Requesting…' : '🔔 Enable Notifications'}
+    <div>
+      <button
+        onClick={requestPermission}
+        disabled={status === 'requesting'}
+        style={{ ...btnBase, background: status === 'requesting' ? 'rgba(99,102,241,0.3)' : '#6366f1', color: '#fff' }}
+      >
+        {status === 'requesting' ? 'Enabling...' : '🔔 Enable Push Notifications'}
       </button>
+      {err && <div style={{ fontSize: '11px', color: '#ef4444', marginTop: '6px' }}>{err}</div>}
     </div>
   );
 }

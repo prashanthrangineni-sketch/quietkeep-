@@ -1,7 +1,7 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata = {
   title: 'QuietKeep — Your Personal Intelligence OS',
@@ -35,7 +35,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-title" content="QuietKeep" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className={inter.className} style={{ margin: 0, padding: 0, backgroundColor: '#0a0a0f' }}>
+      <body className={inter.className} style={{ margin: 0, padding: 0, backgroundColor: '#0b0f19' }}>
         {children}
         <script dangerouslySetInnerHTML={{
           __html: `

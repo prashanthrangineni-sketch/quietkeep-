@@ -12,6 +12,7 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.1",
     "framer-motion": "^11.0.0",
+    "razorpay": "^2.9.2",
     "next": "^15.2.3",
     "next-intl": "^3.26.0",
     "react": "18.2.0",

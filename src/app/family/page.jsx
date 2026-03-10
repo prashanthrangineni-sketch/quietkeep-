@@ -41,7 +41,6 @@ function LocationShare({ userId }) {
       </button>
       <div style={{ color: '#475569', fontSize: 11, marginTop: 6 }}>Your location is only shared when you tap this button — never automatically.</div>
     </div>
-    </>
   );
 }
 

@@ -1,7 +1,9 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 
+// OTP client — PKCE mode, for normal OTP login
 function getSupabase() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,26 +11,34 @@ function getSupabase() {
   );
 }
 
-const OTP_LEN = 8; // Supabase free tier sends 8-digit OTP
+// Password client — plain JS client, NO PKCE, required for signInWithPassword
+function getPasswordClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { flowType: 'implicit', persistSession: true, autoRefreshToken: true } }
+  );
+}
+
+const OTP_LEN = 8;
 
 // ─── BETA TEST BYPASS ────────────────────────────────────────────────────────
-// These accounts use password login instead of OTP.
-// Bypass code: type 00000000 in the OTP boxes (eight zeros).
-// To add more testers: create user in Supabase Auth dashboard, set password,
-// add entry here as 'email': 'password'
+// These accounts skip OTP entirely and use password login.
+// Bypass code: type 00000000 (eight zeros) in the OTP boxes.
+// To add more testers: create user in Supabase Auth dashboard → set password → add entry here.
 const BETA_ACCOUNTS: Record<string, string> = {
   'beta@quietkeep.com': 'BetaQK@2026',
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
-  const [email, setEmail]     = useState('');
-  const [step, setStep]       = useState<'email' | 'otp'>('email');
-  const [otp, setOtp]         = useState(Array(OTP_LEN).fill(''));
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  const [email, setEmail]         = useState('');
+  const [step, setStep]           = useState<'email' | 'otp'>('email');
+  const [otp, setOtp]             = useState(Array(OTP_LEN).fill(''));
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState('');
   const [countdown, setCountdown] = useState(0);
-  const [isBetaAccount, setIsBetaAccount] = useState(false);
+  const [isBeta, setIsBeta]       = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -39,23 +49,21 @@ export default function LoginPage() {
 
   async function sendOtp() {
     if (!email.trim()) return;
+    const norm = email.trim().toLowerCase();
     setLoading(true);
     setError('');
 
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // Check if this is a beta/test account
-    if (BETA_ACCOUNTS[normalizedEmail]) {
-      setIsBetaAccount(true);
+    if (BETA_ACCOUNTS[norm]) {
+      setIsBeta(true);
       setLoading(false);
       setStep('otp');
       setTimeout(() => refs.current[0]?.focus(), 120);
       return;
     }
 
-    setIsBetaAccount(false);
+    setIsBeta(false);
     const { error: err } = await getSupabase().auth.signInWithOtp({
-      email: email.trim(),
+      email: norm,
       options: { shouldCreateUser: true },
     });
     setLoading(false);
@@ -71,29 +79,42 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const norm = email.trim().toLowerCase();
 
-    // ── BETA BYPASS: eight zeros = password login ──────────────────────────
-    if (BETA_ACCOUNTS[normalizedEmail] && code === '00000000') {
-      const { error: err } = await getSupabase().auth.signInWithPassword({
-        email: normalizedEmail,
-        password: BETA_ACCOUNTS[normalizedEmail],
-      });
-      setLoading(false);
-      if (err) {
-        setError('Beta login failed: ' + err.message);
+    // ── Beta bypass: eight zeros → password login ─────────────────────────
+    if (BETA_ACCOUNTS[norm] && code === '00000000') {
+      try {
+        // Use plain supabase-js client — bypasses PKCE which breaks signInWithPassword
+        const { data, error: err } = await getPasswordClient().auth.signInWithPassword({
+          email: norm,
+          password: BETA_ACCOUNTS[norm],
+        });
+        if (err) throw err;
+
+        // Sync session into SSR cookie store so middleware sees it
+        if (data?.session) {
+          await getSupabase().auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+        }
+
+        setLoading(false);
+        window.location.href = '/dashboard';
+        return;
+      } catch (e: any) {
+        setLoading(false);
+        setError('Beta login failed: ' + (e?.message || String(e)));
         setOtp(Array(OTP_LEN).fill(''));
         setTimeout(() => refs.current[0]?.focus(), 100);
         return;
       }
-      window.location.href = '/dashboard';
-      return;
     }
     // ─────────────────────────────────────────────────────────────────────
 
     // Normal OTP verify
     const { error: err } = await getSupabase().auth.verifyOtp({
-      email: email.trim(),
+      email: norm,
       token: code,
       type: 'email',
     });
@@ -183,12 +204,12 @@ export default function LoginPage() {
   return (
     <div style={wrap}>
       <div style={{ ...card, textAlign: 'center' }}>
-        <div style={{ fontSize: '40px', marginBottom: '10px' }}>{isBetaAccount ? '🔑' : '📨'}</div>
+        <div style={{ fontSize: '40px', marginBottom: '10px' }}>{isBeta ? '🔑' : '📨'}</div>
         <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>
-          {isBetaAccount ? 'Beta Access' : 'Enter your code'}
+          {isBeta ? 'Beta Access' : 'Enter your code'}
         </div>
         <div style={{ fontSize: '13px', color: '#888', marginBottom: '24px', lineHeight: 1.6 }}>
-          {isBetaAccount ? (
+          {isBeta ? (
             <>Beta account detected.<br />
             <strong style={{ color: '#c4b5fd' }}>Type 00000000 (eight zeros)</strong><br />
             to sign in instantly.</>
@@ -229,7 +250,7 @@ export default function LoginPage() {
           style={filled === OTP_LEN && !loading ? btnOn : btnOff}>
           {loading ? 'Verifying…' : 'Verify & Sign In'}
         </button>
-        {!isBetaAccount && (
+        {!isBeta && (
           <div style={{ marginTop: '16px', fontSize: '13px', color: '#555' }}>
             {countdown > 0
               ? <span>Resend in {countdown}s</span>
@@ -241,7 +262,7 @@ export default function LoginPage() {
           </div>
         )}
         <div style={{ marginTop: '8px' }}>
-          <button onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); setIsBetaAccount(false); }}
+          <button onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); setIsBeta(false); }}
             style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '12px' }}>
             ← Use different email
           </button>
@@ -249,4 +270,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-            }
+          }

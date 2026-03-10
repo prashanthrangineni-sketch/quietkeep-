@@ -561,6 +561,7 @@ export default function EmergencyPage() {
         input:focus { border-color: rgba(255,80,80,0.4) !important; box-shadow: 0 0 0 3px rgba(255,60,60,0.1); }
       `}</style>
     </div>
+    </>
   );
 }
 
@@ -656,6 +657,5 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
         </a>
       )}
     </div>
-    </>
   );
 }

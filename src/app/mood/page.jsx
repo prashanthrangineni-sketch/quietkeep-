@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 const MOODS = [
   { value: 5, emoji: '😄', label: 'Great', color: '#4ade80' },
@@ -95,7 +96,9 @@ export default function MoodPage() {
   const avg = week.length ? (week.reduce((s,l) => s+l.mood, 0) / week.length).toFixed(1) : null;
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0d0d16', color:'#f0f0f5', fontFamily:"'DM Sans', -apple-system, sans-serif", paddingBottom:'80px' }}>
+    <>
+      <NavbarClient />
+      <div style={{ minHeight:'100vh', background:'#0d0d16', color:'#f0f0f5', fontFamily:"'DM Sans', -apple-system, sans-serif", paddingBottom:'80px', paddingTop:'96px' }}>
 
       {/* Header */}
       <div style={{ background:'linear-gradient(135deg,#0d0a1a,#0a0d16)', borderBottom:'1px solid rgba(167,139,250,0.15)', padding:'20px 16px 16px' }}>
@@ -243,5 +246,6 @@ export default function MoodPage() {
         textarea:focus { border-color: rgba(167,139,250,0.4) !important; }
       `}</style>
     </div>
+    </>
   );
-}
+                      }

@@ -143,7 +143,7 @@ export default function SubscriptionPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f1f5f9', paddingBottom: '100px' }}>
+      <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f1f5f9', paddingBottom: '80px', paddingTop: '96px' }}>
         {toast && (
           <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', background: '#1e1e2e', border: '1px solid #6366f1', borderRadius: '10px', padding: '10px 20px', color: '#f1f5f9', fontSize: '14px', zIndex: 9999 }}>
             {toast}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 function fmt(ts) {
   if (!ts) return '—';
@@ -55,7 +56,9 @@ export default function SOSPage() {
   const resolved = events.filter(e => e.resolved_at);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0a0a', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
+    <>
+      <NavbarClient />
+      <div style={{ minHeight: '100vh', background: '#0f0a0a', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
 
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #160a0a, #100a14)', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>
@@ -106,6 +109,7 @@ export default function SOSPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -182,4 +186,4 @@ function SOSCard({ event: e, onResolve, resolving, resolved }) {
       )}
     </div>
   );
-      }
+}

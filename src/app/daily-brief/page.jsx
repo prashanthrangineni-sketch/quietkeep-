@@ -3,11 +3,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import NavbarClient from '@/components/NavbarClient';
 
-// ─────────────────────────────────────────────────────────
-// FILE: src/app/daily-brief/page.jsx  |  BLOCK 1 of 2
-// Paste this block first, then paste BLOCK 2 immediately after
-// ─────────────────────────────────────────────────────────
-
 export default function DailyBriefPage() {
   const [user, setUser] = useState(null);
   const [brief, setBrief] = useState(null);
@@ -23,9 +18,8 @@ export default function DailyBriefPage() {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
     if (user) await loadBrief(user.id);
-    // Fetch weather — OpenMeteo free API, no key needed
     try {
-      const lat = 17.385, lon = 78.487; // Hyderabad default
+      const lat = 17.385, lon = 78.487;
       const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&timezone=Asia/Kolkata`);
       if (wRes.ok) {
         const wData = await wRes.json();
@@ -41,23 +35,13 @@ export default function DailyBriefPage() {
   async function loadBrief(uid) {
     const today = new Date().toISOString().split('T')[0];
     const in7 = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
-
-    const [
-      { data: profile },
-    ] = await Promise.all([
+    const [{ data: profile }] = await Promise.all([
       supabase.from('profiles').select('full_name, persona_type, selected_calendar, user_state').eq('user_id', uid).single(),
     ]);
-
     const calType = profile?.selected_calendar || 'gregorian';
-
     const [
-      { data: keeps },
-      { data: reminders },
-      { data: subs },
-      { data: trips },
-      { data: nudges },
-      { data: todayEvents },
-      { data: todayPanchang },
+      { data: keeps }, { data: reminders }, { data: subs },
+      { data: trips }, { data: nudges }, { data: todayEvents }, { data: todayPanchang },
     ] = await Promise.all([
       supabase.from('keeps').select('id,content,category,intent_type,color,reminder_at').eq('user_id', uid).eq('show_on_brief', true).eq('status', 'open').order('created_at', { ascending: false }).limit(8),
       supabase.from('keeps').select('id,content,reminder_at').eq('user_id', uid).eq('status', 'open').not('reminder_at', 'is', null).gte('reminder_at', today).lte('reminder_at', in7).order('reminder_at').limit(5),
@@ -67,35 +51,18 @@ export default function DailyBriefPage() {
       supabase.from('calendar_events').select('event_name,event_type,tithi,nakshatra,paksha,calendar_type').eq('event_date', today).in('event_type', ['festival','national_holiday','bank_holiday','other']).limit(6),
       supabase.from('calendar_events').select('tithi,nakshatra,paksha,traditional_month,calendar_type').eq('event_date', today).eq('event_type', 'panchangam').limit(3),
     ]);
-
-    setBrief({
-      keeps: keeps || [],
-      reminders: reminders || [],
-      subs: subs || [],
-      trips: trips || [],
-      nudges: nudges || [],
-      todayEvents: todayEvents || [],
-      todayPanchang: todayPanchang || [],
-      profile,
-    });
+    setBrief({ keeps: keeps || [], reminders: reminders || [], subs: subs || [], trips: trips || [], nudges: nudges || [], todayEvents: todayEvents || [], todayPanchang: todayPanchang || [], profile });
   }
 
   async function generateAISummary() {
     if (!brief) return;
-    setLoadingAI(true);
-    setAiSummary('');
+    setLoadingAI(true); setAiSummary('');
     try {
-      const res = await fetch('/api/daily-brief-summary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brief }),
-      });
+      const res = await fetch('/api/daily-brief-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brief }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setAiSummary(data.summary || 'Could not generate summary. Please try again.');
-    } catch {
-      setAiSummary('Error generating summary. Check your connection.');
-    }
+    } catch { setAiSummary('Error generating summary. Check your connection.'); }
     setLoadingAI(false);
   }
 
@@ -126,8 +93,8 @@ export default function DailyBriefPage() {
   }
 
   if (loadingData) return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui,sans-serif' }}>
-      <div style={{ color: '#64748b', fontSize: 15 }}>Loading your brief...</div>
+    <div style={{ minHeight: '100dvh', background: '#0b0f19', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="qk-spinner" />
     </div>
   );
 
@@ -137,177 +104,165 @@ export default function DailyBriefPage() {
   const dateStr = today.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const name = brief?.profile?.full_name?.split(' ')[0] || '';
 
-  // ── Styles (shared across both blocks) ──────────────────────────────────────
-  const page = { minHeight: '100vh', background: '#0f172a', padding: '24px 16px 80px', fontFamily: 'system-ui,sans-serif', paddingTop: '96px' };
-  const card = { background: '#1e293b', borderRadius: 12, padding: 16, marginBottom: 14, border: '1px solid #334155' };
-  const cardTitle = { color: '#64748b', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 };
-  const item = { background: '#0f172a', borderRadius: 8, padding: '10px 14px', marginBottom: 8 };
-  const itemText = { color: '#cbd5e1', fontSize: 14, lineHeight: 1.5 };
-  const itemMeta = { color: '#475569', fontSize: 12, marginTop: 3 };
-  const btn = { padding: '10px 18px', borderRadius: 8, border: 'none', fontWeight: 600, fontSize: 14, cursor: 'pointer' };
+  const Section = ({ title, children }) => (
+    <div className="qk-card" style={{ padding: 16, marginBottom: 14 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#475569', marginBottom: 12 }}>{title}</div>
+      {children}
+    </div>
+  );
+
+  const Item = ({ text, meta, metaColor = '#475569', leftBorder }) => (
+    <div style={{
+      background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '10px 14px', marginBottom: 8,
+      borderLeft: leftBorder ? `3px solid ${leftBorder}` : undefined,
+    }}>
+      <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.5 }}>{text}</div>
+      {meta && <div style={{ color: metaColor, fontSize: 12, marginTop: 3 }}>{meta}</div>}
+    </div>
+  );
 
   return (
-    <div style={page}>
+    <div className="qk-page">
       <NavbarClient />
-      <div style={{ maxWidth: 480, margin: '0 auto' }}>
+      <div className="qk-container">
 
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ color: '#f1f5f9', fontSize: 22, fontWeight: 700 }}>{greeting}{name ? `, ${name}` : ''} 👋</div>
-          <div style={{ color: '#64748b', fontSize: 14, marginTop: 4 }}>{dateStr}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#e2e8f0', letterSpacing: '-0.02em' }}>
+            {greeting}{name ? `, ${name}` : ''} 👋
+          </div>
+          <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>{dateStr}</div>
+
           {weather && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, background: '#1e293b', borderRadius: 10, padding: '8px 14px', border: '1px solid #334155' }}>
-              <span style={{ fontSize: 22 }}>{weather.icon}</span>
+            <div className="qk-card" style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 14px' }}>
+              <span style={{ fontSize: 24 }}>{weather.icon}</span>
               <div>
-                <span style={{ color: '#f1f5f9', fontWeight: 600, fontSize: 16 }}>{weather.temp}°C</span>
-                <span style={{ color: '#64748b', fontSize: 13, marginLeft: 10 }}>💧 {weather.humidity}% · 💨 {weather.wind} km/h</span>
+                <span style={{ color: '#e2e8f0', fontWeight: 700, fontSize: 16 }}>{weather.temp}°C</span>
+                <span style={{ color: '#64748b', fontSize: 12, marginLeft: 10 }}>💧{weather.humidity}% · 💨{weather.wind} km/h</span>
               </div>
-              <span style={{ color: '#475569', fontSize: 11, marginLeft: 'auto' }}>Hyderabad</span>
+              <span style={{ color: '#334155', fontSize: 11, marginLeft: 'auto' }}>Hyderabad</span>
             </div>
           )}
         </div>
 
-        {/* Today's Panchang — tithi / nakshatra */}
+        {/* Panchang */}
         {brief?.todayPanchang?.length > 0 && (() => {
           const p = brief.todayPanchang[0];
           const parts = [p.tithi && `${p.tithi} Tithi`, p.nakshatra && `${p.nakshatra} Nakshatra`, p.traditional_month && `${p.traditional_month} Masa`].filter(Boolean);
           if (!parts.length) return null;
           return (
-            <div style={{ background: '#1a1000', border: '1px solid #f59e0b33', borderRadius: 12, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 18 }}>🪔</span>
               <div style={{ color: '#fcd34d', fontSize: 13 }}>{parts.join(' · ')}</div>
             </div>
           );
         })()}
 
-        {/* Today's holidays / festivals */}
+        {/* Today's festivals */}
         {brief?.todayEvents?.length > 0 && (
-          <div style={{ ...card, background: '#0d1f0d', border: '1px solid #166534' }}>
+          <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 14 }}>
             {brief.todayEvents.map((e, i) => (
-              <div key={i} style={{ color: '#86efac', fontSize: 14, fontWeight: 600 }}>🎉 {e.event_name}</div>
+              <div key={i} style={{ color: '#6ee7b7', fontSize: 14, fontWeight: 600 }}>🎉 {e.event_name}</div>
             ))}
           </div>
         )}
 
-        {/* AI Summary box */}
-        <div style={{ background: '#0d1a2e', border: '1px solid #1e3a5f', borderRadius: 12, padding: 18, marginBottom: 14 }}>
-          <div style={{ color: '#60a5fa', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>AI Brief Summary</div>
+        {/* AI Summary */}
+        <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12, padding: 18, marginBottom: 14 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#818cf8', marginBottom: 10 }}>AI Brief Summary</div>
           {aiSummary ? (
-            <div style={{ color: '#93c5fd', fontSize: 15, lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 12 }}>{aiSummary}</div>
+            <div style={{ color: '#c4b5fd', fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 12 }}>{aiSummary}</div>
           ) : (
-            <div style={{ color: '#475569', fontSize: 14, marginBottom: 12 }}>Generate a natural language summary of your day with Claude.</div>
+            <div style={{ color: '#475569', fontSize: 13, marginBottom: 12 }}>Generate a natural language summary of your day with Claude.</div>
           )}
           <button
             onClick={generateAISummary}
             disabled={loadingAI}
-            style={{ ...btn, background: loadingAI ? '#1e3a5f' : '#6366f1', color: '#fff' }}
-          >{loadingAI ? 'Generating...' : aiSummary ? 'Regenerate' : 'Generate Summary'}</button>
+            className="qk-btn qk-btn-primary qk-btn-sm"
+          >
+            {loadingAI ? 'Generating…' : aiSummary ? 'Regenerate' : 'Generate Summary'}
+          </button>
         </div>
 
         {/* Smart Nudges */}
         {brief?.nudges?.length > 0 && (
-          <div style={card}>
-            <div style={cardTitle}>Smart Nudges</div>
+          <Section title="Smart Nudges">
             {brief.nudges.map((n, i) => (
-              <div key={i} style={{ background: '#1c1400', border: '1px solid #f59e0b22', borderRadius: 8, padding: '10px 14px', marginBottom: 8 }}
-                onClick={() => markNudgeRead(n.id)}>
+              <div
+                key={i}
+                style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 8, padding: '10px 14px', marginBottom: 8 }}
+                onClick={() => markNudgeRead(n.id)}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ color: '#fbbf24', fontSize: 14, fontWeight: 600 }}>{n.title}</div>
                     <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 4 }}>{n.body}</div>
-                    {n.action_url && <a href={n.action_url} style={{ color: '#60a5fa', fontSize: 12, textDecoration: 'none', display: 'inline-block', marginTop: 6 }}>Go there →</a>}
+                    {n.action_url && <a href={n.action_url} style={{ color: '#818cf8', fontSize: 12, textDecoration: 'none', display: 'inline-block', marginTop: 6 }}>Go there →</a>}
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); dismissNudge(n.id); }} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 16, marginLeft: 8 }}>✕</button>
+                  <button onClick={e => { e.stopPropagation(); dismissNudge(n.id); }} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 16, marginLeft: 8 }}>✕</button>
                 </div>
               </div>
             ))}
-          </div>
+          </Section>
         )}
 
-        {/* END OF BLOCK 1 — continue with BLOCK 2 */}
         {/* Keeps on brief */}
         {brief?.keeps?.length > 0 && (
-          <div style={card}>
-            <div style={cardTitle}>On Your Brief ({brief.keeps.length})</div>
-            {brief.keeps.map((k, i) => (
-              <div key={i} style={{ ...item, borderLeft: `3px solid ${k.color || '#334155'}`, paddingLeft: 12, background: 'transparent' }}>
-                <div style={itemText}>{k.content}</div>
-                <div style={itemMeta}>{k.category} · {k.intent_type}</div>
-              </div>
-            ))}
-          </div>
+          <Section title={`On Your Brief (${brief.keeps.length})`}>
+            {brief.keeps.map((k, i) => <Item key={i} text={k.content} meta={`${k.category} · ${k.intent_type}`} leftBorder={k.color || '#6366f1'} />)}
+          </Section>
         )}
 
         {/* Upcoming reminders */}
         {brief?.reminders?.length > 0 && (
-          <div style={card}>
-            <div style={cardTitle}>Reminders This Week</div>
-            {brief.reminders.map((r, i) => (
-              <div key={i} style={item}>
-                <div style={itemText}>{r.content}</div>
-                <div style={{ ...itemMeta, color: '#f59e0b' }}>
-                  {new Date(r.reminder_at).toLocaleString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </div>
-            ))}
-          </div>
+          <Section title="Reminders This Week">
+            {brief.reminders.map((r, i) => <Item key={i} text={r.content} meta={new Date(r.reminder_at).toLocaleString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} metaColor="#f59e0b" />)}
+          </Section>
         )}
 
         {/* Subscription renewals */}
         {brief?.subs?.length > 0 && (
-          <div style={card}>
-            <div style={cardTitle}>Renewals This Week</div>
-            {brief.subs.map((s, i) => (
-              <div key={i} style={item}>
-                <div style={itemText}>{s.name}</div>
-                <div style={itemMeta}>{s.currency} {s.amount} · due {s.next_due}</div>
-              </div>
-            ))}
-          </div>
+          <Section title="Renewals This Week">
+            {brief.subs.map((s, i) => <Item key={i} text={s.name} meta={`${s.currency} ${s.amount} · due ${s.next_due}`} />)}
+          </Section>
         )}
 
         {/* Upcoming trips */}
         {brief?.trips?.length > 0 && (
-          <div style={card}>
-            <div style={cardTitle}>Upcoming Trips</div>
-            {brief.trips.map((t, i) => (
-              <div key={i} style={item}>
-                <div style={itemText}>{t.destination}</div>
-                <div style={itemMeta}>{t.start_date} → {t.end_date}</div>
-              </div>
-            ))}
-          </div>
+          <Section title="Upcoming Trips">
+            {brief.trips.map((t, i) => <Item key={i} text={t.destination} meta={`${t.start_date} → ${t.end_date}`} />)}
+          </Section>
         )}
 
         {/* Empty state */}
         {brief && !brief.keeps?.length && !brief.reminders?.length && !brief.subs?.length && !brief.trips?.length && !brief.nudges?.length && (
-          <div style={{ ...card, textAlign: 'center', padding: 40 }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🌅</div>
-            <div style={{ color: '#64748b', fontSize: 15 }}>Your day is clear — nothing on brief right now.</div>
-            <a href="/dashboard" style={{ display: 'inline-block', marginTop: 16, color: '#6366f1', fontSize: 14, textDecoration: 'none' }}>Add a keep →</a>
+          <div className="qk-empty">
+            <div className="qk-empty-icon">🌅</div>
+            <div className="qk-empty-title">Your day is clear</div>
+            <div className="qk-empty-sub">Nothing on brief right now.</div>
+            <a href="/dashboard" style={{ display: 'inline-block', marginTop: 14, color: '#818cf8', fontSize: 13, textDecoration: 'none' }}>Add a keep →</a>
           </div>
         )}
 
         {/* Share section */}
-        <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'stretch' }}>
-          <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Share Today's Brief</div>
+        <div className="qk-card" style={{ padding: 16, marginBottom: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#475569', marginBottom: 12 }}>Share Today&apos;s Brief</div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              onClick={shareThisBrief}
-              style={{ flex: 1, padding: '10px 0', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
-            >🔗 Copy Link</button>
+            <button onClick={shareThisBrief} className="qk-btn qk-btn-ghost" style={{ flex: 1, justifyContent: 'center' }}>
+              🔗 Copy Link
+            </button>
             <button
               onClick={shareViaWhatsApp}
-              style={{ flex: 1, padding: '10px 0', background: '#14532d', color: '#86efac', border: '1px solid #166534', borderRadius: 8, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
-            >💬 WhatsApp</button>
+              className="qk-btn"
+              style={{ flex: 1, justifyContent: 'center', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#6ee7b7' }}
+            >
+              💬 WhatsApp
+            </button>
           </div>
-          {shareMsg && <div style={{ color: '#86efac', fontSize: 13, textAlign: 'center' }}>{shareMsg}</div>}
+          {shareMsg && <div style={{ color: '#6ee7b7', fontSize: 13, textAlign: 'center', marginTop: 10 }}>{shareMsg}</div>}
         </div>
 
       </div>
     </div>
   );
 }
-// ─────────────────────────────────────────────────────────
-// END OF FILE5 BLOCK 2 — this completes daily-brief/page.jsx
-// ─────────────────────────────────────────────────────────

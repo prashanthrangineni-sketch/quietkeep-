@@ -11,6 +11,16 @@ function getSupabase() {
 
 const OTP_LEN = 8; // Supabase free tier sends 8-digit OTP
 
+// ─── BETA TEST BYPASS ────────────────────────────────────────────────────────
+// These accounts use password login instead of OTP.
+// Bypass code: type 00000000 in the OTP boxes (eight zeros).
+// To add more testers: create user in Supabase Auth dashboard, set password,
+// add entry here as 'email': 'password'
+const BETA_ACCOUNTS: Record<string, string> = {
+  'beta@quietkeep.com': 'BetaQK@2026',
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function LoginPage() {
   const [email, setEmail]     = useState('');
   const [step, setStep]       = useState<'email' | 'otp'>('email');
@@ -18,6 +28,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
   const [countdown, setCountdown] = useState(0);
+  const [isBetaAccount, setIsBetaAccount] = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -30,10 +41,22 @@ export default function LoginPage() {
     if (!email.trim()) return;
     setLoading(true);
     setError('');
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check if this is a beta/test account
+    if (BETA_ACCOUNTS[normalizedEmail]) {
+      setIsBetaAccount(true);
+      setLoading(false);
+      setStep('otp');
+      setTimeout(() => refs.current[0]?.focus(), 120);
+      return;
+    }
+
+    setIsBetaAccount(false);
     const { error: err } = await getSupabase().auth.signInWithOtp({
       email: email.trim(),
       options: { shouldCreateUser: true },
-      // NO emailRedirectTo → Supabase sends OTP code, not a magic link
     });
     setLoading(false);
     if (err) { setError(err.message); return; }
@@ -47,6 +70,28 @@ export default function LoginPage() {
     if (code.length !== OTP_LEN) return;
     setLoading(true);
     setError('');
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // ── BETA BYPASS: eight zeros = password login ──────────────────────────
+    if (BETA_ACCOUNTS[normalizedEmail] && code === '00000000') {
+      const { error: err } = await getSupabase().auth.signInWithPassword({
+        email: normalizedEmail,
+        password: BETA_ACCOUNTS[normalizedEmail],
+      });
+      setLoading(false);
+      if (err) {
+        setError('Beta login failed: ' + err.message);
+        setOtp(Array(OTP_LEN).fill(''));
+        setTimeout(() => refs.current[0]?.focus(), 100);
+        return;
+      }
+      window.location.href = '/dashboard';
+      return;
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Normal OTP verify
     const { error: err } = await getSupabase().auth.verifyOtp({
       email: email.trim(),
       token: code,
@@ -63,7 +108,6 @@ export default function LoginPage() {
   }
 
   function handleDigit(i: number, val: string) {
-    // Handle paste of full OTP code
     if (val.length === OTP_LEN && new RegExp(`^\\d{${OTP_LEN}}$`).test(val)) {
       const d = val.split('');
       setOtp(d);
@@ -139,18 +183,25 @@ export default function LoginPage() {
   return (
     <div style={wrap}>
       <div style={{ ...card, textAlign: 'center' }}>
-        <div style={{ fontSize: '40px', marginBottom: '10px' }}>📨</div>
-        <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>Enter your code</div>
+        <div style={{ fontSize: '40px', marginBottom: '10px' }}>{isBetaAccount ? '🔑' : '📨'}</div>
+        <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>
+          {isBetaAccount ? 'Beta Access' : 'Enter your code'}
+        </div>
         <div style={{ fontSize: '13px', color: '#888', marginBottom: '24px', lineHeight: 1.6 }}>
-          {OTP_LEN}-digit code sent to<br />
-          <strong style={{ color: '#c4b5fd' }}>{email}</strong>
+          {isBetaAccount ? (
+            <>Beta account detected.<br />
+            <strong style={{ color: '#c4b5fd' }}>Type 00000000 (eight zeros)</strong><br />
+            to sign in instantly.</>
+          ) : (
+            <>{OTP_LEN}-digit code sent to<br />
+            <strong style={{ color: '#c4b5fd' }}>{email}</strong></>
+          )}
         </div>
         {error && (
           <div style={{ background: '#2a1a1a', border: '1px solid #5a2020', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#ff8080', marginBottom: '14px' }}>
             ⚠️ {error}
           </div>
         )}
-        {/* OTP boxes — 2 rows of 4 on mobile */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
           {otp.map((d, i) => (
             <input
@@ -178,17 +229,19 @@ export default function LoginPage() {
           style={filled === OTP_LEN && !loading ? btnOn : btnOff}>
           {loading ? 'Verifying…' : 'Verify & Sign In'}
         </button>
-        <div style={{ marginTop: '16px', fontSize: '13px', color: '#555' }}>
-          {countdown > 0
-            ? <span>Resend in {countdown}s</span>
-            : <button onClick={() => { setError(''); setOtp(Array(OTP_LEN).fill('')); sendOtp(); }}
-                style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
-                Resend code
-              </button>
-          }
-        </div>
+        {!isBetaAccount && (
+          <div style={{ marginTop: '16px', fontSize: '13px', color: '#555' }}>
+            {countdown > 0
+              ? <span>Resend in {countdown}s</span>
+              : <button onClick={() => { setError(''); setOtp(Array(OTP_LEN).fill('')); sendOtp(); }}
+                  style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
+                  Resend code
+                </button>
+            }
+          </div>
+        )}
         <div style={{ marginTop: '8px' }}>
-          <button onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); }}
+          <button onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); setIsBetaAccount(false); }}
             style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '12px' }}>
             ← Use different email
           </button>
@@ -196,4 +249,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-      }
+            }

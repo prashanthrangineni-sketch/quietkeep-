@@ -1,21 +1,21 @@
 // File: src/app/api/whatsapp/link/route.js
 // Links a WhatsApp phone number to a QuietKeep user account
-// Called from Settings page when user enters their WhatsApp number
 
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req) {
   try {
+    // FIX: createClient inside handler — never at module level
     const authHeader = req.headers.get('Authorization') || '';
     const token = authHeader.replace('Bearer ', '').trim();
     if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createClient(
+    const anonSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    const { data: { user }, error: authErr } = await anonSupabase.auth.getUser();
     if (authErr || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { phone_number } = await req.json();

@@ -258,5 +258,6 @@ export default function FamilyPage() {
         <div style={{ color: '#334155', fontSize: 12, textAlign: 'center' }}>Invite links expire in 72 hours · Members can be removed anytime</div>
       </div>
     </div>
+    </>
   );
-      }
+              }

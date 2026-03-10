@@ -91,7 +91,7 @@ export default function ProfilePage() {
   const initials = (fullName || user?.email || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0f0f', color: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: '#0f0f0f', color: '#fff', paddingTop: '96px', paddingBottom: '80px' }}>
       <NavbarClient />
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '2rem 1rem 4rem' }}>
 
@@ -194,4 +194,4 @@ export default function ProfilePage() {
       </div>
     </div>
   );
-}
+          }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 const RELATIONS = ['spouse', 'parent', 'sibling', 'child', 'friend', 'doctor', 'neighbour', 'other'];
 
@@ -210,7 +211,9 @@ export default function EmergencyPage() {
   const otherContacts = contacts.filter(c => !c.is_primary);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
+    <>
+      <NavbarClient />
+      <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
 
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #1a0a0a 0%, #0f0a1a 100%)', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>
@@ -435,7 +438,7 @@ export default function EmergencyPage() {
             display: 'flex', alignItems: 'flex-end', zIndex: 100
           }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}
-        >
+          >
           <div style={{
             background: '#141420', borderRadius: '20px 20px 0 0',
             padding: '20px 20px 36px', width: '100%', maxWidth: '480px', margin: '0 auto',
@@ -653,5 +656,6 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
         </a>
       )}
     </div>
+    </>
   );
 }

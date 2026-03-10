@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 
 function LocationShare({ userId }) {
@@ -40,6 +41,7 @@ function LocationShare({ userId }) {
       </button>
       <div style={{ color: '#475569', fontSize: 11, marginTop: 6 }}>Your location is only shared when you tap this button — never automatically.</div>
     </div>
+    </>
   );
 }
 
@@ -150,7 +152,9 @@ export default function FamilyPage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', padding: '24px 16px 100px', fontFamily: 'system-ui,sans-serif' }}>
+    <>
+      <NavbarClient />
+      <div style={{ minHeight: '100vh', background: '#0f172a', padding: '96px 16px 80px', fontFamily: 'system-ui,sans-serif' }}>
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
         <div style={{ color: '#f1f5f9', fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Family Space</div>
@@ -256,4 +260,4 @@ export default function FamilyPage() {
       </div>
     </div>
   );
-                    }
+      }

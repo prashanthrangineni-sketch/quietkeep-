@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 export default function MorePage() {
   const [user, setUser] = useState(null);
@@ -19,7 +20,7 @@ export default function MorePage() {
   }
 
   async function shareViaWhatsApp() {
-    const { data: token, error } = await supabase.rpc('create_share_token', { p_share_type: 'daily_brief', p_days_valid: 1 });
+    const { data: token, error } = await supabase.rpc('create_share_token', { p_share_type: 'daily_brief', p_resource_id: null, p_days_valid: 1 });
     if (error || !token) { setShareMsg('Could not generate share link'); return; }
     const link = encodeURIComponent(`${window.location.origin}/share/${token}`);
     const text = encodeURIComponent("Here's my QuietKeep daily brief for today: ");
@@ -48,7 +49,9 @@ export default function MorePage() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', padding: '24px 16px 100px', fontFamily: 'system-ui,sans-serif' }}>
+    <>
+      <NavbarClient />
+      <div style={{ minHeight: '100vh', background: '#0f172a', padding: '96px 16px 80px', fontFamily: 'system-ui,sans-serif' }}>
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
         <div style={{ color: '#f1f5f9', fontSize: 22, fontWeight: 700, marginBottom: 4 }}>More</div>
@@ -142,5 +145,6 @@ export default function MorePage() {
 
       </div>
     </div>
+    </>
   );
 }

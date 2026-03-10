@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
-// OTP client — PKCE mode, for normal OTP login
+// OTP client — PKCE mode, for normal email OTP login
 function getSupabase() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,7 +11,8 @@ function getSupabase() {
   );
 }
 
-// Password client — plain JS client, NO PKCE, required for signInWithPassword
+// Password client — plain JS client, NO PKCE
+// Required for signInWithPassword — @supabase/ssr PKCE mode breaks it
 function getPasswordClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,12 +23,15 @@ function getPasswordClient() {
 
 const OTP_LEN = 8;
 
-// ─── BETA TEST BYPASS ────────────────────────────────────────────────────────
-// These accounts skip OTP entirely and use password login.
-// Bypass code: type 00000000 (eight zeros) in the OTP boxes.
-// To add more testers: create user in Supabase Auth dashboard → set password → add entry here.
+// ─── BETA / TEST ACCOUNTS ────────────────────────────────────────────────────
+// These accounts skip OTP entirely — zero emails sent, zero rate limits.
+// Login flow: enter email → Send Code → type 00000000 (eight zeros) → dashboard.
+// Both have Family plan (full access) valid till April 9 2026.
+// To add more testers: create user in Supabase Auth dashboard, set password,
+// seed a subscriptions row with plan_id='family', add entry below.
 const BETA_ACCOUNTS: Record<string, string> = {
-  'beta@quietkeep.com': 'BetaQK@2026',
+  'beta@quietkeep.com':     'BetaQK@2026',
+  'pranixailabs@gmail.com': 'PranixQK@2026',
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -53,6 +57,7 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
+    // Beta/test account — skip OTP send entirely, go to code screen
     if (BETA_ACCOUNTS[norm]) {
       setIsBeta(true);
       setLoading(false);
@@ -81,20 +86,20 @@ export default function LoginPage() {
 
     const norm = email.trim().toLowerCase();
 
-    // ── Beta bypass: eight zeros → password login ─────────────────────────
+    // ── Beta/test bypass: eight zeros → password login ────────────────────
     if (BETA_ACCOUNTS[norm] && code === '00000000') {
       try {
-        // Use plain supabase-js client — bypasses PKCE which breaks signInWithPassword
+        // Use plain supabase-js — @supabase/ssr PKCE mode breaks signInWithPassword
         const { data, error: err } = await getPasswordClient().auth.signInWithPassword({
           email: norm,
           password: BETA_ACCOUNTS[norm],
         });
         if (err) throw err;
 
-        // Sync session into SSR cookie store so middleware sees it
+        // Copy session into SSR cookie store so middleware sees it
         if (data?.session) {
           await getSupabase().auth.setSession({
-            access_token: data.session.access_token,
+            access_token:  data.session.access_token,
             refresh_token: data.session.refresh_token,
           });
         }
@@ -104,7 +109,7 @@ export default function LoginPage() {
         return;
       } catch (e: any) {
         setLoading(false);
-        setError('Beta login failed: ' + (e?.message || String(e)));
+        setError('Login failed: ' + (e?.message || String(e)));
         setOtp(Array(OTP_LEN).fill(''));
         setTimeout(() => refs.current[0]?.focus(), 100);
         return;
@@ -112,7 +117,7 @@ export default function LoginPage() {
     }
     // ─────────────────────────────────────────────────────────────────────
 
-    // Normal OTP verify
+    // Normal OTP verify for real users
     const { error: err } = await getSupabase().auth.verifyOtp({
       email: norm,
       token: code,
@@ -165,6 +170,10 @@ export default function LoginPage() {
   const btnOff: React.CSSProperties = {
     ...btnOn, background: '#2a2a3a', color: '#666', cursor: 'not-allowed',
   };
+  const errBox: React.CSSProperties = {
+    background: '#2a1a1a', border: '1px solid #5a2020', borderRadius: '8px',
+    padding: '10px 12px', fontSize: '12px', color: '#ff8080', marginBottom: '12px',
+  };
 
   if (step === 'email') return (
     <div style={wrap}>
@@ -173,13 +182,9 @@ export default function LoginPage() {
           QuietKeep
         </div>
         <div style={{ fontSize: '13px', color: '#666', marginBottom: '28px' }}>
-          Enter your email to receive a sign-in code.
+          Enter your email to sign in.
         </div>
-        {error && (
-          <div style={{ background: '#2a1a1a', border: '1px solid #5a2020', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#ff8080', marginBottom: '12px' }}>
-            ⚠️ {error}
-          </div>
-        )}
+        {error && <div style={errBox}>⚠️ {error}</div>}
         <label style={{ fontSize: '12px', color: '#888', fontWeight: 600, marginBottom: '6px', display: 'block' }}>
           Email address
         </label>
@@ -193,7 +198,7 @@ export default function LoginPage() {
           style={{ width: '100%', background: '#1e1e2e', border: '1px solid #333', color: '#fff', padding: '13px', borderRadius: '10px', fontSize: '15px', boxSizing: 'border-box', outline: 'none' }}
         />
         <button onClick={sendOtp} disabled={loading || !email.trim()} style={email.trim() && !loading ? btnOn : btnOff}>
-          {loading ? 'Sending code…' : 'Send Code →'}
+          {loading ? 'Please wait…' : 'Send Code →'}
         </button>
       </div>
     </div>
@@ -218,11 +223,7 @@ export default function LoginPage() {
             <strong style={{ color: '#c4b5fd' }}>{email}</strong></>
           )}
         </div>
-        {error && (
-          <div style={{ background: '#2a1a1a', border: '1px solid #5a2020', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#ff8080', marginBottom: '14px' }}>
-            ⚠️ {error}
-          </div>
-        )}
+        {error && <div style={{ ...errBox, marginBottom: '14px' }}>⚠️ {error}</div>}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '20px' }}>
           {otp.map((d, i) => (
             <input
@@ -254,7 +255,8 @@ export default function LoginPage() {
           <div style={{ marginTop: '16px', fontSize: '13px', color: '#555' }}>
             {countdown > 0
               ? <span>Resend in {countdown}s</span>
-              : <button onClick={() => { setError(''); setOtp(Array(OTP_LEN).fill('')); sendOtp(); }}
+              : <button
+                  onClick={() => { setError(''); setOtp(Array(OTP_LEN).fill('')); sendOtp(); }}
                   style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
                   Resend code
                 </button>
@@ -262,7 +264,8 @@ export default function LoginPage() {
           </div>
         )}
         <div style={{ marginTop: '8px' }}>
-          <button onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); setIsBeta(false); }}
+          <button
+            onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); setIsBeta(false); }}
             style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '12px' }}>
             ← Use different email
           </button>
@@ -270,4 +273,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-          }
+    }

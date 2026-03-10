@@ -7,13 +7,16 @@ import NavbarClient from '@/components/NavbarClient';
 import ContextCards from '@/components/ContextCards';
 import KeepAIAssist from '@/components/KeepAIAssist';
 
+// ── All logic below is untouched — UI-only upgrade ──────────────
+
 const TYPE_EMOJI = {
   note: '📝', reminder: '⏰', contact: '📞', task: '✅',
   purchase: '🛒', expense: '💰', trip: '✈️', document: '📄', draft: '💬',
 };
 
 const STATE_COLOR = {
-  open: '#22c55e', active: '#3b82f6', blocked: '#ef4444', deferred: '#f59e0b', closed: '#64748b',
+  open: '#22c55e', active: '#3b82f6', blocked: '#ef4444',
+  deferred: '#f59e0b', closed: '#64748b',
 };
 
 function parseDateTime(text) {
@@ -79,55 +82,90 @@ function getAISuggestions(text) {
   if (/email|send|reply|respond/.test(t)) suggestions.push({ icon: '📧', text: 'Add contact info', action: 'contact' });
   return suggestions.slice(0, 2);
 }
+
 function IntentCard({ intent, onUpdateState, onDelete, accessToken }) {
   const [expanded, setExpanded] = useState(false);
   const emoji = TYPE_EMOJI[intent.intent_type] || '📝';
   const color = STATE_COLOR[intent.status] || '#22c55e';
   const isClosed = intent.status === 'closed';
+
   return (
-    <div style={{ backgroundColor: '#0f0f1a', border: '1px solid ' + (isClosed ? '#1a1a2e' : '#1e1e2e'), borderRadius: '12px', padding: '14px', opacity: isClosed ? 0.5 : 1 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-        <span style={{ fontSize: '18px', flexShrink: 0, paddingTop: '2px' }}>{emoji}</span>
+    <div className="qk-keep-card" style={{ opacity: isClosed ? 0.55 : 1, animation: 'qk-fade-in 0.25s ease forwards' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <span style={{ fontSize: 18, flexShrink: 0, paddingTop: 2 }}>{emoji}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', color: '#f1f5f9', lineHeight: '1.4', wordBreak: 'break-word', textDecoration: isClosed ? 'line-through' : 'none' }}>{intent.content}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '10px', color: color, fontWeight: '600', textTransform: 'uppercase' }}>{intent.status}</span>
-            <span style={{ fontSize: '10px', color: '#334155' }}>{intent.intent_type}</span>
-            {intent.reminder_at && <span style={{ fontSize: '10px', color: '#6366f1' }}>⏰ {new Date(intent.reminder_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
-            <span style={{ fontSize: '10px', color: '#1e293b' }}>{new Date(intent.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+          <div style={{
+            fontSize: 14, color: '#e2e8f0', lineHeight: 1.5,
+            wordBreak: 'break-word',
+            textDecoration: isClosed ? 'line-through' : 'none',
+            opacity: isClosed ? 0.6 : 1,
+          }}>
+            {intent.content}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 7, flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: 10, color: color, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              background: color + '18', padding: '2px 7px',
+              borderRadius: 999, border: `1px solid ${color}30`,
+            }}>
+              {intent.status}
+            </span>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>{intent.intent_type}</span>
+            {intent.reminder_at && (
+              <span style={{ fontSize: 10, color: '#818cf8' }}>
+                ⏰ {new Date(intent.reminder_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.15)' }}>
+              {new Date(intent.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+            </span>
           </div>
         </div>
         <button
           onClick={() => setExpanded(!expanded)}
           style={{
-            background: 'none', border: 'none',
-            color: expanded ? '#6366f1' : '#475569',
+            background: expanded ? 'rgba(99,102,241,0.15)' : 'transparent',
+            border: expanded ? '1px solid rgba(99,102,241,0.3)' : '1px solid transparent',
+            color: expanded ? '#818cf8' : '#475569',
             cursor: 'pointer', flexShrink: 0,
-            width: '44px', height: '44px',
+            width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '14px', borderRadius: '8px',
+            fontSize: 11, borderRadius: 8,
             WebkitTapHighlightColor: 'transparent',
+            transition: 'all 0.18s',
           }}
-        >{expanded ? '▲' : '▼'}</button>
+        >
+          {expanded ? '▲' : '▼'}
+        </button>
       </div>
+
       {expanded && (
-        <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {!isClosed && (
             <button
               onClick={() => onUpdateState(intent.id, 'closed')}
-              style={{ padding: '10px 16px', borderRadius: '7px', border: '1px solid #22c55e', backgroundColor: 'rgba(34,197,94,0.1)', color: '#22c55e', fontSize: '13px', cursor: 'pointer', fontWeight: '600', minHeight: '44px' }}
-            >✓ Done</button>
+              className="qk-btn qk-btn-sm"
+              style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}
+            >
+              ✓ Done
+            </button>
           )}
           {isClosed && (
             <button
               onClick={() => onUpdateState(intent.id, 'open')}
-              style={{ padding: '10px 16px', borderRadius: '7px', border: '1px solid #6366f1', backgroundColor: 'rgba(99,102,241,0.1)', color: '#a5b4fc', fontSize: '13px', cursor: 'pointer', minHeight: '44px' }}
-            >↩ Reopen</button>
+              className="qk-btn qk-btn-sm"
+              style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}
+            >
+              ↩ Reopen
+            </button>
           )}
           <button
             onClick={() => onDelete(intent.id)}
-            style={{ padding: '10px 16px', borderRadius: '7px', border: '1px solid #ef444460', backgroundColor: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: '13px', cursor: 'pointer', minHeight: '44px' }}
-          >🗑 Delete</button>
+            className="qk-btn qk-btn-sm qk-btn-danger"
+          >
+            🗑 Delete
+          </button>
         </div>
       )}
       {expanded && (
@@ -140,7 +178,8 @@ function IntentCard({ intent, onUpdateState, onDelete, accessToken }) {
       )}
     </div>
   );
-      }
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -250,7 +289,7 @@ export default function Dashboard() {
     });
     if (!error) {
       setContent(''); setRemindAt(''); setContactInfo(''); setReminderType('app'); setSuggestions([]); setAutoDetected(null);
-      showToast('Kept!');
+      showToast('✓ Kept!');
       await loadIntents(user.id);
     } else {
       showToast('Error: ' + error.message);
@@ -262,7 +301,7 @@ export default function Dashboard() {
   async function updateState(id, state) {
     await supabase.from('keeps').update({ status: state }).eq('id', id);
     await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_status_updated', intent_id: id, service: 'dashboard', details: { status: state } }).catch(() => {});
-    showToast(state === 'closed' ? 'Marked done!' : 'Moved to ' + state);
+    showToast(state === 'closed' ? '✓ Marked done!' : 'Moved to ' + state);
     await loadIntents(user.id);
   }
 
@@ -283,88 +322,140 @@ export default function Dashboard() {
   };
   const displayIntents = filterIntents(activeTab === 'open' ? openIntents : closedIntents);
 
+  // ── Loading screen ───────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ width: '40px', height: '40px', border: '3px solid #6366f1', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <span style={{ color: '#475569', fontSize: '14px' }}>Loading your keeps...</span>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{
+        minHeight: '100dvh', background: '#0b0f19',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16,
+      }}>
+        <div className="qk-spinner" />
+        <span style={{ color: '#475569', fontSize: 13 }}>Loading your keeps…</span>
       </div>
     );
   }
+
+  // ── Main render ──────────────────────────────────────────────
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9', paddingTop: '96px', paddingBottom: '80px' }}>
-        {toast && (
-          <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#1e1e2e', border: '1px solid #6366f1', borderRadius: '10px', padding: '10px 20px', color: '#f1f5f9', fontSize: '14px', zIndex: 9999, boxShadow: '0 4px 24px rgba(99,102,241,0.3)', whiteSpace: 'nowrap' }}>
-            {toast}
-          </div>
-        )}
 
-        <div style={{ maxWidth: '680px', margin: '0 auto', padding: '20px 16px' }}>
+      {/* Toast */}
+      {toast && <div className="qk-toast">{toast}</div>}
+
+      <div className="qk-page">
+        <div className="qk-container">
+
+          {/* Header greeting */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#e2e8f0', letterSpacing: '-0.02em' }}>
+              My Keeps
+            </div>
+            <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>{user?.email}</div>
+          </div>
+
           <ContextCards userId={user?.id} />
 
-          {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', marginBottom: '20px' }}>
-            {[{ label: 'Open', value: openIntents.length, color: '#6366f1' },{ label: 'Done', value: closedIntents.length, color: '#22c55e' },{ label: 'Total', value: intents.length, color: '#94a3b8' }].map((s, i) => (
-              <div key={i} style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e1e2e', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
-                <div style={{ fontSize: '28px', fontWeight: '800', color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>{s.label}</div>
+          {/* Stats row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 20 }}>
+            {[
+              { label: 'Open', value: openIntents.length, color: '#6366f1' },
+              { label: 'Done', value: closedIntents.length, color: '#10b981' },
+              { label: 'Total', value: intents.length, color: '#64748b' },
+            ].map((s, i) => (
+              <div key={i} className="qk-stat">
+                <div className="qk-stat-value" style={{ color: s.color }}>{s.value}</div>
+                <div className="qk-stat-label">{s.label}</div>
               </div>
             ))}
           </div>
 
-          {/* New Keep form */}
-          <div style={{ backgroundColor: '#0f0f1a', border: '1px solid #1e1e2e', borderRadius: '16px', padding: '18px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '700', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>+ New Keep</span>
+          {/* New Keep card */}
+          <div className="qk-card" style={{ padding: 18, marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                + New Keep
+              </span>
               {voiceSupported && (
-                <button onClick={listening ? stopVoice : startVoice} style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: listening ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)', border: '1px solid ' + (listening ? 'rgba(239,68,68,0.4)' : 'rgba(99,102,241,0.4)'), color: listening ? '#ef4444' : '#a5b4fc', padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-                  {listening ? 'Stop' : '🎙 Voice'}
+                <button
+                  onClick={listening ? stopVoice : startVoice}
+                  className="qk-btn qk-btn-sm"
+                  style={{
+                    background: listening ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.12)',
+                    border: `1px solid ${listening ? 'rgba(239,68,68,0.4)' : 'rgba(99,102,241,0.3)'}`,
+                    color: listening ? '#ef4444' : '#a5b4fc',
+                  }}
+                >
+                  {listening ? (
+                    <>
+                     <span style={{ width: 7, height: 7, background: '#ef4444', borderRadius: '50%', display: 'inline-block', animation: 'qk-pulse 1s ease infinite' }} />
+                      Stop
+                    </>
+                  ) : '🎙 Voice'}
                 </button>
               )}
             </div>
-            {listening && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', padding: '8px 12px' }}>
-                <span style={{ width: '8px', height: '8px', backgroundColor: '#ef4444', borderRadius: '50%', display: 'inline-block', animation: 'pulse 1s ease infinite' }} />
-                <span style={{ fontSize: '12px', color: '#ef4444' }}>Listening... say date/time e.g. &quot;tomorrow 3pm&quot;</span>
-              </div>
-            )}
+
             {autoDetected && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', backgroundColor: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', padding: '8px 12px' }}>
-                <span style={{ fontSize: '12px', color: '#a5b4fc' }}>Auto-detected: {autoDetected}</span>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+                background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)',
+                borderRadius: 8, padding: '8px 12px',
+              }}>
+                <span style={{ fontSize: 12, color: '#a5b4fc' }}>✨ Auto-detected: {autoDetected}</span>
               </div>
             )}
+
             <textarea
               ref={textareaRef}
               value={content}
               onChange={e => handleContentChange(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); handleSave(); } }}
-              placeholder="What do you want to keep..."
+              placeholder="What do you want to keep…"
               rows={3}
-              style={{ width: '100%', backgroundColor: '#0a0a0f', border: '1px solid ' + (content ? '#6366f150' : '#1e293b'), borderRadius: '10px', padding: '12px', color: '#f1f5f9', fontSize: '15px', resize: 'none', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: '1.5' }}
+              className="qk-input"
+              style={{ resize: 'none', lineHeight: 1.5 }}
             />
+
             {suggestions.length > 0 && (
-              <div style={{ marginTop: '10px' }}>
-                <div style={{ fontSize: '11px', color: '#475569', marginBottom: '6px' }}>Smart suggestions:</div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 11, color: '#475569', marginBottom: 6 }}>Smart suggestions:</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {suggestions.map((s, i) => (
-                    <button key={i} onClick={() => { setAssistMode(s.action); showToast('Set to ' + s.action); }} style={{ backgroundColor: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
+                    <button
+                      key={i}
+                      onClick={() => { setAssistMode(s.action); showToast('Set to ' + s.action); }}
+                      className="qk-btn qk-btn-sm"
+                      style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', color: '#a5b4fc' }}
+                    >
                       {s.icon} {s.text}
                     </button>
                   ))}
                 </div>
               </div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '12px' }}>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
               <div>
-                <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '5px' }}>Remind at {remindAt && <span style={{ color: '#6366f1' }}>✓ set</span>}</label>
-                <input type="datetime-local" value={remindAt} onChange={e => setRemindAt(e.target.value)} style={{ width: '100%', backgroundColor: remindAt ? 'rgba(99,102,241,0.05)' : '#0a0a0f', border: '1px solid ' + (remindAt ? '#6366f150' : '#1e293b'), borderRadius: '8px', padding: '8px', color: '#f1f5f9', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                <label style={{ fontSize: 11, color: '#475569', display: 'block', marginBottom: 5 }}>
+                  Remind at {remindAt && <span style={{ color: '#6366f1' }}>✓</span>}
+                </label>
+                <input
+                  type="datetime-local"
+                  value={remindAt}
+                  onChange={e => setRemindAt(e.target.value)}
+                  className="qk-input"
+                  style={{ padding: '8px 10px', fontSize: 12 }}
+                />
               </div>
               <div>
-                <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '5px' }}>Type</label>
-                <select value={assistMode} onChange={e => setAssistMode(e.target.value)} style={{ width: '100%', backgroundColor: '#0a0a0f', border: '1px solid #1e293b', borderRadius: '8px', padding: '8px', color: '#f1f5f9', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}>
+                <label style={{ fontSize: 11, color: '#475569', display: 'block', marginBottom: 5 }}>Type</label>
+                <select
+                  value={assistMode}
+                  onChange={e => setAssistMode(e.target.value)}
+                  className="qk-input"
+                  style={{ padding: '8px 10px', fontSize: 12 }}
+                >
                   <option value="note">Note</option>
                   <option value="reminder">Reminder</option>
                   <option value="contact">Contact</option>
@@ -376,40 +467,87 @@ export default function Dashboard() {
                 </select>
               </div>
             </div>
+
             {remindAt && (
-              <div style={{ marginTop: '12px' }}>
-                <label style={{ fontSize: '11px', color: '#475569', display: 'block', marginBottom: '8px' }}>How to remind you?</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {[{ value: 'app', label: 'App' },{ value: 'alarm', label: 'Alarm' },{ value: 'whatsapp', label: 'WhatsApp' },{ value: 'email', label: 'Email' }].map(opt => (
-                    <button key={opt.value} onClick={() => setReminderType(opt.value)} style={{ padding: '7px 12px', borderRadius: '8px', cursor: 'pointer', border: '1px solid ' + (reminderType === opt.value ? '#6366f1' : '#1e293b'), backgroundColor: reminderType === opt.value ? 'rgba(99,102,241,0.15)' : '#0a0a0f', color: reminderType === opt.value ? '#a5b4fc' : '#64748b', fontSize: '12px', fontWeight: reminderType === opt.value ? '600' : '400' }}>
+              <div style={{ marginTop: 12 }}>
+                <label style={{ fontSize: 11, color: '#475569', display: 'block', marginBottom: 8 }}>How to remind you?</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[{ value: 'app', label: 'App' }, { value: 'alarm', label: 'Alarm' }, { value: 'whatsapp', label: 'WhatsApp' }, { value: 'email', label: 'Email' }].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setReminderType(opt.value)}
+                      className="qk-btn qk-btn-sm"
+                      style={{
+                        background: reminderType === opt.value ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${reminderType === opt.value ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                        color: reminderType === opt.value ? '#a5b4fc' : '#64748b',
+                      }}
+                    >
                       {opt.label}
                     </button>
                   ))}
                 </div>
-                {reminderType === 'whatsapp' && <div style={{ marginTop: '8px', fontSize: '11px', color: '#f59e0b', padding: '6px 10px', backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: '6px', border: '1px solid rgba(245,158,11,0.2)' }}>WhatsApp reminder opens a draft at reminder time. You tap Send.</div>}
-                {reminderType === 'alarm' && <div style={{ marginTop: '8px', fontSize: '11px', color: '#22c55e', padding: '6px 10px', backgroundColor: 'rgba(34,197,94,0.08)', borderRadius: '6px', border: '1px solid rgba(34,197,94,0.2)' }}>Rings even if phone is on silent.</div>}
+                {reminderType === 'whatsapp' && <div style={{ marginTop: 8, fontSize: 11, color: '#f59e0b', padding: '6px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 6, border: '1px solid rgba(245,158,11,0.2)' }}>WhatsApp reminder opens a draft at reminder time. You tap Send.</div>}
+                {reminderType === 'alarm' && <div style={{ marginTop: 8, fontSize: 11, color: '#22c55e', padding: '6px 10px', background: 'rgba(34,197,94,0.08)', borderRadius: 6, border: '1px solid rgba(34,197,94,0.2)' }}>Rings even if phone is on silent.</div>}
               </div>
             )}
+
             {assistMode === 'contact' && (
-              <input type="text" value={contactInfo} onChange={e => setContactInfo(e.target.value)} placeholder="Phone / Email / Notes..." style={{ width: '100%', marginTop: '10px', backgroundColor: '#0a0a0f', border: '1px solid #1e293b', borderRadius: '8px', padding: '9px 12px', color: '#f1f5f9', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+              <input
+                type="text"
+                value={contactInfo}
+                onChange={e => setContactInfo(e.target.value)}
+                placeholder="Phone / Email / Notes…"
+                className="qk-input"
+                style={{ marginTop: 10 }}
+              />
             )}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px' }}>
-              <span style={{ fontSize: '11px', color: '#1e293b' }}>Ctrl+Enter to save</span>
-              <button onClick={handleSave} disabled={saving || !content.trim()} style={{ backgroundColor: saving || !content.trim() ? '#1a1a2e' : '#6366f1', color: saving || !content.trim() ? '#334155' : '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: saving || !content.trim() ? 'not-allowed' : 'pointer' }}>
-                {saving ? 'Saving...' : '+ Keep this'}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.15)' }}>Ctrl+Enter to save</span>
+              <button
+                onClick={handleSave}
+                disabled={saving || !content.trim()}
+                className="qk-btn qk-btn-primary"
+              >
+                {saving ? 'Saving…' : '+ Keep this'}
               </button>
             </div>
           </div>
+
           {/* Search */}
-          <div style={{ marginBottom: '14px', position: 'relative' }}>
-            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search your keeps..." style={{ width: '100%', backgroundColor: '#0f0f1a', border: '1px solid #1e1e2e', borderRadius: '10px', padding: '10px 14px', color: '#f1f5f9', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
-            {searchQuery && <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: '16px' }}>&times;</button>}
+          <div style={{ marginBottom: 14, position: 'relative' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search your keeps…"
+              className="qk-input"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 18,
+                }}
+              >
+                ×
+              </button>
+            )}
           </div>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '14px', backgroundColor: '#0f0f1a', padding: '4px', borderRadius: '10px', border: '1px solid #1e1e2e' }}>
-            {[{ key: 'open', label: 'Open (' + openIntents.length + ')' },{ key: 'closed', label: 'Done (' + closedIntents.length + ')' }].map(tab => (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{ flex: 1, padding: '9px', borderRadius: '7px', border: 'none', cursor: 'pointer', backgroundColor: activeTab === tab.key ? '#6366f1' : 'transparent', color: activeTab === tab.key ? '#fff' : '#64748b', fontSize: '13px', fontWeight: '600' }}>
+          <div className="qk-tabs">
+            {[
+              { key: 'open', label: `Open (${openIntents.length})` },
+              { key: 'closed', label: `Done (${closedIntents.length})` },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`qk-tab${activeTab === tab.key ? ' active' : ''}`}
+              >
                 {tab.label}
               </button>
             ))}
@@ -417,12 +555,13 @@ export default function Dashboard() {
 
           {/* Keeps list */}
           {displayIntents.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 24px', border: '1px dashed #1e293b', borderRadius: '14px', color: '#334155' }}>
-              <div style={{ fontSize: '32px', marginBottom: '10px' }}>{activeTab === 'open' ? '🎙' : '✅'}</div>
-              <div>{activeTab === 'open' ? 'Tap Voice or type to add your first keep' : 'No completed keeps yet'}</div>
+            <div className="qk-empty">
+              <div className="qk-empty-icon">{activeTab === 'open' ? '🎙' : '✅'}</div>
+              <div className="qk-empty-title">{activeTab === 'open' ? 'No open keeps' : 'No completed keeps yet'}</div>
+              <div className="qk-empty-sub">{activeTab === 'open' ? 'Tap Voice or type to add your first keep' : 'Mark some keeps as done to see them here'}</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {displayIntents.map(intent => (
                 <IntentCard
                   key={intent.id}
@@ -436,8 +575,7 @@ export default function Dashboard() {
           )}
 
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
       </div>
     </>
   );
-          }
+} 

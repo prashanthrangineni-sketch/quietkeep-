@@ -107,7 +107,7 @@ export default function Documents() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight:'100vh', backgroundColor:'#0a0a0f', color:'#f1f5f9', padding:'24px 16px 80px' }}>
+      <div style={{ minHeight:'100vh', backgroundColor:'#0a0a0f', color:'#f1f5f9', padding:'96px 16px 80px' }}>
         <div style={{ maxWidth:'660px', margin:'0 auto' }}>
 
           {/* Header */}
@@ -249,4 +249,4 @@ function DocCard({ doc, days, isExpired, isSoon, cat, onDelete }) {
       </div>
     </div>
   );
-      }
+}

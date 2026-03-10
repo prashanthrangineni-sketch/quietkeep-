@@ -136,7 +136,7 @@ export default function KidsPage() {
   if (loading) return (<div style={{ minHeight:'100vh', background:'#0f0f0f', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading Kids…</div></div>);
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff' }}>
+    <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff', paddingTop:'96px', paddingBottom:'80px' }}>
       <NavbarClient />
       <div style={{ maxWidth:740, margin:'0 auto', padding:'1.5rem 1rem 5rem' }}>
 

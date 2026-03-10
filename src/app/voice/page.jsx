@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import NavbarClient from '@/components/NavbarClient';
 
 function fmt(ts) {
   if (!ts) return '—';
@@ -63,7 +64,9 @@ export default function VoicePage() {
   const capturedCount = sessions.filter(s => s.intent_captured).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
+    <>
+      <NavbarClient />
+      <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
 
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #0a0a14, #0d0a18)', borderBottom: '1px solid rgba(139,92,246,0.2)', padding: '20px 16px 16px' }}>
@@ -171,5 +174,6 @@ export default function VoicePage() {
         ))}
       </div>
     </div>
+    </>
   );
-             }
+}

@@ -112,7 +112,7 @@ export default function MemoriesPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight:'100vh', background:'#0a0a0f', color:'#f1f5f9', paddingBottom: '100px' }}>
+      <div style={{ minHeight:'100vh', background:'#0a0a0f', color:'#f1f5f9', paddingBottom: '80px', paddingTop:'96px' }}>
         <div style={{ maxWidth:'640px', margin:'0 auto', padding:'20px 16px' }}>
 
           {/* Header */}

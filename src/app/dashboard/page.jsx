@@ -295,30 +295,12 @@ export default function Dashboard() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: '#f1f5f9', paddingTop: '96px', paddingBottom: '80px' }}>
         {toast && (
           <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#1e1e2e', border: '1px solid #6366f1', borderRadius: '10px', padding: '10px 20px', color: '#f1f5f9', fontSize: '14px', zIndex: 9999, boxShadow: '0 4px 24px rgba(99,102,241,0.3)', whiteSpace: 'nowrap' }}>
             {toast}
           </div>
         )}
-
-        {/* Sub-header: quick nav links */}
-        <div style={{ borderBottom: '1px solid #1e1e2e', padding: '10px 16px', backgroundColor: 'rgba(10,10,15,0.98)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontWeight: '700', fontSize: '14px', color: '#6366f1' }}>My Keeps</span>
-            <span style={{ fontSize: '10px', color: '#334155' }}>{user?.email}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            {[
-              ['/calendar','Calendar'],['/daily-brief','Brief'],['/documents','Docs'],
-              ['/finance','Finance'],['/family','Family'],['/kids','Kids'],
-              ['/settings','Settings'],['/profile','Profile'],
-            ].map(([href, label]) => (
-              <a key={href} href={href} style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '11px', padding: '5px 10px', border: '1px solid #1e293b', borderRadius: '6px', whiteSpace: 'nowrap' }}>{label}</a>
-            ))}
-            <button onClick={() => supabase.auth.signOut().then(() => router.replace('/login'))} style={{ backgroundColor: 'transparent', border: '1px solid #1e293b', color: '#64748b', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>Sign Out</button>
-          </div>
-        </div>
 
         <div style={{ maxWidth: '680px', margin: '0 auto', padding: '20px 16px' }}>
           <ContextCards userId={user?.id} />
@@ -458,4 +440,4 @@ export default function Dashboard() {
       </div>
     </>
   );
-}
+          }

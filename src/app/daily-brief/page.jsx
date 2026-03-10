@@ -138,7 +138,7 @@ export default function DailyBriefPage() {
   const name = brief?.profile?.full_name?.split(' ')[0] || '';
 
   // ── Styles (shared across both blocks) ──────────────────────────────────────
-  const page = { minHeight: '100vh', background: '#0f172a', padding: '24px 16px 100px', fontFamily: 'system-ui,sans-serif' };
+  const page = { minHeight: '100vh', background: '#0f172a', padding: '24px 16px 80px', fontFamily: 'system-ui,sans-serif', paddingTop: '96px' };
   const card = { background: '#1e293b', borderRadius: 12, padding: 16, marginBottom: 14, border: '1px solid #334155' };
   const cardTitle = { color: '#64748b', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 };
   const item = { background: '#0f172a', borderRadius: 8, padding: '10px 14px', marginBottom: 8 };

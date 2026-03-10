@@ -210,7 +210,7 @@ export default function CalendarPage() {
   const hasData = !!selCal?.dbType;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0f0f', color: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: '#0f0f0f', color: '#fff', paddingTop: '96px', paddingBottom: '80px' }}>
       <NavbarClient />
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '1rem 0.75rem 4rem' }}>
 
@@ -378,4 +378,4 @@ export default function CalendarPage() {
       </div>
     </div>
   );
-}
+                  }

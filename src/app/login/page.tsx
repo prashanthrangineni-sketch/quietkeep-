@@ -1,6 +1,6 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { useState, useRef } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 
 const BETA_EMAILS = ['beta@quietkeep.com', 'pranixailabs@gmail.com'];
 const BETA_PASSWORDS: Record<string, string> = {
@@ -9,24 +9,32 @@ const BETA_PASSWORDS: Record<string, string> = {
 };
 const OTP_LEN = 8;
 
+function getClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [otp, setOtp] = useState(Array(OTP_LEN).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isBeta, setIsBeta] = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   function handleContinue() {
     if (!email.trim()) return;
-    const emailNorm = email.trim().toLowerCase();
-    if (BETA_EMAILS.includes(emailNorm)) {
-      // Beta user — go to OTP screen, no email sent
+    const norm = email.trim().toLowerCase();
+    if (BETA_EMAILS.includes(norm)) {
+      setIsBeta(true);
       setError('');
       setStep('otp');
       setTimeout(() => refs.current[0]?.focus(), 120);
     } else {
-      // Everyone else — straight to waitlist, no Supabase call at all
+      // Non-beta: go straight to waitlist, zero Supabase calls
       window.location.href = '/waitlist';
     }
   }
@@ -42,15 +50,10 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError('');
-    // Plain createClient — no PKCE, works with signInWithPassword
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const emailNorm = email.trim().toLowerCase();
-    const { error: signErr } = await sb.auth.signInWithPassword({
-      email: emailNorm,
-      password: BETA_PASSWORDS[emailNorm],
+    // MUST use createBrowserClient so cookies are written in format middleware can read
+    const { error: signErr } = await getClient().auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password: BETA_PASSWORDS[email.trim().toLowerCase()],
     });
     setLoading(false);
     if (signErr) { setError('Sign-in failed: ' + signErr.message); return; }
@@ -59,15 +62,10 @@ export default function LoginPage() {
 
   function handleDigit(i: number, val: string) {
     if (val.length === OTP_LEN && /^\d{8}$/.test(val)) {
-      const d = val.split('');
-      setOtp(d);
-      verifyOtp(d);
-      return;
+      const d = val.split(''); setOtp(d); verifyOtp(d); return;
     }
     const digit = val.replace(/\D/g, '').slice(-1);
-    const next = [...otp];
-    next[i] = digit;
-    setOtp(next);
+    const next = [...otp]; next[i] = digit; setOtp(next);
     if (digit && i < OTP_LEN - 1) refs.current[i + 1]?.focus();
     if (next.every(d => d !== '')) verifyOtp(next);
   }
@@ -130,9 +128,7 @@ export default function LoginPage() {
           {otp.map((d, i) => (
             <input key={i} ref={el => { refs.current[i] = el; }}
               type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={OTP_LEN}
-              value={d}
-              onChange={e => handleDigit(i, e.target.value)}
-              onKeyDown={e => handleKey(i, e)}
+              value={d} onChange={e => handleDigit(i, e.target.value)} onKeyDown={e => handleKey(i, e)}
               style={{ width: '44px', height: '54px', textAlign: 'center', background: d ? '#1e1e3e' : '#1e1e2e', border: d ? '2px solid #6366f1' : '1px solid #333', borderRadius: '10px', color: '#fff', fontSize: '22px', fontWeight: 700, outline: 'none', fontFamily: 'inherit' }}
             />
           ))}
@@ -141,7 +137,7 @@ export default function LoginPage() {
           {loading ? 'Signing in…' : 'Sign In'}
         </button>
         <div style={{ marginTop: '12px' }}>
-          <button onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); }} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit' }}>
+          <button onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); setIsBeta(false); }} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit' }}>
             ← Back
           </button>
         </div>

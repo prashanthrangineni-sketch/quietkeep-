@@ -127,7 +127,7 @@ export default function RemindersPage() {
   const overdueCount = reminders.filter(r => r.is_active && isOverdue(r.scheduled_for)).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0d0a14', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', background: '#0d0a14', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
       <NavbarClient />
 
       {/* Header */}
@@ -310,4 +310,4 @@ export default function RemindersPage() {
       `}</style>
     </div>
   );
-}
+        }

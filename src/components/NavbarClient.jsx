@@ -27,6 +27,8 @@ const MORE_PAGES = [
   { href: '/kids',        icon: '👶',  label: 'Kids',           section: 'People'   },
   { href: '/health',      icon: '🏃',  label: 'Health Log',     section: 'Wellness' },
   { href: '/emergency',   icon: '🆘',  label: 'Emergency',      section: 'People'   },
+  { href: '/memories',      icon: '🧠', label: 'Memory Vault',    section: 'Life'     },
+  { href: '/subscription',  icon: '⭐', label: 'Upgrade',          section: 'Settings' },
   { href: '/sos',         icon: '📋',  label: 'SOS History',    section: 'People'   },
   { href: '/connectors',  icon: '🔌',  label: 'Connectors',     section: 'Settings' },
   { href: '/audit',       icon: '📊',  label: 'Activity Log',   section: 'Settings' },

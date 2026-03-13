@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import NavbarClient from '@/components/NavbarClient';
+import WeatherWidget from '@/components/WeatherWidget';
 
 export default function DailyBriefPage() {
   const [user, setUser] = useState(null);
@@ -10,7 +11,6 @@ export default function DailyBriefPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [loadingAI, setLoadingAI] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
-  const [weather, setWeather] = useState(null);
 
   useEffect(() => { init(); }, []);
 
@@ -18,17 +18,6 @@ export default function DailyBriefPage() {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
     if (user) await loadBrief(user.id);
-    try {
-      const lat = 17.385, lon = 78.487;
-      const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&timezone=Asia/Kolkata`);
-      if (wRes.ok) {
-        const wData = await wRes.json();
-        const c = wData.current;
-        const code = c.weathercode;
-        const icon = code === 0 ? '☀️' : code <= 3 ? '⛅' : code <= 48 ? '🌫️' : code <= 67 ? '🌧️' : code <= 77 ? '❄️' : code <= 82 ? '🌦️' : '⛈️';
-        setWeather({ temp: Math.round(c.temperature_2m), icon, humidity: c.relative_humidity_2m, wind: Math.round(c.windspeed_10m) });
-      }
-    } catch { /* weather optional */ }
     setLoadingData(false);
   }
 
@@ -133,16 +122,9 @@ export default function DailyBriefPage() {
           </div>
           <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>{dateStr}</div>
 
-          {weather && (
-            <div className="qk-card" style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 14px' }}>
-              <span style={{ fontSize: 24 }}>{weather.icon}</span>
-              <div>
-                <span style={{ color: '#e2e8f0', fontWeight: 700, fontSize: 16 }}>{weather.temp}°C</span>
-                <span style={{ color: '#64748b', fontSize: 12, marginLeft: 10 }}>💧{weather.humidity}% · 💨{weather.wind} km/h</span>
-              </div>
-              <span style={{ color: '#334155', fontSize: 11, marginLeft: 'auto' }}>Hyderabad</span>
-            </div>
-          )}
+          <div style={{ marginTop: 12 }}>
+            <WeatherWidget city="Hyderabad" lat={17.385} lon={78.487} />
+          </div>
         </div>
 
         {/* Panchang */}

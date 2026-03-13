@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import NavbarClient from '@/components/NavbarClient';
+import StockTracker from '@/components/StockTracker';
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -21,6 +22,7 @@ export default function FinancePage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('expenses');
+  const [stockEnabled, setStockEnabled] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
@@ -44,6 +46,9 @@ export default function FinancePage() {
       supabase.from('subscriptions').select('*').eq('user_id', user.id).eq('is_active', true).order('next_due', { ascending: true }),
     ]);
     setExpenses(eR.data || []); setBudgets(bR.data || []); setSubscriptions(sR.data || []);
+    // Check stock_tracking feature flag
+    const { data: stockFlag } = await supabase.from('feature_flags').select('feature_name').eq('feature_name', 'stock_tracking').single();
+    if (stockFlag) setStockEnabled(true);
     setLoading(false);
   }
 
@@ -93,7 +98,7 @@ export default function FinancePage() {
   const totalSubs = subscriptions.reduce((s, sub) => s + parseFloat(sub.amount || 0), 0);
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff', paddingTop:'96px', paddingBottom:'80px' }}>
+    <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff' }}>
       <NavbarClient />
       <div style={{ maxWidth:700, margin:'0 auto', padding:'1.5rem 1rem 4rem' }}>
 
@@ -109,7 +114,7 @@ export default function FinancePage() {
         </div>
 
         <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1.5rem', background:'#1a1a1a', borderRadius:10, padding:4 }}>
-          {['expenses','budgets','subscriptions'].map(t => (
+          {['expenses','budgets','subscriptions', ...(stockEnabled ? ['assets'] : [])].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ flex:1, padding:'0.55rem', borderRadius:8, border:'none', background:tab===t?'#6366f1':'transparent', color:tab===t?'#fff':'#666', fontSize:'0.85rem', fontWeight:600, cursor:'pointer', textTransform:'capitalize' }}>{t}</button>
           ))}
         </div>
@@ -242,7 +247,11 @@ export default function FinancePage() {
           </div>
         )}
 
+        {tab === 'assets' && stockEnabled && (
+          <StockTracker supabase={supabase} userId={user?.id} />
+        )}
+
       </div>
     </div>
   );
-                                                                              }
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import NavbarClient from '@/components/NavbarClient';
+import VoiceTalkbackToggle from '@/components/VoiceTalkback';
 
 function fmt(ts) {
   if (!ts) return '—';
@@ -33,10 +33,17 @@ export default function VoicePage() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
+  const [talkbackEnabled, setTalkbackEnabled] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) { setUser(user); loadSessions(user.id); }
+      if (user) {
+        setUser(user);
+        loadSessions(user.id);
+        // Check voice_talkback feature flag
+        supabase.from('feature_flags').select('feature_name').eq('feature_name', 'sarvam_tts').single()
+          .then(({ data }) => { if (data) setTalkbackEnabled(true); });
+      }
     });
   }, []);
 
@@ -64,9 +71,7 @@ export default function VoicePage() {
   const capturedCount = sessions.filter(s => s.intent_captured).length;
 
   return (
-    <>
-      <NavbarClient />
-      <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
+    <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
 
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #0a0a14, #0d0a18)', borderBottom: '1px solid rgba(139,92,246,0.2)', padding: '20px 16px 16px' }}>
@@ -74,10 +79,13 @@ export default function VoicePage() {
           <span style={{ fontSize: '22px' }}>🎙️</span>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Voice History</h1>
         </div>
-        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+        <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
           {sessions.length} session{sessions.length !== 1 ? 's' : ''}
           {totalDuration > 0 ? ` · ${fmtDuration(totalDuration)} total` : ''}
         </p>
+        {talkbackEnabled && (
+          <VoiceTalkbackToggle />
+        )}
       </div>
 
       {/* Stats strip */}
@@ -174,6 +182,5 @@ export default function VoicePage() {
         ))}
       </div>
     </div>
-    </>
   );
-}
+                          }

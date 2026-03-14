@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Always allow through
-  const publicPaths = ['/', '/login', '/auth', '/onboarding', '/waitlist'];
+  const publicPaths = ['/', '/login', '/auth', '/onboarding', '/waitlist', '/share'];
   if (publicPaths.some(p => pathname.startsWith(p))) return supabaseResponse;
 
   // Not logged in — send to login

@@ -1,4 +1,5 @@
 'use client';
+import { speak } from '@/components/VoiceTalkback';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -357,7 +358,6 @@ export default function Dashboard() {
     const { data, error } = await supabase.from('keeps').select('*').eq('user_id', uid).order('created_at', { ascending: false });
     if (!error && data) setIntents(data);
   }, []);
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { router.replace('/login'); return; }
@@ -399,6 +399,7 @@ export default function Dashboard() {
     if (!error) {
       setContent(''); setRemindAt(''); setContactInfo(''); setReminderType('app'); setSuggestions([]); setAutoDetected(null);
       showToast('✓ Kept!');
+      speak('Keep saved.');
       await loadIntents(user.id);
     } else {
       showToast('Error: ' + error.message);
@@ -411,6 +412,7 @@ export default function Dashboard() {
     await supabase.from('keeps').update({ status: state }).eq('id', id);
     await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_status_updated', intent_id: id, service: 'dashboard', details: { status: state } }).catch(() => {});
     showToast(state === 'closed' ? '✓ Marked done!' : 'Moved to ' + state);
+    if (state === 'closed') speak('Keep marked as done.');
     await loadIntents(user.id);
   }
 
@@ -418,6 +420,7 @@ export default function Dashboard() {
     await supabase.from('keeps').delete().eq('id', id);
     await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_deleted', intent_id: id, service: 'dashboard', details: {} }).catch(() => {});
     showToast('Deleted');
+    speak('Keep deleted.');
     await loadIntents(user.id);
   }
 
@@ -426,6 +429,7 @@ export default function Dashboard() {
     if (error) throw new Error(error.message);
     await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_edited', intent_id: id, service: 'dashboard', details: {} }).catch(() => {});
     showToast('Keep updated ✓');
+    speak('Keep updated.');
     await loadIntents(user.id);
   }
 
@@ -685,6 +689,7 @@ export default function Dashboard() {
                   intent={intent}
                   onUpdateState={updateState}
                   onDelete={handleDelete}
+                  onEdit={handleEdit}
                   accessToken={accessToken}
                 />
               ))}
@@ -695,4 +700,4 @@ export default function Dashboard() {
       </div>
     </>
   );
-              }
+      }

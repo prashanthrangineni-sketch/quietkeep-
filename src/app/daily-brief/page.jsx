@@ -82,7 +82,7 @@ export default function DailyBriefPage() {
   }
 
   if (loadingData) return (
-    <div style={{ minHeight: '100dvh', background: '#0b0f19', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100dvh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="qk-spinner" />
     </div>
   );

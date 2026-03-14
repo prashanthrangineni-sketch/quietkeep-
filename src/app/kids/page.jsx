@@ -173,7 +173,6 @@ export default function KidsPage() {
       )}
       <NavbarClient />
       <div style={{ maxWidth:740, margin:'0 auto', padding:'1.5rem 1rem 5rem' }}>
-
         {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'1.5rem' }}>
           <div>
@@ -338,4 +337,4 @@ export default function KidsPage() {
       </div>
     </div>
   );
-}
+              }

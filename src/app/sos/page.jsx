@@ -58,7 +58,7 @@ export default function SOSPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight: '100vh', background: '#0f0a0a', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
+      <div style={{ minHeight: '100vh', background: '#0d1117', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
 
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #160a0a, #100a14)', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>

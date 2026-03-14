@@ -195,7 +195,7 @@ export default function StockTracker({ supabase, userId }) {
               <div>
                 <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>Symbol *</label>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <input style={{ ...inp, flex: 1 }} placeholder="INFY.NS" value={fTicker} onChange={e => setFTicker(e.target.value.toUpperCase())} onBlur={previewTicker} />
+                  <input style={{ ...inp, flex: 1 }} placeholder="INFY.NS / WIPRO.NS (add .NS for NSE)" value={fTicker} onChange={e => setFTicker(e.target.value.toUpperCase())} onBlur={previewTicker} />
                   <button onClick={previewTicker} disabled={fetchingPrice} style={{ ...btn0, padding: '0 10px', fontSize: 11 }}>
                     {fetchingPrice ? '…' : '↗'}
                   </button>
@@ -304,4 +304,4 @@ export default function StockTracker({ supabase, userId }) {
       )}
     </div>
   );
-}
+          }

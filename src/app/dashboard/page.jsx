@@ -351,8 +351,7 @@ export default function Dashboard() {
         setTimeout(() => setAutoDetected(null), 3000);
       }
     }
-  }
-
+    }
   const loadIntents = useCallback(async (uid) => {
     const { data, error } = await supabase.from('keeps').select('*').eq('user_id', uid).order('created_at', { ascending: false });
     if (!error && data) setIntents(data);
@@ -695,4 +694,4 @@ export default function Dashboard() {
       </div>
     </>
   );
-} 
+      }

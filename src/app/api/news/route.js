@@ -1,50 +1,83 @@
-// Server-side RSS proxy - avoids CORS + allorigins issues on client
 export const runtime = 'edge';
 
 const FEEDS = {
-  India:    'https://news.google.com/rss/headlines/section/geo/IN?hl=en-IN&gl=IN&ceid=IN:en',
-  Business: 'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-IN&gl=IN&ceid=IN:en',
-  Tech:     'https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-IN&gl=IN&ceid=IN:en',
-  Health:   'https://news.google.com/rss/headlines/section/topic/HEALTH?hl=en-IN&gl=IN&ceid=IN:en',
+  India: [
+    'https://feeds.feedburner.com/ndtvnews-india-news',
+    'https://timesofindia.indiatimes.com/rssfeedstopstories.cms',
+    'https://www.thehindu.com/news/national/feeder/default.rss',
+  ],
+  Business: [
+    'https://economictimes.indiatimes.com/rssfeedstopstories.cms',
+    'https://feeds.feedburner.com/ndtvprofit-latest-news',
+    'https://www.business-standard.com/rss/latest.rss',
+  ],
+  Tech: [
+    'https://feeds.feedburner.com/gadgets360-latest',
+    'https://timesofindia.indiatimes.com/rssfeeds/66949542.cms',
+    'https://www.theverge.com/rss/index.xml',
+  ],
+  Health: [
+    'https://timesofindia.indiatimes.com/rssfeeds/3908999.cms',
+    'https://www.medicalnewstoday.com/rss',
+    'https://feeds.feedburner.com/ndtv/health',
+  ],
 };
+
+function parseItems(xml) {
+  const items = [];
+  // Handle both RSS <item> and Atom <entry>
+  const regex = /<(?:item|entry)>([\s\S]*?)<\/(?:item|entry)>/g;
+  let match;
+  while ((match = regex.exec(xml)) !== null && items.length < 15) {
+    const block = match[1];
+    const get = (tag) => {
+      const m = block.match(new RegExp(
+        `<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`
+      ));
+      return m ? (m[1] || m[2] || '').replace(/<[^>]+>/g, '').trim() : '';
+    };
+    // Handle link variations
+    let link = get('link');
+    if (!link) {
+      const lm = block.match(/<link[^>]+href="([^"]+)"/);
+      if (lm) link = lm[1];
+    }
+    const title = get('title');
+    if (!title) continue;
+    items.push({
+      title,
+      link: link || '',
+      pubDate: get('pubDate') || get('updated') || get('published'),
+      source: get('source') || '',
+    });
+  }
+  return items;
+}
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const category = searchParams.get('category') || 'India';
-  const feedUrl = FEEDS[category];
-  if (!feedUrl) return Response.json({ error: 'Unknown category' }, { status: 400 });
+  const feedUrls = FEEDS[category];
+  if (!feedUrls) return Response.json({ error: 'Unknown category' }, { status: 400 });
 
-  try {
-    const res = await fetch(feedUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QuietKeep/1.0)' },
-    });
-    if (!res.ok) return Response.json({ error: 'Feed unavailable' }, { status: 502 });
+  // Try each feed URL until one works
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (compatible; RSS Reader)',
+    'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+  };
 
-    const xml = await res.text();
-
-    // Parse XML items server-side
-    const items = [];
-    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-    let match;
-    while ((match = itemRegex.exec(xml)) !== null && items.length < 20) {
-      const block = match[1];
-      const get = (tag) => {
-        const m = block.match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\/${tag}>|<${tag}[^>]*>([\\s\\S]*?)<\/${tag}>`));
-        return m ? (m[1] || m[2] || '').trim() : '';
-      };
-      const link = get('link') || block.match(/<link\s*\/>[\s\S]*?<([^>]+)>/)?.[1] || '';
-      items.push({
-        title: get('title'),
-        link: get('link'),
-        pubDate: get('pubDate'),
-        source: get('source'),
+  for (const url of feedUrls) {
+    try {
+      const res = await fetch(url, { headers });
+      if (!res.ok) continue;
+      const xml = await res.text();
+      const items = parseItems(xml);
+      if (items.length === 0) continue;
+      return Response.json({ items, source: url }, {
+        headers: { 'Cache-Control': 'public, max-age=900, s-maxage=900' },
       });
-    }
-
-    return Response.json({ items }, {
-      headers: { 'Cache-Control': 'public, max-age=900, s-maxage=900' },
-    });
-  } catch (e) {
-    return Response.json({ error: e.message }, { status: 500 });
+    } catch { continue; }
   }
+
+  return Response.json({ items: [], error: 'All feeds unavailable' }, { status: 200 });
 }

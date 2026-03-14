@@ -46,6 +46,7 @@ function LocationShare({ userId }) {
 
 export default function FamilyPage() {
   const [user, setUser] = useState(null);
+  const [accessToken, setAccessToken] = useState('');
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [email, setEmail] = useState('');
@@ -64,8 +65,10 @@ export default function FamilyPage() {
   }, []);
 
   async function init() {
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+    setUser(user || null);
+    if (session?.access_token) setAccessToken(session.access_token);
     if (user) {
       await Promise.all([loadMembers(user.id), loadInvites(user.id)]);
     }
@@ -106,8 +109,33 @@ export default function FamilyPage() {
       return;
     }
     const link = `${window.location.origin}/family?invite=${data.token}`;
-    await navigator.clipboard.writeText(link).catch(() => {});
-    setMsg({ text: `Invite link copied!\n${link}`, type: 'success' });
+
+    // Try to send email via API
+    try {
+      const emailRes = await fetch('/api/family/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          inviteeEmail: email.trim().toLowerCase(),
+          inviteLink: link,
+          inviterName: user.user_metadata?.full_name || user.email,
+          role,
+        }),
+      });
+      const emailData = await emailRes.json();
+      if (emailData.sent) {
+        setMsg({ text: `Invite email sent to ${email.trim()} ✓`, type: 'success' });
+      } else {
+        // Email not configured — fall back to clipboard
+        await navigator.clipboard.writeText(link).catch(() => {});
+        setMsg({ text: `Invite link copied to clipboard!\n${link}`, type: 'success' });
+      }
+    } catch {
+      // Network error — still copy to clipboard
+      await navigator.clipboard.writeText(link).catch(() => {});
+      setMsg({ text: `Invite link copied!\n${link}`, type: 'success' });
+    }
+
     setEmail('');
     await loadInvites(user.id);
     setSending(false);
@@ -260,4 +288,4 @@ export default function FamilyPage() {
     </div>
     </>
   );
-              }
+                  }

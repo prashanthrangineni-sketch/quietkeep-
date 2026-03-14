@@ -156,10 +156,10 @@ export default function KidsPage() {
     setContent(p => p.filter(c => c.id !== item.id));
   }
 
-  if (loading) return (<div style={{ minHeight:'100vh', background:'#0f0f0f', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading Kids…</div></div>);
+  if (loading) return (<div style={{ minHeight:'100vh', background:'#0d1117', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading Kids…</div></div>);
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff' }}>
+    <div style={{ minHeight:'100vh', background:'#0d1117', color:'#fff' }}>
       {/* Kids PIN setup modal */}
       {showPinSetup && (
         <PinSetupModal
@@ -172,7 +172,7 @@ export default function KidsPage() {
         <KidsLockOverlay onUnlock={() => { setShowLock(false); setKidsMode(false); }} />
       )}
       <NavbarClient />
-      <div style={{ maxWidth:740, margin:'0 auto', padding:'1.5rem 1rem 5rem' }}>
+      <div style={{ maxWidth:740, margin:'0 auto', padding:'6rem 1rem 6rem' }}>
         {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'1.5rem' }}>
           <div>
@@ -337,4 +337,4 @@ export default function KidsPage() {
       </div>
     </div>
   );
-              }
+                                                                                                                                                                                                             }

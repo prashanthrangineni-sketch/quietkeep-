@@ -204,7 +204,6 @@ export default function CalendarPage() {
       <div style={{ color: '#6366f1' }}>Loading…</div>
     </div>
   );
-
   const cells = buildCalendarGrid();
   const selCal = CALENDAR_TYPES.find(c => c.id === selectedCal);
   const hasData = !!selCal?.dbType;
@@ -406,4 +405,4 @@ export default function CalendarPage() {
       </div>
     </div>
   );
-                  }
+                                     }

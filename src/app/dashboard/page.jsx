@@ -455,7 +455,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div style={{
-        minHeight: '100dvh', background: '#0b0f19',
+        minHeight: '100dvh', background: '#0d1117',
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16,
       }}>
         <div className="qk-spinner" />

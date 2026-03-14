@@ -35,7 +35,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-title" content="QuietKeep" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className={inter.className} style={{ margin: 0, padding: 0, backgroundColor: '#0b0f19' }}>
+      <body className={inter.className} style={{ margin: 0, padding: 0 }}>
         {children}
         <script dangerouslySetInnerHTML={{
           __html: `

@@ -173,7 +173,7 @@ export default function FamilyPage() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#94a3b8', fontSize: 16 }}>Loading...</div>
     </div>
   );
@@ -181,7 +181,7 @@ export default function FamilyPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight: '100vh', background: '#0f172a', padding: '96px 16px 80px', fontFamily: 'system-ui,sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: '#0d1117', padding: '96px 16px 80px', fontFamily: 'system-ui,sans-serif' }}>
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
         <div style={{ color: '#f1f5f9', fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Family Space</div>
@@ -195,7 +195,7 @@ export default function FamilyPage() {
             <button
               onClick={acceptInvite}
               disabled={accepting}
-              style={{ width: '100%', padding: 12, background: accepting ? '#334155' : '#f59e0b', color: '#0f172a', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
+              style={{ width: '100%', padding: 12, background: accepting ? '#334155' : '#f59e0b', color: '#0d1117', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
             >{accepting ? 'Accepting...' : 'Accept Invite'}</button>
           </div>
         )}
@@ -215,12 +215,12 @@ export default function FamilyPage() {
             placeholder="their@email.com"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: '10px 14px', color: '#f1f5f9', fontSize: 15, boxSizing: 'border-box', outline: 'none' }}
+            style={{ width: '100%', background: '#0d1117', border: '1px solid #334155', borderRadius: 8, padding: '10px 14px', color: '#f1f5f9', fontSize: 15, boxSizing: 'border-box', outline: 'none' }}
           />
           <select
             value={role}
             onChange={e => setRole(e.target.value)}
-            style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 8, padding: '10px 14px', color: '#f1f5f9', fontSize: 15, boxSizing: 'border-box', marginTop: 10 }}
+            style={{ width: '100%', background: '#0d1117', border: '1px solid #334155', borderRadius: 8, padding: '10px 14px', color: '#f1f5f9', fontSize: 15, boxSizing: 'border-box', marginTop: 10 }}
           >
             <option value="member">Member — can view & add keeps</option>
             <option value="viewer">Viewer — read only</option>
@@ -238,7 +238,7 @@ export default function FamilyPage() {
           <div style={{ background: '#1e293b', borderRadius: 12, padding: 20, marginBottom: 16, border: '1px solid #334155' }}>
             <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Pending Invites ({invites.length})</div>
             {invites.map(inv => (
-              <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #0f172a' }}>
+              <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #0d1117' }}>
                 <div>
                   <div style={{ color: '#f1f5f9', fontSize: 14 }}>{inv.invitee_email}</div>
                   <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
@@ -261,7 +261,7 @@ export default function FamilyPage() {
             <div style={{ color: '#475569', fontSize: 14, padding: '8px 0' }}>No members yet. Send an invite above.</div>
           ) : (
             members.map(m => (
-              <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #0f172a' }}>
+              <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #0d1117' }}>
                 <div>
                   <div style={{ color: '#f1f5f9', fontSize: 14 }}>{m.member_email}</div>
                   <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
@@ -288,4 +288,4 @@ export default function FamilyPage() {
     </div>
     </>
   );
-                  }
+      }

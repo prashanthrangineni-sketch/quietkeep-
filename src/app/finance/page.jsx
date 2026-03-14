@@ -100,7 +100,7 @@ export default function FinancePage() {
   return (
     <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff' }}>
       <NavbarClient />
-      <div style={{ maxWidth:700, margin:'0 auto', padding:'1.5rem 1rem 4rem' }}>
+      <div style={{ maxWidth:700, margin:'0 auto', padding:'1.5rem 1rem 6rem' }}>
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'0.75rem', marginBottom:'1.5rem' }}>
           <div style={{ background:'#1a1a1a', border:'1px solid #2a2a2a', borderRadius:12, padding:'1.2rem' }}>
@@ -254,4 +254,4 @@ export default function FinancePage() {
       </div>
     </div>
   );
-}
+  }

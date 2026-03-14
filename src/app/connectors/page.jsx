@@ -105,3 +105,109 @@ export default function ConnectorsPage() {
       .from('user_connectors')
       .select('connector_name, is_enabled')
       .eq('user_id', uid);
+    const map = {};
+    (data || []).forEach(r => { map[r.connector_name] = r.is_enabled; });
+    // Default all to enabled if no row exists
+    CONNECTORS.forEach(c => { if (!(c.id in map)) map[c.id] = true; });
+    setEnabled(map);
+    setLoading(false);
+  }
+
+  async function toggle(connectorId) {
+    if (!user) return;
+    const newVal = !enabled[connectorId];
+    setSaving(connectorId);
+    setEnabled(prev => ({ ...prev, [connectorId]: newVal }));
+    await supabase.from('user_connectors').upsert({
+      user_id: user.id,
+      connector_name: connectorId,
+      is_enabled: newVal,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,connector_name' });
+    setSaving(null);
+  }
+
+  function openConnector(link) {
+    window.open(link, '_blank');
+  }
+
+  const filtered = catFilter === 'All' ? CONNECTORS : CONNECTORS.filter(c => c.category === catFilter);
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: '#6366f1' }}>Loading connectors…</div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0d1117', color: '#f1f5f9', fontFamily: 'system-ui,sans-serif', paddingBottom: 80, paddingTop: '96px' }}>
+      <NavbarClient />
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px' }}>
+
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 6px' }}>🔌 Connectors</h1>
+        <p style={{ color: '#475569', fontSize: 13, marginBottom: 20 }}>
+          Enable apps to open automatically from your keeps. Toggle off to disable a connector.
+        </p>
+
+        {/* Category filter */}
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 20, scrollbarWidth: 'none' }}>
+          {['All', ...CATEGORIES].map(cat => (
+            <button key={cat} onClick={() => setCatFilter(cat)} style={{
+              whiteSpace: 'nowrap', padding: '5px 14px', borderRadius: 20,
+              border: `1px solid ${catFilter === cat ? '#6366f1' : '#1e293b'}`,
+              background: catFilter === cat ? '#6366f122' : '#1e293b',
+              color: catFilter === cat ? '#818cf8' : '#64748b',
+              fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+            }}>{cat}</button>
+          ))}
+        </div>
+
+        {/* Connector cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {filtered.map(c => {
+            const isOn = enabled[c.id] !== false;
+            return (
+              <div key={c.id} style={{
+                background: '#0d1117', border: `1px solid ${isOn ? c.color + '25' : '#1e293b'}`,
+                borderRadius: 12, padding: '14px 16px',
+                display: 'flex', alignItems: 'center', gap: 14,
+                opacity: isOn ? 1 : 0.5,
+              }}>
+                <div
+                  style={{ fontSize: 28, width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isOn ? c.color + '18' : '#1e293b', flexShrink: 0, cursor: 'pointer' }}
+                  onClick={() => openConnector(c.deep_link)}
+                >
+                  {c.icon}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: isOn ? '#f1f5f9' : '#64748b' }}>{c.name}</div>
+                  <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>{c.desc}</div>
+                  <div style={{ fontSize: 10, color: c.color, marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{c.category}</div>
+                </div>
+                {/* Toggle */}
+                <div
+                  onClick={() => toggle(c.id)}
+                  style={{
+                    width: 44, height: 24, borderRadius: 12, cursor: saving === c.id ? 'wait' : 'pointer',
+                    background: isOn ? c.color : '#1e293b', position: 'relative', flexShrink: 0, transition: 'background 0.2s',
+                    border: `1px solid ${isOn ? c.color : '#334155'}`,
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute', top: 3, left: isOn ? 23 : 3,
+                    width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
+                  }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ textAlign: 'center', color: '#1e293b', fontSize: 12, marginTop: 24 }}>
+          Connector links open in a new tab. No data is shared with third-party apps.
+        </div>
+
+      </div>
+    </div>
+  );
+}

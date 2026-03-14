@@ -156,185 +156,190 @@ export default function KidsPage() {
     setContent(p => p.filter(c => c.id !== item.id));
   }
 
-  if (loading) return (<div style={{ minHeight:'100vh', background:'#0d1117', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading Kids…</div></div>);
+
+  const KID_COLORS = ['#6366f1','#f59e0b','#10b981','#ec4899','#3b82f6','#8b5cf6'];
+  const KID_BG = ['rgba(99,102,241,0.12)','rgba(245,158,11,0.12)','rgba(16,185,129,0.12)','rgba(236,72,153,0.12)','rgba(59,130,246,0.12)','rgba(139,92,246,0.12)'];
+
+  if (loading) return (
+    <div style={{ minHeight:'100vh', background:'#0d1117', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16 }}>
+      <div style={{ fontSize:48 }}>🧒</div>
+      <div style={{ color:'#6366f1', fontSize:14 }}>Loading Kids Zone…</div>
+    </div>
+  );
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0d1117', color:'#fff' }}>
-      {/* Kids PIN setup modal */}
+    <div style={{ minHeight:'100vh', background:'#0d1117', color:'#fff', fontFamily:'system-ui,sans-serif' }}>
       {showPinSetup && (
         <PinSetupModal
           onSave={(pin) => { setKidsLock(true); setKidsMode(true); setShowPinSetup(false); }}
           onCancel={() => { setKidsMode(false); setShowPinSetup(false); }}
         />
       )}
-      {/* Kids lock overlay — shown when locked */}
-      {showLock && (
-        <KidsLockOverlay onUnlock={() => { setShowLock(false); setKidsMode(false); }} />
-      )}
+      {showLock && <KidsLockOverlay onUnlock={() => { setShowLock(false); setKidsMode(false); }} />}
       <NavbarClient />
-      <div style={{ maxWidth:740, margin:'0 auto', padding:'6rem 1rem 6rem' }}>
+      <div style={{ maxWidth:480, margin:'0 auto', padding:'6rem 16px 6rem' }}>
+
         {/* Header */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'1.5rem' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
           <div>
-            <h1 style={{ fontSize:'1.4rem', fontWeight:700, marginBottom:4 }}>🧒 Kids Safe Zone</h1>
-            <p style={{ color:'#555', fontSize:'0.85rem' }}>Profiles + file uploads per child</p>
+            <h1 style={{ fontSize:22, fontWeight:800, marginBottom:2 }}>🧒 Kids Zone</h1>
+            <div style={{ fontSize:12, color:'#475569' }}>Profiles · files · memories</div>
           </div>
-          <div style={{ display:'flex', gap:'0.5rem', alignItems:'center' }}>
+          <div style={{ display:'flex', gap:8 }}>
             {softLockEnabled && (
-              <button
-                onClick={kidsMode ? disableKidsMode : enableKidsMode}
-                style={{ padding:'0.5rem 0.9rem', borderRadius:8, border:`1px solid ${kidsMode ? '#10b981' : '#333'}`, background: kidsMode ? 'rgba(16,185,129,0.12)' : 'transparent', color: kidsMode ? '#10b981' : '#888', fontSize:'0.78rem', fontWeight:600, cursor:'pointer' }}
-              >
-                {kidsMode ? '🔓 Exit Kids Mode' : '🔒 Kids Mode'}
+              <button onClick={kidsMode ? disableKidsMode : enableKidsMode}
+                style={{ padding:'7px 12px', borderRadius:10, border:`1px solid ${kidsMode ? '#10b981' : 'rgba(255,255,255,0.1)'}`, background: kidsMode ? 'rgba(16,185,129,0.1)' : 'transparent', color: kidsMode ? '#10b981' : '#64748b', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                {kidsMode ? '🔓 Exit' : '🔒 Lock'}
               </button>
             )}
-            <button onClick={() => { resetForm(); setShowForm(!showForm); }} style={btn1}>{showForm ? 'Cancel' : '+ Add Child'}</button>
+            <button onClick={() => { resetForm(); setShowForm(!showForm); }}
+              style={{ padding:'7px 14px', borderRadius:10, border:'none', background:'#6366f1', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              {showForm ? '✕ Cancel' : '+ Add Child'}
+            </button>
           </div>
         </div>
 
-        {/* Add/Edit Profile Form */}
+        {/* Add/Edit form */}
         {showForm && (
-          <div style={{ background:'#1a1a1a', border:'1px solid #333', borderRadius:12, padding:'1.2rem', marginBottom:'1.5rem' }}>
-            <h3 style={{ color:'#fff', fontSize:'0.9rem', fontWeight:600, marginBottom:'1rem' }}>{editing ? `Edit — ${editing.name}` : 'New Child Profile'}</h3>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem', marginBottom:'0.75rem' }}>
-              <div><label style={{ color:'#aaa', fontSize:'0.78rem', display:'block', marginBottom:4 }}>Name*</label><input style={inp} placeholder="Child's name" value={name} onChange={e => setName(e.target.value)} /></div>
-              <div><label style={{ color:'#aaa', fontSize:'0.78rem', display:'block', marginBottom:4 }}>Date of Birth</label><input style={inp} type="date" value={dob} onChange={e => setDob(e.target.value)} /></div>
+          <div style={{ background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.25)', borderRadius:16, padding:20, marginBottom:24 }}>
+            <div style={{ fontSize:15, fontWeight:700, color:'#a5b4fc', marginBottom:16 }}>
+              {editing ? `✏️ Edit — ${editing.name}` : '🌟 New Child Profile'}
             </div>
-            <div style={{ marginBottom:'0.75rem' }}><label style={{ color:'#aaa', fontSize:'0.78rem', display:'block', marginBottom:4 }}>School</label><input style={inp} placeholder="School name" value={school} onChange={e => setSchool(e.target.value)} /></div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem', marginBottom:'0.75rem' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
               <div>
-                <label style={{ color:'#aaa', fontSize:'0.78rem', display:'block', marginBottom:4 }}>Blood Group</label>
-                <select style={inp} value={blood} onChange={e => setBlood(e.target.value)}>
-                  <option value="">Unknown</option>
-                  {['A+','A-','B+','B-','O+','O-','AB+','AB-'].map(bg => <option key={bg}>{bg}</option>)}
-                </select>
+                <div style={{ fontSize:11, color:'#64748b', marginBottom:4, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Name *</div>
+                <input style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'#e2e8f0', padding:'10px 12px', fontSize:14, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+                  placeholder="Child's name" value={name} onChange={e => setName(e.target.value)} />
               </div>
-              <div><label style={{ color:'#aaa', fontSize:'0.78rem', display:'block', marginBottom:4 }}>Doctor</label><input style={inp} placeholder="Paediatrician" value={doctor} onChange={e => setDoctor(e.target.value)} /></div>
+              <div>
+                <div style={{ fontSize:11, color:'#64748b', marginBottom:4, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Date of Birth</div>
+                <input type="date" style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'#e2e8f0', padding:'10px 12px', fontSize:14, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+                  value={dob} onChange={e => setDob(e.target.value)} />
+              </div>
             </div>
-            <div style={{ marginBottom:'1rem' }}><label style={{ color:'#aaa', fontSize:'0.78rem', display:'block', marginBottom:4 }}>Allergies / Medical Notes</label><input style={inp} placeholder="e.g. Peanut allergy" value={allergies} onChange={e => setAllergies(e.target.value)} /></div>
-            <div style={{ display:'flex', gap:'0.5rem' }}>
-              <button onClick={saveKid} disabled={saving} style={btn1}>{saving ? 'Saving…' : editing ? 'Update' : 'Save Profile'}</button>
-              <button onClick={() => { setShowForm(false); resetForm(); }} style={btn0}>Cancel</button>
+            <div style={{ marginBottom:12 }}>
+              <div style={{ fontSize:11, color:'#64748b', marginBottom:8, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>School / Notes</div>
+              <input style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'#e2e8f0', padding:'10px 12px', fontSize:14, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+                placeholder="School name, grade, notes…" value={school} onChange={e => setSchool(e.target.value)} />
             </div>
+            {err && <div style={{ color:'#f87171', fontSize:12, marginBottom:8 }}>⚠️ {err}</div>}
+            <button onClick={saveKid} disabled={saving}
+              style={{ width:'100%', padding:12, borderRadius:10, border:'none', background:'linear-gradient(135deg,#6366f1,#818cf8)', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', opacity: saving ? 0.7 : 1, fontFamily:'inherit' }}>
+              {saving ? 'Saving…' : editing ? 'Save Changes' : 'Add Child ✨'}
+            </button>
           </div>
         )}
 
-        {/* Kids List */}
-        {kids.length === 0 && !showForm
-          ? <div style={{ textAlign:'center', padding:'4rem 2rem', color:'#444' }}><div style={{ fontSize:'3rem', marginBottom:'0.75rem' }}>👶</div><div>No child profiles yet. Add your first.</div></div>
-          : <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap', marginBottom:'1.5rem' }}>
-              {kids.map(kid => {
-                const age = calcAge(kid.dob);
-                const grp = ageGroup(age);
-                const active = activeKid?.id === kid.id;
-                return (
-                  <div key={kid.id} onClick={() => selectKid(kid)} style={{ background: active ? '#6366f115' : '#1a1a1a', border: `1px solid ${active ? '#6366f1' : '#2a2a2a'}`, borderRadius:12, padding:'0.9rem 1.1rem', cursor:'pointer', minWidth:160, flex:'1 1 160px', transition:'border 0.2s' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.5rem' }}>
-                      <span style={{ fontSize:'1.4rem' }}>{AE[grp]}</span>
-                      <div>
-                        <div style={{ color:'#fff', fontWeight:600, fontSize:'0.9rem' }}>{kid.name}</div>
-                        <div style={{ color:'#666', fontSize:'0.72rem' }}>{age !== null ? `${age} yrs` : 'Age N/A'}</div>
-                      </div>
-                    </div>
-                    <div style={{ display:'flex', gap:'0.4rem', marginTop:'0.6rem' }}>
-                      <button onClick={e => { e.stopPropagation(); startEdit(kid); }} style={{ ...btn0, fontSize:'0.72rem', padding:'0.3rem 0.6rem', flex:1 }}>Edit</button>
-                      <button onClick={e => { e.stopPropagation(); deleteKid(kid.id); }} style={{ padding:'0.3rem 0.5rem', borderRadius:6, border:'1px solid #ef444433', background:'transparent', color:'#ef4444', cursor:'pointer', fontSize:'0.72rem' }}>✕</button>
-                    </div>
+        {/* Kids grid */}
+        {kids.length === 0 && !showForm ? (
+          <div style={{ textAlign:'center', padding:'60px 20px' }}>
+            <div style={{ fontSize:64, marginBottom:16 }}>🌈</div>
+            <div style={{ fontSize:16, fontWeight:700, color:'#e2e8f0', marginBottom:8 }}>No child profiles yet</div>
+            <div style={{ fontSize:13, color:'#475569' }}>Tap + Add Child to create the first profile</div>
+          </div>
+        ) : (
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:24 }}>
+            {kids.map((kid, idx) => {
+              const age = calcAge(kid.date_of_birth);
+              const ag = ageGroup(age);
+              const isActive = activeKid?.id === kid.id;
+              const col = KID_COLORS[idx % KID_COLORS.length];
+              const bg = KID_BG[idx % KID_BG.length];
+              return (
+                <div key={kid.id} onClick={() => setActiveKid(isActive ? null : kid)}
+                  style={{ background: isActive ? bg : 'rgba(255,255,255,0.04)', border:`2px solid ${isActive ? col : 'rgba(255,255,255,0.08)'}`, borderRadius:16, padding:16, cursor:'pointer', transition:'all 0.15s' }}>
+                  <div style={{ fontSize:36, marginBottom:8 }}>{AE[ag] || '🧒'}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:'#e2e8f0', marginBottom:2 }}>{kid.name}</div>
+                  {age !== null && <div style={{ fontSize:11, color: col, fontWeight:600 }}>{age} yrs · {ag}</div>}
+                  {kid.school && <div style={{ fontSize:11, color:'#64748b', marginTop:3 }}>📚 {kid.school}</div>}
+                  <div style={{ display:'flex', gap:6, marginTop:10 }}>
+                    <button onClick={e => { e.stopPropagation(); startEdit(kid); }}
+                      style={{ flex:1, padding:'5px 0', borderRadius:8, border:`1px solid rgba(255,255,255,0.1)`, background:'transparent', color:'#64748b', fontSize:11, cursor:'pointer' }}>✏️ Edit</button>
+                    <button onClick={e => { e.stopPropagation(); deleteKid(kid.id); }}
+                      style={{ padding:'5px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.25)', background:'transparent', color:'#ef4444', fontSize:11, cursor:'pointer' }}>✕</button>
                   </div>
-                );
-              })}
-            </div>
-        }
-        {/* Active Kid Content Panel */}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Active kid — content section */}
         {activeKid && (
-          <div style={{ background:'#111', border:'1px solid #222', borderRadius:14, padding:'1.2rem' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
-              <div>
-                <div style={{ color:'#fff', fontWeight:700, fontSize:'1rem' }}>{activeKid.name}'s Files</div>
-                <div style={{ color:'#555', fontSize:'0.78rem' }}>{content.length} item{content.length !== 1 ? 's' : ''}</div>
-              </div>
-              <button onClick={() => setShowUpload(!showUpload)} style={btn1}>
-                {showUpload ? 'Cancel' : '+ Upload'}
+          <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:20, marginBottom:24 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <div style={{ fontSize:15, fontWeight:700, color:'#e2e8f0' }}>📁 {activeKid.name}'s Files</div>
+              <button onClick={() => { setShowUpload(!showUpload); setUFile(null); setUTitle(''); setUDesc(''); setUType('school'); }}
+                style={{ padding:'7px 14px', borderRadius:10, border:'none', background:'rgba(99,102,241,0.2)', color:'#a5b4fc', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                {showUpload ? '✕ Cancel' : '📎 Upload'}
               </button>
             </div>
 
-            {/* Upload Form */}
+            {/* Upload form */}
             {showUpload && (
-              <div style={{ background:'#1a1a1a', border:'1px solid #2a2a2a', borderRadius:10, padding:'1rem', marginBottom:'1rem' }}>
-                <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginBottom:'0.75rem' }}>
+              <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:16, marginBottom:16 }}>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
                   {CONTENT_TYPES.map(ct => (
-                    <button key={ct.value} onClick={() => setUType(ct.value)} style={{ padding:'0.35rem 0.75rem', borderRadius:20, border:`1px solid ${uType===ct.value ? ct.color : '#333'}`, background: uType===ct.value ? ct.color+'22' : 'transparent', color: uType===ct.value ? ct.color : '#777', fontSize:'0.78rem', cursor:'pointer' }}>
+                    <button key={ct.value} onClick={() => setUType(ct.value)}
+                      style={{ padding:'5px 10px', borderRadius:20, border:`1px solid ${uType===ct.value ? ct.color : 'rgba(255,255,255,0.1)'}`, background: uType===ct.value ? ct.color+'22' : 'transparent', color: uType===ct.value ? ct.color : '#64748b', fontSize:11, cursor:'pointer' }}>
                       {ct.label}
                     </button>
                   ))}
                 </div>
-                <div style={{ marginBottom:'0.6rem' }}>
-                  <input style={inp} placeholder="Title (optional, defaults to filename)" value={uTitle} onChange={e => setUTitle(e.target.value)} />
-                </div>
-                <div style={{ marginBottom:'0.75rem' }}>
-                  <input style={inp} placeholder="Description (optional)" value={uDesc} onChange={e => setUDesc(e.target.value)} />
-                </div>
-                <div
-                  onClick={() => fileRef.current.click()}
-                  style={{ border:'2px dashed #333', borderRadius:8, padding:'1.5rem', textAlign:'center', cursor:'pointer', marginBottom:'0.75rem', color: uFile ? '#6366f1' : '#555', fontSize:'0.85rem' }}
-                >
-                  {uFile ? `✓ ${uFile.name} (${fmt(uFile.size)})` : '📎 Tap to choose file (PDF, image, max 50MB)'}
-                </div>
-                <input ref={fileRef} type="file" style={{ display:'none' }} accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.gif,.mp4,.mp3,.wav" onChange={e => setUFile(e.target.files[0])} />
-                {err && <div style={{ color:'#ef4444', fontSize:'0.8rem', marginBottom:'0.5rem' }}>{err}</div>}
-                {uploading && (
-                  <div style={{ marginBottom:'0.75rem' }}>
-                    <div style={{ background:'#222', borderRadius:20, height:6, overflow:'hidden' }}>
-                      <div style={{ background:'#6366f1', height:'100%', width:`${uploadPct}%`, transition:'width 0.3s' }} />
-                    </div>
-                    <div style={{ color:'#6366f1', fontSize:'0.75rem', marginTop:4 }}>Uploading {uploadPct}%…</div>
-                  </div>
-                )}
-                <button onClick={uploadFile} disabled={!uFile || uploading} style={{ ...btn1, width:'100%', opacity: !uFile || uploading ? 0.5 : 1 }}>
-                  {uploading ? 'Uploading…' : '⬆ Upload File'}
+                <input style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, color:'#e2e8f0', padding:'9px 12px', fontSize:13, outline:'none', boxSizing:'border-box', marginBottom:8, fontFamily:'inherit' }}
+                  placeholder="Title (e.g. Report Card Term 1)" value={uTitle} onChange={e => setUTitle(e.target.value)} />
+                <input type="file" accept="image/*,application/pdf,.doc,.docx"
+                  onChange={e => setUFile(e.target.files?.[0] || null)}
+                  style={{ fontSize:12, color:'#64748b', marginBottom:8, width:'100%' }} />
+                {err && <div style={{ color:'#f87171', fontSize:12, marginBottom:8 }}>{err}</div>}
+                {uploading && <div style={{ height:4, background:'rgba(99,102,241,0.2)', borderRadius:2, marginBottom:8 }}><div style={{ height:'100%', width:`${uploadPct}%`, background:'#6366f1', borderRadius:2, transition:'width 0.3s' }} /></div>}
+                <button onClick={uploadContent} disabled={uploading || !uFile}
+                  style={{ width:'100%', padding:10, borderRadius:8, border:'none', background:'#6366f1', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', opacity: (uploading||!uFile) ? 0.5 : 1, fontFamily:'inherit' }}>
+                  {uploading ? `Uploading ${uploadPct}%…` : '📤 Upload File'}
                 </button>
               </div>
             )}
 
-            {/* Content Grid */}
-            {loadingContent
-              ? <div style={{ textAlign:'center', padding:'2rem', color:'#555' }}>Loading…</div>
-              : content.length === 0
-                ? <div style={{ textAlign:'center', padding:'2.5rem', color:'#444', fontSize:'0.85rem' }}>No files yet. Upload {activeKid.name}'s first file!</div>
-                : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'0.75rem' }}>
-                    {content.map(item => {
-                      const ct = CONTENT_TYPES.find(c => c.value === item.content_type) || CONTENT_TYPES[5];
-                      const isImg = item.file_type?.startsWith('image/');
-                      return (
-                        <div key={item.id} style={{ background:'#1a1a1a', border:'1px solid #2a2a2a', borderRadius:10, overflow:'hidden' }}>
-                          {isImg
-                            ? <img src={item.file_url} alt={item.title} style={{ width:'100%', height:100, objectFit:'cover', display:'block' }} onError={e => { e.target.style.display='none'; }} />
-                            : <div style={{ height:80, background: ct.color+'18', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'2rem' }}>
-                                {ct.label.split(' ')[0]}
-                              </div>
-                          }
-                          <div style={{ padding:'0.6rem' }}>
-                            <div style={{ color:'#e2e8f0', fontSize:'0.82rem', fontWeight:600, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.title || item.file_name}</div>
-                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                              <span style={{ fontSize:'0.7rem', color: ct.color }}>{ct.label.split(' ')[1]}</span>
-                              {item.file_size && <span style={{ fontSize:'0.7rem', color:'#555' }}>{fmt(item.file_size)}</span>}
-                            </div>
-                            <div style={{ display:'flex', gap:'0.4rem', marginTop:'0.5rem' }}>
-                              <a href={item.file_url} target="_blank" rel="noreferrer" style={{ flex:1, padding:'0.35rem', borderRadius:6, border:'1px solid #333', background:'transparent', color:'#aaa', cursor:'pointer', fontSize:'0.72rem', textAlign:'center', textDecoration:'none' }}>View</a>
-                              <button onClick={() => deleteContent(item)} style={{ padding:'0.35rem 0.5rem', borderRadius:6, border:'1px solid #ef444433', background:'transparent', color:'#ef4444', cursor:'pointer', fontSize:'0.72rem' }}>✕</button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-            }
+            {/* Content list */}
+            {loadingContent ? (
+              <div style={{ textAlign:'center', padding:20, color:'#64748b', fontSize:13 }}>Loading files…</div>
+            ) : content.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'30px 0', color:'#475569' }}>
+                <div style={{ fontSize:32, marginBottom:8 }}>📂</div>
+                <div style={{ fontSize:13 }}>No files yet. Upload the first one!</div>
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {content.map(item => {
+                  const ct = CONTENT_TYPES.find(c => c.value === item.content_type) || CONTENT_TYPES[5];
+                  return (
+                    <div key={item.id} style={{ display:'flex', alignItems:'center', gap:12, background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'10px 12px' }}>
+                      <div style={{ fontSize:22, flexShrink:0 }}>{ct.label.split(' ')[0]}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:600, color:'#e2e8f0', marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.title || item.file_name}</div>
+                        <div style={{ fontSize:11, color:'#475569' }}>{ct.label} · {item.file_size ? fmt(item.file_size) : ''}</div>
+                      </div>
+                      {item.file_url && (
+                        <a href={item.file_url} target="_blank" rel="noreferrer"
+                          style={{ padding:'4px 10px', borderRadius:6, background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.25)', color:'#a5b4fc', fontSize:11, textDecoration:'none', flexShrink:0 }}>View</a>
+                      )}
+                      <button onClick={() => deleteContent(item)}
+                        style={{ background:'none', border:'none', color:'#ef4444', cursor:'pointer', fontSize:16, flexShrink:0, padding:'0 2px' }}>✕</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {kids.length > 0 && <div style={{ background:'#6366f108', border:'1px solid #6366f122', borderRadius:10, padding:'0.9rem', marginTop:'1.5rem', fontSize:'0.82rem', color:'#6366f1' }}>🔒 Kids profiles and files are private — only visible to you.</div>}
+        {/* Privacy note */}
+        <div style={{ background:'rgba(16,185,129,0.07)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:12, padding:'12px 16px', fontSize:12, color:'#6ee7b7', display:'flex', gap:10, alignItems:'center' }}>
+          <span style={{ fontSize:16 }}>🔒</span>
+          <span>Kids profiles and files are private — only visible to you.</span>
+        </div>
 
       </div>
     </div>
   );
-                                                                                                                                                                                                             }
+}

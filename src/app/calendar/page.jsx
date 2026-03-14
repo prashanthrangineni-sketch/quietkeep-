@@ -200,7 +200,7 @@ export default function CalendarPage() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#0f0f0f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#6366f1' }}>Loading…</div>
     </div>
   );
@@ -209,7 +209,7 @@ export default function CalendarPage() {
   const hasData = !!selCal?.dbType;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0f0f', color: '#fff', paddingTop: '96px', paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', background: '#0d1117', color: '#fff', paddingTop: '96px', paddingBottom: '80px' }}>
       <NavbarClient />
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '1rem 0.75rem 4rem' }}>
 
@@ -405,4 +405,4 @@ export default function CalendarPage() {
       </div>
     </div>
   );
-                                     }
+              }

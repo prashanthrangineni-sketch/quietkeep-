@@ -1,4 +1,5 @@
 'use client';
+import { speak } from '@/components/VoiceTalkback';
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -89,6 +90,7 @@ export default function RemindersPage() {
     setSaving(false);
     if (err) { setError(err.message); return; }
     setShowForm(false); loadReminders(user.id);
+    speak(editItem ? 'Reminder updated.' : 'Reminder set.');
   }
 
   async function toggleActive(r) {
@@ -302,4 +304,4 @@ export default function RemindersPage() {
       </div>
     </div>
   );
-}
+                }

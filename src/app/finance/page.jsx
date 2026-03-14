@@ -92,15 +92,15 @@ export default function FinancePage() {
     setSubscriptions(p => p.map(s => s.id === id ? { ...s, is_active: !active } : s));
   }
 
-  if (loading) return (<div style={{ minHeight:'100vh', background:'#0f0f0f', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading Finance…</div></div>);
+  if (loading) return (<div style={{ minHeight:'100vh', background:'#0d1117', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading Finance…</div></div>);
 
   const totalSpent = expenses.filter(e => e.expense_date?.startsWith(thisMonth)).reduce((s, e) => s + parseFloat(e.amount || 0), 0);
   const totalSubs = subscriptions.reduce((s, sub) => s + parseFloat(sub.amount || 0), 0);
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff' }}>
+    <div style={{ minHeight:'100vh', background:'#0d1117', color:'#fff' }}>
       <NavbarClient />
-      <div style={{ maxWidth:700, margin:'0 auto', padding:'1.5rem 1rem 6rem' }}>
+      <div style={{ maxWidth:700, margin:'0 auto', padding:'6rem 1rem 6rem' }}>
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'0.75rem', marginBottom:'1.5rem' }}>
           <div style={{ background:'#1a1a1a', border:'1px solid #2a2a2a', borderRadius:12, padding:'1.2rem' }}>
@@ -254,4 +254,4 @@ export default function FinancePage() {
       </div>
     </div>
   );
-  }
+      }

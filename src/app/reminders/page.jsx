@@ -153,7 +153,6 @@ export default function RemindersPage() {
             <div className="qk-empty-sub">Add a reminder to stay on track</div>
           </div>
         )}
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.map(r => {
             const overdue = r.is_active && isOverdue(r.scheduled_for);
@@ -215,7 +214,7 @@ export default function RemindersPage() {
                   onChange={e => {
                     const txt = e.target.value;
                     const parsed = parseNaturalDate(txt);
-                    setForm(f => ({ ...f, reminder_text: txt, ...(parsed && !f.scheduled_for ? { scheduled_for: parsed } : {}) }));
+                    setForm(f => ({ ...f, reminder_text: txt, ...(parsed ? { scheduled_for: parsed } : {}) }));
                   }}
                   placeholder="e.g. Wake me at 2pm today, Call doctor tomorrow 9am…"
                   rows={2}
@@ -303,4 +302,4 @@ export default function RemindersPage() {
       </div>
     </div>
   );
-                      }
+}

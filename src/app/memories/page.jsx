@@ -107,12 +107,12 @@ export default function MemoriesPage() {
 
   const EVENT_EMOJI = { personal:'💫', birthday:'🎂', anniversary:'💝', festival:'🪔', travel:'✈️', milestone:'🏆', family:'👨‍👩‍👧', health:'🏃', work:'💼', other:'📦' };
 
-  if (loading) return <div style={{ minHeight:'100vh', background:'#0a0a0f', display:'flex', alignItems:'center', justifyContent:'center', color:'#6366f1' }}>Loading...</div>;
+  if (loading) return <div style={{ minHeight:'100vh', background:'#0d1117', display:'flex', alignItems:'center', justifyContent:'center', color:'#6366f1' }}>Loading...</div>;
 
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight:'100vh', background:'#0a0a0f', color:'#f1f5f9', paddingBottom: '80px', paddingTop:'96px' }}>
+      <div style={{ minHeight:'100vh', background:'#0d1117', color:'#f1f5f9', paddingBottom: '80px', paddingTop:'96px' }}>
         <div style={{ maxWidth:'640px', margin:'0 auto', padding:'20px 16px' }}>
 
           {/* Header */}
@@ -225,4 +225,4 @@ export default function MemoriesPage() {
       </div>
     </>
   );
-}
+                }

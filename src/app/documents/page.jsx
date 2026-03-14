@@ -27,6 +27,8 @@ export default function Documents() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [aiResult, setAiResult] = useState({});
+  const [aiLoading, setAiLoading] = useState({});
   const [filterCat, setFilterCat] = useState('All');
   const [formData, setFormData] = useState({ name: '', category: 'Other', expiry_date: '', reminder_days_before: 30 });
   const [saving, setSaving] = useState(false);
@@ -98,6 +100,31 @@ export default function Documents() {
     setDocuments(documents.filter(d => d.id !== doc.id));
   }
 
+  async function analyzeDoc(doc) {
+    if (!doc.name) return;
+    setAiLoading(p => ({ ...p, [doc.id]: true }));
+    setAiResult(p => ({ ...p, [doc.id]: null }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/keep-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({
+          content: `Document: ${doc.name}, Category: ${doc.category}${doc.expiry_date ? `, Expiry: ${doc.expiry_date}` : ''}`,
+          intent_type: 'document',
+          action: 'suggest',
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const result = Array.isArray(data.result) ? data.result : [data.result];
+      setAiResult(p => ({ ...p, [doc.id]: result }));
+    } catch (e) {
+      setAiResult(p => ({ ...p, [doc.id]: ['AI analysis unavailable — check ANTHROPIC_API_KEY'] }));
+    }
+    setAiLoading(p => ({ ...p, [doc.id]: false }));
+  }
+
   const filtered = filterCat === 'All' ? documents : documents.filter(d => d.category === filterCat);
   const expiring = documents.filter(d => { const x = getDaysUntilExpiry(d.expiry_date); return x !== null && x >= 0 && x <= 30; });
   const expired = documents.filter(d => { const x = getDaysUntilExpiry(d.expiry_date); return x !== null && x < 0; });
@@ -141,7 +168,7 @@ export default function Documents() {
                 const isExpired = days !== null && days < 0;
                 const isSoon = days !== null && days >= 0 && days <= 30;
                 const cat = CATEGORIES.find(c => c.name === doc.category);
-                return <DocCard key={doc.id} doc={doc} days={days} isExpired={isExpired} isSoon={isSoon} cat={cat} onDelete={() => handleDelete(doc)} />;
+                return <DocCard key={doc.id} doc={doc} days={days} isExpired={isExpired} isSoon={isSoon} cat={cat} onDelete={() => handleDelete(doc)} onAnalyze={() => analyzeDoc(doc)} aiLoading={aiLoading[doc.id]} aiResult={aiResult[doc.id]} />;
               })}
             </div>
           )}
@@ -221,7 +248,7 @@ export default function Documents() {
   );
 }
 
-function DocCard({ doc, days, isExpired, isSoon, cat, onDelete }) {
+function DocCard({ doc, days, isExpired, isSoon, cat, onDelete, onAnalyze, aiLoading, aiResult }) {
   const [expanded, setExpanded] = useState(false);
   const borderColor = isExpired ? 'rgba(239,68,68,0.35)' : isSoon ? 'rgba(245,158,11,0.25)' : '#1e1e2e';
   const catColor = cat?.color || '#64748b';
@@ -237,11 +264,27 @@ function DocCard({ doc, days, isExpired, isSoon, cat, onDelete }) {
               {isExpired ? `❌ Expired ${Math.abs(days)}d ago` : isSoon ? `⚠️ ${days}d left` : `✅ ${days}d left`}
             </span>}
           </div>
-          {expanded && doc.file_url && (
-            <div style={{ marginTop:'8px' }}>
-              <a href={doc.file_url} target="_blank" rel="noreferrer" style={{ display:'inline-block', padding:'5px 12px', borderRadius:6, background:'#6366f122', border:'1px solid #6366f133', color:'#6366f1', fontSize:'11px', textDecoration:'none', fontWeight:600 }}>
-                📎 {doc.file_name || 'View File'} {doc.file_size ? `(${fmt(doc.file_size)})` : ''}
-              </a>
+          {expanded && (
+            <div style={{ marginTop:'8px', display:'flex', flexDirection:'column', gap:'8px' }}>
+              {doc.file_url && (
+                <a href={doc.file_url} target="_blank" rel="noreferrer" style={{ display:'inline-block', padding:'5px 12px', borderRadius:6, background:'#6366f122', border:'1px solid #6366f133', color:'#6366f1', fontSize:'11px', textDecoration:'none', fontWeight:600 }}>
+                  📎 {doc.file_name || 'View File'} {doc.file_size ? `(${fmt(doc.file_size)})` : ''}
+                </a>
+              )}
+              <button onClick={e => { e.stopPropagation(); onAnalyze(); }} disabled={aiLoading}
+                style={{ alignSelf:'flex-start', padding:'5px 12px', borderRadius:6, background:'rgba(99,102,241,0.12)', border:'1px solid rgba(99,102,241,0.3)', color:'#a5b4fc', fontSize:'11px', cursor:'pointer', fontWeight:600 }}>
+                {aiLoading ? '🔄 Analysing…' : '✨ AI Insights'}
+              </button>
+              {aiResult && (
+                <div style={{ background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:8, padding:'10px 12px' }}>
+                  <div style={{ fontSize:'11px', color:'#a5b4fc', fontWeight:700, marginBottom:6 }}>AI INSIGHTS</div>
+                  {aiResult.map((r, i) => (
+                    <div key={i} style={{ fontSize:'12px', color:'#cbd5e1', marginBottom:4, paddingLeft:8, borderLeft:'2px solid rgba(99,102,241,0.4)' }}>
+                      {typeof r === 'string' ? r : JSON.stringify(r)}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -249,4 +292,4 @@ function DocCard({ doc, days, isExpired, isSoon, cat, onDelete }) {
       </div>
     </div>
   );
-}
+        }

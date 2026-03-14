@@ -1,5 +1,6 @@
 'use client';
 import { speak } from '@/components/VoiceTalkback';
+import ContactPicker from '@/components/ContactPicker';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -170,6 +171,7 @@ function EditKeepModal({ intent, onSave, onClose }) {
           }}>
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
+          {saveError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8, padding: '6px 10px', background: 'rgba(239,68,68,0.1)', borderRadius: 6 }}>⚠️ {saveError}</div>}
           <button onClick={onClose} style={{ padding: '12px 20px', borderRadius: 10, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>
             Cancel
           </button>
@@ -300,6 +302,7 @@ export default function Dashboard() {
   const [content, setContent] = useState('');
   const [remindAt, setRemindAt] = useState('');
   const [contactInfo, setContactInfo] = useState('');
+  const [showContactPicker, setShowContactPicker] = useState(false);
   const [assistMode, setAssistMode] = useState('note');
   const [reminderType, setReminderType] = useState('app');
   const [saving, setSaving] = useState(false);
@@ -441,7 +444,12 @@ export default function Dashboard() {
     const q = searchQuery.toLowerCase();
     return list.filter(i => i.content?.toLowerCase().includes(q) || i.intent_type?.toLowerCase().includes(q) || i.status?.toLowerCase().includes(q));
   };
-  const displayIntents = filterIntents(activeTab === 'open' ? openIntents : closedIntents);
+  const reminderIntents = intents.filter(i => i.intent_type === 'reminder' && i.status !== 'closed');
+  const displayIntents = filterIntents(
+    activeTab === 'open' ? openIntents :
+    activeTab === 'reminder' ? reminderIntents :
+    closedIntents
+  );
 
   // ── Loading screen ───────────────────────────────────────────
   if (loading) {
@@ -614,13 +622,42 @@ export default function Dashboard() {
             )}
 
             {assistMode === 'contact' && (
-              <input
-                type="text"
-                value={contactInfo}
-                onChange={e => setContactInfo(e.target.value)}
-                placeholder="Phone / Email / Notes…"
-                className="qk-input"
-                style={{ marginTop: 10 }}
+              <div style={{ marginTop: 10 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={contactInfo}
+                    onChange={e => setContactInfo(e.target.value)}
+                    placeholder="Phone / Email / Notes…"
+                    className="qk-input"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowContactPicker(true)}
+                    style={{ padding: '0 14px', borderRadius: 10, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.1)', color: '#a5b4fc', fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
+                  >
+                    👤 Pick
+                  </button>
+                </div>
+                {contactInfo && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: '#6ee7b7', padding: '4px 8px', background: 'rgba(16,185,129,0.08)', borderRadius: 6 }}>
+                    ✓ {contactInfo}
+                  </div>
+                )}
+              </div>
+            )}
+            {showContactPicker && user && (
+              <ContactPicker
+                supabase={supabase}
+                userId={user.id}
+                title="Select Contact"
+                onSelect={(contacts) => {
+                  const c = contacts[0];
+                  setContactInfo(`${c.name}${c.phone ? ' · ' + c.phone : ''}`);
+                  setShowContactPicker(false);
+                }}
+                onClose={() => setShowContactPicker(false)}
               />
             )}
 
@@ -662,6 +699,7 @@ export default function Dashboard() {
           <div className="qk-tabs">
             {[
               { key: 'open', label: `Open (${openIntents.length})` },
+              { key: 'reminder', label: `⏰ Remind (${intents.filter(i=>i.intent_type==='reminder'&&i.status!=='closed').length})` },
               { key: 'closed', label: `Done (${closedIntents.length})` },
             ].map(tab => (
               <button
@@ -677,9 +715,9 @@ export default function Dashboard() {
           {/* Keeps list */}
           {displayIntents.length === 0 ? (
             <div className="qk-empty">
-              <div className="qk-empty-icon">{activeTab === 'open' ? '🎙' : '✅'}</div>
-              <div className="qk-empty-title">{activeTab === 'open' ? 'No open keeps' : 'No completed keeps yet'}</div>
-              <div className="qk-empty-sub">{activeTab === 'open' ? 'Tap Voice or type to add your first keep' : 'Mark some keeps as done to see them here'}</div>
+              <div className="qk-empty-icon">{activeTab === 'open' ? '🎙' : activeTab === 'reminder' ? '⏰' : '✅'}</div>
+              <div className="qk-empty-title">{activeTab === 'open' ? 'No open keeps' : activeTab === 'reminder' ? 'No reminders' : 'No completed keeps yet'}</div>
+              <div className="qk-empty-sub">{activeTab === 'open' ? 'Tap Voice or type to add your first keep' : activeTab === 'reminder' ? 'Type a keep with a time to create reminders' : 'Mark some keeps as done to see them here'}</div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -700,4 +738,4 @@ export default function Dashboard() {
       </div>
     </>
   );
-      }
+}

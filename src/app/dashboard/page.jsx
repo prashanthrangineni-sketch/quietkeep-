@@ -413,7 +413,7 @@ export default function Dashboard() {
 
   async function updateState(id, state) {
     await supabase.from('keeps').update({ status: state }).eq('id', id);
-    await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_status_updated', intent_id: id, service: 'dashboard', details: { status: state } }).catch(() => {});
+    try { await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_status_updated', intent_id: id, service: 'dashboard', details: { status: state } }); } catch {}
     showToast(state === 'closed' ? '✓ Marked done!' : 'Moved to ' + state);
     if (state === 'closed') speak('Keep marked as done.');
     await loadIntents(user.id);
@@ -421,7 +421,7 @@ export default function Dashboard() {
 
   async function handleDelete(id) {
     await supabase.from('keeps').delete().eq('id', id);
-    await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_deleted', intent_id: id, service: 'dashboard', details: {} }).catch(() => {});
+    try { await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_deleted', intent_id: id, service: 'dashboard', details: {} }); } catch {}
     showToast('Deleted');
     speak('Keep deleted.');
     await loadIntents(user.id);
@@ -430,7 +430,7 @@ export default function Dashboard() {
   async function handleEdit(id, updates) {
     const { error } = await supabase.from('keeps').update(updates).eq('id', id);
     if (error) throw new Error(error.message);
-    await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_edited', intent_id: id, service: 'dashboard', details: {} }).catch(() => {});
+    try { await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_edited', intent_id: id, service: 'dashboard', details: {} }); } catch {}
     showToast('Keep updated ✓');
     speak('Keep updated.');
     await loadIntents(user.id);

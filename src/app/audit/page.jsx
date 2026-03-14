@@ -66,7 +66,7 @@ export default function AuditPage() {
   const filtered = filter === 'all' ? logs : logs.filter(l => l.action === filter);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f1f5f9', fontFamily: 'system-ui,sans-serif', paddingBottom: 80, paddingTop: '96px' }}>
+    <div style={{ minHeight: '100vh', background: '#0d1117', color: '#f1f5f9', fontFamily: 'system-ui,sans-serif', paddingBottom: 80, paddingTop: '96px' }}>
       <NavbarClient />
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px' }}>
 
@@ -102,7 +102,7 @@ export default function AuditPage() {
         )}
 
         {!loading && filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '48px 20px', background: '#0f172a', borderRadius: 14, border: '1px dashed #1e293b' }}>
+          <div style={{ textAlign: 'center', padding: '48px 20px', background: '#0d1117', borderRadius: 14, border: '1px dashed #1e293b' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
             <div style={{ color: '#475569', fontSize: 14 }}>No activity yet</div>
           </div>
@@ -119,7 +119,7 @@ export default function AuditPage() {
                 key={log.id || i}
                 onClick={() => hasDetails && setExpanded(isOpen ? null : log.id)}
                 style={{
-                  background: '#0f172a', border: `1px solid #1e293b`,
+                  background: '#0d1117', border: `1px solid #1e293b`,
                   borderLeft: `3px solid ${meta.color}`,
                   borderRadius: 12, padding: '12px 14px',
                   cursor: hasDetails ? 'pointer' : 'default',
@@ -145,7 +145,7 @@ export default function AuditPage() {
                 {isOpen && hasDetails && (
                   <div style={{ marginTop: 10, background: '#070e1a', borderRadius: 8, padding: '8px 12px' }}>
                     {Object.entries(log.details).map(([k, v]) => (
-                      <div key={k} style={{ display: 'flex', gap: 8, padding: '3px 0', borderBottom: '1px solid #0f172a' }}>
+                      <div key={k} style={{ display: 'flex', gap: 8, padding: '3px 0', borderBottom: '1px solid #0d1117' }}>
                         <span style={{ color: '#475569', fontSize: 11, minWidth: 100, flexShrink: 0 }}>{k}</span>
                         <span style={{ color: '#94a3b8', fontSize: 11, wordBreak: 'break-all' }}>
                           {typeof v === 'object' ? JSON.stringify(v) : String(v)}

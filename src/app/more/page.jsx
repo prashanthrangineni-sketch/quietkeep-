@@ -45,6 +45,7 @@ export default function MorePage() {
     { icon: '🚨', title: 'Emergency', sub: 'Contacts & SOS', href: '/emergency' },
     { icon: '🔌', title: 'Connectors', sub: 'App deep-links & integrations', href: '/connectors' },
     { icon: '📊', title: 'Activity Log', sub: 'Your full action history', href: '/audit' },
+    { icon: '💬', title: 'Send Message', sub: 'Broadcast to contacts & groups', href: '/messages' },
     { icon: '💳', title: 'Bill Reminders', sub: 'Tax, FASTag, electricity & EMIs', href: '/bills' },
     { icon: '🧭', title: 'Compass', sub: 'Offline compass + GPS location', href: '/compass' },
     { icon: '📰', title: 'News Feed', sub: 'Optional news & updates', href: '/news' },

@@ -102,9 +102,10 @@ function EditKeepModal({ intent, onSave, onClose }) {
         reminder_at: reminderAt || null,
         intent_type: intentType,
       });
+      setSaving(false);
       onClose();
     } catch (e) {
-      setSaveError(e.message || 'Save failed');
+      setSaveError(e.message || 'Save failed — check your connection');
       setSaving(false);
     }
   }
@@ -351,7 +352,7 @@ export default function Dashboard() {
         setTimeout(() => setAutoDetected(null), 3000);
       }
     }
-    }
+            }
   const loadIntents = useCallback(async (uid) => {
     const { data, error } = await supabase.from('keeps').select('*').eq('user_id', uid).order('created_at', { ascending: false });
     if (!error && data) setIntents(data);
@@ -422,7 +423,7 @@ export default function Dashboard() {
 
   async function handleEdit(id, updates) {
     const { error } = await supabase.from('keeps').update(updates).eq('id', id);
-    if (error) { showToast('Error saving: ' + error.message); return; }
+    if (error) throw new Error(error.message);
     await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_edited', intent_id: id, service: 'dashboard', details: {} }).catch(() => {});
     showToast('Keep updated ✓');
     await loadIntents(user.id);
@@ -694,4 +695,4 @@ export default function Dashboard() {
       </div>
     </>
   );
-      }
+            }

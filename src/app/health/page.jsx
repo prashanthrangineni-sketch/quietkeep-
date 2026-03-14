@@ -89,10 +89,10 @@ export default function HealthPage() {
   const avgWater = logs.length ? Math.round(logs.reduce((s,l) => s + (l.water_glasses||0), 0) / logs.length) : 0;
   const avgExercise = logs.length ? Math.round(logs.reduce((s,l) => s + (l.exercise_minutes||0), 0) / logs.length) : 0;
 
-  if (loading) return (<div style={{ minHeight:'100vh', background:'#0f0f0f', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading…</div></div>);
+  if (loading) return (<div style={{ minHeight:'100vh', background:'#0d1117', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading…</div></div>);
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0f0f0f', color:'#fff', paddingTop:'96px', paddingBottom:'80px' }}>
+    <div style={{ minHeight:'100vh', background:'#0d1117', color:'#fff', paddingTop:'96px', paddingBottom:'80px' }}>
       <NavbarClient />
       <div style={{ maxWidth:640, margin:'0 auto', padding:'1.5rem 1rem 5rem' }}>
 

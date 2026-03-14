@@ -193,7 +193,7 @@ export default function SettingsPage() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#0f0f0f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#6366f1', fontSize: '1.1rem' }}>Loading settings…</div>
     </div>
   );
@@ -245,7 +245,7 @@ export default function SettingsPage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f0f0f', color: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: '#0d1117', color: '#fff' }}>
       <NavbarClient />
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '2rem 1rem 4rem' }}>
 
@@ -326,4 +326,4 @@ export default function SettingsPage() {
       </div>
     </div>
   );
-            }
+}

@@ -18,7 +18,21 @@ function isSoon(ts) {
   return diff > 0 && diff < 24 * 60 * 60 * 1000;
 }
 
-const EMPTY_FORM = { reminder_text: '', scheduled_for: '', recurrence: 'none', is_active: true };
+const EMPTY_FORM = { reminder_text: '', scheduled_for: '', recurrence: 'none', is_active: true, reminder_type: 'app' };
+
+function parseNaturalDate(text) {
+  const now = new Date(); const t = text.toLowerCase();
+  let d = new Date(now);
+  if (/\btomorrow\b/.test(t)) d.setDate(d.getDate() + 1);
+  const t12 = t.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/);
+  const t24 = t.match(/\bat\s+(\d{1,2}):(\d{2})\b/);
+  if (t12) { let h=parseInt(t12[1]),m2=parseInt(t12[2]||'0'); if(t12[3]==='pm'&&h!==12)h+=12; if(t12[3]==='am'&&h===12)h=0; d.setHours(h,m2,0,0); }
+  else if (t24) { d.setHours(parseInt(t24[1]),parseInt(t24[2]),0,0); }
+  else d.setHours(9,0,0,0);
+  if (!/\b(today|tomorrow|\d{1,2}\s*(am|pm)|at\s+\d)/i.test(t)) return null;
+  const pad=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export default function RemindersPage() {
   const [user, setUser] = useState(null);
@@ -64,7 +78,7 @@ export default function RemindersPage() {
     if (!form.reminder_text.trim()) return setError('Reminder text is required');
     if (!form.scheduled_for) return setError('Please set a date and time');
     setSaving(true); setError('');
-    const payload = { user_id: user.id, reminder_text: form.reminder_text.trim(), scheduled_for: new Date(form.scheduled_for).toISOString(), recurrence: form.recurrence === 'none' ? null : form.recurrence, is_active: form.is_active };
+    const payload = { user_id: user.id, reminder_text: form.reminder_text.trim(), scheduled_for: new Date(form.scheduled_for).toISOString(), recurrence: form.recurrence === 'none' ? null : form.recurrence, is_active: form.is_active, space_type: form.reminder_type || 'app' };
     if (!user) { setSaving(false); return setError('Not logged in. Please refresh.'); }
     let err;
     if (editItem) {
@@ -198,12 +212,28 @@ export default function RemindersPage() {
                 <span style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em' }}>What to remind</span>
                 <textarea
                   value={form.reminder_text}
-                  onChange={e => setForm(f => ({ ...f, reminder_text: e.target.value }))}
-                  placeholder="e.g. Call the doctor, Pay electricity bill…"
+                  onChange={e => {
+                    const txt = e.target.value;
+                    const parsed = parseNaturalDate(txt);
+                    setForm(f => ({ ...f, reminder_text: txt, ...(parsed && !f.scheduled_for ? { scheduled_for: parsed } : {}) }));
+                  }}
+                  placeholder="e.g. Wake me at 2pm today, Call doctor tomorrow 9am…"
                   rows={2}
                   className="qk-input"
                   style={{ marginTop: 8, resize: 'vertical' }}
                 />
+              </label>
+
+              <label style={{ display: 'block', marginBottom: 14 }}>
+                <span style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Reminder Type</span>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  {[['app','📱 App'],['alarm','⏰ Alarm'],['whatsapp','💬 WhatsApp']].map(([v,l]) => (
+                    <button key={v} type="button" onClick={() => setForm(f => ({ ...f, reminder_type: v }))}
+                      className="qk-btn qk-btn-sm"
+                      style={{ background: form.reminder_type===v ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${form.reminder_type===v ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`, color: form.reminder_type===v ? '#a5b4fc' : '#475569' }}
+                    >{l}</button>
+                  ))}
+                </div>
               </label>
 
               <label style={{ display: 'block', marginBottom: 14 }}>
@@ -273,4 +303,4 @@ export default function RemindersPage() {
       </div>
     </div>
   );
-}
+                      }

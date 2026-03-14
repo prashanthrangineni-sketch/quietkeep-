@@ -129,12 +129,12 @@ export default function Documents() {
   const expiring = documents.filter(d => { const x = getDaysUntilExpiry(d.expiry_date); return x !== null && x >= 0 && x <= 30; });
   const expired = documents.filter(d => { const x = getDaysUntilExpiry(d.expiry_date); return x !== null && x < 0; });
 
-  if (loading) return (<><NavbarClient /><div style={{ minHeight:'100vh', backgroundColor:'#0a0a0f', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1', fontSize:18 }}>Loading…</div></div></>);
+  if (loading) return (<><NavbarClient /><div style={{ minHeight:'100vh', backgroundColor:'#0d1117', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1', fontSize:18 }}>Loading…</div></div></>);
 
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight:'100vh', backgroundColor:'#0a0a0f', color:'#f1f5f9', padding:'96px 16px 80px' }}>
+      <div style={{ minHeight:'100vh', backgroundColor:'#0d1117', color:'#f1f5f9', padding:'96px 16px 80px' }}>
         <div style={{ maxWidth:'660px', margin:'0 auto' }}>
 
           {/* Header */}
@@ -292,4 +292,4 @@ function DocCard({ doc, days, isExpired, isSoon, cat, onDelete, onAnalyze, aiLoa
       </div>
     </div>
   );
-        }
+              }

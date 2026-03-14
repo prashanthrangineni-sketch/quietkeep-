@@ -66,7 +66,7 @@ export default function FinancePage() {
     if (eErr) { setEError(eErr.message); setSavingE(false); return; }
     if (data) {
       setExpenses(p => [data, ...p]);
-      await supabase.from('audit_log').insert({ user_id: user.id, action: 'expense_added', service: 'finance', details: { amount: parseFloat(eAmt), category: catNorm } }).catch(() => {});
+      try { await supabase.from('audit_log').insert({ user_id: user.id, action: 'expense_added', service: 'finance', details: { amount: parseFloat(eAmt), category: catNorm } }); } catch {}
     }
     setEAmt(''); setEDesc(''); setEError(''); setSavingE(false); setShowAddE(false);
   }
@@ -181,7 +181,7 @@ export default function FinancePage() {
               </div>
             )}
             {budgets.length === 0 ? <div style={{ textAlign:'center', padding:'3rem', color:'#444' }}>No budgets set yet.</div> : budgets.map(b => {
-              const spent = expenses.filter(e => e.category === b.category && e.expense_date?.startsWith(thisMonth)).reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+              const spent = expenses.filter(e => e.category?.toLowerCase() === b.category?.toLowerCase() && e.expense_date?.startsWith(thisMonth)).reduce((s, e) => s + parseFloat(e.amount || 0), 0);
               const pct = Math.min(100, Math.round((spent / b.limit_amount) * 100));
               const col = pct >= b.alert_threshold ? '#ef4444' : pct >= 60 ? '#f59e0b' : '#22c55e';
               return (

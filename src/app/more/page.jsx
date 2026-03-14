@@ -45,6 +45,10 @@ export default function MorePage() {
     { icon: '🚨', title: 'Emergency', sub: 'Contacts & SOS', href: '/emergency' },
     { icon: '🔌', title: 'Connectors', sub: 'App deep-links & integrations', href: '/connectors' },
     { icon: '📊', title: 'Activity Log', sub: 'Your full action history', href: '/audit' },
+    { icon: '🧭', title: 'Compass', sub: 'Offline compass + GPS location', href: '/compass' },
+    { icon: '📰', title: 'News Feed', sub: 'Optional news & updates', href: '/news' },
+    { icon: '🏢', title: 'Business Mode', sub: 'Team accounts & audit (coming soon)', href: '/business' },
+    { icon: '🏠', title: 'Smart Home', sub: 'IoT device control (coming soon)', href: '/smart-home' },
   ];
 
   const TIER_COLOR = { free: '#64748b', personal: '#6366f1', family: '#8b5cf6', pro: '#f59e0b' };
@@ -166,4 +170,4 @@ export default function MorePage() {
       </div>
     </div>
   );
-}
+          }

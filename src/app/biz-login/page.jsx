@@ -6,23 +6,7 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
 
-// Beta accounts: credentials stored in NEXT_PUBLIC_BETA_CREDS env var.
-// Format: "email1:password1,email2:password2" (comma-separated pairs).
-// Falls back to empty object if not set — beta fast-path simply won't trigger.
-// NEVER hardcode credentials here. Set NEXT_PUBLIC_BETA_CREDS in Vercel env vars.
-function parseBetaCreds() {
-  const raw = process.env.NEXT_PUBLIC_BETA_CREDS || '';
-  if (!raw) return {};
-  return Object.fromEntries(
-    raw.split(',').map(pair => {
-      const idx = pair.indexOf(':');
-      if (idx === -1) return ['', ''];
-      return [pair.slice(0, idx).trim().toLowerCase(), pair.slice(idx + 1).trim()];
-    }).filter(([k]) => k && k.includes('@'))
-  );
-}
-
-const BETA_EMAILS = parseBetaCreds();
+// Beta verification now handled server-side via /api/auth/beta-verify
 const OTP_LEN = 8;
 const G = '#10b981';
 
@@ -46,16 +30,24 @@ export default function BizLoginPage() {
   const [error, setError] = useState('');
   const refs = useRef([]);
 
-  function handleContinue() {
+  async function handleContinue() {
     if (!email.trim()) return;
     const norm = email.trim().toLowerCase();
-    if (BETA_EMAILS[norm]) {
-      setError('');
-      setStep('otp');
-      setTimeout(() => refs.current[0]?.focus(), 120);
-    } else {
-      sendMagicLink(norm);
-    }
+    // Check beta via server-side API
+    try {
+      const res = await fetch('/api/auth/beta-verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: norm }),
+      });
+      const data = await res.json();
+      if (data.isBeta) {
+        setError('');
+        setStep('otp');
+        setTimeout(() => refs.current[0]?.focus(), 120);
+        return;
+      }
+    } catch {}
+    sendMagicLink(norm);
   }
 
   async function sendMagicLink(emailAddr) {
@@ -84,20 +76,30 @@ export default function BizLoginPage() {
 
   async function verifyBeta() {
     const norm = email.trim().toLowerCase();
-    const expected = BETA_EMAILS[norm];
-    if (!expected) { setError('Email not in beta list.'); return; }
     setLoading(true); setError('');
-    const sb = getClient();
-    const { data, error: signInErr } = await sb.auth.signInWithPassword({
-      email: norm,
-      password: expected,
-    });
-    setLoading(false);
-    if (signInErr || !data.session) {
-      setError('Invalid password. Please check your beta access credentials.');
+    try {
+      const res = await fetch('/api/auth/beta-verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: norm }),
+      });
+      const data = await res.json();
+      if (!data.access_token) {
+        setError(data.error || 'Beta sign-in failed.');
+        setLoading(false);
+        return;
+      }
+      const sb = getClient();
+      await sb.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+    } catch {
+      setError('Sign-in failed. Please try again.');
+      setLoading(false);
       return;
     }
-    setBusinessMode(); // ← ADDED: lock this session to business mode
+    setLoading(false);
+    setBusinessMode();
     window.location.href = '/b/dashboard';
   }
 

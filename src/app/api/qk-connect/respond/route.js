@@ -41,7 +41,7 @@ export async function POST(request) {
     // Fetch the connection and verify current user is the receiver
     const { data: connection, error: fetchErr } = await supabase
       .from('qk_connections')
-      .select('id, sender_id, receiver_id, status')
+      .select('id, requester_id, receiver_id, status')
       .eq('id', connection_id)
       .single();
 
@@ -74,7 +74,7 @@ export async function POST(request) {
       const { data: convo, error: convoErr } = await supabase
         .from('qk_conversations')
         .insert({
-          participant_ids: [connection.sender_id, connection.receiver_id],
+          participant_ids: [connection.requester_id, connection.receiver_id],
         })
         .select('id')
         .single();

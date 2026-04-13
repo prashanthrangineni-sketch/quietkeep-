@@ -1076,12 +1076,18 @@ export default function Dashboard() {
   }
 
   async function handleEdit(id, updates) {
-    const { error } = await supabase.from('keeps').update(updates).eq('id', id);
-    if (error) throw new Error(error.message);
-    try { await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_edited', intent_id: id, service: 'dashboard', details: {} }); } catch {}
+    // Refresh token before edit to prevent stale-token 401 during hourly JWT rotation
+    const freshToken = await refreshToken();
+    const { error } = await supabase.from('keeps').update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    }).eq('id', id).eq('user_id', user.id);
+    if (error) throw new Error(error.message || 'Could not update keep. Please try again.');
+    // Optimistic UI update — update local state immediately
+    setIntents(prev => prev.map(k => k.id === id ? { ...k, ...updates } : k));
+    try { await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_edited', intent_id: id, service: 'dashboard', details: updates }); } catch {}
     showToast('Keep updated ✓');
     VoiceResponses.keepUpdated();
-    await loadIntents(user.id);
   }
 
   // GAP-1 FIX: feedback loop — closes the learning loop by calling update_intent_priority DB fn

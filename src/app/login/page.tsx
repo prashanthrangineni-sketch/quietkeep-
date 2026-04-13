@@ -16,23 +16,8 @@ import Link from 'next/link';
 const APP_TYPE = process.env.NEXT_PUBLIC_APP_TYPE || 'personal';
 const POST_AUTH_PATH = APP_TYPE === 'business' ? '/b/dashboard' : '/dashboard';
 
-// Beta accounts: credentials stored in NEXT_PUBLIC_BETA_CREDS env var.
-// Format: "email1:password1,email2:password2" (comma-separated pairs).
-// Falls back to empty object if not set — beta fast-path simply won't trigger.
-// NEVER hardcode credentials here. Set NEXT_PUBLIC_BETA_CREDS in Vercel env vars.
-function parseBetaCreds(): Record<string, string> {
-  const raw = process.env.NEXT_PUBLIC_BETA_CREDS || '';
-  if (!raw) return {};
-  return Object.fromEntries(
-    raw.split(',').map(pair => {
-      const idx = pair.indexOf(':');
-      if (idx === -1) return ['', ''];
-      return [pair.slice(0, idx).trim().toLowerCase(), pair.slice(idx + 1).trim()];
-    }).filter(([k]) => k && k.includes('@'))
-  );
-}
-
-const BETA_EMAILS: Record<string, string> = parseBetaCreds();
+// Beta verification now handled server-side via /api/auth/beta-verify
+// No credentials exposed in client bundle
 const OTP_LEN = 6;
 
 function getClient() {
@@ -60,14 +45,21 @@ export default function LoginPage() {
     if (!email.trim()) return;
     const norm = email.trim().toLowerCase();
 
-    if (BETA_EMAILS[norm]) {
-      // Beta fast-path: use OTP boxes with password
-      setIsBeta(true);
-      setError('');
-      setStep('otp');
-      setTimeout(() => refs.current[0]?.focus(), 120);
-      return;
-    }
+    // Check if beta via server-side API (credentials never touch client)
+    try {
+      const betaRes = await fetch('/api/auth/beta-verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: norm }),
+      });
+      const betaData = await betaRes.json();
+      if (betaData.isBeta) {
+        setIsBeta(true);
+        setError('');
+        setStep('otp');
+        setTimeout(() => refs.current[0]?.focus(), 120);
+        return;
+      }
+    } catch {} // Non-beta or API unavailable — fall through to magic link
 
     // All other users: send real Supabase magic link
     setLoading(true);
@@ -89,22 +81,37 @@ export default function LoginPage() {
 
   async function verifyBeta() {
     const norm = email.trim().toLowerCase();
-    const expected = BETA_EMAILS[norm];
-    if (!expected) { setError('Not a beta account.'); return; }
+    const pwd = otp.join('');
+    if (!pwd || pwd.length < OTP_LEN) { setError('Enter your full password.'); return; }
 
     setLoading(true);
     setError('');
-    const { error: signErr } = await getClient().auth.signInWithPassword({
-      email: norm,
-      password: expected,
-    });
-    setLoading(false);
-    if (signErr) {
-      setError('Sign-in failed. Enter each character of your password in the boxes.');
+    try {
+      // Beta verification handled server-side — password sent over HTTPS, never stored client-side
+      const res = await fetch('/api/auth/beta-verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: norm }),
+      });
+      const data = await res.json();
+      if (!data.access_token) {
+        setError(data.error || 'Beta sign-in failed.');
+        setOtp(Array(OTP_LEN).fill(''));
+        setTimeout(() => refs.current[0]?.focus(), 100);
+        setLoading(false);
+        return;
+      }
+      // Set the session from server-returned tokens
+      await getClient().auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+    } catch {
+      setError('Sign-in failed. Please try again.');
       setOtp(Array(OTP_LEN).fill(''));
-      setTimeout(() => refs.current[0]?.focus(), 100);
+      setLoading(false);
       return;
     }
+    setLoading(false);
     setPersonalMode(); // ← ADDED: lock this session to personal mode
     window.location.href = POST_AUTH_PATH;
   }

@@ -62,7 +62,7 @@ export async function POST(request) {
       .from('qk_connections')
       .select('id, status')
       .or(
-        `and(sender_id.eq.${user.id},receiver_id.eq.${receiver.id}),and(sender_id.eq.${receiver.id},receiver_id.eq.${user.id})`
+        `and(requester_id.eq.${user.id},receiver_id.eq.${receiver.id}),and(requester_id.eq.${receiver.id},receiver_id.eq.${user.id})`
       )
       .limit(1);
 
@@ -80,7 +80,7 @@ export async function POST(request) {
     const { data: connection, error: insertErr } = await supabase
       .from('qk_connections')
       .insert({
-        sender_id: user.id,
+        requester_id: user.id,
         receiver_id: receiver.id,
         status: 'pending',
       })

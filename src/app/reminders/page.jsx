@@ -65,6 +65,24 @@ function scheduleAllActive(reminderList) {
 
 const EMPTY_FORM = { reminder_text: '', scheduled_for: '', recurrence: 'none', is_active: true, reminder_type: 'app', location_name: '', geo_trigger_enabled: false };
 
+const RECURRENCE = ['none', 'daily', 'weekly', 'monthly', 'yearly'];
+
+function isOverdue(dateStr) {
+  if (!dateStr) return false;
+  return new Date(dateStr).getTime() < Date.now();
+}
+
+function isSoon(dateStr) {
+  if (!dateStr) return false;
+  const diff = new Date(dateStr).getTime() - Date.now();
+  return diff > 0 && diff < 3600000; // within 1 hour
+}
+
+function fmt(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
 function parseNaturalDate(text) {
   const now = new Date(); const t = text.toLowerCase();
   let d = new Date(now);
@@ -96,12 +114,10 @@ export default function RemindersPage() {
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
     }
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { router.replace('/login'); return; }
-      setUser(user);
-      loadReminders(user.id);
-    });
-  }, []);
+    if (authLoading) return;
+    if (!user) { router.replace('/login'); return; }
+    loadReminders(user.id);
+  }, [authLoading, user]);
 
   async function loadReminders(uid) {
     setLoading(true);
@@ -143,7 +159,6 @@ export default function RemindersPage() {
     setSaving(false);
     if (err) { setError(err.message); return; }
     setShowForm(false); loadReminders(user.id);
-    VoiceResponses.reminderSet(form.reminder_text, form.scheduled_for);
     // Schedule real alarm — works for web (SW) AND Android APK (AlarmManager)
     const _fireMs = new Date(form.scheduled_for).getTime();
     const _rid    = editItem?.id || ('new-' + Date.now());

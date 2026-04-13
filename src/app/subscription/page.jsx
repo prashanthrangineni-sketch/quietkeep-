@@ -60,8 +60,7 @@ export default function SubscriptionPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
-          if (!session?.user) return;
-          supabase
+    supabase
             .from('subscriptions')
             .select('plan_id, is_active')
             .eq('user_id', user?.id)

@@ -202,7 +202,7 @@ export default function RemindersPage() {
   return (
     <div className="qk-page">
       <NavbarClient />
-      <div className="qk-container">
+      <div className="qk-container" style={{ paddingBottom: 100 }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -295,9 +295,10 @@ export default function RemindersPage() {
         {showForm && (
           <div
             className="qk-modal-overlay"
+            style={{ zIndex: 1100 }}
             onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}
           >
-            <div className="qk-modal-sheet">
+            <div className="qk-modal-sheet" style={{ zIndex: 1101 }}>
               {/* Drag handle */}
               <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-strong)', margin: '0 auto 18px' }} />
 

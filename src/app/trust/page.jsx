@@ -25,7 +25,7 @@ const INTENT_RISK = {
 };
 
 export default function TrustDashboard() {
-  const { user, accessToken, authLoading } = useAuth();
+  const { user, accessToken, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [patterns, setPatterns]   = useState([]);

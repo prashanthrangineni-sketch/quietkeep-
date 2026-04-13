@@ -17,7 +17,7 @@ const MODE_COLORS = {
 };
 
 export default function AuditPage() {
-  const { user, accessToken, authLoading } = useAuth();
+  const { user, accessToken, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [logs,     setLogs]     = useState([]);

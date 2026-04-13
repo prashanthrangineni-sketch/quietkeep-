@@ -49,6 +49,8 @@ import com.pranix.quietkeep.services.KeepAliveService;
 public class MainActivity extends BridgeActivity {
 
     private static final String TAG = "QK_MAIN";
+    private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
+    private android.webkit.ValueCallback<android.net.Uri[]> mFilePathCallback;
 
     // Server URL baked in at build time — always the production API host.
     // The WebView loads local assets; all /api/ fetch calls must be rewritten to this.
@@ -206,6 +208,50 @@ public class MainActivity extends BridgeActivity {
                         super.onPermissionRequestCanceled(request);
                     }
                 }
+
+                // ── File chooser for <input type="file"> (camera + gallery) ──
+                @Override
+                public boolean onShowFileChooser(
+                        android.webkit.WebView view,
+                        android.webkit.ValueCallback<android.net.Uri[]> filePathCallback,
+                        FileChooserParams fileChooserParams) {
+                    // Delegate to Capacitor's existing handler first
+                    if (existing != null) {
+                        boolean handled = existing.onShowFileChooser(view, filePathCallback, fileChooserParams);
+                        if (handled) return true;
+                    }
+                    // Fallback: open system file chooser with camera option
+                    try {
+                        if (mFilePathCallback != null) {
+                            mFilePathCallback.onReceiveValue(null);
+                        }
+                        mFilePathCallback = filePathCallback;
+
+                        android.content.Intent takePictureIntent = new android.content.Intent(
+                                android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+                        android.content.Intent contentSelectionIntent = new android.content.Intent(
+                                android.content.Intent.ACTION_GET_CONTENT);
+                        contentSelectionIntent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+                        contentSelectionIntent.setType("image/*");
+
+                        android.content.Intent chooserIntent = new android.content.Intent(
+                                android.content.Intent.ACTION_CHOOSER);
+                        chooserIntent.putExtra(android.content.Intent.EXTRA_INTENT, contentSelectionIntent);
+                        chooserIntent.putExtra(android.content.Intent.EXTRA_TITLE, "Select or Capture");
+                        chooserIntent.putExtra(android.content.Intent.EXTRA_INITIAL_INTENTS,
+                                new android.content.Intent[]{takePictureIntent});
+
+                        startActivityForResult(chooserIntent, FILE_CHOOSER_REQUEST_CODE);
+                        return true;
+                    } catch (Exception e) {
+                        Log.e(TAG, "onShowFileChooser failed: " + e.getMessage());
+                        if (mFilePathCallback != null) {
+                            mFilePathCallback.onReceiveValue(null);
+                            mFilePathCallback = null;
+                        }
+                        return false;
+                    }
+                }
             });
 
             Log.d(TAG, "applyWebViewBridge: WebChromeClient + WebViewClient wrappers installed ✓");
@@ -287,6 +333,23 @@ public class MainActivity extends BridgeActivity {
             Log.d(TAG, "KeepAliveService started ✓");
         } catch (Exception e) {
             Log.e(TAG, "KeepAliveService start failed: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
+            if (mFilePathCallback == null) return;
+            android.net.Uri[] results = null;
+            if (resultCode == RESULT_OK && data != null) {
+                String dataString = data.getDataString();
+                if (dataString != null) {
+                    results = new android.net.Uri[]{android.net.Uri.parse(dataString)};
+                }
+            }
+            mFilePathCallback.onReceiveValue(results);
+            mFilePathCallback = null;
         }
     }
 }

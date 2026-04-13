@@ -76,9 +76,12 @@ export default function WarrantyPage() {
   }
 
   const loadProducts = useCallback(async (token) => {
-    const { data: res, error: resErr } = await safeFetch('/api/warranty');
-    const data = res;
-    setProducts(data.products || []);
+    try {
+      const { data: res, error: resErr } = await safeFetch('/api/warranty', { token });
+      if (!resErr && res) {
+        setProducts(res.products || []);
+      }
+    } catch {}
     setLoading(false);
   }, []);
 

@@ -40,6 +40,10 @@ export async function POST(request) {
       return Response.json({ error: `Invalid plan: ${plan}. Valid plans: ${Object.keys(plans).join(', ')}` }, { status: 400 });
     }
 
+    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      return Response.json({ error: 'Payment gateway not configured. Contact support.' }, { status: 503 });
+    }
+
     const razorpay = new Razorpay({
       key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_KEY_SECRET,

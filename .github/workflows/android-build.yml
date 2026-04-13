@@ -1,6 +1,8 @@
 name: Build QuietKeep Android APK
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       build_type:
@@ -112,7 +114,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           CAPACITOR_BUILD: '1'
-          NEXT_PUBLIC_APP_TYPE: ${{ github.event.inputs.build_type }}
+          NEXT_PUBLIC_APP_TYPE: ${{ github.event.inputs.build_type || 'personal' }}
 
       # ─────────────────────────────────────────────────────────────────────
       # SCAFFOLD ANDROID PROJECT
@@ -184,7 +186,8 @@ jobs:
           GOOGLE_SERVICES_PERSONAL: ${{ secrets.GOOGLE_SERVICES_PERSONAL }}
           GOOGLE_SERVICES_BUSINESS: ${{ secrets.GOOGLE_SERVICES_BUSINESS }}
         run: |
-          if [ "${{ github.event.inputs.build_type }}" = "business" ]; then
+          BUILD_TYPE="${{ github.event.inputs.build_type || 'personal' }}"
+          if [ "$BUILD_TYPE" = "business" ]; then
             if [ -n "$GOOGLE_SERVICES_BUSINESS" ]; then
               echo "$GOOGLE_SERVICES_BUSINESS" | base64 --decode > android/app/google-services.json
             else
@@ -222,7 +225,7 @@ jobs:
           echo "VERIFIED: No server.url in capacitor.config — local bundle will be used ✓"
 
           # Verify NEXT_PUBLIC_APP_TYPE is baked correctly into the bundle
-          APP_TYPE="${{ github.event.inputs.build_type }}"
+          APP_TYPE="${{ github.event.inputs.build_type || 'personal' }}"
           BUNDLE_DIR="android/app/src/main/assets/public/_next/static/chunks/app"
           echo "Checking APP_TYPE routing in bundle for: $APP_TYPE"
           if [ "$APP_TYPE" = "business" ]; then
@@ -247,7 +250,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: QuietKeep-${{ github.event.inputs.build_type }}-debug-${{ github.run_number }}
+          name: QuietKeep-${{ github.event.inputs.build_type || 'personal' }}-debug-${{ github.run_number }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 

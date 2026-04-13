@@ -32,6 +32,7 @@ import AgentSuggestionCard from '@/components/AgentSuggestionCard';
 import SuggestionChips from '@/components/SuggestionChips';
 import DashboardHero from '@/components/dashboard/DashboardHero';
 import DailyBriefCard from '@/components/dashboard/DailyBriefCard';
+import TalkAssistantResponse from '@/components/TalkAssistantResponse';
 import { learnFromCapture } from '@/lib/tau-learning';
 import { checkVoiceCapLimit, incrementVoiceCapture } from '@/lib/usage-gate';
 import UpgradeModal from '@/components/UpgradeModal';
@@ -485,6 +486,7 @@ export default function Dashboard() {
   const [clarificationData, setClarificationData] = useState(null); // Phase 3: low-confidence clarification
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [upgradeInfo, setUpgradeInfo] = useState({});
+  const [talkResponse, setTalkResponse] = useState({ show: false, type: 'saved', language: 'en-IN', params: {} });
   // Phase 3 Step 2: Geo intelligence
   const [gpsLat, setGpsLat]                 = useState(null);
   const [gpsLng, setGpsLng]                 = useState(null);
@@ -1056,6 +1058,13 @@ export default function Dashboard() {
           showToast(`📍 Save "${data.keep.location_name}" to activate geo reminder`);
         } else {
           showToast('✓ Kept!');
+          // Talk Assistant response in matched language
+          setTalkResponse({
+            show: true,
+            type: saved.intent_type === 'reminder' ? 'reminder' : saved.intent_type === 'expense' ? 'expense' : 'saved',
+            language: voiceLang || 'en-IN',
+            params: { time: saved.reminder_at || '', amount: saved.content?.match(/\d+/)?.[0] || '' },
+          });
         }
       }
     } catch (e) {
@@ -2211,6 +2220,15 @@ export default function Dashboard() {
 
         </div>
       </div>
+
+      {/* Talk Assistant Response */}
+      <TalkAssistantResponse
+        show={talkResponse.show}
+        type={talkResponse.type}
+        language={talkResponse.language}
+        params={talkResponse.params}
+        onDismiss={() => setTalkResponse(p => ({ ...p, show: false }))}
+      />
 
       {/* Upgrade Modal */}
       <UpgradeModal

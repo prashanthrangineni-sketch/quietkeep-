@@ -36,6 +36,44 @@ function toTitleCase(str) {
   return str.replace(/\b\w/g, c => c.toUpperCase());
 }
 
+// ── Regional number word → digit mapping ──────────────────────────
+const REGIONAL_NUMBERS = {
+  // Hindi
+  'ek': 1, 'do': 2, 'teen': 3, 'char': 4, 'paanch': 5,
+  'chhe': 6, 'saat': 7, 'aath': 8, 'nau': 9, 'das': 10,
+  'bees': 20, 'tees': 30, 'chalees': 40, 'pachaas': 50,
+  'sau': 100, 'hazaar': 1000, 'hazar': 1000, 'lakh': 100000,
+  // Telugu
+  'okati': 1, 'rendu': 2, 'moodu': 3, 'nalugu': 4, 'aidu': 5,
+  'aaru': 6, 'edu': 7, 'enimidi': 8, 'tommidi': 9, 'padi': 10,
+  'vela': 1000, 'velu': 1000, 'laksha': 100000,
+  // Tamil
+  'onnu': 1, 'randu': 2, 'moonu': 3, 'naalu': 4, 'anju': 5,
+  'aaru_ta': 6, 'saavira': 1000,
+};
+
+function parseRegionalAmount(text) {
+  const lower = text.toLowerCase();
+  // "paanch sau" → 500, "ek hazaar" → 1000, "rendu vela" → 2000, "padi velu" → 10000
+  const multiplierWords = ['sau', 'hazaar', 'hazar', 'vela', 'velu', 'lakh', 'laksha', 'saavira'];
+  for (const mw of multiplierWords) {
+    const re = new RegExp(`(\\w+)\\s+${mw}`, 'i');
+    const m = lower.match(re);
+    if (m) {
+      const base = REGIONAL_NUMBERS[m[1]] || parseInt(m[1]);
+      const mult = REGIONAL_NUMBERS[mw];
+      if (base && mult) return base * mult;
+    }
+  }
+  // Single number word: "paanch" → 5
+  for (const [word, num] of Object.entries(REGIONAL_NUMBERS)) {
+    if (lower.includes(word)) return num;
+  }
+  return null;
+}
+
+export { parseRegionalAmount };
+
 function extractEntities(text) {
   const entities = { names: [], dates: [], times: [] };
   for (const p of NAME_PATTERNS) {
@@ -78,6 +116,29 @@ function classifyIntent(lower) {
   if (/call|phone|message|email|tell|send|contact/.test(lower))         return { type: 'contact',    conf: 0.82 };
   if (/task|todo|do|finish|complete|fix|check|work on/.test(lower))     return { type: 'task',       conf: 0.78 };
   if (/note|write|jot|record|log/.test(lower))                          return { type: 'note',       conf: 0.72 };
+
+  // ── Telugu intent patterns ────────────────────────────────────────
+  if (/gurtu pettuko|remind cheyyi|gurthu/.test(lower))                 return { type: 'reminder',   conf: 0.86 };
+  if (/rasuko|rasanu|note cheyyi|rayi/.test(lower))                     return { type: 'note',       conf: 0.84 };
+  if (/kharchu chesanu|kharchu|income vacchindi|dabbu/.test(lower))     return { type: 'expense',    conf: 0.85 };
+  if (/call cheyyi|phone cheyyi|message pampinchu/.test(lower))         return { type: 'contact',    conf: 0.83 };
+  if (/teeseyi|delete cheyyi|cancel cheyyi/.test(lower))               return { type: 'task',       conf: 0.80 };
+  if (/chupinchu|kanipinchu|show cheyyi/.test(lower))                   return { type: 'note',       conf: 0.70 };
+
+  // ── Hindi intent patterns ─────────────────────────────────────────
+  if (/yaad dilao|yaad karo|remind karo|bhool mat/.test(lower))         return { type: 'reminder',   conf: 0.86 };
+  if (/likh|note kar|yaad rakh/.test(lower))                            return { type: 'note',       conf: 0.84 };
+  if (/kharch|paisa|rupay|rupees|kharcha kiya/.test(lower))             return { type: 'expense',    conf: 0.85 };
+  if (/call kar|phone kar|message bhej/.test(lower))                    return { type: 'contact',    conf: 0.83 };
+  if (/hata do|delete kar|cancel kar/.test(lower))                      return { type: 'task',       conf: 0.80 };
+
+  // ── Hinglish patterns (code-switched Hindi-English) ───────────────
+  if (/kal\s+(?:remind|yaad)|subah\s+(?:\d|remind)|sham\s+ko/.test(lower)) return { type: 'reminder', conf: 0.84 };
+  if (/rupees?\s+kharch|kharch\s+ki(?:ya|ye)|paisa\s+diya/.test(lower)) return { type: 'expense',    conf: 0.83 };
+  if (/meeting\s+hai|office\s+(?:mein|me)|kaam\s+(?:pe|par)/.test(lower)) return { type: 'meeting',  conf: 0.82 };
+  if (/ghar\s+(?:jaate|jate)\s+(?:waqt|time)|way\s+(?:pe|par)/.test(lower)) return { type: 'reminder', conf: 0.80 };
+  if (/abhi\s+(?:note|likh|save)/.test(lower))                          return { type: 'note',       conf: 0.82 };
+
   return { type: 'note', conf: 0.60 };
 }
 

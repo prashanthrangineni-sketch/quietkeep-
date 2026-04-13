@@ -487,6 +487,8 @@ export default function Dashboard() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [upgradeInfo, setUpgradeInfo] = useState({});
   const [talkResponse, setTalkResponse] = useState({ show: false, type: 'saved', language: 'en-IN', params: {} });
+  const [userTier, setUserTier] = useState('free');
+  const [userIsBeta, setUserIsBeta] = useState(false);
   // Phase 3 Step 2: Geo intelligence
   const [gpsLat, setGpsLat]                 = useState(null);
   const [gpsLng, setGpsLng]                 = useState(null);
@@ -523,7 +525,14 @@ export default function Dashboard() {
     const hasBrowserSpeech = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
     const hasNativeVoice = !!(window?.Capacitor?.Plugins?.VoicePlugin);
     setVoiceSupported(hasBrowserSpeech || hasNativeVoice);
-  }, []);
+    // Load user tier for monetisation gates
+    if (user?.id) {
+      supabase.from('profiles').select('subscription_tier, is_beta').eq('user_id', user.id).maybeSingle()
+        .then(({ data }) => {
+          if (data) { setUserTier(data.subscription_tier || 'free'); setUserIsBeta(data.is_beta || false); }
+        }).catch(() => {});
+    }
+  }, [user]);
   useEffect(() => { if (content.length > 5) setSuggestions(getAISuggestions(content)); else setSuggestions([]); }, [content]);
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2800); }
@@ -1579,7 +1588,7 @@ export default function Dashboard() {
           <ContextCards userId={user?.id} />
 
           {/* ZONE 3 — Daily Brief card */}
-          <DailyBriefCard userId={user?.id} />
+          <DailyBriefCard userId={user?.id} tier={userTier} isBeta={userIsBeta} />
 
           {openLoopCount > 0 && (
             <div style={{

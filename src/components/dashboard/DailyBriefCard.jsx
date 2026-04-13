@@ -5,14 +5,18 @@
  */
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { checkDailyBriefAccess } from '@/lib/usage-gate';
 
-export default function DailyBriefCard({ userId }) {
+export default function DailyBriefCard({ userId, tier, isBeta }) {
   const [brief, setBrief] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [festival, setFestival] = useState(null);
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
+    const access = checkDailyBriefAccess({ tier, isBeta });
+    if (!access.allowed) { setLocked(true); }
     loadBrief();
   }, [userId]);
 
@@ -39,7 +43,31 @@ export default function DailyBriefCard({ userId }) {
     } catch {}
   }
 
-  if (!brief) return null;
+  if (!brief && !locked) return null;
+
+  if (locked) {
+    return (
+      <div style={{ marginBottom: 16 }}>
+        <div style={{
+          padding: '14px 16px', borderRadius: 14,
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          opacity: 0.7, position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 18 }}>📋</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Today's Brief</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '2px 8px', borderRadius: 6 }}>Mon/Wed/Fri only</span>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>Daily Brief is available every day on Personal Pro.</div>
+          <a href="/subscription?plan=personal" style={{
+            display: 'inline-block', padding: '8px 16px', borderRadius: 8,
+            background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 600,
+            textDecoration: 'none',
+          }}>Upgrade for daily access →</a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ marginBottom: 16 }}>

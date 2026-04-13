@@ -30,6 +30,8 @@ import ContextCards from '@/components/ContextCards';
 import KeepAIAssist from '@/components/KeepAIAssist';
 import AgentSuggestionCard from '@/components/AgentSuggestionCard';
 import SuggestionChips from '@/components/SuggestionChips';
+import DashboardHero from '@/components/dashboard/DashboardHero';
+import DailyBriefCard from '@/components/dashboard/DailyBriefCard';
 import { learnFromCapture } from '@/lib/tau-learning';
 import { checkVoiceCapLimit, incrementVoiceCapture } from '@/lib/usage-gate';
 import UpgradeModal from '@/components/UpgradeModal';
@@ -1545,14 +1547,14 @@ export default function Dashboard() {
       <div className="qk-page">
         <div className="qk-container">
 
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
-              My Keeps
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 2 }}>{user?.email}</div>
-          </div>
+          {/* ZONE 1 — Hero: greeting + top reminder */}
+          <DashboardHero
+            userName={user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+            topReminder={intents.find(k => k.intent_type === 'reminder' && k.status === 'open')}
+            onReminderTap={() => router.push('/reminders')}
+          />
 
-          {/* Contextual suggestion chips — learns from behaviour */}
+          {/* ZONE 2 — Contextual suggestion chips */}
           <SuggestionChips
             supabase={supabase}
             userId={user?.id}
@@ -1566,6 +1568,9 @@ export default function Dashboard() {
           />
 
           <ContextCards userId={user?.id} />
+
+          {/* ZONE 3 — Daily Brief card */}
+          <DailyBriefCard userId={user?.id} />
 
           {openLoopCount > 0 && (
             <div style={{

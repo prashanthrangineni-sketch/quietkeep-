@@ -79,11 +79,12 @@ jobs:
       # ─────────────────────────────────────────────────────────────────────
       - name: Build Next.js static export for Capacitor
         run: |
-          echo "Moving server-only paths out of the way..."
+          echo "Moving server-only and dynamic paths out of the way..."
           mv src/app/api                     /tmp/api_backup
           mv src/app/auth/callback           /tmp/auth_callback_backup
           mv src/app/share                   /tmp/share_backup
           mv src/app/dashboard/engine-health /tmp/engine_health_backup
+          mv "src/app/messages/[conversationId]" /tmp/messages_convo_backup
           echo "Paths hidden. Starting static export..."
 
           export CAPACITOR_BUILD=1
@@ -96,6 +97,7 @@ jobs:
           mv /tmp/auth_callback_backup       src/app/auth/callback
           mv /tmp/share_backup               src/app/share
           mv /tmp/engine_health_backup       src/app/dashboard/engine-health
+          mv /tmp/messages_convo_backup      "src/app/messages/[conversationId]"
           echo "All paths restored."
 
           if [ $BUILD_EXIT -ne 0 ]; then

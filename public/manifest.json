@@ -1,0 +1,49 @@
+{
+  "name": "QuietKeep",
+  "short_name": "QuietKeep",
+  "description": "Your Personal Intelligence OS — voice-first keeps, reminders, finance, driving mode",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f6fb",
+  "theme_color": "#5b5ef4",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Keep",
+      "short_name": "Keep",
+      "description": "Add a new keep",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Driving Mode",
+      "short_name": "Drive",
+      "description": "Start driving mode",
+      "url": "/driving",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Daily Brief",
+      "short_name": "Brief",
+      "description": "View your daily brief",
+      "url": "/daily-brief",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["productivity", "utilities", "lifestyle"]
+}

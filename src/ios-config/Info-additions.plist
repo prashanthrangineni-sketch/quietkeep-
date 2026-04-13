@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  QuietKeep iOS — Required Info.plist keys.
+  After running: npx cap add ios
+  Merge these into: ios/App/App/Info.plist
+
+  These are MANDATORY — iOS will crash/reject without them.
+-->
+<plist version="1.0">
+<dict>
+
+  <!-- Microphone: required for VoiceService audio capture -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>QuietKeep uses your microphone to capture voice notes and commands.</string>
+
+  <!-- Camera: required by @capacitor/camera plugin -->
+  <key>NSCameraUsageDescription</key>
+  <string>QuietKeep uses the camera to scan documents and add photos to keeps.</string>
+
+  <!-- Photo Library: @capacitor/camera read access -->
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>QuietKeep accesses photos to add images to your keeps.</string>
+
+  <!-- Location: geo signals for location-based reminders -->
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>QuietKeep uses your location to trigger geo-based reminders.</string>
+
+  <!-- Background modes: audio recording in background, remote notifications -->
+  <key>UIBackgroundModes</key>
+  <array>
+    <string>audio</string>
+    <string>remote-notification</string>
+    <string>fetch</string>
+  </array>
+
+  <!-- App Transport Security: allow HTTPS only (already set) -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
+  </dict>
+
+</dict>
+</plist>

@@ -1,0 +1,51 @@
+{
+  "appId": "com.pranix.quietkeep",
+  "appName": "QuietKeep",
+  "webDir": "out",
+  "server": {
+    "cleartext": false,
+    "allowNavigation": [
+      "quietkeep.com",
+      "*.supabase.co",
+      "api.knock.app",
+      "api.razorpay.com",
+      "api.anthropic.com",
+      "api.sarvam.ai",
+      "nominatim.openstreetmap.org",
+      "api.open-meteo.com",
+      "wa.me"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 3000,
+      "backgroundColor": "#0f172a",
+      "showSpinner": false,
+      "androidSplashResourceName": "splash",
+      "iosSplashResourceName": "Splash"
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#5b5ef4"
+    }
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false,
+    "minWebViewVersion": 60
+  },
+  "ios": {
+    "scheme": "QuietKeep"
+  }
+}

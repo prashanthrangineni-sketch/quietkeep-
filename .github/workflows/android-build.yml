@@ -1,0 +1,276 @@
+name: Build QuietKeep Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Which APK to build?'
+        required: true
+        default: 'personal'
+        type: choice
+        options:
+          - personal
+          - business
+
+jobs:
+  build-apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install project dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Install Capacitor (pinned to 6.x)
+        run: |
+          npm install --save-exact --legacy-peer-deps \
+            @capacitor/core@6.2.0 \
+            @capacitor/cli@6.2.0 \
+            @capacitor/android@6.2.0 \
+            @capacitor/camera@6.0.2 \
+            @capacitor/geolocation@6.0.1 \
+            @capacitor/push-notifications@6.0.2 \
+            @capacitor/splash-screen@6.0.2 \
+            @capacitor/status-bar@6.0.1 \
+            @capacitor/keyboard@6.0.2
+
+      # ─────────────────────────────────────────────────────────────────────
+      # STATIC EXPORT BUILD FOR CAPACITOR APK
+      #
+      # Next.js output:'export' refuses to build any path that:
+      #   (a) uses server-side APIs  (cookies, headers, createServerClient)
+      #   (b) has dynamic [param] segments without generateStaticParams()
+      #   (c) has  export const dynamic = 'force-dynamic'
+      #
+      # COMPLETE LIST of paths hidden during this build (verified by audit):
+      #   src/app/api/                      — API route handlers (server-only)
+      #   src/app/auth/callback/            — server route (uses cookies())
+      #   src/app/share/                    — [token] dynamic route (runtime tokens)
+      #   src/app/dashboard/engine-health/  — force-dynamic server component
+      #
+      # ALL paths are restored immediately after the build.
+      # None of these are needed inside the APK — they run on Vercel.
+      #
+      # NEXT_PUBLIC_APP_TYPE is baked into the bundle here so the JS routing
+      # in page.jsx correctly routes to /login vs /biz-login on cold start.
+      # The runtime injection in MainActivity.java v5 is the authoritative
+      # source and acts as a safety net in case the env var bake is stale.
+      # ─────────────────────────────────────────────────────────────────────
+      - name: Build Next.js static export for Capacitor
+        run: |
+          echo "Moving server-only paths out of the way..."
+          mv src/app/api                     /tmp/api_backup
+          mv src/app/auth/callback           /tmp/auth_callback_backup
+          mv src/app/share                   /tmp/share_backup
+          mv src/app/dashboard/engine-health /tmp/engine_health_backup
+          echo "Paths hidden. Starting static export..."
+
+          export CAPACITOR_BUILD=1
+          npm run build
+          BUILD_EXIT=$?
+
+          echo "Restoring all paths..."
+          mv /tmp/api_backup                 src/app/api
+          mkdir -p src/app/auth
+          mv /tmp/auth_callback_backup       src/app/auth/callback
+          mv /tmp/share_backup               src/app/share
+          mv /tmp/engine_health_backup       src/app/dashboard/engine-health
+          echo "All paths restored."
+
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "ERROR: Static export failed (exit $BUILD_EXIT)"
+            exit $BUILD_EXIT
+          fi
+
+          FILE_COUNT=$(find out -type f 2>/dev/null | wc -l)
+          echo "Files in out/: $FILE_COUNT"
+          if [ "$FILE_COUNT" -lt 10 ]; then
+            echo "ERROR: out/ has fewer than 10 files"
+            exit 1
+          fi
+          echo "Static export complete — $FILE_COUNT files ready for APK."
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          CAPACITOR_BUILD: '1'
+          NEXT_PUBLIC_APP_TYPE: ${{ github.event.inputs.build_type }}
+
+      # ─────────────────────────────────────────────────────────────────────
+      # SCAFFOLD ANDROID PROJECT
+      #
+      # Strategy: backup our custom files, scaffold a fresh Capacitor android
+      # project, then restore our files over the scaffold.
+      #
+      # Files restored from repo:
+      #   java/         — all native service/plugin Java classes
+      #   AndroidManifest.xml — permissions + service declarations
+      #   res/          — custom icons (mipmap) + values (colors/strings/styles)
+      #   res/xml/      — network_security_config.xml (NEW: required for local bundle)
+      #   app/build.gradle — COMPLETE gradle file with all deps pre-included
+      # ─────────────────────────────────────────────────────────────────────
+      - name: Scaffold Android project
+        run: |
+          echo "Backing up custom files..."
+          mkdir -p /tmp/qk-backup
+          cp -r android/app/src/main/java    /tmp/qk-backup/java
+          cp    android/app/src/main/AndroidManifest.xml /tmp/qk-backup/AndroidManifest.xml
+          cp    android/app/build.gradle     /tmp/qk-backup/build.gradle
+          if [ -d "android/app/src/main/res/mipmap-mdpi" ]; then
+            cp -r android/app/src/main/res   /tmp/qk-backup/res
+            echo "Icons + values backed up"
+          fi
+
+          echo "Removing old android folder..."
+          rm -rf android
+
+          echo "Scaffolding fresh Capacitor android project..."
+          npx cap add android
+
+          echo "Restoring custom files over scaffold..."
+          cp -r /tmp/qk-backup/java          android/app/src/main/
+          cp    /tmp/qk-backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          cp    /tmp/qk-backup/build.gradle  android/app/build.gradle
+          mkdir -p android/app/src/main/assets
+          if [ -d "/tmp/qk-backup/res" ]; then
+            cp -r /tmp/qk-backup/res/.       android/app/src/main/res/
+            echo "Icons + values restored"
+          fi
+
+          # The res/ backup (above) already includes res/xml/ if it exists in the repo.
+          # After `npx cap add android`, Capacitor scaffolds res/xml/config.xml and
+          # res/xml/file_paths.xml — so the xml/ dir always exists post-scaffold.
+          # Our backup restores any custom xml files (e.g. network_security_config.xml)
+          # on top of the scaffold. Nothing extra needed here.
+          echo "res/xml/ handled by backup/restore above ✓"
+
+          echo "Final build.gradle dependencies:"
+          grep -A 20 "^dependencies" android/app/build.gradle
+
+      - name: Apply business config and icons (if business build)
+        if: ${{ github.event.inputs.build_type == 'business' }}
+        run: |
+          cp capacitor.business.config.json capacitor.config.json
+          sed -i 's/applicationId "com\.pranix\.quietkeep"/applicationId "com.pranix.quietkeep.business"/' android/app/build.gradle
+          STRINGS_XML="android/app/src/main/res/values/strings.xml"
+          if [ -f "$STRINGS_XML" ]; then
+            sed -i 's|<string name="app_name">QuietKeep</string>|<string name="app_name">QuietKeep Business</string>|' "$STRINGS_XML"
+          fi
+          if [ -d "android-res-business" ]; then
+            cp -r android-res-business/. android/app/src/main/res/
+            echo "Business icons applied"
+          fi
+
+      - name: Write google-services.json
+        env:
+          GOOGLE_SERVICES_PERSONAL: ${{ secrets.GOOGLE_SERVICES_PERSONAL }}
+          GOOGLE_SERVICES_BUSINESS: ${{ secrets.GOOGLE_SERVICES_BUSINESS }}
+        run: |
+          if [ "${{ github.event.inputs.build_type }}" = "business" ]; then
+            if [ -n "$GOOGLE_SERVICES_BUSINESS" ]; then
+              echo "$GOOGLE_SERVICES_BUSINESS" | base64 --decode > android/app/google-services.json
+            else
+              echo "Warning: GOOGLE_SERVICES_BUSINESS secret not set — push notifications disabled"
+            fi
+          else
+            if [ -n "$GOOGLE_SERVICES_PERSONAL" ]; then
+              echo "$GOOGLE_SERVICES_PERSONAL" | base64 --decode > android/app/google-services.json
+            else
+              echo "Warning: GOOGLE_SERVICES_PERSONAL secret not set — push notifications disabled"
+            fi
+          fi
+
+      - name: Sync Capacitor to Android
+        run: npx cap sync android
+
+      - name: Verify local bundle was synced into APK assets
+        run: |
+          FILE_COUNT=$(find android/app/src/main/assets/public -type f 2>/dev/null | wc -l)
+          echo "Files in android assets: $FILE_COUNT"
+          if [ "$FILE_COUNT" -lt 10 ]; then
+            echo "ERROR: Capacitor sync did not copy local bundle into android assets"
+            exit 1
+          fi
+
+          # FIX: Verify capacitor.config.json baked into assets does NOT have server.url
+          # If server.url is present, the APK will ignore the local bundle and load Vercel.
+          CONFIG_PATH="android/app/src/main/assets/capacitor.config.json"
+          if grep -q '"url"' "$CONFIG_PATH" 2>/dev/null; then
+            echo "ERROR: server.url found in capacitor.config.json inside assets — APK will load Vercel instead of local bundle!"
+            echo "Remove the server.url field from capacitor.config.json and capacitor.business.config.json."
+            cat "$CONFIG_PATH"
+            exit 1
+          fi
+          echo "VERIFIED: No server.url in capacitor.config — local bundle will be used ✓"
+
+          # Verify NEXT_PUBLIC_APP_TYPE is baked correctly into the bundle
+          APP_TYPE="${{ github.event.inputs.build_type }}"
+          BUNDLE_DIR="android/app/src/main/assets/public/_next/static/chunks/app"
+          echo "Checking APP_TYPE routing in bundle for: $APP_TYPE"
+          if [ "$APP_TYPE" = "business" ]; then
+            if grep -rl "b/dashboard\|biz-login" "$BUNDLE_DIR" 2>/dev/null | head -1 | grep -q .; then
+              echo "VERIFIED: Business routing found in bundle ✓"
+            else
+              echo "WARNING: Business routing not found in bundle — check NEXT_PUBLIC_APP_TYPE env var"
+            fi
+          else
+            if grep -rl '"/login"\|/dashboard' "$BUNDLE_DIR" 2>/dev/null | head -1 | grep -q .; then
+              echo "VERIFIED: Personal routing found in bundle ✓"
+            fi
+          fi
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuietKeep-${{ github.event.inputs.build_type }}-debug-${{ github.run_number }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Show APK details
+        run: |
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ -f "$APK_PATH" ]; then
+            echo "APK built successfully"
+            echo "Size: $(du -sh $APK_PATH | cut -f1)"
+
+            # Final verification: confirm no server.url leaked into the baked config
+            # Uses grep on the raw JSON — no python3 needed, avoids YAML quoting issues
+            BAKED_CONFIG=$(unzip -p "$APK_PATH" assets/capacitor.config.json 2>/dev/null)
+            if echo "$BAKED_CONFIG" | grep -q '"url"'; then
+              echo "FAIL: server.url is present in APK capacitor.config — APK will load Vercel, not local bundle!"
+              echo "$BAKED_CONFIG"
+              exit 1
+            else
+              APP_ID=$(echo "$BAKED_CONFIG" | grep -o '"appId":"[^"]*"' | head -1)
+              echo "PASS: No server.url in APK config — local bundle will be used ✓"
+              echo "appId: $APP_ID"
+            fi
+          else
+            echo "APK not found at expected path"
+            exit 1
+          fi

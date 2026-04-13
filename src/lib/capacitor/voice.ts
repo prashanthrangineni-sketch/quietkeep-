@@ -1,0 +1,341 @@
+/**
+ * src/lib/capacitor/voice.ts  v9
+ *
+ * v9 changes over v8:
+ *   ADDED: startLocationService() / stopLocationService()
+ *     Bridge to LocationService.java (background geo-trigger polling).
+ *     Called by orchestrator.ts → startBackgroundServices() on Android.
+ *
+ *   ADDED: isOnline() — network connectivity check before voice API calls
+ *
+ *   ADDED: captureWithFallback() — voice capture with automatic offline fallback
+ *     If /api/voice/capture fails with a network error, routes to processOffline().
+ *
+ * v8 retained (unchanged):
+ *   onPermissionChange(), syncPermissions(), requestMicPermission() with poll
+ *   startNativeVoice(), stopNativeVoice(), isNativeVoiceRunning()
+ *   isBatteryOptimizationExempt(), requestBatteryOptimizationExemption()
+ *   registerNativePush()
+ */
+
+import { safeFetch } from '../safeFetch';
+import { processOffline, flushOfflineQueue, type OfflineResult } from '../offlineVoice';
+
+function _cap(): any {
+  if (typeof window === 'undefined') return null;
+  return (window as any)?.Capacitor ?? null;
+}
+function isAndroid()  { return _cap()?.getPlatform?.() === 'android'; }
+function isNative()   { return !!_cap()?.isNativePlatform?.(); }
+
+function callPlugin(name: string, method: string, opts: Record<string, any> = {}): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const cap = _cap();
+    if (!cap?.toNative) { reject(new Error('no bridge')); return; }
+    cap.toNative(name, method, opts, {
+      resolve: (v: any) => resolve(v),
+      reject:  (e: any) => reject(new Error(typeof e === 'string' ? e : e?.message ?? JSON.stringify(e))),
+    });
+  });
+}
+
+// ── Network ───────────────────────────────────────────────────────────────────
+
+export function isOnline(): boolean {
+  if (typeof navigator === 'undefined') return true;
+  return navigator.onLine !== false;
+}
+
+// ── Permission helpers ────────────────────────────────────────────────────────
+
+export async function checkMicPermission(): Promise<boolean> {
+  if (!isAndroid()) return true;
+  try {
+    const r = await callPlugin('VoicePlugin', 'checkMicPermission');
+    return r?.granted === true;
+  } catch { return false; }
+}
+
+/**
+ * Request RECORD_AUDIO with ColorOS/Hans poll retry (v8 pattern retained).
+ */
+export async function requestMicPermission(): Promise<boolean> {
+  if (!isAndroid()) return true;
+  try {
+    const result = await callPlugin('VoicePlugin', 'requestMicPermission');
+    if (result?.granted === true) return true;
+    for (let i = 0; i < 3; i++) {
+      await new Promise(r => setTimeout(r, 300));
+      const check = await callPlugin('VoicePlugin', 'checkMicPermission');
+      if (check?.granted === true) return true;
+    }
+    return false;
+  } catch (e: any) {
+    try { return (await callPlugin('VoicePlugin', 'checkMicPermission'))?.granted === true; }
+    catch { return false; }
+  }
+}
+
+export async function requestNotificationPermission(): Promise<boolean> {
+  if (typeof Notification === 'undefined') return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied')  return false;
+  return (await Notification.requestPermission()) === 'granted';
+}
+
+// ── Permission lifecycle sync (v8) ────────────────────────────────────────────
+
+export interface PermissionState {
+  mic:           boolean;
+  notifications: boolean;
+  battery:       boolean;
+}
+
+export async function syncPermissions(): Promise<PermissionState> {
+  const [mic, battery] = await Promise.all([
+    checkMicPermission(),
+    isBatteryOptimizationExempt(),
+  ]);
+  const notifications =
+    typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  return { mic, notifications, battery };
+}
+
+export function onPermissionChange(cb: (state: PermissionState) => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async function check() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      const state = await syncPermissions();
+      cb(state);
+    }, 200);
+  }
+
+  const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+  document.addEventListener('visibilitychange', onVisible);
+
+  let capUnsub: (() => void) | null = null;
+  try {
+    const AppPlugin = _cap()?.Plugins?.App;
+    if (AppPlugin?.addListener) {
+      AppPlugin.addListener('appStateChange', (state: { isActive: boolean }) => {
+        if (state.isActive) check();
+      }).then((handle: any) => {
+        capUnsub = () => handle?.remove?.();
+      }).catch(() => {});
+    }
+  } catch {}
+
+  return () => {
+    document.removeEventListener('visibilitychange', onVisible);
+    capUnsub?.();
+    if (debounceTimer) clearTimeout(debounceTimer);
+  };
+}
+
+// ── Voice service ─────────────────────────────────────────────────────────────
+
+export interface VoiceServiceOptions {
+  authToken:    string;
+  serverUrl?:   string;
+  sessionId?:   string;
+  mode?:        'personal' | 'business';
+  workspaceId?: string;
+  languageCode?:string;
+}
+
+export async function startNativeVoice(opts: VoiceServiceOptions): Promise<boolean> {
+  if (!isAndroid()) return false;
+  const hasMic = await checkMicPermission();
+  if (!hasMic) { console.error('[QK] startNativeVoice: mic not granted'); return false; }
+  try {
+    await callPlugin('VoicePlugin', 'startService', {
+      auth_token:    opts.authToken.replace(/^Bearer\s+/i, '').trim(),
+      server_url:    opts.serverUrl    ?? 'https://quietkeep.com',
+      session_id:    opts.sessionId    ?? null,
+      mode:          opts.mode         ?? 'personal',
+      workspace_id:  opts.workspaceId  ?? null,
+      language_code: opts.languageCode ?? 'en-IN',
+    });
+    if (typeof localStorage !== 'undefined') localStorage.setItem('qk_voice_active', 'true');
+    return true;
+  } catch (e: any) { console.error('[QK] startNativeVoice failed:', e?.message); return false; }
+}
+
+export async function stopNativeVoice(): Promise<void> {
+  if (!isAndroid()) return;
+  try { await callPlugin('VoicePlugin', 'stopService'); } catch {}
+  if (typeof localStorage !== 'undefined') localStorage.removeItem('qk_voice_active');
+}
+
+export async function isNativeVoiceRunning(): Promise<boolean> {
+  if (!isAndroid()) return false;
+  try {
+    const r = await callPlugin('VoicePlugin', 'isRunning');
+    return r?.running === true && r?.capturing === true;
+  } catch { return false; }
+}
+
+export function isNativeVoiceAvailable(): boolean { return isAndroid(); }
+
+// ── NEW v9: Location Service bridge ──────────────────────────────────────────
+
+export async function startLocationService(authToken: string, serverUrl = 'https://quietkeep.com'): Promise<boolean> {
+  if (!isAndroid()) return false;
+  try {
+    await callPlugin('VoicePlugin', 'startLocationService', {
+      auth_token: authToken.replace(/^Bearer\s+/i, '').trim(),
+      server_url: serverUrl,
+    });
+    if (typeof localStorage !== 'undefined') localStorage.setItem('qk_location_active', 'true');
+    return true;
+  } catch (e: any) {
+    console.warn('[QK] startLocationService failed:', e?.message);
+    return false;
+  }
+}
+
+export async function stopLocationService(): Promise<void> {
+  if (!isAndroid()) return;
+  try { await callPlugin('VoicePlugin', 'stopLocationService'); } catch {}
+  if (typeof localStorage !== 'undefined') localStorage.removeItem('qk_location_active');
+}
+
+// ── NEW v9: Capture with offline fallback ─────────────────────────────────────
+
+export interface CaptureResult {
+  keep?:        Record<string, unknown>;
+  ttsResponse?: string;
+  followUp?:    Record<string, unknown>;
+  offline?:     boolean;
+  queued?:      boolean;
+  navigate?:    string;
+  error?:       string;
+}
+
+/**
+ * Send voice text to /api/voice/capture.
+ * On network failure, automatically falls back to offline command processing.
+ * On reconnect, flushOfflineQueue() is called automatically by connectivity handlers.
+ */
+export async function captureWithFallback(
+  text: string,
+  token: string,
+  opts: { source?: string; workspaceId?: string; language?: string } = {}
+): Promise<CaptureResult> {
+  // Try online first
+  if (isOnline()) {
+    try {
+      const { data, error } = await safeFetch('/api/voice/capture', {
+        method: 'POST',
+        body: JSON.stringify({
+          transcript:   text,
+          source:       opts.source ?? 'voice',
+          workspace_id: opts.workspaceId ?? null,
+          language:     opts.language ?? 'en-IN',
+        }),
+        token,
+      });
+
+      if (!error && data) {
+        return {
+          keep:        data.keep ?? data.intent,
+          ttsResponse: data.tts_response,
+          followUp:    data.follow_up,
+        };
+      }
+
+      // Network error → fall through to offline
+      if ((error as string)?.includes('Network error') || (error as string)?.includes('network')) {
+        // fall through
+      } else {
+        return { error: error ?? 'Capture failed' };
+      }
+    } catch {}
+  }
+
+  // Offline fallback
+  const offline: OfflineResult = processOffline(text);
+  return {
+    offline:     true,
+    queued:      offline.queued,
+    ttsResponse: offline.message,
+    navigate:    offline.navigate,
+    error:       offline.handled ? undefined : 'Offline and command not recognized',
+  };
+}
+
+// ── Battery optimization ──────────────────────────────────────────────────────
+
+export async function isBatteryOptimizationExempt(): Promise<boolean> {
+  if (!isAndroid()) return true;
+  try { return (await callPlugin('VoicePlugin', 'isBatteryOptimizationExempt'))?.exempt === true; }
+  catch { return false; }
+}
+
+export async function requestBatteryOptimizationExemption(): Promise<{ exempt: boolean }> {
+  if (!isAndroid()) return { exempt: true };
+  try {
+    const r = await callPlugin('VoicePlugin', 'requestBatteryOptimizationExemption');
+    return { exempt: r?.exempt === true };
+  } catch { return { exempt: false }; }
+}
+
+// ── Push registration ─────────────────────────────────────────────────────────
+
+function getAppType(): 'personal' | 'business' {
+  if (typeof window !== 'undefined' && (window as any).__QK_APP_TYPE__ === 'business') return 'business';
+  if (process.env.NEXT_PUBLIC_APP_TYPE === 'business') return 'business';
+  if (typeof window !== 'undefined' &&
+      (window.location.pathname.startsWith('/b/') || window.location.pathname.startsWith('/biz')))
+    return 'business';
+  return 'personal';
+}
+
+async function waitForPushPlugin(maxMs = 8000): Promise<any | null> {
+  const start = Date.now();
+  while (Date.now() - start < maxMs) {
+    const pp = _cap()?.Plugins?.PushNotifications;
+    if (pp) return pp;
+    await new Promise(r => setTimeout(r, 200));
+  }
+  return null;
+}
+
+export async function registerNativePush(authToken: string, serverUrl = ''): Promise<boolean> {
+  if (!isNative()) return false;
+  const PPN = await waitForPushPlugin();
+  if (!PPN) return false;
+  const appType = getAppType();
+  try {
+    let perm = await PPN.checkPermissions?.();
+    if (perm?.receive !== 'granted') perm = await PPN.requestPermissions?.();
+    if (perm?.receive !== 'granted') return false;
+    let done = false;
+    await Promise.race([
+      new Promise<void>(res => {
+        PPN.addListener?.('registration', async (td: any) => {
+          if (done) return; done = true;
+          const fcm = td?.value || td?.token || null;
+          if (fcm) {
+            try {
+              await fetch(`${serverUrl || 'https://quietkeep.com'}/api/push/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+                body: JSON.stringify({ token: fcm, platform: isAndroid() ? 'android' : 'ios', provider: 'fcm', app_type: appType }),
+              }).then(r => { if (!r.ok && process.env.NODE_ENV === 'development') console.warn('[QK Push] register failed', r.status); }).catch(() => {});
+            } catch {}
+          }
+          res();
+        });
+        PPN.addListener?.('registrationError', () => { if (!done) { done = true; res(); } });
+        PPN.register?.().catch(() => { if (!done) { done = true; res(); } });
+      }),
+      new Promise<void>(res => setTimeout(() => { if (!done) { done = true; res(); } }, 10000)),
+    ]);
+    return true;
+  } catch { return false; }
+  }

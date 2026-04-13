@@ -23,7 +23,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { runAgents, mergeSignals } from '@/lib/agent-registry';
+import { runAgents } from '@/lib/agent-registry';
 import { governAction } from '@/lib/governor-engine';
 import { createDecisionRecord, writeAuditRecord, AGENTS, PROTOCOL_VERSION } from '@/lib/decision-protocol';
 import { getTimeBucket } from '@/lib/behavior-engine';
@@ -73,30 +73,32 @@ export async function POST(request) {
       source:         body.context?.source ?? 'api',
     };
 
-    // Run specified agents (or all)
-    const agentIds    = body.context?.agents || null;
-    const agentOutputs = await runAgents(agentContext, agentIds);
-    const merged      = mergeSignals(agentOutputs);
+    // Run agents for this user
+    const merged = await runAgents(agentContext, user.id);
 
-    // Run governance on top prediction from each agent
+    // Derive agent_ids and errors from agentResults
+    const agent_ids = merged.agentResults.map(r => r.agentId);
+    const agentErrors = merged.agentResults.filter(r => r.error).map(r => ({ agent: r.agentId, error: r.error }));
+
+    // Run governance on top signals
     const decisions = [];
-    for (const pred of merged.predictions.slice(0, 3)) {
+    for (const pred of merged.signals.slice(0, 3)) {
       const govResult = await governAction(user.id, pred, {
         frequency: 3, accept_count: 2, decay_weight: 1.0,
-      }).catch(() => ({ allowed: true, tier: 'suggest', reason: 'gov_error', risk_level: pred.risk_level ?? 'moderate', details: {} }));
+      }).catch(() => ({ allowed: true, tier: 'suggest', reason: 'gov_error', risk_level: pred.metadata?.risk_level ?? 'moderate', details: {} }));
 
       decisions.push({
-        intentType:   pred.intentType,
-        label:        pred.label || pred.intentType,
+        intentType:   pred.intent_type,
+        label:        pred.metadata?.label || pred.intent_type,
         score:        pred.score,
         confidence:   pred.confidence,
-        tier:         govResult.tier,          // 'auto' | 'suggest' | 'blocked'
+        tier:         govResult.tier,
         risk_level:   govResult.risk_level,
         gov_reason:   govResult.reason,
         why_text:     pred.reason,
-        signal_weights: pred.signal_weights || null,
-        agent:        pred._agent,
-        action_hint:  pred.contactName ? `contact:${pred.contactName}` : `predicted:${pred.intentType}`,
+        signal_weights: pred.metadata?.signal_weights || null,
+        agent:        pred.type,
+        action_hint:  pred.metadata?.contactName ? `contact:${pred.metadata.contactName}` : `predicted:${pred.intent_type}`,
       });
     }
 
@@ -108,31 +110,31 @@ export async function POST(request) {
     const svc = svcClient();
     const auditRecord = createDecisionRecord(AGENTS.system.id, user.id, {
       intentType:  topDecision?.intentType || 'unknown',
-      action:      `Protocol decide: ${agentOutputs.length} agents, ${decisions.length} decisions`,
+      action:      `Protocol decide: ${merged.agentResults.length} agents, ${decisions.length} decisions`,
       confidence:  topDecision?.score ?? 0,
       inputs: {
-        agent_ids:   merged.agent_ids,
+        agent_ids,
         signals:     merged.signals,
-        prediction_count: merged.predictions.length,
+        prediction_count: merged.signals.length,
       },
     });
-    auditRecord.id = decisionId; // use as the response decision_id
+    auditRecord.id = decisionId;
     auditRecord.status = 'completed';
     auditRecord.execution_status = 'decision_computed';
-    auditRecord.evaluation_path = merged.agent_ids.map(a => `agent:${a}`).concat(['decide_merged', 'governed']);
+    auditRecord.evaluation_path = agent_ids.map(a => `agent:${a}`).concat(['decide_merged', 'governed']);
     writeAuditRecord(svc, auditRecord);
 
     // SDK-standard response
     return NextResponse.json({
       decision_id:      decisionId,
-      agent_ids:        merged.agent_ids,
+      agent_ids,
       signals:          merged.signals,
       decisions,
       confidence:       topDecision?.score ?? 0,
       risk_level:       topDecision?.risk_level ?? 'unknown',
       explanation:      topDecision?.why_text ?? 'Insufficient signal data',
       protocol_version: PROTOCOL_VERSION,
-      errors:           merged.errors,
+      errors:           agentErrors,
     });
 
   } catch (e) {

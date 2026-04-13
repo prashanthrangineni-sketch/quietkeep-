@@ -34,7 +34,7 @@ export async function GET(request) {
     const appMode = redirectTo.startsWith('/b/') ? 'business' : 'personal';
     response.cookies.set('qk_app_mode', appMode, {
       path: '/',
-      maxAge: 86400,
+      maxAge: 2592000,
       sameSite: 'lax',
       httpOnly: false, // must be readable by client JS in biz-login
     });

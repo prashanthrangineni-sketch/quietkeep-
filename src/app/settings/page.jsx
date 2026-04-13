@@ -190,14 +190,14 @@ export default function SettingsPage() {
     }
 
     // Phase 4: load automation settings from user_settings.settings.automation
-    const automation = settingsData?.settings?.automation;
+    const automation = settingsRes.data?.settings?.automation;
     if (automation) {
       setAutoEnabled(automation.enabled ?? false);
       setAutoTypes({ reminder: false, contact: false, task: false, expense: false, note: false, ...automation.types });
       setAutoThreshold(automation.auto_threshold ?? 0.90);
     }
     // Phase 5: aggressiveness
-    const agg = settingsData?.settings?.suggestion_aggressiveness;
+    const agg = settingsRes.data?.settings?.suggestion_aggressiveness;
     if (agg) setAggressiveness(agg);
     setLoading(false);
   }

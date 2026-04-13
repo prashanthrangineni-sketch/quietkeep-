@@ -44,7 +44,7 @@ function getClient() {
 
 // ← ADDED: Sets app mode cookie so middleware enforces personal-only routing
 function setPersonalMode() {
-  document.cookie = 'qk_app_mode=personal; path=/; max-age=86400; SameSite=Lax';
+  document.cookie = 'qk_app_mode=personal; path=/; max-age=2592000; SameSite=Lax';
 }
 
 export default function LoginPage() {

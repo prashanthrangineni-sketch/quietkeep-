@@ -35,7 +35,7 @@ function getClient() {
 
 // ← ADDED: Sets app mode cookie so middleware enforces business-only routing
 function setBusinessMode() {
-  document.cookie = 'qk_app_mode=business; path=/; max-age=86400; SameSite=Lax';
+  document.cookie = 'qk_app_mode=business; path=/; max-age=2592000; SameSite=Lax';
 }
 
 export default function BizLoginPage() {

@@ -21,6 +21,7 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState('');
   const [stats, setStats] = useState({ keeps: 0, reminders: 0, expenses: 0, docs: 0 });
 
+
   const [fullName, setFullName] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kolkata');
 
@@ -30,11 +31,12 @@ export default function ProfilePage() {
         if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     
-    const [profileRes, keepsRes, expensesRes, docsRes] = await Promise.all([
+    const [profileRes, keepsRes, expensesRes, docsRes, remindersRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', user.id).single(),
       supabase.from('keeps').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('expenses').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('documents').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('reminders').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
     ]);
 
     if (profileRes.data) {
@@ -45,6 +47,7 @@ export default function ProfilePage() {
 
     setStats({
       keeps: keepsRes.count || 0,
+      reminders: remindersRes.count || 0,
       expenses: expensesRes.count || 0,
       docs: docsRes.count || 0,
     });
@@ -113,9 +116,10 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '2rem' }}>
           {[
             { label: 'Keeps', value: stats.keeps },
+            { label: 'Reminders', value: stats.reminders },
             { label: 'Expenses', value: stats.expenses },
             { label: 'Documents', value: stats.docs },
           ].map(s => (

@@ -2,6 +2,7 @@
 // Sends family invite email via Resend (if RESEND_API_KEY set)
 // Falls back gracefully if not configured — invite still works via link
 
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req) {

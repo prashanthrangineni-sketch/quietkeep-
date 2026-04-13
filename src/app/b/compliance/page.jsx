@@ -47,19 +47,28 @@ export default function CompliancePage() {
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState('all'); // all, overdue, upcoming
 
+  const [loadError, setLoadError] = useState('');
+
   useEffect(() => {
-    if (authLoading) return; // wait for auth context to resolve
+    if (authLoading) return;
     if (!user) { router.replace('/biz-login'); return; }
-    (async () => {
-            const { data: ws } = await supabase.from('business_workspaces').select('id,business_type,gstin').eq('owner_user_id', user?.id).maybeSingle();
-            if (ws) { setWorkspace(ws); loadData(ws.id); }
-    })();
+    initPage();
   }, [user]);
+
+  async function initPage() {
+    setLoadError('');
+    try {
+      const { data: ws } = await supabase.from('business_workspaces').select('id,business_type,gstin').eq('owner_user_id', user?.id).maybeSingle();
+      if (ws) { setWorkspace(ws); await loadData(ws.id); } else { setLoading(false); }
+    } catch { setLoadError('Could not load data. Check your connection.'); setLoading(false); }
+  }
 
   const loadData = useCallback(async (wsId) => {
     setLoading(true);
-    const { data } = await supabase.from('compliance_reminders').select('*').eq('workspace_id', wsId).order('due_date', { ascending: true });
-    setReminders(data || []);
+    try {
+      const { data } = await supabase.from('compliance_reminders').select('*').eq('workspace_id', wsId).order('due_date', { ascending: true });
+      setReminders(data || []);
+    } catch { setLoadError('Could not load compliance data.'); }
     setLoading(false);
   }, []);
 
@@ -185,7 +194,8 @@ export default function CompliancePage() {
           </div>
         )}
 
-        {loading ? <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="qk-spinner" /></div>
+        {loadError ? <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:40 }}><div style={{ color:'#ef4444', fontSize:13 }}>{loadError}</div><button onClick={initPage} style={{ padding:'8px 16px', borderRadius:8, border:'none', background:G, color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer' }}>Retry</button></div>
+        : loading ? <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="qk-spinner" /></div>
         : filtered.length === 0 ? (
           <div className="qk-empty"><div className="qk-empty-icon">⚖️</div><div className="qk-empty-title">No compliance reminders</div><div className="qk-empty-sub">Add GST, IT, licence reminders to stay compliant</div></div>
         ) : (

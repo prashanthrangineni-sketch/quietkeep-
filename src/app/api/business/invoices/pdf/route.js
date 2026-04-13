@@ -135,73 +135,78 @@ ${inv.notes ? `<div style="clear:both;padding:10px;background:#f9fafb;border-rad
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req) {
-  // 1. Auth
-  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const sb = authSB(token);
-  const { data: { user }, error: authErr } = await sb.auth.getUser();
-  if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  // 2. Parse body
-  let invoice_id;
   try {
-    ({ invoice_id } = await req.json());
-  } catch {
-    return NextResponse.json({ error: 'invoice_id required' }, { status: 400 });
+    // 1. Auth
+    const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const sb = authSB(token);
+    const { data: { user }, error: authErr } = await sb.auth.getUser();
+    if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // 2. Parse body
+    let invoice_id;
+    try {
+      ({ invoice_id } = await req.json());
+    } catch {
+      return NextResponse.json({ error: 'invoice_id required' }, { status: 400 });
+    }
+    if (!invoice_id) return NextResponse.json({ error: 'invoice_id required' }, { status: 400 });
+
+    // 3. Fetch invoice — RLS ensures user can only access their workspace's invoices
+    const { data: inv, error: invErr } = await sb
+      .from('business_invoices')
+      .select('*')
+      .eq('id', invoice_id)
+      .single();
+    if (invErr || !inv) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+
+    // 4. Fetch workspace for letterhead
+    const { data: ws } = await sb
+      .from('business_workspaces')
+      .select('name, gstin, phone, email, address')
+      .eq('id', inv.workspace_id)
+      .maybeSingle();
+
+    // 5. Build HTML
+    const html = buildInvoiceHTML(inv, ws);
+    const htmlBytes = new TextEncoder().encode(html);
+    const storagePath = `invoices/${inv.workspace_id}/${invoice_id}.html`;
+
+    // 6. Upload to Supabase storage (service role needed for storage write)
+    const svc = serviceSB();
+    const { error: uploadErr } = await svc.storage
+      .from('documents')
+      .upload(storagePath, htmlBytes, {
+        contentType: 'text/html; charset=utf-8',
+        upsert: true, // overwrite if regenerated
+      });
+
+    if (uploadErr) {
+      return NextResponse.json(
+        { error: 'Storage upload failed: ' + uploadErr.message },
+        { status: 500 }
+      );
+    }
+
+    // 7. Generate signed URL valid for 1 year
+    const { data: signed, error: signErr } = await svc.storage
+      .from('documents')
+      .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+
+    if (signErr || !signed?.signedUrl) {
+      return NextResponse.json({ error: 'Could not generate signed URL' }, { status: 500 });
+    }
+
+    // 8. Write pdf_url + pdf_path back to the invoice row
+    await sb
+      .from('business_invoices')
+      .update({ pdf_url: signed.signedUrl, pdf_path: storagePath })
+      .eq('id', invoice_id);
+
+    return NextResponse.json({ pdf_url: signed.signedUrl, path: storagePath });
+  } catch (e) {
+    console.error('[INVOICES_PDF POST]', e.message);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
-  if (!invoice_id) return NextResponse.json({ error: 'invoice_id required' }, { status: 400 });
-
-  // 3. Fetch invoice — RLS ensures user can only access their workspace's invoices
-  const { data: inv, error: invErr } = await sb
-    .from('business_invoices')
-    .select('*')
-    .eq('id', invoice_id)
-    .single();
-  if (invErr || !inv) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-
-  // 4. Fetch workspace for letterhead
-  const { data: ws } = await sb
-    .from('business_workspaces')
-    .select('name, gstin, phone, email, address')
-    .eq('id', inv.workspace_id)
-    .maybeSingle();
-
-  // 5. Build HTML
-  const html = buildInvoiceHTML(inv, ws);
-  const htmlBytes = new TextEncoder().encode(html);
-  const storagePath = `invoices/${inv.workspace_id}/${invoice_id}.html`;
-
-  // 6. Upload to Supabase storage (service role needed for storage write)
-  const svc = serviceSB();
-  const { error: uploadErr } = await svc.storage
-    .from('documents')
-    .upload(storagePath, htmlBytes, {
-      contentType: 'text/html; charset=utf-8',
-      upsert: true, // overwrite if regenerated
-    });
-
-  if (uploadErr) {
-    return NextResponse.json(
-      { error: 'Storage upload failed: ' + uploadErr.message },
-      { status: 500 }
-    );
-  }
-
-  // 7. Generate signed URL valid for 1 year
-  const { data: signed, error: signErr } = await svc.storage
-    .from('documents')
-    .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
-
-  if (signErr || !signed?.signedUrl) {
-    return NextResponse.json({ error: 'Could not generate signed URL' }, { status: 500 });
-  }
-
-  // 8. Write pdf_url + pdf_path back to the invoice row
-  await sb
-    .from('business_invoices')
-    .update({ pdf_url: signed.signedUrl, pdf_path: storagePath })
-    .eq('id', invoice_id);
-
-  return NextResponse.json({ pdf_url: signed.signedUrl, path: storagePath });
 }

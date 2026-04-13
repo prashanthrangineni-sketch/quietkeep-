@@ -2,6 +2,7 @@
 // Knock notification API — used by all in-app notification triggers
 // Knock dashboard: https://dashboard.knock.app/quietkeep
 // Workflow keys: reminder_due, budget_alert, sos_triggered, keep_ai_result, subscription_activated
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 
 const KNOCK_API_URL = 'https://api.knock.app/v1';

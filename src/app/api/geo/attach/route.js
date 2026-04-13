@@ -41,7 +41,7 @@ export async function POST(request) {
     if (!mapsKey) return NextResponse.json({ error: 'GOOGLE_MAPS_API_KEY not configured' }, { status: 503 });
     const r = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(place_name)}&region=IN&key=${mapsKey}`);
     const g = await r.json();
-    if (g.status !== 'OK') return NextResponse.json({ error: 'Geocoding failed: ' + g.status }, { status: 400 });
+    if (g.status !== 'OK' || !g.results?.length) return NextResponse.json({ error: 'Geocoding failed: ' + (g.status || 'no results') }, { status: 400 });
     finalLat = g.results[0].geometry.location.lat;
     finalLng = g.results[0].geometry.location.lng;
     finalName = finalName || g.results[0].formatted_address;

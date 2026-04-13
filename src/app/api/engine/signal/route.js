@@ -15,6 +15,7 @@
 //   user_id?: string        // if absent, uses authenticated user
 // }
 
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';

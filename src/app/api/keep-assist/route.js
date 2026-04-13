@@ -1,4 +1,5 @@
 // src/app/api/keep-assist/route.js
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 import { checkAndIncrementAIUsage } from '@/lib/ai-rate-limit';
 

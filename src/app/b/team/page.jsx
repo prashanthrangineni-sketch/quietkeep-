@@ -47,23 +47,32 @@ export default function TeamPage() {
   // Activity
   const [activity, setActivity]     = useState([]);
 
+  const [loadError, setLoadError] = useState('');
+
   useEffect(() => {
-    if (authLoading) return; // wait for auth context to resolve
+    if (authLoading) return;
     if (!user) { router.replace('/biz-login'); return; }
-    (async () => {
-            const { data: ws } = await supabase
-              .from('business_workspaces').select('id,name')
-              .eq('owner_user_id', user?.id).maybeSingle();
-            if (ws) { setWorkspace(ws); loadMembers(ws.id); loadTasks(ws.id); }
-    })();
+    initPage();
   }, [user]);
+
+  async function initPage() {
+    setLoadError('');
+    try {
+      const { data: ws } = await supabase
+        .from('business_workspaces').select('id,name')
+        .eq('owner_user_id', user?.id).maybeSingle();
+      if (ws) { setWorkspace(ws); await loadMembers(ws.id); loadTasks(ws.id); } else { setLoading(false); }
+    } catch { setLoadError('Could not load data. Check your connection.'); setLoading(false); }
+  }
 
   const loadMembers = useCallback(async (wsId) => {
     setLoading(true);
-    const { data } = await supabase
-      .from('business_members').select('*')
-      .eq('workspace_id', wsId).order('name');
-    setMembers(data || []);
+    try {
+      const { data } = await supabase
+        .from('business_members').select('*')
+        .eq('workspace_id', wsId).order('name');
+      setMembers(data || []);
+    } catch { setLoadError('Could not load team data.'); }
     setLoading(false);
   }, []);
 
@@ -233,7 +242,12 @@ export default function TeamPage() {
               ))}
             </div>
 
-            {loading ? (
+            {loadError ? (
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:40 }}>
+                <div style={{ color:'#ef4444', fontSize:13 }}>{loadError}</div>
+                <button onClick={initPage} style={{ padding:'8px 16px', borderRadius:8, border:'none', background:G, color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer' }}>Retry</button>
+              </div>
+            ) : loading ? (
               <div style={{ textAlign:'center', padding:'40px 0' }}>
                 <div className="qk-spinner" style={{ margin:'0 auto 12px' }} />
                 <div style={{ color:'var(--text-subtle)', fontSize:13 }}>Loading team…</div>

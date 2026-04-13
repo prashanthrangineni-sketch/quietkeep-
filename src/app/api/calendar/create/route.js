@@ -6,6 +6,7 @@
 // Setup: User must complete OAuth flow at /settings → "Connect Google Calendar"
 // The OAuth callback stores refresh_token in user_settings.calendar_refresh_token
 
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 

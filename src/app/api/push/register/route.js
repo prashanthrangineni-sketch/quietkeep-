@@ -1,6 +1,7 @@
 // src/app/api/push/register/route.js
 // FIXED: cookies() → Bearer-primary auth. Bearer is always tried first.
 // v2: Added app_type (personal | business | web) and device_id.
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 

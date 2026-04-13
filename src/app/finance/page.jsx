@@ -37,20 +37,27 @@ export default function FinancePage() {
   const [sName, setSName] = useState(''); const [sAmt, setSAmt] = useState(''); const [sCycle, setSCycle] = useState('monthly'); const [sDue, setSDue] = useState(''); const [sCat, setSCat] = useState('Entertainment'); const [savingS, setSavingS] = useState(false);
   const thisMonth = new Date().toISOString().slice(0, 7);
 
+  const [loadError, setLoadError] = useState('');
+
   useEffect(() => { if (!authLoading) init(); }, [authLoading]);
 
   async function init() {
         if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
-        const [eR, bR, sR] = await Promise.all([
-      supabase.from('expenses').select('*').eq('user_id', user.id).order('expense_date', { ascending: false }).limit(50),
-      supabase.from('budgets').select('*').eq('user_id', user.id).eq('month_year', new Date().toISOString().slice(0,7)),
-      supabase.from('subscriptions').select('*').eq('user_id', user.id).eq('is_active', true).order('next_due', { ascending: true }),
-    ]);
-    setExpenses(eR.data || []); setBudgets(bR.data || []); setSubscriptions(sR.data || []);
-    // Check stock_tracking feature flag
-    const { data: stockFlag } = await supabase.from('feature_flags').select('feature_name').eq('feature_name', 'stock_tracking').single();
-    if (stockFlag) setStockEnabled(true);
+    setLoadError('');
+    try {
+      const [eR, bR, sR] = await Promise.all([
+        supabase.from('expenses').select('*').eq('user_id', user.id).order('expense_date', { ascending: false }).limit(50),
+        supabase.from('budgets').select('*').eq('user_id', user.id).eq('month_year', new Date().toISOString().slice(0,7)),
+        supabase.from('subscriptions').select('*').eq('user_id', user.id).eq('is_active', true).order('next_due', { ascending: true }),
+      ]);
+      setExpenses(eR.data || []); setBudgets(bR.data || []); setSubscriptions(sR.data || []);
+      // Check stock_tracking feature flag
+      const { data: stockFlag } = await supabase.from('feature_flags').select('feature_name').eq('feature_name', 'stock_tracking').single();
+      if (stockFlag) setStockEnabled(true);
+    } catch {
+      setLoadError('Could not load data. Check your connection.');
+    }
     setLoading(false);
   }
 
@@ -95,6 +102,7 @@ export default function FinancePage() {
   }
 
   if (loading) return (<div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading Finance…</div></div>);
+  if (loadError) return (<div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12 }}><div style={{ color:'#ef4444', fontSize:'0.95rem' }}>{loadError}</div><button onClick={() => { setLoading(true); init(); }} style={{ padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'#6366f1', color:'#fff', fontSize:'0.88rem', fontWeight:600, cursor:'pointer' }}>Retry</button></div>);
 
   const totalSpent = expenses.filter(e => e.expense_date?.startsWith(thisMonth)).reduce((s, e) => s + parseFloat(e.amount || 0), 0);
   const totalSubs = subscriptions.reduce((s, sub) => s + parseFloat(sub.amount || 0), 0);

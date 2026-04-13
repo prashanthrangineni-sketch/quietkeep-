@@ -2,6 +2,7 @@
 // FIXED: Replaced cookies()-based auth with Bearer token auth.
 // Dashboard already sends Authorization: Bearer — route now reads it correctly.
 
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { checkAndIncrementAIUsage } from '@/lib/ai-rate-limit';

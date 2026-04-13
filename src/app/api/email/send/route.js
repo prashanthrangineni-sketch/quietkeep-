@@ -3,6 +3,7 @@
 // Used by: nudge delivery, keep reminders, action layer
 // Requires: RESEND_API_KEY, FROM_EMAIL in env vars
 
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 

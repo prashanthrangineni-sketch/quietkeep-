@@ -29,6 +29,8 @@ import NavbarClient from '@/components/NavbarClient';
 import ContextCards from '@/components/ContextCards';
 import KeepAIAssist from '@/components/KeepAIAssist';
 import AgentSuggestionCard from '@/components/AgentSuggestionCard';
+import SuggestionChips from '@/components/SuggestionChips';
+import { learnFromCapture } from '@/lib/tau-learning';
 // AUTO-EXEC: reuse existing execution function — no new logic
 import { executeClientAction } from '@/lib/intent-executor';
 
@@ -982,6 +984,16 @@ export default function Dashboard() {
       if (saved) {
         setIntents(prev => [saved, ...prev]);
 
+        // Learn from this capture (non-blocking)
+        learnFromCapture({
+          supabase, userId: user.id,
+          intentType: saved.intent_type || 'note',
+          transcript: content.trim(),
+          language: voiceLang || 'en-IN',
+          confidence: saved.confidence || 0,
+          locationName: saved.location_name,
+        });
+
         if (data.tts_response) {
           speak(data.tts_response);
         } else {
@@ -1522,6 +1534,19 @@ export default function Dashboard() {
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 2 }}>{user?.email}</div>
           </div>
+
+          {/* Contextual suggestion chips — learns from behaviour */}
+          <SuggestionChips
+            supabase={supabase}
+            userId={user?.id}
+            onChipTap={(action, prefill) => {
+              if (action === 'navigate' && prefill?.path) { router.push(prefill.path); }
+              else if (action === 'keep' || action === 'note') { /* focus voice input */ }
+              else if (action === 'health') { router.push('/health'); }
+              else if (action === 'finance') { router.push('/finance'); }
+              else if (action === 'reminder') { router.push('/reminders'); }
+            }}
+          />
 
           <ContextCards userId={user?.id} />
 

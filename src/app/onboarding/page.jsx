@@ -8,6 +8,7 @@ import { safeFetch } from '@/lib/safeFetch';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import ConsentScreen from '@/components/ConsentScreen';
 
 const CALENDARS = [
   { value: 'gregorian', label: 'Gregorian', emoji: '📅', desc: 'English dates, Christian & Indian national holidays' },
@@ -35,7 +36,8 @@ const STEPS = [
 export default function OnboardingPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(-1); // -1 = consent screen
+  const [consentData, setConsentData] = useState(null);
   const [name, setName] = useState('');
   const [calendar, setCalendar] = useState('gregorian');
   const [persona, setPersona] = useState('professional');
@@ -79,6 +81,16 @@ export default function OnboardingPage() {
         throw profileErr;
       }
 
+      // Save DPDP consent data
+      if (consentData) {
+        await supabase.from('user_consent').upsert({
+          user_id: user.id,
+          ...consentData,
+          consent_version: 'v1.0',
+          consented_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' }).catch(() => {});
+      }
+
       // Apply referral code if provided
       if (referralCode.trim()) {
         try {
@@ -113,7 +125,16 @@ export default function OnboardingPage() {
     await finishOnboarding();
   }
 
-  const currentStep = STEPS[step];
+  const currentStep = step >= 0 ? STEPS[step] : null;
+
+  // ── CONSENT SCREEN (DPDP Act 2023) ──
+  if (step === -1) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'DM Sans',-apple-system,sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
+        <ConsentScreen onConsent={(data) => { setConsentData(data); setStep(0); }} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'DM Sans',-apple-system,sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0 60px' }}>

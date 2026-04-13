@@ -31,6 +31,8 @@ import KeepAIAssist from '@/components/KeepAIAssist';
 import AgentSuggestionCard from '@/components/AgentSuggestionCard';
 import SuggestionChips from '@/components/SuggestionChips';
 import { learnFromCapture } from '@/lib/tau-learning';
+import { checkVoiceCapLimit, incrementVoiceCapture } from '@/lib/usage-gate';
+import UpgradeModal from '@/components/UpgradeModal';
 // AUTO-EXEC: reuse existing execution function — no new logic
 import { executeClientAction } from '@/lib/intent-executor';
 
@@ -479,6 +481,8 @@ export default function Dashboard() {
   const [autoDetected, setAutoDetected] = useState(null);
   const [followUpData, setFollowUpData] = useState(null);
   const [clarificationData, setClarificationData] = useState(null); // Phase 3: low-confidence clarification
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [upgradeInfo, setUpgradeInfo] = useState({});
   // Phase 3 Step 2: Geo intelligence
   const [gpsLat, setGpsLat]                 = useState(null);
   const [gpsLng, setGpsLng]                 = useState(null);
@@ -936,13 +940,26 @@ export default function Dashboard() {
 
   async function handleSave() {
     if (savingRef.current || !content.trim() || !user) return;
+
+    // Check voice capture limit for free users
+    const profile = await supabase.from('profiles').select('subscription_tier, is_beta').eq('user_id', user.id).maybeSingle();
+    const tier = profile?.data?.subscription_tier || 'free';
+    const isBeta = profile?.data?.is_beta || false;
+    const capCheck = await checkVoiceCapLimit({ supabase, userId: user.id, tier, isBeta });
+    if (!capCheck.allowed) {
+      setUpgradeInfo({ used: capCheck.used, limit: capCheck.limit, feature: 'voice captures' });
+      setShowUpgrade(true);
+      return;
+    }
+
     savingRef.current = true;
     setSaving(true);
 
     try {
-      // FIXED: always fetch a fresh token before save — prevents stale-token 401
-      // (Supabase auto-refreshes JWT every hour, but React state may lag behind)
-      // refreshToken() forces a fresh JWT from AuthContext (handles hourly rotation)
+      // Track usage
+      incrementVoiceCapture({ supabase, userId: user.id });
+
+      // FIXED: always fetch a fresh token before save
       const freshToken = await refreshToken();
 
       const res = await safeFetch('/api/voice/capture', {
@@ -2189,6 +2206,16 @@ export default function Dashboard() {
 
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        show={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        reason={`You've used all free ${upgradeInfo.feature || 'captures'} for today`}
+        used={upgradeInfo.used}
+        limit={upgradeInfo.limit}
+        feature={upgradeInfo.feature}
+      />
     </>
   );
 }

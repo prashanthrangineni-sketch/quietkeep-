@@ -1,4 +1,5 @@
 'use client';
+import useAndroidBack from '@/lib/useAndroidBack';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { safeFetch } from '@/lib/safeFetch';
@@ -62,6 +63,7 @@ const THEMES = [
 
 export default function SettingsPage() {
   const router = useRouter();
+  useAndroidBack();
   const { user, accessToken, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

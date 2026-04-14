@@ -6,19 +6,39 @@ on:
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'Which APK to build?'
-        required: true
-        default: 'personal'
+        description: 'Which APK to build? (leave blank for both)'
+        required: false
+        default: 'both'
         type: choice
         options:
+          - both
           - personal
           - business
 
 jobs:
   build-apk:
-    name: Build Android APK
+    name: Build ${{ matrix.build_type }} APK
     runs-on: ubuntu-latest
     timeout-minutes: 60
+
+    # ── MATRIX: build personal + business in parallel ──────────────────────
+    # On push → always builds both.
+    # On workflow_dispatch → builds the selected type (or both if 'both').
+    strategy:
+      fail-fast: false   # don't cancel the other variant if one fails
+      matrix:
+        build_type:
+          - personal
+          - business
+    # Skip matrix rows that don't match a manual single-type dispatch
+    # If build_type input is 'both' or absent, both rows run.
+    # If build_type input is 'personal', only the personal row runs.
+    # If build_type input is 'business', only the business row runs.
+    if: |
+      github.event_name == 'push' ||
+      github.event.inputs.build_type == 'both' ||
+      github.event.inputs.build_type == '' ||
+      github.event.inputs.build_type == matrix.build_type
 
     steps:
 
@@ -42,6 +62,7 @@ jobs:
       - name: Install project dependencies
         run: |
           echo "=== Node: $(node --version) | npm: $(npm --version) ==="
+          echo "=== Build type: ${{ matrix.build_type }} ==="
           npm install --legacy-peer-deps
           echo "=== npm install complete ==="
 
@@ -69,42 +90,17 @@ jobs:
       # This is INTENTIONAL: it eliminates the fetch interceptor cold-start race
       # that broke voice in builds without server.url. Voice, STT, and all API
       # routes work correctly because fetch("/api/...") resolves against Vercel.
-      #
-      # Next.js output:'export' refuses to build any path that:
-      #   (a) uses server-side APIs  (cookies, headers, createServerClient)
-      #   (b) has dynamic [param] segments without generateStaticParams()
-      #   (c) has  export const dynamic = 'force-dynamic'
-      #
-      # COMPLETE LIST of paths hidden during this build (verified by audit):
-      #   src/app/api/                      — API route handlers (server-only)
-      #   src/app/auth/callback/            — server route (uses cookies())
-      #   src/app/share/                    — [token] dynamic route
-      #   src/app/dashboard/engine-health/  — force-dynamic server component
-      #   src/app/messages/[conversationId] — dynamic route, no generateStaticParams
-      #
-      # ALL paths are restored immediately after the build.
-      # None of these are needed inside the APK — they run on Vercel.
       # ─────────────────────────────────────────────────────────────────────
       - name: Build Next.js static export for Capacitor
         run: |
           set -euo pipefail
 
           echo "=== STEP: Hide server-only and dynamic paths ==="
-          echo "  Hiding src/app/api..."
           mv src/app/api /tmp/api_backup
-
-          echo "  Hiding src/app/auth/callback..."
           mv src/app/auth/callback /tmp/auth_callback_backup
-
-          echo "  Hiding src/app/share..."
           mv src/app/share /tmp/share_backup
-
-          echo "  Hiding src/app/dashboard/engine-health..."
           mv src/app/dashboard/engine-health /tmp/engine_health_backup
-
-          echo "  Hiding src/app/messages/[conversationId]..."
           mv "src/app/messages/[conversationId]" /tmp/messages_convo_backup
-
           echo "=== All paths hidden. Starting next build... ==="
 
           npm run build
@@ -127,7 +123,7 @@ jobs:
           FILE_COUNT=$(find out -type f 2>/dev/null | wc -l)
           echo "Files in out/: $FILE_COUNT"
           if [ "$FILE_COUNT" -lt 10 ]; then
-            echo "ERROR: out/ has fewer than 10 files — build may be incomplete"
+            echo "ERROR: out/ has fewer than 10 files"
             exit 1
           fi
           echo "=== Static export complete — $FILE_COUNT files ready for APK ==="
@@ -135,13 +131,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           CAPACITOR_BUILD: '1'
-          NEXT_PUBLIC_APP_TYPE: ${{ github.event.inputs.build_type || 'personal' }}
+          NEXT_PUBLIC_APP_TYPE: ${{ matrix.build_type }}
 
-      # ─────────────────────────────────────────────────────────────────────
-      # SCAFFOLD ANDROID PROJECT
-      # Strategy: backup our custom files, scaffold a fresh Capacitor android
-      # project, then restore our files over the scaffold.
-      # ─────────────────────────────────────────────────────────────────────
       - name: Scaffold Android project
         run: |
           set -euo pipefail
@@ -159,7 +150,6 @@ jobs:
 
           echo "=== STEP: Remove old android folder ==="
           rm -rf android
-          echo "  android/ removed ✓"
 
           echo "=== STEP: Scaffold fresh Capacitor android project ==="
           npx cap add android
@@ -179,8 +169,8 @@ jobs:
           echo "=== Final build.gradle dependencies: ==="
           grep -A 25 "^dependencies" android/app/build.gradle
 
-      - name: Apply business config and icons (if business build)
-        if: ${{ github.event.inputs.build_type == 'business' }}
+      - name: Apply business config and icons
+        if: matrix.build_type == 'business'
         run: |
           set -euo pipefail
           echo "=== STEP: Applying business config ==="
@@ -201,9 +191,8 @@ jobs:
           GOOGLE_SERVICES_PERSONAL: ${{ secrets.GOOGLE_SERVICES_PERSONAL }}
           GOOGLE_SERVICES_BUSINESS: ${{ secrets.GOOGLE_SERVICES_BUSINESS }}
         run: |
-          BUILD_TYPE="${{ github.event.inputs.build_type || 'personal' }}"
-          echo "=== STEP: Write google-services.json (build_type=$BUILD_TYPE) ==="
-          if [ "$BUILD_TYPE" = "business" ]; then
+          echo "=== STEP: Write google-services.json (build_type=${{ matrix.build_type }}) ==="
+          if [ "${{ matrix.build_type }}" = "business" ]; then
             if [ -n "$GOOGLE_SERVICES_BUSINESS" ]; then
               echo "$GOOGLE_SERVICES_BUSINESS" | base64 --decode > android/app/google-services.json
               echo "  Business google-services.json written ✓"
@@ -229,7 +218,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "=== STEP: Verify asset bundle ==="
           FILE_COUNT=$(find android/app/src/main/assets/public -type f 2>/dev/null | wc -l)
           echo "  Files in android assets: $FILE_COUNT"
           if [ "$FILE_COUNT" -lt 10 ]; then
@@ -238,29 +226,27 @@ jobs:
           fi
           echo "  Asset count OK ✓"
 
-          # server.url is intentionally present — APK loads all pages from Vercel.
-          # This ensures voice and all API routes work without a fetch-interceptor
-          # cold-start race condition. DO NOT remove server.url.
           CONFIG_PATH="android/app/src/main/assets/capacitor.config.json"
           if grep -q '"url"' "$CONFIG_PATH" 2>/dev/null; then
             echo "  INFO: server.url present — APK will load from Vercel (expected) ✓"
           else
-            echo "  WARNING: server.url NOT found — APK will use local bundle only (voice may break)"
+            echo "  WARNING: server.url NOT found — APK will use local bundle only"
           fi
 
-          # Verify APP_TYPE routing baked into bundle
-          APP_TYPE="${{ github.event.inputs.build_type || 'personal' }}"
-          BUNDLE_DIR="android/app/src/main/assets/public/_next/static/chunks/app"
-          echo "  Checking APP_TYPE routing for: $APP_TYPE"
-          if [ "$APP_TYPE" = "business" ]; then
-            if grep -rl "b/dashboard\|biz-login" "$BUNDLE_DIR" 2>/dev/null | head -1 | grep -q .; then
-              echo "  VERIFIED: Business routing found in bundle ✓"
+          # Verify correct appId is baked in
+          BAKED_APP_ID=$(python3 -c "import json; d=json.load(open('$CONFIG_PATH')); print(d.get('appId',''))" 2>/dev/null || echo "")
+          echo "  Baked appId: $BAKED_APP_ID"
+          if [ "${{ matrix.build_type }}" = "business" ]; then
+            if echo "$BAKED_APP_ID" | grep -q "business"; then
+              echo "  VERIFIED: Business appId correct ✓"
             else
-              echo "  WARNING: Business routing not found — check NEXT_PUBLIC_APP_TYPE env var"
+              echo "  WARNING: Expected business appId but got: $BAKED_APP_ID"
             fi
           else
-            if grep -rl '"/login"\|/dashboard' "$BUNDLE_DIR" 2>/dev/null | head -1 | grep -q .; then
-              echo "  VERIFIED: Personal routing found in bundle ✓"
+            if ! echo "$BAKED_APP_ID" | grep -q "business"; then
+              echo "  VERIFIED: Personal appId correct ✓"
+            else
+              echo "  WARNING: Expected personal appId but got: $BAKED_APP_ID"
             fi
           fi
 
@@ -268,10 +254,6 @@ jobs:
         run: chmod +x android/gradlew
 
       - name: Decode signing keystore (if configured)
-        # secrets context is not available in if: expressions.
-        # Workaround: always run the step, but guard inside the shell script
-        # using the env var which IS available at runtime (step-level env: works
-        # inside run:, just not in if:).
         run: |
           if [ -n "$SIGNING_KEY_BASE64" ]; then
             echo "=== STEP: Decode signing keystore ==="
@@ -287,9 +269,8 @@ jobs:
         working-directory: android
         run: |
           set -euo pipefail
-          echo "=== STEP: Gradle build ==="
+          echo "=== STEP: Gradle build (${{ matrix.build_type }}) ==="
           echo "  Java: $(java -version 2>&1 | head -1)"
-          echo "  Gradle wrapper: $(cat gradle/wrapper/gradle-wrapper.properties | grep distributionUrl)"
 
           if [ -f "app/quietkeep-release.keystore" ]; then
             echo "  Keystore found — building RELEASE APK"
@@ -307,21 +288,19 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: QuietKeep-${{ github.event.inputs.build_type || 'personal' }}-${{ github.run_number }}
+          name: QuietKeep-${{ matrix.build_type }}-${{ github.run_number }}
           path: |
             android/app/build/outputs/apk/release/app-release.apk
             android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
       - name: Distribute to Firebase (if configured)
-        # secrets context is not available in if: expressions.
-        # continue-on-error ensures this never blocks the build.
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
-          appId: ${{ secrets.FIREBASE_APP_ID_PERSONAL }}
+          appId: ${{ matrix.build_type == 'business' && secrets.FIREBASE_APP_ID_BUSINESS || secrets.FIREBASE_APP_ID_PERSONAL }}
           token: ${{ secrets.FIREBASE_TOKEN }}
           groups: beta-testers
-          releaseNotes: "Build ${{ github.run_number }} - ${{ github.event.head_commit.message }}"
+          releaseNotes: "Build ${{ github.run_number }} (${{ matrix.build_type }}) — ${{ github.event.head_commit.message }}"
           file: android/app/build/outputs/apk/release/app-release.apk
         continue-on-error: true
 
@@ -330,13 +309,13 @@ jobs:
           APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
           if [ ! -f "$APK_PATH" ]; then APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"; fi
           if [ -f "$APK_PATH" ]; then
-            echo "=== APK built successfully ==="
+            echo "=== APK built successfully (${{ matrix.build_type }}) ==="
             echo "  Size: $(du -sh $APK_PATH | cut -f1)"
             BAKED_CONFIG=$(unzip -p "$APK_PATH" assets/capacitor.config.json 2>/dev/null)
             APP_ID=$(echo "$BAKED_CONFIG" | grep -o '"appId":"[^"]*"' | head -1)
             echo "  appId: $APP_ID"
             if echo "$BAKED_CONFIG" | grep -q '"url"'; then
-              echo "  PASS: server.url present in APK — Vercel routing active ✓"
+              echo "  PASS: server.url present — Vercel routing active ✓"
             else
               echo "  WARNING: server.url NOT in APK — local bundle only"
             fi

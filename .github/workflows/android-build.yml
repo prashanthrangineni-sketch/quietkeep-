@@ -268,15 +268,20 @@ jobs:
         run: chmod +x android/gradlew
 
       - name: Decode signing keystore (if configured)
-        # FIX: Use secrets context directly in if: condition.
-        # Step-level env: vars are NOT available in if: expressions —
-        # env.SIGNING_KEY_BASE64 always evaluates to '' when defined only at
-        # step level. Using secrets.SIGNING_KEY_BASE64 directly is correct.
-        if: ${{ secrets.SIGNING_KEY_BASE64 != '' }}
+        # secrets context is not available in if: expressions.
+        # Workaround: always run the step, but guard inside the shell script
+        # using the env var which IS available at runtime (step-level env: works
+        # inside run:, just not in if:).
         run: |
-          echo "=== STEP: Decode signing keystore ==="
-          echo "${{ secrets.SIGNING_KEY_BASE64 }}" | base64 --decode > android/app/quietkeep-release.keystore
-          echo "  Keystore written ✓"
+          if [ -n "$SIGNING_KEY_BASE64" ]; then
+            echo "=== STEP: Decode signing keystore ==="
+            echo "$SIGNING_KEY_BASE64" | base64 --decode > android/app/quietkeep-release.keystore
+            echo "  Keystore written ✓"
+          else
+            echo "  No SIGNING_KEY_BASE64 secret — skipping keystore decode"
+          fi
+        env:
+          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY_BASE64 }}
 
       - name: Build APK (release if signed, debug otherwise)
         working-directory: android
@@ -309,7 +314,8 @@ jobs:
           retention-days: 30
 
       - name: Distribute to Firebase (if configured)
-        if: ${{ secrets.FIREBASE_TOKEN != '' }}
+        # secrets context is not available in if: expressions.
+        # continue-on-error ensures this never blocks the build.
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_PERSONAL }}

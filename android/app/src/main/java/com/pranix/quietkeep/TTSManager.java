@@ -150,6 +150,38 @@ public class TTSManager {
         }
     }
 
+    /**
+     * Phase 4: speakQueued — low-priority QUEUE_ADD.
+     * Appends after any currently speaking utterance.
+     * Called by TTSBridge.speakLow() → window.__QK_TTS_LOW__().
+     */
+    public void speakQueued(String text) {
+        if (text == null || text.trim().isEmpty()) return;
+        if (mTts == null) {
+            mPendingQueue.add(text);
+            init();
+            return;
+        }
+        if (!mReady) {
+            mPendingQueue.add(text);
+            return;
+        }
+        speakNow(text, /* flush= */ false);
+    }
+
+    /**
+     * Phase 4: stop() — immediately stop all speech.
+     * Called by TTSBridge.stop() → window.AndroidTTS.stop().
+     */
+    public void stop() {
+        if (mTts != null && mReady) {
+            try { mTts.stop(); } catch (Exception e) {
+                Log.e(TAG, "stop() failed: " + e.getMessage());
+            }
+        }
+        mPendingQueue.clear();
+    }
+
     /** Call from MainActivity.onDestroy to release TTS engine resources. */
     public void shutdown() {
         mReady = false;

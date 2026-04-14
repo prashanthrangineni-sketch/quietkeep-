@@ -1,7 +1,9 @@
 'use client';
 import { useAuth } from '@/lib/context/auth';
 import { resolveVoiceCommand } from '@/lib/voiceQueryEngine'; // TASK 5+10
-import { parseVoiceIntent, getIntentAction, isQueryIntent } from '@/lib/voiceIntentEngine'; // Phase 2-4
+import { parseVoiceIntent, getIntentAction, isQueryIntent, CONFIDENCE_THRESHOLD } from '@/lib/voiceIntentEngine'; // Phase 2-4
+import { getVoiceMode, setVoiceMode, isWakeMode, getModeLabel, getModeIcon } from '@/lib/voiceMode'; // Phase 8I
+import { recordIntent, tryResolveContinuation, clearContext } from '@/lib/voiceContext'; // Phase 8B
 import { speak, speakLow, cancelSpeech, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord, setWakeMode } from '@/components/VoiceTalkback';
 import InAppNotifications from '@/components/InAppNotifications';
 import ContactPicker from '@/components/ContactPicker';
@@ -1041,51 +1043,60 @@ export default function Dashboard() {
   async function handleSave() {
     if (savingRef.current || !content.trim() || !user) return;
 
-    // ── WAKE WORD FILTER (Phase 5) — VOICE INPUT ONLY ─────────────────────
-    // Wake word check only applies when the user is in voice (listening) mode.
-    // Manual text input always passes through regardless of wake mode setting.
-    // This prevents the user's typed text from being silently dropped.
     let commandText = content.trim();
     if (listening) {
-      const wakeResult = processWithWakeWord(content.trim());
-      if (!wakeResult.triggered) {
-        // Wake word not in voice input — ignore silently, clear field
-        setContent('');
-        return;
+      // Phase 8I: check mode — manual = no wake word, wake/always_on = require it
+      if (isWakeMode()) {
+        const wakeResult = processWithWakeWord(content.trim());
+        if (!wakeResult.triggered) {
+          setContent('');
+          return;
+        }
+        commandText = wakeResult.command || content.trim();
       }
-      // Strip wake word from command before sending to API
-      commandText = wakeResult.command || content.trim();
     }
     // Patch content ref so all downstream code uses the stripped command
     // We do this by setting a local var and using it explicitly below.
     // Note: setContent is NOT called here to avoid re-render before save completes.
 
-    // ── Phase 2-4: Lotus voice intent pipeline ─────────────────────────────
-    // Voice input only. Manual text always goes to /api/voice/capture.
+    // ── Phase 2-4 + 8A-8B: Lotus voice intent pipeline ──────────────────────
     if (listening) {
+
+      // Phase 8B: check for continuation BEFORE parsing as new intent
+      const continuation = tryResolveContinuation(commandText);
+      if (continuation.isContinuation && continuation.intentType) {
+        speak('Refining that.');
+        resolveVoiceCommand(continuation.command || commandText, {
+          supabase, user, accessToken, router, speak,
+        }).catch(() => {});
+        setContent(''); setSaving(false); savingRef.current = false;
+        return;
+      }
+
       // Layer 1: sync intent parse — zero latency, no DB
       const intent = parseVoiceIntent(commandText);
 
-      if (intent.handled) {
+      // Phase 8A: confidence gate — low-confidence falls through to keep
+      if (intent.handled && intent.confidence >= CONFIDENCE_THRESHOLD) {
         if (intent.response) speak(intent.response);
 
-        // Execute navigation / wake-mode action
         const action = getIntentAction(intent.actionKey, {
           router,
-          setWakeMode: (enabled) => setWakeMode(enabled),
+          setWakeMode: (enabled) => setVoiceMode(enabled ? 'wake' : 'manual', 'voice_command'),
         });
         action?.();
 
-        // Layer 2: if DB-backed query, fire async fetch for real data
+        // Layer 2: DB-backed query — fire resolveVoiceCommand for real data
         if (isQueryIntent(intent.intentType)) {
           resolveVoiceCommand(commandText, {
             supabase, user, accessToken, router, speak,
           }).catch(() => {});
         }
 
-        setContent('');
-        setSaving(false);
-        savingRef.current = false;
+        // Phase 8B: record intent for continuation context
+        recordIntent(intent.intentType, intent.entities, commandText);
+
+        setContent(''); setSaving(false); savingRef.current = false;
         return;
       }
     }
@@ -1771,7 +1782,7 @@ export default function Dashboard() {
               </span>
               {voiceSupported && (
                 <button
-                  onClick={listening ? stopVoice : startVoice}
+                  data-voice-mode={getVoiceMode()} onClick={listening ? stopVoice : startVoice}
                   className="qk-btn qk-btn-sm"
                   style={{
                     background: listening ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.12)',

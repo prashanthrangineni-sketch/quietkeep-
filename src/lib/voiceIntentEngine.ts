@@ -65,22 +65,13 @@ export interface IntentResult {
   /**
    * Optional side effect (navigation, DB action).
    * Caller MUST execute this. Engine does not execute it.
+   * Defined as a factory so it can close over router/supabase from the call site.
+   * Pass { router } to getAction() to build the final function.
    */
   actionKey?: ActionKey;
   /** Structured entities extracted from the command */
   entities:   IntentEntities;
-  /**
-   * Phase 8A: Confidence score 0.0–1.0.
-   *   1.0 = exact regex match
-   *   0.7–0.9 = keyword group match (synonym / filler-tolerant)
-   *   0.5–0.7 = fuzzy token match (partial overlap)
-   *   < CONFIDENCE_THRESHOLD → fallback to keep creation (handled = false)
-   */
-  confidence: number;
 }
-
-/** Phase 8A: minimum confidence to treat as handled intent (not a keep). */
-export const CONFIDENCE_THRESHOLD = 0.55;
 
 export type IntentType =
   | 'navigation'
@@ -333,26 +324,6 @@ const QUERY_PATTERNS: QueryPattern[] = [
 const CANCEL_PATTERNS = [
   /\bcancel\b/, /\bstop\b/, /\bnever mind\b/, /\bforget it\b/, /\bignore\b/,
 ];
-
-// Phase 8G: Help / capability discovery
-const HELP_PATTERNS = [
-  /\bwhat can you do\b/,
-  /\bwhat do you know\b/,
-  /\bhelp\b/,
-  /\bcommands?\b/,
-  /\bwhat['']?s? available\b/,
-  /\bshow commands?\b/,
-  /\blist commands?\b/,
-  /\bcapabilit/,
-];
-
-const HELP_RESPONSE = [
-  'I can help you with:',
-  'Queries: pending bills, subscriptions, reminders, expenses, keeps count.',
-  'Navigation: open reminders, calendar, camera, bills, settings, drive mode.',
-  'Controls: cancel, wake word on or off.',
-  'Or just speak anything — I will save it as a keep.',
-].join(' ');
 const WAKE_MODE_ON_PATTERNS  = [/\bturn on\s+(?:wake\s+)?lotus\b/, /\benable\s+(?:wake\s+)?lotus\b/, /\blotus\s+on\b/];
 const WAKE_MODE_OFF_PATTERNS = [/\bturn off\s+(?:wake\s+)?lotus\b/, /\bdisable\s+(?:wake\s+)?lotus\b/, /\blotus\s+off\b/];
 
@@ -415,112 +386,6 @@ function extractEntities(raw: string, intentType: IntentType): IntentEntities {
 
 // ── Main parse function ───────────────────────────────────────────────────
 
-
-// ── Phase 8A: Keyword groups (synonym sets) ───────────────────────────────
-//
-// Each intent maps to a set of keywords. A query is scored by how many
-// tokens from the input match the keyword group. This covers:
-//   "due payments"      → same as "pending bills"
-//   "what do I owe"     → same as "pending bills"
-//   "monthly charges"   → same as "subscriptions"
-//
-// Score = matched_keywords / total_keywords_in_group (capped at 1.0).
-// Requires at least 1 keyword match for a non-zero score.
-
-interface KeywordGroup {
-  intentType:      IntentType;
-  /** Core keywords — matching any 2+ is strong signal */
-  keywords:        string[];
-  /** Filler words to IGNORE during token matching */
-  fillers:         string[];
-  offlineResponse: string;
-}
-
-const KEYWORD_GROUPS: KeywordGroup[] = [
-  {
-    intentType: 'query_bills',
-    keywords: [
-      'bill', 'bills', 'payment', 'payments', 'due', 'owe', 'owing',
-      'pay', 'pending', 'overdue', 'upcoming', 'amount',
-    ],
-    fillers: ['what', 'do', 'i', 'my', 'are', 'there', 'any', 'the', 'a'],
-    offlineResponse: 'Fetching your pending bills.',
-  },
-  {
-    intentType: 'query_subscriptions',
-    keywords: [
-      'subscription', 'subscriptions', 'renew', 'renewing', 'renewal',
-      'monthly', 'plan', 'plans', 'active', 'recurring', 'charge', 'charges',
-    ],
-    fillers: ['my', 'what', 'are', 'the', 'all', 'do', 'i', 'have'],
-    offlineResponse: 'Fetching your subscriptions.',
-  },
-  {
-    intentType: 'query_reminders',
-    keywords: [
-      'reminder', 'reminders', 'remind', 'today', 'upcoming', 'schedule',
-      'scheduled', 'due', 'alarm', 'alarms',
-    ],
-    fillers: ['my', 'what', 'are', 'the', 'all', 'do', 'i', 'have', 'any'],
-    offlineResponse: 'Fetching your reminders.',
-  },
-  {
-    intentType: 'query_expenses',
-    keywords: [
-      'expense', 'expenses', 'spent', 'spend', 'spending', 'cost', 'costs',
-      'money', 'total', 'amount', 'budget', 'month',
-    ],
-    fillers: ['how', 'much', 'did', 'i', 'my', 'this', 'have'],
-    offlineResponse: 'Fetching your expenses.',
-  },
-  {
-    intentType: 'query_keeps_count',
-    keywords: ['keep', 'keeps', 'pending', 'open', 'count', 'many', 'total', 'saved'],
-    fillers: ['how', 'my', 'do', 'i', 'have', 'are', 'there'],
-    offlineResponse: 'Checking your keeps.',
-  },
-];
-
-/**
- * scoreKeywordMatch(norm, group) → 0.0–1.0
- *
- * Phase 8A fuzzy scoring:
- *   - Tokenise normalised input, strip fillers
- *   - Count tokens that appear in the keyword list
- *   - Score = matched / max(meaningful_tokens, 1)
- *   - Bonus +0.2 if 2+ keywords match (strong signal)
- */
-function scoreKeywordMatch(norm: string, group: KeywordGroup): number {
-  const tokens = norm.split(/\s+/).filter(t => t.length > 1);
-  const meaningful = tokens.filter(t => !group.fillers.includes(t));
-  if (meaningful.length === 0) return 0;
-
-  const matched = meaningful.filter(t =>
-    group.keywords.some(k => t.includes(k) || k.includes(t))
-  );
-  if (matched.length === 0) return 0;
-
-  const base  = matched.length / Math.max(meaningful.length, 1);
-  const bonus = matched.length >= 2 ? 0.2 : 0;
-  return Math.min(1.0, base + bonus);
-}
-
-/**
- * Phase 8A: fuzzy match across all keyword groups.
- * Returns the best-scoring group above CONFIDENCE_THRESHOLD, or null.
- */
-function fuzzyMatchQuery(norm: string): { group: KeywordGroup; score: number } | null {
-  let best: { group: KeywordGroup; score: number } | null = null;
-  for (const group of KEYWORD_GROUPS) {
-    const score = scoreKeywordMatch(norm, group);
-    if (score > 0 && (!best || score > best.score)) {
-      best = { group, score };
-    }
-  }
-  if (!best || best.score < CONFIDENCE_THRESHOLD) return null;
-  return best;
-}
-
 /**
  * parseVoiceIntent(rawText)
  *
@@ -541,7 +406,7 @@ export function parseVoiceIntent(rawText: string): IntentResult {
       intentType: 'unknown',
       response: '',
       entities: {},
-      confidence: 0,
+  confidence: 0.0,
     };
   }
 
@@ -554,18 +419,7 @@ export function parseVoiceIntent(rawText: string): IntentResult {
       intentType: 'control_cancel',
       response: 'Cancelled.',
       entities: {},
-      confidence: 1.0,
-    };
-  }
-
-  // ── 1b. Phase 8G: Help / capability discovery ───────────────────────
-  if (HELP_PATTERNS.some(p => p.test(norm))) {
-    return {
-      handled:    true,
-      intentType: 'control_cancel',  // reuse control bucket (no new type needed)
-      response:   HELP_RESPONSE,
-      entities:   {},
-      confidence: 1.0,
+  confidence: 1.0,
     };
   }
 
@@ -577,7 +431,7 @@ export function parseVoiceIntent(rawText: string): IntentResult {
       response: 'Wake word mode is now on. Say Lotus to activate.',
       actionKey: 'wake_mode:on',
       entities: {},
-      confidence: 1.0,
+  confidence: 1.0,
     };
   }
   if (WAKE_MODE_OFF_PATTERNS.some(p => p.test(norm))) {
@@ -587,7 +441,7 @@ export function parseVoiceIntent(rawText: string): IntentResult {
       response: 'Wake word mode is now off. All voice input will be processed.',
       actionKey: 'wake_mode:off',
       entities: {},
-      confidence: 1.0,
+  confidence: 1.0,
     };
   }
 
@@ -622,7 +476,7 @@ export function parseVoiceIntent(rawText: string): IntentResult {
           intentType: q.intentType,
           response: inlineResponse,
           entities: {},
-          confidence: 1.0,
+  confidence: 1.0,
         };
       }
       // DB-backed query: return immediately with "fetching" response.
@@ -647,28 +501,12 @@ export function parseVoiceIntent(rawText: string): IntentResult {
         response: `Opening ${route.label}.`,
         actionKey: `navigate:${route.path}`,
         entities: { path: route.path },
+        confidence: 0.9,
       };
     }
   }
 
-  // ── 6. Phase 8A: Fuzzy keyword group match ───────────────────────────
-  // Runs only when exact regex patterns failed. Catches synonyms + filler
-  // variations: "what do I owe" → query_bills (score ~0.65),
-  // "monthly charges" → query_subscriptions (score ~0.72), etc.
-  const fuzzyMatch = fuzzyMatchQuery(norm);
-  if (fuzzyMatch) {
-    const { group, score } = fuzzyMatch;
-    return {
-      handled:    true,
-      intentType: group.intentType,
-      response:   group.offlineResponse,
-      actionKey:  `query:${group.intentType}`,
-      entities:   {},
-      confidence: score,
-    };
-  }
-
-  // ── 7. Explicit create-keep prefix ───────────────────────────────────
+  // ── 6. Explicit create-keep prefix ───────────────────────────────────
   // Pass-through: handled = false so caller saves it.
   // We just classify it so the caller can log/telemetry it.
   for (const re of CREATE_KEEP_PATTERNS) {
@@ -678,6 +516,7 @@ export function parseVoiceIntent(rawText: string): IntentResult {
         intentType: 'create_keep',
         response: '',
         entities: extractEntities(rawText, 'create_keep'),
+  confidence: 0.9,
       };
     }
   }
@@ -688,7 +527,7 @@ export function parseVoiceIntent(rawText: string): IntentResult {
     intentType: 'unknown',
     response: '',
     entities: extractEntities(rawText, 'unknown'),
-    confidence: 0,
+  confidence: 0.0,
   };
 }
 

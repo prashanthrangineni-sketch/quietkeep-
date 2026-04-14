@@ -10,6 +10,7 @@ export const supabase = createBrowserClient(
       detectSessionInUrl: true,
       flowType: 'pkce',
       autoRefreshToken: true,
+      storageKey: 'qk-auth-token',
     },
   }
 );

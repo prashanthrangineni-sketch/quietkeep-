@@ -220,26 +220,39 @@ public class MainActivity extends BridgeActivity {
                         boolean handled = existing.onShowFileChooser(view, filePathCallback, fileChooserParams);
                         if (handled) return true;
                     }
-                    // Fallback: open system file chooser with camera option
+                    // Fallback: camera-first chooser with gallery option
                     try {
                         if (mFilePathCallback != null) {
                             mFilePathCallback.onReceiveValue(null);
                         }
                         mFilePathCallback = filePathCallback;
 
+                        // Check if accept type requests camera specifically
+                        String[] acceptTypes = fileChooserParams.getAcceptTypes();
+                        boolean wantsCamera = false;
+                        if (acceptTypes != null) {
+                            for (String t : acceptTypes) {
+                                if (t != null && t.contains("image")) { wantsCamera = true; break; }
+                            }
+                        }
+
+                        // Camera intent — opens camera directly
                         android.content.Intent takePictureIntent = new android.content.Intent(
                                 android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-                        android.content.Intent contentSelectionIntent = new android.content.Intent(
-                                android.content.Intent.ACTION_GET_CONTENT);
-                        contentSelectionIntent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
-                        contentSelectionIntent.setType("image/*");
 
+                        // Gallery fallback
+                        android.content.Intent galleryIntent = new android.content.Intent(
+                                android.content.Intent.ACTION_GET_CONTENT);
+                        galleryIntent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+                        galleryIntent.setType("image/*");
+
+                        // Chooser: camera as primary, gallery as extra
                         android.content.Intent chooserIntent = new android.content.Intent(
                                 android.content.Intent.ACTION_CHOOSER);
-                        chooserIntent.putExtra(android.content.Intent.EXTRA_INTENT, contentSelectionIntent);
-                        chooserIntent.putExtra(android.content.Intent.EXTRA_TITLE, "Select or Capture");
+                        chooserIntent.putExtra(android.content.Intent.EXTRA_INTENT, takePictureIntent);
+                        chooserIntent.putExtra(android.content.Intent.EXTRA_TITLE, "Take Photo or Choose");
                         chooserIntent.putExtra(android.content.Intent.EXTRA_INITIAL_INTENTS,
-                                new android.content.Intent[]{takePictureIntent});
+                                new android.content.Intent[]{galleryIntent});
 
                         startActivityForResult(chooserIntent, FILE_CHOOSER_REQUEST_CODE);
                         return true;

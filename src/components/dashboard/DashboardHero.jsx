@@ -53,12 +53,14 @@ export default function DashboardHero({ userName, topReminder, onReminderTap }) 
               fontSize: 13, fontWeight: 600, color: 'var(--text)',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
-              {topReminder.reminder_text}
+              {topReminder.reminder_text || topReminder.content || 'Reminder'}
             </div>
             <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 2 }}>
-              {new Date(topReminder.scheduled_for).toLocaleString('en-IN', {
-                hour: 'numeric', minute: '2-digit', hour12: true,
-              })}
+              {topReminder.scheduled_for && !isNaN(new Date(topReminder.scheduled_for).getTime())
+                ? new Date(topReminder.scheduled_for).toLocaleString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })
+                : topReminder.reminder_at && !isNaN(new Date(topReminder.reminder_at).getTime())
+                  ? new Date(topReminder.reminder_at).toLocaleString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })
+                  : 'No time set'}
             </div>
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>→</span>

@@ -1,5 +1,4 @@
 'use client';
-// TASK 7: use Capacitor Geolocation (avoids WebView browser permission prompt)
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { safeFetch, apiPost } from '@/lib/safeFetch';
@@ -53,17 +52,7 @@ export default function GeoPage() {
     loadSavedLocations(accessToken);
     startGeoWatch(accessToken);
     return () => {
-      const isNative = typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.();
-      if (watchRef.current !== null) {
-        if (isNative) {
-          try {
-            const { Geolocation: GeoLib } = await import('@capacitor/geolocation');
-            GeoLib.clearWatch({ id: watchRef.current });
-          } catch {}
-        } else {
-          navigator.geolocation?.clearWatch(watchRef.current);
-        }
-      }
+      if (watchRef.current !== null) navigator.geolocation?.clearWatch(watchRef.current);
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, [user]);
@@ -149,58 +138,45 @@ export default function GeoPage() {
   }
 
   async function startGeoWatch(token) {
-    // TASK 7 FIX: Use Capacitor Geolocation instead of navigator.geolocation.
-    // navigator.geolocation requires the WebView's own location permission dialog.
-    // Capacitor Geolocation uses the OS-granted permission directly — no second
-    // browser dialog, no "Allow location in browser settings" error.
-    setGpsStatus('acquiring');
-    try {
-      const isNative = typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.();
-      if (isNative) {
-        // Native Android: use Capacitor Geolocation (bypasses WebView prompt)
-        // Dynamic import avoids Vercel build error on missing @capacitor/geolocation
-        const { Geolocation } = await import('@capacitor/geolocation');
-        const perm = await Geolocation.checkPermissions();
-        if (perm.location !== 'granted') {
-          const req = await Geolocation.requestPermissions();
-          if (req.location !== 'granted') { setGpsStatus('denied'); return; }
+    // TASK 7 FIX: On native Android, request location permission via the
+    // existing Capacitor bridge BEFORE calling navigator.geolocation.
+    // This avoids the "Allow location in browser settings" WebView prompt
+    // because the OS permission is granted at the native layer first.
+    // Uses NO new packages — only the existing window.Capacitor bridge.
+    const isNative = typeof window !== 'undefined' &&
+      window?.Capacitor?.isNativePlatform?.();
+
+    if (isNative) {
+      try {
+        const cap = window?.Capacitor;
+        if (cap?.toNative) {
+          await new Promise((resolve) => {
+            cap.toNative('Geolocation', 'requestPermissions',
+              { permissions: ['location'] },
+              { resolve, reject: resolve } // resolve on both grant and deny
+            );
+          });
         }
-        // watchPosition via Capacitor
-        watchRef.current = await Geolocation.watchPosition(
-          { enableHighAccuracy: true, timeout: 15000 },
-          (pos, err) => {
-            if (err) {
-              console.warn('[QK Geo] watchPosition error:', err);
-              setGpsStatus('error');
-              return;
-            }
-            const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-            setCurrentPos({ lat, lng, accuracy });
-            setGpsStatus('active');
-            callGeoCheck(lat, lng, token);
-          }
-        );
-      } else {
-        // Web/PWA fallback: use browser geolocation
-        if (!navigator.geolocation) { setGpsStatus('error'); return; }
-        watchRef.current = navigator.geolocation.watchPosition(
-          (pos) => {
-            const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-            setCurrentPos({ lat, lng, accuracy });
-            setGpsStatus('active');
-            callGeoCheck(lat, lng, token);
-          },
-          (err) => {
-            if (err.code === err.PERMISSION_DENIED) setGpsStatus('denied');
-            else setGpsStatus('error');
-          },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
-        );
+      } catch {
+        // Non-fatal — fall through to navigator.geolocation regardless
       }
-    } catch (e) {
-      console.error('[QK Geo] startGeoWatch error:', e);
-      setGpsStatus('error');
     }
+
+    if (!navigator.geolocation) { setGpsStatus('error'); return; }
+    setGpsStatus('acquiring');
+    watchRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        setCurrentPos({ lat, lng, accuracy });
+        setGpsStatus('active');
+        callGeoCheck(lat, lng, token);
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) setGpsStatus('denied');
+        else setGpsStatus('error');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+    );
   }
 
   async function callGeoCheck(lat, lng, token) {

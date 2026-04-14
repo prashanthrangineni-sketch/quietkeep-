@@ -58,6 +58,13 @@ jobs:
       # ─────────────────────────────────────────────────────────────────────
       # STATIC EXPORT BUILD FOR CAPACITOR APK
       #
+      # The output bundle (out/) is synced into the APK assets via `cap sync`.
+      # server.url = "https://quietkeep.com" is set in capacitor.config.json,
+      # so the WebView loads all pages from Vercel — not from the local bundle.
+      # This is INTENTIONAL: it eliminates the fetch interceptor cold-start race
+      # that broke voice in builds without server.url. Voice, STT, and all API
+      # routes work correctly because fetch("/api/...") resolves against Vercel.
+      #
       # Next.js output:'export' refuses to build any path that:
       #   (a) uses server-side APIs  (cookies, headers, createServerClient)
       #   (b) has dynamic [param] segments without generateStaticParams()
@@ -215,16 +222,24 @@ jobs:
             exit 1
           fi
 
-          # FIX: Verify capacitor.config.json baked into assets does NOT have server.url
-          # If server.url is present, the APK will ignore the local bundle and load Vercel.
+          # REGRESSION FIX (voice): server.url is intentionally present.
+          # With server.url = "https://quietkeep.com", the WebView loads all pages
+          # directly from the live Vercel deployment. This means every fetch("/api/...")
+          # call resolves against the production server — no fetch interceptor race
+          # condition, no 404 on cold start. Voice, STT, and all API routes work.
+          #
+          # The local bundle in assets/public/ is still synced by `cap sync` and
+          # acts as the offline fallback if the network is unavailable.
+          #
+          # DO NOT remove server.url unless the fetch interceptor timing race in
+          # MainActivity.injectRuntimeJS() is fixed and verified on cold start.
           CONFIG_PATH="android/app/src/main/assets/capacitor.config.json"
           if grep -q '"url"' "$CONFIG_PATH" 2>/dev/null; then
-            echo "ERROR: server.url found in capacitor.config.json inside assets — APK will load Vercel instead of local bundle!"
-            echo "Remove the server.url field from capacitor.config.json and capacitor.business.config.json."
-            cat "$CONFIG_PATH"
-            exit 1
+            echo "INFO: server.url present in capacitor.config — APK will load from Vercel (expected) ✓"
+            grep '"url"' "$CONFIG_PATH" || true
+          else
+            echo "WARNING: server.url NOT found in capacitor.config — APK will load local bundle only"
           fi
-          echo "VERIFIED: No server.url in capacitor.config — local bundle will be used ✓"
 
           # Verify NEXT_PUBLIC_APP_TYPE is baked correctly into the bundle
           APP_TYPE="${{ github.event.inputs.build_type || 'personal' }}"
@@ -294,16 +309,16 @@ jobs:
             echo "APK built successfully"
             echo "Size: $(du -sh $APK_PATH | cut -f1)"
 
-            # Final verification: confirm no server.url leaked into the baked config
+            # Verify server.url is present (required for voice / API routing)
             # Uses grep on the raw JSON — no python3 needed, avoids YAML quoting issues
             BAKED_CONFIG=$(unzip -p "$APK_PATH" assets/capacitor.config.json 2>/dev/null)
             if echo "$BAKED_CONFIG" | grep -q '"url"'; then
-              echo "FAIL: server.url is present in APK capacitor.config — APK will load Vercel, not local bundle!"
-              echo "$BAKED_CONFIG"
-              exit 1
+              APP_ID=$(echo "$BAKED_CONFIG" | grep -o '"appId":"[^"]*"' | head -1)
+              echo "PASS: server.url present in APK config — Vercel routing active ✓"
+              echo "appId: $APP_ID"
             else
               APP_ID=$(echo "$BAKED_CONFIG" | grep -o '"appId":"[^"]*"' | head -1)
-              echo "PASS: No server.url in APK config — local bundle will be used ✓"
+              echo "WARNING: server.url NOT in APK config — local bundle only (voice may break on cold start)"
               echo "appId: $APP_ID"
             fi
           else

@@ -1,4 +1,6 @@
 'use client';
+import { Geolocation } from '@capacitor/geolocation';
+// TASK 7: use Capacitor Geolocation (avoids WebView browser permission prompt)
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { safeFetch, apiPost } from '@/lib/safeFetch';
@@ -52,7 +54,14 @@ export default function GeoPage() {
     loadSavedLocations(accessToken);
     startGeoWatch(accessToken);
     return () => {
-      if (watchRef.current !== null) navigator.geolocation?.clearWatch(watchRef.current);
+      const isNative = typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.();
+      if (watchRef.current !== null) {
+        if (isNative) {
+          try { Geolocation.clearWatch({ id: watchRef.current }); } catch {}
+        } else {
+          navigator.geolocation?.clearWatch(watchRef.current);
+        }
+      }
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, [user]);
@@ -137,23 +146,57 @@ export default function GeoPage() {
     loadSavedLocations(accessToken);
   }
 
-  function startGeoWatch(token) {
-    if (!navigator.geolocation) { setGpsStatus('error'); return; }
+  async function startGeoWatch(token) {
+    // TASK 7 FIX: Use Capacitor Geolocation instead of navigator.geolocation.
+    // navigator.geolocation requires the WebView's own location permission dialog.
+    // Capacitor Geolocation uses the OS-granted permission directly — no second
+    // browser dialog, no "Allow location in browser settings" error.
     setGpsStatus('acquiring');
-    watchRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-        setCurrentPos({ lat, lng, accuracy });
-        setGpsStatus('active');
-        // Fire geo check immediately on position update, then schedule next
-        callGeoCheck(lat, lng, token);
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) setGpsStatus('denied');
-        else setGpsStatus('error');
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
-    );
+    try {
+      const isNative = typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.();
+      if (isNative) {
+        // Native Android: use Capacitor Geolocation (bypasses WebView prompt)
+        const perm = await Geolocation.checkPermissions();
+        if (perm.location !== 'granted') {
+          const req = await Geolocation.requestPermissions();
+          if (req.location !== 'granted') { setGpsStatus('denied'); return; }
+        }
+        // watchPosition via Capacitor
+        watchRef.current = await Geolocation.watchPosition(
+          { enableHighAccuracy: true, timeout: 15000 },
+          (pos, err) => {
+            if (err) {
+              console.warn('[QK Geo] watchPosition error:', err);
+              setGpsStatus('error');
+              return;
+            }
+            const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+            setCurrentPos({ lat, lng, accuracy });
+            setGpsStatus('active');
+            callGeoCheck(lat, lng, token);
+          }
+        );
+      } else {
+        // Web/PWA fallback: use browser geolocation
+        if (!navigator.geolocation) { setGpsStatus('error'); return; }
+        watchRef.current = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+            setCurrentPos({ lat, lng, accuracy });
+            setGpsStatus('active');
+            callGeoCheck(lat, lng, token);
+          },
+          (err) => {
+            if (err.code === err.PERMISSION_DENIED) setGpsStatus('denied');
+            else setGpsStatus('error');
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+        );
+      }
+    } catch (e) {
+      console.error('[QK Geo] startGeoWatch error:', e);
+      setGpsStatus('error');
+    }
   }
 
   async function callGeoCheck(lat, lng, token) {

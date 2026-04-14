@@ -148,6 +148,17 @@ function VerifyContent() {
       setTimeout(() => refs.current[0]?.focus(), 80);
       return;
     }
+    // Wait for session to be established before redirecting
+    let session = null;
+    for (let i = 0; i < 8; i++) {
+      await new Promise(r => setTimeout(r, 300));
+      const { data: { session: s } } = await getClient().auth.getSession();
+      if (s) { session = s; break; }
+    }
+    if (!session) {
+      setError('Session could not be established. Please try again.');
+      return;
+    }
     setAppModeCookie(POST_AUTH);
     router.replace(POST_AUTH);
   }

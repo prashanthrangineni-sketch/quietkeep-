@@ -1,21 +1,18 @@
 /**
- * src/lib/capacitor/voice.ts  v9
+ * src/lib/capacitor/voice.ts  v10
  *
- * v9 changes over v8:
- *   ADDED: startLocationService() / stopLocationService()
- *     Bridge to LocationService.java (background geo-trigger polling).
- *     Called by orchestrator.ts → startBackgroundServices() on Android.
+ * v10 changes over v9:
+ *   ADDED: requestPermissionsOnStart()
+ *     Call once from dashboard useEffect on native Android.
+ *     Requests RECORD_AUDIO → POST_NOTIFICATIONS → Location in sequence.
+ *     Each permission is requested only if not already granted.
+ *     Returns { mic, notifications, location } boolean map.
+ *     Non-blocking — failures are silent and do not crash the app.
  *
- *   ADDED: isOnline() — network connectivity check before voice API calls
- *
- *   ADDED: captureWithFallback() — voice capture with automatic offline fallback
- *     If /api/voice/capture fails with a network error, routes to processOffline().
- *
- * v8 retained (unchanged):
- *   onPermissionChange(), syncPermissions(), requestMicPermission() with poll
- *   startNativeVoice(), stopNativeVoice(), isNativeVoiceRunning()
- *   isBatteryOptimizationExempt(), requestBatteryOptimizationExemption()
- *   registerNativePush()
+ * v9 retained (unchanged): startLocationService, isOnline, captureWithFallback
+ * v8 retained (unchanged): onPermissionChange, syncPermissions, requestMicPermission
+ *   startNativeVoice, stopNativeVoice, isNativeVoiceRunning
+ *   isBatteryOptimizationExempt, requestBatteryOptimizationExemption, registerNativePush
  */
 
 import { safeFetch } from '../safeFetch';
@@ -305,6 +302,55 @@ async function waitForPushPlugin(maxMs = 8000): Promise<any | null> {
   return null;
 }
 
+// ── v10: Auto-request permissions on app start ────────────────────────────────
+
+/**
+ * requestPermissionsOnStart()
+ *
+ * Call ONCE from dashboard useEffect when running on native Android.
+ * Requests mic, notifications, and (optionally) location in sequence.
+ * Each permission is only requested if not already granted.
+ * Never throws — all errors are caught and treated as "denied".
+ *
+ * Usage in dashboard/page.jsx:
+ *   import { requestPermissionsOnStart } from '@/lib/capacitor/voice';
+ *   // inside useEffect after authLoading:
+ *   if (isNativeVoiceAvailable() && !localStorage.getItem('qk_perms_requested')) {
+ *     localStorage.setItem('qk_perms_requested', '1');
+ *     requestPermissionsOnStart().catch(() => {});
+ *   }
+ */
+export async function requestPermissionsOnStart(): Promise<{
+  mic: boolean;
+  notifications: boolean;
+  location: boolean;
+}> {
+  const result = { mic: false, notifications: false, location: false };
+  if (!isAndroid()) return { mic: true, notifications: true, location: true };
+
+  // 1. Microphone — RECORD_AUDIO
+  try { result.mic = await requestMicPermission(); } catch {}
+
+  // 2. POST_NOTIFICATIONS (Android 13+)
+  try { result.notifications = await requestNotificationPermission(); } catch {}
+
+  // 3. Location — via Capacitor Geolocation plugin if available
+  try {
+    const Geo = _cap()?.Plugins?.Geolocation;
+    if (Geo) {
+      const perm = await Geo.checkPermissions?.();
+      if (perm?.location !== 'granted') {
+        const req = await Geo.requestPermissions?.({ permissions: ['location'] });
+        result.location = req?.location === 'granted';
+      } else {
+        result.location = true;
+      }
+    }
+  } catch {}
+
+  return result;
+}
+
 export async function registerNativePush(authToken: string, serverUrl = ''): Promise<boolean> {
   if (!isNative()) return false;
   const PPN = await waitForPushPlugin();
@@ -338,4 +384,4 @@ export async function registerNativePush(authToken: string, serverUrl = ''): Pro
     ]);
     return true;
   } catch { return false; }
-  }
+}

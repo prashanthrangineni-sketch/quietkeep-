@@ -1,6 +1,6 @@
 'use client';
 import { useAuth } from '@/lib/context/auth';
-import { speak, VoiceResponses, greetOnLogin, greetOnReturn } from '@/components/VoiceTalkback';
+import { speak, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord } from '@/components/VoiceTalkback';
 import InAppNotifications from '@/components/InAppNotifications';
 import ContactPicker from '@/components/ContactPicker';
 import PermissionOnboarding from '@/components/PermissionOnboarding';
@@ -20,6 +20,7 @@ import {
   requestMicPermission, requestNotificationPermission, isNativeVoiceRunning,
   isBatteryOptimizationExempt, requestBatteryOptimizationExemption,
   captureWithFallback,
+  requestPermissionsOnStart,  // v10: auto-request on first launch
 } from '@/lib/capacitor/voice';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -775,6 +776,23 @@ export default function Dashboard() {
       setTimeout(() => setShowPermOnboarding(true), 1200);
     }
 
+    // ── AUTO-REQUEST PERMISSIONS (v10): request on first native launch ───
+    // Silently requests RECORD_AUDIO, POST_NOTIFICATIONS, Location so the
+    // user sees the system dialogs immediately on first open rather than
+    // hitting a "permission denied" error mid-session.
+    // Guard: only fires once per install via 'qk_perms_requested' flag.
+    if (
+      typeof window !== 'undefined' &&
+      window?.Capacitor?.isNativePlatform?.() &&
+      !localStorage.getItem('qk_perms_requested')
+    ) {
+      localStorage.setItem('qk_perms_requested', '1');
+      // Small delay so the dashboard renders fully before dialogs appear
+      setTimeout(() => {
+        requestPermissionsOnStart().catch(() => {});
+      }, 1800);
+    }
+
     // ── REAL-TIME PERMISSION SYNC ────────────────────────────────────────
     const unsubPerms = onPermissionChange(state => setPermState(state));
     loadIntents(user.id).finally(() => {
@@ -954,6 +972,23 @@ export default function Dashboard() {
   async function handleSave() {
     if (savingRef.current || !content.trim() || !user) return;
 
+    // ── WAKE WORD FILTER (Phase 5) ────────────────────────────────────────
+    // processWithWakeWord() returns { triggered, command }.
+    // If wake mode is OFF it always returns triggered=true (pass-through).
+    // If wake mode is ON and transcript doesn't start with the wake word,
+    // the input is silently ignored — no save, no error.
+    const wakeResult = processWithWakeWord(content.trim());
+    if (!wakeResult.triggered) {
+      // Wake word not detected — store silently without triggering actions
+      setContent('');
+      return;
+    }
+    // Replace content with the stripped command (wake word removed)
+    const commandText = wakeResult.command || content.trim();
+    // Patch content ref so all downstream code uses the stripped command
+    // We do this by setting a local var and using it explicitly below.
+    // Note: setContent is NOT called here to avoid re-render before save completes.
+
     // Check voice capture limit for free users
     const profile = await supabase.from('profiles').select('subscription_tier, is_beta').eq('user_id', user.id).maybeSingle();
     const tier = profile?.data?.subscription_tier || 'free';
@@ -978,7 +1013,7 @@ export default function Dashboard() {
       const res = await safeFetch('/api/voice/capture', {
         method: 'POST',
         body: JSON.stringify({
-          transcript:   content.trim(),
+          transcript:   commandText,
           source:       listening ? 'voice' : 'text',
           workspace_id: null,
           language:     voiceLang || 'en-IN',
@@ -990,7 +1025,7 @@ export default function Dashboard() {
         // Network failure → queue offline via captureWithFallback
         const errStr = String(res.error || '');
         if (errStr.toLowerCase().includes('network') || errStr.toLowerCase().includes('fetch') || errStr.toLowerCase().includes('failed')) {
-          const fallback = await captureWithFallback(content.trim(), freshToken, {
+          const fallback = await captureWithFallback(commandText, freshToken, {
             source: listening ? 'voice' : 'text',
             language: voiceLang || 'en-IN',
           });

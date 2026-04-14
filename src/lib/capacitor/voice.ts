@@ -100,6 +100,38 @@ export async function warmUpWebViewMic(): Promise<void> {
 }
 
 
+// ── Mic unification contract ──────────────────────────────────────────────────
+// This documents the platform split enforced across the codebase.
+// DO NOT add browser-API mic calls on the APK path or native calls on the web path.
+//
+//   APK  (isNative=true):
+//     Permission:  requestMicPermission()  → VoicePlugin → RECORD_AUDIO OS dialog
+//     Warm-up:     warmUpWebViewMic()      → getUserMedia(audio) → MainActivity.onPermissionRequest → request.grant()
+//     Capture:     SpeechRecognition (WebView STT, synced by warmUp) + VoiceService (AudioRecord)
+//
+//   Web / PWA (isNative=false):
+//     Permission:  browser navigator.mediaDevices.getUserMedia handled by browser itself
+//     Capture:     SpeechRecognition (native browser, no Capacitor involved)
+//     No warmUp needed — browser manages its own audio context.
+//
+// checkMicPermission() / requestMicPermission() both short-circuit to `return true`
+// on non-Android, so they are safe to call cross-platform without `if (isAndroid())` guards.
+
+/**
+ * isMicAvailable() — lightweight sync check for UI gating.
+ * Returns true if mic input can be attempted on the current platform.
+ * Does NOT check OS permission state — use checkMicPermission() for that.
+ */
+export function isMicAvailable(): boolean {
+  if (isNative()) return true; // APK: mic available via RECORD_AUDIO + VoicePlugin
+  if (typeof window === 'undefined') return false;
+  // Web/PWA: check browser STT support (mic availability gated by browser permission)
+  return !!(
+    (window as any).SpeechRecognition ||
+    (window as any).webkitSpeechRecognition
+  );
+}
+
 export async function requestNotificationPermission(): Promise<boolean> {
   if (typeof Notification === 'undefined') return false;
   if (Notification.permission === 'granted') return true;
@@ -376,6 +408,37 @@ export async function requestPermissionsOnStart(): Promise<{
   } catch {}
 
   return result;
+}
+
+// ── FOREGROUND SERVICE ARCHITECTURE (Phase 5 prep) ───────────────────────────
+//
+// NOT IMPLEMENTED YET. This block documents the intended architecture so
+// Phase 5 can be added without restructuring existing code.
+//
+// DESIGN:
+//   JS side:  startAlwaysOnListening(opts)  → VoicePlugin.startService() (same as today)
+//             The VoiceService is ALREADY a foreground service with TYPE_MICROPHONE.
+//             Phase 5 adds wake-word detection inside VoiceService.sendChunk().
+//
+//   Java side: VoiceService.sendChunk() → if transcript starts with wake word
+//              → post Intent to MainActivity → JS receives via Capacitor event
+//              → dashboard handleSave() processes the command
+//
+//   Lock screen: WakeLock already acquired in VoiceService.startCapture() (30min max).
+//                Phase 5 needs: android:showOnLockScreen activity flag + KeyguardManager dismiss.
+//
+//   Battery:  Battery optimization exemption already requested via
+//             requestBatteryOptimizationExemption(). No new Java code needed.
+//
+// STUB — safe to call, always returns false until Phase 5 implements the body:
+
+/**
+ * isAlwaysOnListeningAvailable() — returns true when always-on listening
+ * is implemented and the device supports it (Android only, API 26+).
+ * Currently always false — placeholder for Phase 5.
+ */
+export function isAlwaysOnListeningAvailable(): boolean {
+  return false; // Phase 5: return isAndroid() && Build.VERSION.SDK_INT >= 26
 }
 
 export async function registerNativePush(authToken: string, serverUrl = ''): Promise<boolean> {

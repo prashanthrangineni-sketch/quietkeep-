@@ -99,6 +99,7 @@ function parseNaturalDate(text) {
 
 export default function RemindersPage() {
   const router = useRouter();
+  useAndroidBack();
   const { user, accessToken, loading: authLoading } = useAuth();
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);

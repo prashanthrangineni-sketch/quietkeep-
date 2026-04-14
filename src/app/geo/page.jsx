@@ -52,7 +52,19 @@ export default function GeoPage() {
     loadSavedLocations(accessToken);
     startGeoWatch(accessToken);
     return () => {
-      if (watchRef.current !== null) navigator.geolocation?.clearWatch(watchRef.current);
+      // P5 FIX: handle both Capacitor watchId and browser watchId
+      const w = watchRef.current;
+      if (w !== null) {
+        if (w?.type === 'capacitor') {
+          try { w.plugin?.clearWatch({ id: w.id }); } catch {}
+        } else if (w?.type === 'browser') {
+          navigator.geolocation?.clearWatch(w.id);
+        } else {
+          // Legacy: plain number from old code
+          navigator.geolocation?.clearWatch(w);
+        }
+        watchRef.current = null;
+      }
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, [user]);
@@ -138,33 +150,79 @@ export default function GeoPage() {
   }
 
   async function startGeoWatch(token) {
-    // TASK 7 FIX: On native Android, request location permission via the
-    // existing Capacitor bridge BEFORE calling navigator.geolocation.
-    // This avoids the "Allow location in browser settings" WebView prompt
-    // because the OS permission is granted at the native layer first.
-    // Uses NO new packages — only the existing window.Capacitor bridge.
-    const isNative = typeof window !== 'undefined' &&
+    // P5 FIX: Use window.Capacitor.Plugins.Geolocation on native Android.
+    //
+    // WHY cap.toNative() FAILED:
+    //   cap.toNative(pluginName, ...) routes to a registered Capacitor plugin.
+    //   @capacitor/geolocation is installed by the APK CI npm step and
+    //   auto-registered by Capacitor 6 at runtime, BUT it does NOT appear in
+    //   capacitor.config.json plugins block, so cap.toNative('Geolocation',...)
+    //   silently no-ops — the call resolves with nothing, no permission dialog.
+    //
+    // FIX: Access the plugin object directly via window.Capacitor.Plugins.Geolocation.
+    //   This is how Capacitor 6 exposes auto-registered plugins to JS without
+    //   any static import (which would break the Vercel build).
+    //
+    // WEB/PWA FALLBACK: navigator.geolocation unchanged — browser manages its own
+    //   location permission dialog without any Capacitor involvement.
+
+    const isNativeAndroid = typeof window !== 'undefined' &&
       window?.Capacitor?.isNativePlatform?.();
 
-    if (isNative) {
+    if (isNativeAndroid) {
       try {
-        const cap = window?.Capacitor;
-        if (cap?.toNative) {
-          await new Promise((resolve) => {
-            cap.toNative('Geolocation', 'requestPermissions',
-              { permissions: ['location'] },
-              { resolve, reject: resolve } // resolve on both grant and deny
-            );
-          });
+        const GeoPlugin = window?.Capacitor?.Plugins?.Geolocation;
+        if (GeoPlugin) {
+          // 1. Check current permission state
+          const permResult = await GeoPlugin.checkPermissions();
+          const locState = permResult?.location ?? permResult?.coarseLocation ?? 'prompt';
+
+          if (locState !== 'granted') {
+            // 2. Request permission via native OS dialog
+            const reqResult = await GeoPlugin.requestPermissions({
+              permissions: ['location', 'coarseLocation'],
+            });
+            const granted = reqResult?.location === 'granted' ||
+                            reqResult?.coarseLocation === 'granted';
+            console.log('[QK Geo] Capacitor location permission result:', granted);
+            if (!granted) {
+              setGpsStatus('denied');
+              return; // Don't fall through to browser API — would show second dialog
+            }
+          }
+
+          // 3. Watch position via Capacitor (avoids WebView browser permission dialog)
+          const watchId = await GeoPlugin.watchPosition(
+            { enableHighAccuracy: true, timeout: 15000 },
+            (pos, err) => {
+              if (err) {
+                console.warn('[QK Geo] watchPosition error:', err);
+                setGpsStatus('error');
+                return;
+              }
+              const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+              setCurrentPos({ lat, lng, accuracy });
+              setGpsStatus('active');
+              callGeoCheck(lat, lng, token);
+            }
+          );
+          // Store Capacitor watchId — cleared differently than navigator.geolocation watchId
+          watchRef.current = { type: 'capacitor', id: watchId, plugin: GeoPlugin };
+          return;
         }
-      } catch {
-        // Non-fatal — fall through to navigator.geolocation regardless
+        // GeoPlugin not available (APK CI didn't install @capacitor/geolocation)
+        // Fall through to navigator.geolocation
+        console.warn('[QK Geo] Capacitor Geolocation plugin not found — falling back to browser');
+      } catch (e) {
+        console.warn('[QK Geo] Capacitor geo error (non-fatal):', e?.message);
+        // Fall through to navigator.geolocation on any error
       }
     }
 
+    // WEB / PWA fallback — also used when Capacitor plugin unavailable
     if (!navigator.geolocation) { setGpsStatus('error'); return; }
     setGpsStatus('acquiring');
-    watchRef.current = navigator.geolocation.watchPosition(
+    const navWatchId = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude: lat, longitude: lng, accuracy } = pos.coords;
         setCurrentPos({ lat, lng, accuracy });
@@ -177,6 +235,7 @@ export default function GeoPage() {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
+    watchRef.current = { type: 'browser', id: navWatchId };
   }
 
   async function callGeoCheck(lat, lng, token) {

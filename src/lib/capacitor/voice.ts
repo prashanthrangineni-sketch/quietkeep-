@@ -49,7 +49,14 @@ export async function checkMicPermission(): Promise<boolean> {
   if (!isAndroid()) return true;
   try {
     const r = await callPlugin('VoicePlugin', 'checkMicPermission');
-    return r?.granted === true;
+    if (r?.granted === true) return true;
+    // ColorOS/Realme: getPermissionState() can lag 300-500ms after manual grant.
+    // One retry resolves it without showing any UI.
+    await new Promise(res => setTimeout(res, 400));
+    const r2 = await callPlugin('VoicePlugin', 'checkMicPermission');
+    const granted = r2?.granted === true;
+    console.log('[QK] checkMicPermission retry result:', granted);
+    return granted;
   } catch { return false; }
 }
 
@@ -72,6 +79,26 @@ export async function requestMicPermission(): Promise<boolean> {
     catch { return false; }
   }
 }
+
+/**
+ * warmUpWebViewMic — sync OS mic grant to WebView audio context.
+ * Call ONCE after requestMicPermission() returns true, before startNativeVoice().
+ * Triggers MainActivity.onPermissionRequest → request.grant() so the WebView
+ * audio session is live. Without this, speechSynthesis and WebRTC both fail
+ * even when RECORD_AUDIO is OS-granted, because the WebView never received
+ * its own audio capture permission.
+ */
+export async function warmUpWebViewMic(): Promise<void> {
+  if (!isNative()) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    stream.getTracks().forEach(t => t.stop());
+    console.log('[QK] WebView mic warmed up ✓');
+  } catch (e) {
+    console.warn('[QK] WebView mic warm-up (non-fatal):', (e as Error)?.message);
+  }
+}
+
 
 export async function requestNotificationPermission(): Promise<boolean> {
   if (typeof Notification === 'undefined') return false;
@@ -384,4 +411,4 @@ export async function registerNativePush(authToken: string, serverUrl = ''): Pro
     ]);
     return true;
   } catch { return false; }
-}
+                                                           }

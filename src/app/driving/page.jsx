@@ -1,11 +1,14 @@
 'use client';
 import { useAuth } from '@/lib/context/auth';
+import { speak } from '@/components/VoiceTalkback';
 // src/app/driving/page.jsx — Trip Tracker (GPS session logger)
 // FIXED v2: Added real GPS tracking via navigator.geolocation.watchPosition()
 //   - Tracks distance using Haversine formula
 //   - Saves start/end coords and distance_km to driving_sessions table
 //   - Feature buttons now functional (link to actual pages)
 //   - Replaced alert() with inline status messages (mobile-safe)
+// FIXED v3: All TTS uses speak() from VoiceTalkback — native Android TTS
+//   on APK, browser speechSynthesis fallback on web/PWA.
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -142,12 +145,8 @@ export default function DrivingPage() {
       startCoordsRef.current = null;
       setStatusMsg('');
       startGeoWatch();
-
-      if ('speechSynthesis' in window) {
-        const u = new SpeechSynthesisUtterance('Driving mode activated. Stay safe!');
-        try { u.lang = localStorage.getItem('qk_voice_lang') || 'en-IN'; } catch { u.lang = 'en-IN'; }
-        speechSynthesis.speak(u);
-      }
+      // v3: use native TTS via speak() — works in APK without audio-focus issues
+      speak('Driving mode activated. Stay safe!');
     } catch (error) {
       setStatusMsg('Could not start session: ' + error.message);
     }
@@ -333,4 +332,4 @@ export default function DrivingPage() {
       </div>
     </>
   );
-          }
+}

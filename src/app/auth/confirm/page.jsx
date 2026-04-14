@@ -4,7 +4,7 @@
 // This page handles: token_hash (old links), access_token in hash (iOS implicit), PKCE code (desktop same-browser)
 
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 // APP_TYPE is baked into the bundle at build time by next.config.js.
@@ -19,10 +19,7 @@ export default function AuthConfirmPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
+    // FIX: use singleton so session lands in the same storageKey as AuthContext
 
     async function verify() {
       try {

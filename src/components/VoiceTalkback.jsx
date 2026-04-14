@@ -41,14 +41,25 @@ function getVoice(lang) {
 
 export function speak(text, options = {}) {
   if (!voiceEnabled) return;
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  if (typeof window === 'undefined') return;
+
+  // ── NATIVE TTS (Android) ──────────────────────────────────────────────
+  // window.__QK_TTS__ is injected by MainActivity.injectRuntimeJS() via
+  // addJavascriptInterface(new TTSBridge(this), "AndroidTTS").
+  // It calls TTSManager.getInstance().speak() directly — no speechSynthesis,
+  // no voice-loading race, no Capacitor WebView audio focus issues.
+  if (typeof window.__QK_TTS__ === 'function') {
+    try { window.__QK_TTS__(String(text || '')); } catch {}
+    return;
+  }
+
+  // ── BROWSER FALLBACK (web / PWA) ─────────────────────────────────────
+  if (!window.speechSynthesis) return;
   try { window.speechSynthesis.cancel(); } catch {}
 
-  // Guard: only ONE of (voiceschanged OR timeout fallback) may fire
   let _fired = false;
-
   function doSpeak() {
-    if (_fired) return; // prevent double-fire from race condition
+    if (_fired) return;
     _fired = true;
     try {
       const utter = new SpeechSynthesisUtterance(text);
@@ -68,9 +79,9 @@ export function speak(text, options = {}) {
   } else {
     window.speechSynthesis.addEventListener('voiceschanged', function onVoices() {
       window.speechSynthesis.removeEventListener('voiceschanged', onVoices);
-      doSpeak(); // immediate — no extra delay needed once voices load
+      doSpeak();
     });
-    setTimeout(doSpeak, 600); // fallback — longer to give voiceschanged a chance first
+    setTimeout(doSpeak, 600);
   }
 }
 
@@ -321,3 +332,179 @@ export default function VoiceTalkbackToggle({ onChange }) {
     </div>
   );
 }
+
+// ── WAKE WORD SYSTEM ──────────────────────────────────────────────────────────
+// Default wake word is "lotus". Stored in localStorage('qk_wake_word').
+// Wake mode can be toggled on/off via localStorage('qk_wake_mode').
+//
+// Usage in voice pipeline (dashboard/page.jsx handleCapture):
+//   import { processWithWakeWord } from '@/components/VoiceTalkback';
+//   const result = processWithWakeWord(transcript);
+//   if (!result.triggered) return; // ignore — no wake word
+//   const command = result.command; // transcript with wake word stripped
+
+const DEFAULT_WAKE_WORD = 'lotus';
+
+export function getWakeWord() {
+  try { return (localStorage.getItem('qk_wake_word') || DEFAULT_WAKE_WORD).toLowerCase().trim(); }
+  catch { return DEFAULT_WAKE_WORD; }
+}
+
+export function setWakeWord(word) {
+  try { localStorage.setItem('qk_wake_word', (word || DEFAULT_WAKE_WORD).toLowerCase().trim()); }
+  catch {}
+}
+
+export function isWakeModeEnabled() {
+  try { return localStorage.getItem('qk_wake_mode') !== 'false'; }
+  catch { return true; }
+}
+
+export function setWakeMode(enabled) {
+  try { localStorage.setItem('qk_wake_mode', String(enabled)); } catch {}
+}
+
+/**
+ * processWithWakeWord(transcript)
+ *
+ * Returns { triggered: boolean, command: string }
+ *
+ * If wake mode is OFF → triggered = true always (pass-through, no filtering).
+ * If wake mode is ON:
+ *   - transcript starts with wake word → triggered = true, command = rest
+ *   - transcript does NOT start with wake word → triggered = false
+ *
+ * Case-insensitive, trims leading/trailing whitespace.
+ *
+ * Example:
+ *   processWithWakeWord("lotus buy milk tomorrow")
+ *   → { triggered: true, command: "buy milk tomorrow" }
+ *
+ *   processWithWakeWord("buy milk tomorrow")
+ *   → { triggered: false, command: "" }
+ */
+export function processWithWakeWord(transcript) {
+  if (!transcript || typeof transcript !== 'string') {
+    return { triggered: false, command: '' };
+  }
+
+  // Wake mode OFF → always trigger (backward-compatible behaviour)
+  if (!isWakeModeEnabled()) {
+    return { triggered: true, command: transcript.trim() };
+  }
+
+  const lower   = transcript.toLowerCase().trim();
+  const wakeWord = getWakeWord();
+
+  if (lower.startsWith(wakeWord)) {
+    const command = transcript.trim().slice(wakeWord.length).trim();
+    return { triggered: true, command: command || transcript.trim() };
+  }
+
+  return { triggered: false, command: '' };
+}
+
+/** WakeModeToggle — drop-in UI component for settings page */
+export function WakeModeToggle({ onChange }) {
+  const [on, setOn]     = useState(true);
+  const [word, setWord] = useState(DEFAULT_WAKE_WORD);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState('');
+
+  useEffect(() => {
+    setOn(isWakeModeEnabled());
+    setWord(getWakeWord());
+  }, []);
+
+  function toggleMode() {
+    const next = !on;
+    setOn(next);
+    setWakeMode(next);
+    if (onChange) onChange(next);
+    speak(next ? `Wake word mode on. Say ${getWakeWord()} to activate.` : 'Wake word mode off. All voice input will be processed.');
+  }
+
+  function saveWord() {
+    const w = (draft || DEFAULT_WAKE_WORD).toLowerCase().trim();
+    setWord(w);
+    setWakeWord(w);
+    setEditing(false);
+    speak(`Wake word changed to ${w}.`);
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Wake mode toggle row */}
+      <div onClick={toggleMode} style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: 12, padding: '12px 16px', cursor: 'pointer', userSelect: 'none',
+      }}>
+        <div>
+          <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>🌸 Wake Word Mode</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            {on ? `Say "${word}" before any command` : 'All voice input processed directly'}
+          </div>
+        </div>
+        <div style={{
+          width: 44, height: 24, borderRadius: 12,
+          background: on ? 'var(--primary)' : 'var(--border-strong)',
+          position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+        }}>
+          <div style={{
+            width: 18, height: 18, borderRadius: '50%', background: '#fff',
+            position: 'absolute', top: 3, left: on ? 23 : 3,
+            transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+          }} />
+        </div>
+      </div>
+
+      {/* Current wake word + edit */}
+      {on && (
+        <div style={{
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 12, padding: '10px 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+        }}>
+          {editing ? (
+            <>
+              <input
+                autoFocus
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveWord(); if (e.key === 'Escape') setEditing(false); }}
+                placeholder={word}
+                style={{
+                  flex: 1, background: 'var(--bg)', border: '1px solid var(--primary)',
+                  borderRadius: 8, padding: '6px 10px', color: 'var(--text)',
+                  fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                }}
+              />
+              <button onClick={saveWord} style={{
+                background: 'var(--primary)', border: 'none', color: '#fff',
+                borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
+                fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+              }}>Save</button>
+              <button onClick={() => setEditing(false)} style={{
+                background: 'none', border: 'none', color: 'var(--text-subtle)',
+                cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
+              }}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--text-subtle)' }}>Current wake word</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)', textTransform: 'capitalize' }}>{word}</div>
+              </div>
+              <button onClick={() => { setDraft(word); setEditing(true); }} style={{
+                background: 'var(--surface-hover)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
+                fontSize: 12, color: 'var(--text-muted)', fontFamily: 'inherit',
+              }}>Change</button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+    }

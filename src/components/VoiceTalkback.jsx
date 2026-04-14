@@ -39,12 +39,36 @@ function getVoice(lang) {
   );
 }
 
-// ── Phase 4: dedup guard ─────────────────────────────────────────────────
-// Prevents identical text from being spoken twice within DEDUP_MS.
-// Covers the case where a component re-renders and triggers speak() twice.
-let _lastSpokenText = '';
-let _lastSpokenTime = 0;
-const DEDUP_MS = 1500;
+// ── Phase 4+8C: TTS smart control ───────────────────────────────────────
+// _lastSpokenText / _lastSpokenTime: dedup guard (Phase 4)
+// _criticalUntil: timestamp until which speak() will NOT interrupt (Phase 8C)
+// _debounceTimer: rapid-fire debounce — waits DEBOUNCE_MS before speaking (Phase 8C)
+let _lastSpokenText  = '';
+let _lastSpokenTime  = 0;
+let _criticalUntil   = 0;   // epoch ms — speak() won't flush during this window
+let _debounceTimer: ReturnType<typeof setTimeout> | null = null;
+const DEDUP_MS       = 1500;
+const DEBOUNCE_MS    = 120;  // collapse rapid-fire speak() calls within this window
+
+/**
+ * speakCritical(text, durationMs?)
+ *
+ * Phase 8C: marks speech as non-interruptible for durationMs.
+ * User-triggered commands will NOT interrupt this response.
+ * Default duration: 4000ms (covers ~50-word response).
+ *
+ * Use for: important confirmations, error messages, onboarding prompts.
+ * Do NOT use for: routine confirmations (those should be interruptible).
+ */
+export function speakCritical(text, durationMs = 4000) {
+  _criticalUntil = Date.now() + durationMs;
+  speak(text, { priority: 'high', _critical: true });
+}
+
+/** isSpeakingCritical() — true when a non-interruptible response is active */
+export function isSpeakingCritical() {
+  return Date.now() < _criticalUntil;
+}
 
 /**
  * speak(text, options)
@@ -63,16 +87,40 @@ export function speak(text, options = {}) {
   if (typeof window === 'undefined') return;
   if (!text || !String(text).trim()) return;
 
-  const priority = options.priority ?? 'high';
+  const priority  = options.priority ?? 'high';
+  const isCritical = (options as any)._critical === true;
 
-  // Phase 4: dedup — skip if same text was just spoken
+  // Phase 8C: if a critical (non-interruptible) response is playing,
+  // high-priority calls from user commands are silently queued instead
+  // of flushing. Low-priority calls are simply dropped.
+  if (!isCritical && isSpeakingCritical()) {
+    if (priority === 'low') return; // drop — don't interrupt critical
+    // high priority: queue at low priority so it plays after critical ends
+    if (priority === 'high') {
+      // Wait until critical window expires, then speak
+      const wait = Math.max(0, _criticalUntil - Date.now()) + 100;
+      setTimeout(() => speak(text, { ...options, priority: 'low' }), wait);
+      return;
+    }
+  }
+
+  // Phase 8C: debounce rapid-fire calls — collapse multiple within DEBOUNCE_MS
+  // into a single utterance (the last one wins). Prevents stuttering when
+  // component re-renders or two handlers fire in the same tick.
+  if (_debounceTimer) clearTimeout(_debounceTimer);
+
+  // Phase 4: dedup — skip if identical text just spoken
   const now = Date.now();
   if (text === _lastSpokenText && now - _lastSpokenTime < DEDUP_MS) {
-    console.log('[QK TTS] dedup skip:', text.slice(0, 30));
     return;
   }
   _lastSpokenText = text;
   _lastSpokenTime = now;
+
+  // Phase 8C: debounce wrapper — executes after DEBOUNCE_MS of silence.
+  // Micro-delay is imperceptible to humans but collapses double-fires.
+  _debounceTimer = setTimeout(() => {
+    _debounceTimer = null;
 
   // ── NATIVE TTS (Android) ──────────────────────────────────────────────
   // window.__QK_TTS__ is injected by MainActivity.injectRuntimeJS() via
@@ -124,6 +172,8 @@ export function speak(text, options = {}) {
     });
     setTimeout(doSpeak, 600);
   }
+
+  }, DEBOUNCE_MS); // end Phase 8C debounce
 }
 
 /**

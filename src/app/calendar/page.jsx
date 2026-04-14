@@ -1,4 +1,5 @@
 'use client';
+import useAndroidBack from '@/lib/useAndroidBack';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { useEffect, useState, useCallback } from 'react';
@@ -27,6 +28,7 @@ function toISO(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d
 
 export default function CalendarPage() {
   const router = useRouter();
+  useAndroidBack();
   const { user, accessToken, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [selectedCal, setSelectedCal] = useState('gregorian');
@@ -383,78 +385,4 @@ export default function CalendarPage() {
               ))
             }
           </div>
-        )}
-
-        {view === 'holidays' && (
-          <div>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.75rem' }}>
-              {selCal?.emoji} {selCal?.label} — {MONTHS[month]} {year}
-            </h3>
-            {!hasData
-              ? <div style={{ textAlign: 'center', padding: '3rem', color: '#444' }}>No data available for {selCal?.label} yet.</div>
-              : (() => {
-                  const holidays = monthEvents.filter(e => e.event_type === 'festival' || e.event_type === 'national_holiday');
-                  const panchang = monthEvents.filter(e => e.event_type === 'panchangam');
-                  if (holidays.length === 0 && panchang.length === 0) {
-                    return <div style={{ textAlign: 'center', padding: '3rem', color: '#444' }}>No holidays this month.</div>;
-                  }
-                  return (
-                    <div>
-                      {holidays.length > 0 && (
-                        <div style={{ marginBottom: '1rem' }}>
-                          <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>🎉 Festivals & Holidays</div>
-                          {[...holidays].sort((a,b) => a.event_date.localeCompare(b.event_date)).map((e, i) => (
-                            <div key={i} style={{ background: e.event_type === 'national_holiday' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${e.event_type === 'national_holiday' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`, borderRadius: 10, padding: '0.8rem 1rem', marginBottom: '0.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div>
-                                <div style={{ color: '#fff', fontSize: '0.88rem', fontWeight: 500 }}>{e.event_name}</div>
-                                <div style={{ color: '#666', fontSize: '0.72rem', marginTop: 2 }}>{e.event_type === 'national_holiday' ? '🏛️ National Holiday' : '🎊 Festival'}</div>
-                              </div>
-                              <div style={{ color: '#888', fontSize: '0.78rem', flexShrink: 0 }}>{e.event_date?.slice(5)}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {panchang.length > 0 && (
-                        <div>
-                          <div style={{ fontSize: '0.72rem', color: '#a78bfa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>🪔 Panchangam</div>
-                          {[...panchang].sort((a,b) => a.event_date.localeCompare(b.event_date)).map((e, i) => (
-                            <div key={i} style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)', borderRadius: 10, padding: '0.7rem 1rem', marginBottom: '0.3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ color: '#c4b5fd', fontSize: '0.83rem' }}>{e.event_name || (e.tithi ? `${e.tithi}${e.nakshatra ? ` · ${e.nakshatra}` : ''}` : 'Panchangam')}</div>
-                              <div style={{ color: '#666', fontSize: '0.75rem', flexShrink: 0 }}>{e.event_date?.slice(5)}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()
-            }
-          </div>
-        )}
-
-        {/* Add Event Button */}
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '0.75rem 1rem 7rem', background: 'linear-gradient(transparent, #0f0f0f 30%)', paddingTop: '1.5rem' }}>
-          {eventMsg && <div style={{ textAlign:'center', color:'#86efac', fontSize:'0.82rem', marginBottom:'0.5rem' }}>{eventMsg}</div>}
-          <button onClick={() => { setEventForm({ ...EMPTY_EVENT_FORM, event_date: selectedDate || new Date().toISOString().split('T')[0], calendar_type: selectedCal }); setShowAddModal(true); }}
-            style={{ width: '100%', maxWidth: 760, display: 'block', margin: '0 auto', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 12, padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer' }}>
-            + Add Event / Reminder
-          </button>
-        </div>
-
-        {showAddModal && (
-          <AddEventModal
-            form={eventForm}
-            setForm={setEventForm}
-            onSave={saveEvent}
-            onClose={() => { setShowAddModal(false); setEditingEvent(null); setEventForm(EMPTY_EVENT_FORM); }}
-            categories={CATEGORIES}
-            timezones={TIMEZONES}
-            calendarTypes={CALENDAR_TYPES_FOR_MODAL}
-            isEditing={!!editingEvent}
-          />
-        )}
-
-      </div>
-    </div>
-  );
-              }
+                

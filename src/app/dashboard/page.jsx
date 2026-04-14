@@ -2,7 +2,7 @@
 import { useAuth } from '@/lib/context/auth';
 import { resolveVoiceCommand } from '@/lib/voiceQueryEngine'; // TASK 5+10
 import { parseVoiceIntent, getIntentAction, isQueryIntent, CONFIDENCE_THRESHOLD } from '@/lib/voiceIntentEngine'; // Phase 2-4
-import { getVoiceMode, setVoiceMode, isWakeMode, getModeLabel, getModeIcon } from '@/lib/voiceMode'; // Phase 8I
+import { getVoiceMode, setVoiceMode, isWakeMode } from '@/lib/voiceMode'; // Phase 8I
 import { recordIntent, tryResolveContinuation, clearContext } from '@/lib/voiceContext'; // Phase 8B
 import { speak, speakLow, cancelSpeech, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord, setWakeMode } from '@/components/VoiceTalkback';
 import InAppNotifications from '@/components/InAppNotifications';
@@ -1043,26 +1043,17 @@ export default function Dashboard() {
   async function handleSave() {
     if (savingRef.current || !content.trim() || !user) return;
 
+    // ── Phase 8 voice pipeline ───────────────────────────────────────────
     let commandText = content.trim();
     if (listening) {
-      // Phase 8I: check mode — manual = no wake word, wake/always_on = require it
+      // Phase 8I: wake word required in wake/always_on mode; manual = pass-through
       if (isWakeMode()) {
         const wakeResult = processWithWakeWord(content.trim());
-        if (!wakeResult.triggered) {
-          setContent('');
-          return;
-        }
+        if (!wakeResult.triggered) { setContent(''); return; }
         commandText = wakeResult.command || content.trim();
       }
-    }
-    // Patch content ref so all downstream code uses the stripped command
-    // We do this by setting a local var and using it explicitly below.
-    // Note: setContent is NOT called here to avoid re-render before save completes.
 
-    // ── Phase 2-4 + 8A-8B: Lotus voice intent pipeline ──────────────────────
-    if (listening) {
-
-      // Phase 8B: check for continuation BEFORE parsing as new intent
+      // Phase 8B: continuation detection
       const continuation = tryResolveContinuation(commandText);
       if (continuation.isContinuation && continuation.intentType) {
         speak('Refining that.');
@@ -1073,29 +1064,27 @@ export default function Dashboard() {
         return;
       }
 
-      // Layer 1: sync intent parse — zero latency, no DB
+      // Phase 2-4 + 8A: intent parse with confidence gate
       const intent = parseVoiceIntent(commandText);
+      const intentConf = intent.confidence ?? 1.0;
 
-      // Phase 8A: confidence gate — low-confidence falls through to keep
-      if (intent.handled && intent.confidence >= CONFIDENCE_THRESHOLD) {
+      if (intent.handled && intentConf >= CONFIDENCE_THRESHOLD) {
         if (intent.response) speak(intent.response);
 
         const action = getIntentAction(intent.actionKey, {
           router,
-          setWakeMode: (enabled) => setVoiceMode(enabled ? 'wake' : 'manual', 'voice_command'),
+          setWakeMode: (enabled) => setVoiceMode(enabled ? 'wake' : 'manual', 'voice_cmd'),
         });
         action?.();
 
-        // Layer 2: DB-backed query — fire resolveVoiceCommand for real data
         if (isQueryIntent(intent.intentType)) {
           resolveVoiceCommand(commandText, {
             supabase, user, accessToken, router, speak,
           }).catch(() => {});
         }
 
-        // Phase 8B: record intent for continuation context
+        // Phase 8B: record for continuation context
         recordIntent(intent.intentType, intent.entities, commandText);
-
         setContent(''); setSaving(false); savingRef.current = false;
         return;
       }
@@ -1782,7 +1771,7 @@ export default function Dashboard() {
               </span>
               {voiceSupported && (
                 <button
-                  data-voice-mode={getVoiceMode()} onClick={listening ? stopVoice : startVoice}
+                  onClick={listening ? stopVoice : startVoice}
                   className="qk-btn qk-btn-sm"
                   style={{
                     background: listening ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.12)',

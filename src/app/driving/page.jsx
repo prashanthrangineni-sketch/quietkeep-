@@ -1,4 +1,5 @@
 'use client';
+import useAndroidBack from '@/lib/useAndroidBack';
 import { useAuth } from '@/lib/context/auth';
 import { speak } from '@/components/VoiceTalkback';
 // src/app/driving/page.jsx — Trip Tracker (GPS session logger)
@@ -29,6 +30,7 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 export default function DrivingPage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const router = useRouter();
+  useAndroidBack();
   const [isDriving, setIsDriving] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [elapsed, setElapsed] = useState(0);
@@ -332,4 +334,4 @@ export default function DrivingPage() {
       </div>
     </>
   );
-}
+      }

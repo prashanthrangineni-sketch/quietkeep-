@@ -1,29 +1,24 @@
 'use client';
 import { useAuth } from '@/lib/context/auth';
+import { speak, cancelSpeech } from '@/components/VoiceTalkback';
 // src/app/drive/page.jsx — Drive Mode UI (voice-first, big-button layout)
-// FIXED v2:
-//   BUG: dialContact() called keepsRef.current.find(k => k.contact_phone)
-//        This returned the FIRST keep with any phone (e.g. "Surya Reddy")
-//        regardless of the spoken name ("call vaastav").
-//   FIX: dialContactByName(spokenName) — extracts name from voice command,
-//        finds the matching contact keep, confirms with speech before dialing.
-//        Falls back to "Contact not found" instead of calling wrong person.
-//   SAFETY: 4-second cancel window shown as overlay before call fires.
+// FIXED v2: dialContactByName — safe name-matching before calling
+// FIXED v3: drivespeak() replaced with speak() from VoiceTalkback.
+//   speak() tries window.__QK_TTS__ (native Android TTS) first, then
+//   falls back to browser speechSynthesis. This fixes the silent drive
+//   mode on Capacitor WebView where speechSynthesis has no voices loaded.
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
+// drivespeak: thin wrapper — onEnd callback for sequential speech+action
 function drivespeak(text, onEnd) {
-  if (!('speechSynthesis' in window)) { if (onEnd) onEnd(); return; }
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  try { u.lang = localStorage.getItem('qk_voice_lang') || 'en-IN'; } catch { u.lang = 'en-IN'; }
-  u.rate = 0.95; u.pitch = 1;
-  const voices = window.speechSynthesis.getVoices();
-  const v = voices.find(v => v.lang === 'en-IN') || voices.find(v => v.lang.startsWith('en')) || null;
-  if (v) u.voice = v;
-  if (onEnd) u.onend = onEnd;
-  window.speechSynthesis.speak(u);
+  // Use VoiceTalkback speak() which routes through native TTS on Android
+  speak(text);
+  // onEnd: execute after a generous delay (native TTS has no onend event
+  // via the __QK_TTS__ bridge). 1.5s covers most short drive-mode phrases.
+  // For longer phrases (read keep), the delay is extended by caller.
+  if (onEnd) setTimeout(onEnd, Math.max(1500, text.length * 60));
 }
 
 export default function DriveModePage() {
@@ -64,7 +59,7 @@ export default function DriveModePage() {
     setTimeout(() => drivespeak('Drive Mode on. Tap a button or say a command.'), 600);
     return () => {
       clearInterval(t);
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      if ('speechSynthesis' in window) cancelSpeech();
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
       if (callTimerRef.current) clearInterval(callTimerRef.current);
     };
@@ -347,4 +342,4 @@ export default function DriveModePage() {
       </div>
     </div>
   );
-}
+                        }

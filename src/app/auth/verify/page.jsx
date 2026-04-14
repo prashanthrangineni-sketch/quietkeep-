@@ -26,7 +26,7 @@
 // To change back to 6: set OTP_LEN = 6 AND change the Supabase config.
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 // FIX: Do NOT use NEXT_PUBLIC_APP_TYPE to determine post-auth destination.
@@ -38,11 +38,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 const OTP_LEN    = 8; // MUST match Supabase Auth settings → Email OTP length
 const RESEND_COOLDOWN = 60; // seconds
 
+// FIX: Use the shared singleton instead of a new client instance.
+// The singleton in @/lib/supabase uses storageKey: 'qk-auth-token',
+// which is the SAME key that AuthContext (auth.jsx) listens to.
+// Creating a new createBrowserClient() here used a different default
+// storageKey, so AuthContext never saw the session written by verifyOtp(),
+// causing it to treat the user as logged-out and redirect back to login.
 function getClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
+  return supabase;
 }
 
 function VerifyContent() {

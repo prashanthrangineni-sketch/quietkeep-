@@ -3,6 +3,7 @@
   "appName": "QuietKeep",
   "webDir": "out",
   "server": {
+    "url": "https://quietkeep.com",
     "cleartext": false,
     "allowNavigation": [
       "quietkeep.com",

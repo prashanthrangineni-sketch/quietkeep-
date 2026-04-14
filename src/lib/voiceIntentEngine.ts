@@ -71,7 +71,15 @@ export interface IntentResult {
   actionKey?: ActionKey;
   /** Structured entities extracted from the command */
   entities:   IntentEntities;
+  /**
+   * Confidence score 0.0–1.0. Optional — defaults to 1.0 when not set.
+   * Added in Phase 8A. Callers should use: intent.confidence ?? 1.0
+   */
+  confidence?: number;
 }
+
+/** Phase 8A: minimum confidence to handle as intent (below = save as keep). */
+export const CONFIDENCE_THRESHOLD = 0.55;
 
 export type IntentType =
   | 'navigation'
@@ -406,7 +414,6 @@ export function parseVoiceIntent(rawText: string): IntentResult {
       intentType: 'unknown',
       response: '',
       entities: {},
-  confidence: 0.0,
     };
   }
 
@@ -419,7 +426,6 @@ export function parseVoiceIntent(rawText: string): IntentResult {
       intentType: 'control_cancel',
       response: 'Cancelled.',
       entities: {},
-  confidence: 1.0,
     };
   }
 
@@ -431,7 +437,6 @@ export function parseVoiceIntent(rawText: string): IntentResult {
       response: 'Wake word mode is now on. Say Lotus to activate.',
       actionKey: 'wake_mode:on',
       entities: {},
-  confidence: 1.0,
     };
   }
   if (WAKE_MODE_OFF_PATTERNS.some(p => p.test(norm))) {
@@ -441,7 +446,6 @@ export function parseVoiceIntent(rawText: string): IntentResult {
       response: 'Wake word mode is now off. All voice input will be processed.',
       actionKey: 'wake_mode:off',
       entities: {},
-  confidence: 1.0,
     };
   }
 
@@ -459,7 +463,6 @@ export function parseVoiceIntent(rawText: string): IntentResult {
           response: `Opening ${route.label}.`,
           actionKey: `navigate:${route.path}`,
           entities: { path: route.path },
-          confidence: 1.0,
         };
       }
     }
@@ -476,7 +479,6 @@ export function parseVoiceIntent(rawText: string): IntentResult {
           intentType: q.intentType,
           response: inlineResponse,
           entities: {},
-  confidence: 1.0,
         };
       }
       // DB-backed query: return immediately with "fetching" response.
@@ -487,7 +489,6 @@ export function parseVoiceIntent(rawText: string): IntentResult {
         response: q.offlineResponse,
         actionKey: `query:${q.intentType}`,
         entities: {},
-        confidence: 1.0,
       };
     }
   }
@@ -501,7 +502,6 @@ export function parseVoiceIntent(rawText: string): IntentResult {
         response: `Opening ${route.label}.`,
         actionKey: `navigate:${route.path}`,
         entities: { path: route.path },
-        confidence: 0.9,
       };
     }
   }
@@ -516,7 +516,6 @@ export function parseVoiceIntent(rawText: string): IntentResult {
         intentType: 'create_keep',
         response: '',
         entities: extractEntities(rawText, 'create_keep'),
-  confidence: 0.9,
       };
     }
   }
@@ -527,7 +526,6 @@ export function parseVoiceIntent(rawText: string): IntentResult {
     intentType: 'unknown',
     response: '',
     entities: extractEntities(rawText, 'unknown'),
-  confidence: 0.0,
   };
 }
 

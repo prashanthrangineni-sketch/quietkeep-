@@ -39,17 +39,58 @@ function getVoice(lang) {
   );
 }
 
+// ── Phase 4: dedup guard ─────────────────────────────────────────────────
+// Prevents identical text from being spoken twice within DEDUP_MS.
+// Covers the case where a component re-renders and triggers speak() twice.
+let _lastSpokenText = '';
+let _lastSpokenTime = 0;
+const DEDUP_MS = 1500;
+
+/**
+ * speak(text, options)
+ *
+ * Phase 4 options:
+ *   priority: 'high' | 'low'  (default: 'high')
+ *     'high' — interrupts any current speech (QUEUE_FLUSH on native)
+ *     'low'  — queues after current speech (QUEUE_ADD on native, for notifications)
+ *   lang:    BCP-47 string  (default: user's voice language)
+ *   rate:    number 0.1–2.0 (default: 0.9)
+ *   pitch:   number 0.1–2.0 (default: 1.0)
+ *   volume:  number 0.0–1.0 (default: 1.0)
+ */
 export function speak(text, options = {}) {
   if (!voiceEnabled) return;
   if (typeof window === 'undefined') return;
+  if (!text || !String(text).trim()) return;
+
+  const priority = options.priority ?? 'high';
+
+  // Phase 4: dedup — skip if same text was just spoken
+  const now = Date.now();
+  if (text === _lastSpokenText && now - _lastSpokenTime < DEDUP_MS) {
+    console.log('[QK TTS] dedup skip:', text.slice(0, 30));
+    return;
+  }
+  _lastSpokenText = text;
+  _lastSpokenTime = now;
 
   // ── NATIVE TTS (Android) ──────────────────────────────────────────────
   // window.__QK_TTS__ is injected by MainActivity.injectRuntimeJS() via
   // addJavascriptInterface(new TTSBridge(this), "AndroidTTS").
-  // It calls TTSManager.getInstance().speak() directly — no speechSynthesis,
-  // no voice-loading race, no Capacitor WebView audio focus issues.
+  // Calls TTSManager.getInstance().speak() — queue-based, lifecycle-safe.
   if (typeof window.__QK_TTS__ === 'function') {
-    try { window.__QK_TTS__(String(text || '')); } catch {}
+    try {
+      // Phase 4: pass priority so TTSBridge can route to FLUSH or ADD.
+      // Low priority appends; high priority interrupts stale speech.
+      // TTSManager.speak() currently uses QUEUE_FLUSH for live calls —
+      // for 'low' priority we append "__QK_TTS_LOW__" suffix as a signal.
+      // TTSBridge.speakWithPriority() handles this split (see TTSBridge patch).
+      if (priority === 'low' && typeof window.__QK_TTS_LOW__ === 'function') {
+        window.__QK_TTS_LOW__(String(text));
+      } else {
+        window.__QK_TTS__(String(text));
+      }
+    } catch {}
     return;
   }
 
@@ -85,10 +126,30 @@ export function speak(text, options = {}) {
   }
 }
 
+/**
+ * cancelSpeech() — Phase 4: cancel + reset dedup guard.
+ * Call when user starts speaking to interrupt any current TTS.
+ */
 export function cancelSpeech() {
-  if (typeof window !== 'undefined' && window.speechSynthesis) {
-    try { window.speechSynthesis.cancel(); } catch {}
+  _lastSpokenText = '';
+  _lastSpokenTime = 0;
+  if (typeof window !== 'undefined') {
+    if (window.__QK_TTS__ && window.AndroidTTS?.stop) {
+      try { window.AndroidTTS.stop(); } catch {}
+    }
+    if (window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
   }
+}
+
+/**
+ * speakLow(text) — Phase 4: low-priority speak (queues, does not interrupt).
+ * Use for background notifications and nudges.
+ * High-priority speak() will still interrupt this.
+ */
+export function speakLow(text) {
+  speak(text, { priority: 'low' });
 }
 
 // ── Time-aware greeting helpers ──────────────────────────────────
@@ -383,25 +444,62 @@ export function setWakeMode(enabled) {
  *   processWithWakeWord("buy milk tomorrow")
  *   → { triggered: false, command: "" }
  */
+/**
+ * processWithWakeWord(transcript)
+ *
+ * Phase 3 enhanced: normalises input, supports wake word variants,
+ * confidence-checks minimum length.
+ *
+ * Supported variants (all case-insensitive):
+ *   "lotus buy milk"         → triggered, command = "buy milk"
+ *   "hey lotus buy milk"     → triggered, command = "buy milk"
+ *   "lotus please buy milk"  → triggered, command = "buy milk"
+ *   "lotus, buy milk"        → triggered, command = "buy milk"  (punctuation stripped)
+ *
+ * Returns { triggered: boolean, command: string, confidence: 'high'|'low' }
+ *   confidence 'low' = input was very short after wake word stripped
+ */
 export function processWithWakeWord(transcript) {
   if (!transcript || typeof transcript !== 'string') {
-    return { triggered: false, command: '' };
+    return { triggered: false, command: '', confidence: 'low' };
   }
 
-  // Wake mode OFF → always trigger (backward-compatible behaviour)
+  // Phase 3: minimum length — ignore accidental noise
+  const trimmed = transcript.trim();
+  if (trimmed.length < 2) {
+    return { triggered: false, command: '', confidence: 'low' };
+  }
+
+  // Wake mode OFF → always trigger (backward-compatible)
   if (!isWakeModeEnabled()) {
-    return { triggered: true, command: transcript.trim() };
+    return { triggered: true, command: trimmed, confidence: 'high' };
   }
 
-  const lower   = transcript.toLowerCase().trim();
-  const wakeWord = getWakeWord();
+  const wakeWord = getWakeWord(); // already lowercase
 
-  if (lower.startsWith(wakeWord)) {
-    const command = transcript.trim().slice(wakeWord.length).trim();
-    return { triggered: true, command: command || transcript.trim() };
+  // Phase 3: normalise — lowercase + remove leading punctuation for matching
+  const lower = trimmed
+    .toLowerCase()
+    .replace(/^[^a-z]+/, ''); // strip leading non-alpha (e.g. "!" before "lotus")
+
+  // Phase 3: variant patterns in priority order
+  const variants = [
+    new RegExp(`^hey\s+${wakeWord}[,!?\s]+`, 'i'),
+    new RegExp(`^${wakeWord}\s+please[,!?\s]+`, 'i'),
+    new RegExp(`^${wakeWord}[,!?\s]+`, 'i'),
+    new RegExp(`^${wakeWord}$`, 'i'),  // bare wake word alone
+  ];
+
+  for (const re of variants) {
+    if (re.test(lower)) {
+      // Remove wake variant from original (preserves case for TTS)
+      const command = trimmed.replace(re, '').trim();
+      const confidence = command.length >= 3 ? 'high' : 'low';
+      return { triggered: true, command: command || trimmed, confidence };
+    }
   }
 
-  return { triggered: false, command: '' };
+  return { triggered: false, command: '', confidence: 'low' };
 }
 
 /** WakeModeToggle — drop-in UI component for settings page */

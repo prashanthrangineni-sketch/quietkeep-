@@ -8,7 +8,7 @@ export const supabase = createBrowserClient(
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'pkce',
+      flowType: 'implicit',
       autoRefreshToken: true,
       storageKey: 'qk-auth-token',
     },

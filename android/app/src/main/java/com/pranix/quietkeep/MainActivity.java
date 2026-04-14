@@ -18,33 +18,19 @@ import com.pranix.quietkeep.plugins.VoicePlugin;
 import com.pranix.quietkeep.services.KeepAliveService;
 
 /**
- * MainActivity v5
+ * MainActivity v6
  *
- * FIX v5: Runtime JS injection — server URL rewrite + app type.
+ * v6 changes over v5:
+ *   ADDED: TTSBridge registration via addJavascriptInterface("AndroidTTS").
+ *     Exposes window.AndroidTTS.speak(text) to the WebView.
+ *   ADDED: window.__QK_TTS__ alias injected in injectRuntimeJS() so all JS
+ *     code can call window.__QK_TTS__("text") without knowing the bridge name.
+ *   ADDED: TTSManager initialised eagerly in onCreate() so first-speak latency
+ *     is minimised (TTS engine init takes ~300-600ms on first call).
+ *   ADDED: TTSManager.shutdown() in onDestroy() to release TTS engine resources.
  *
- * ROOT CAUSE OF BUSINESS APK FAILURE (v4):
- * Both APKs had server.url = "https://quietkeep.com" in capacitor.config.json.
- * This caused Capacitor to load the LIVE Vercel deployment instead of the local
- * bundle that was built with the correct NEXT_PUBLIC_APP_TYPE.
- *
- * FIX: server.url is now REMOVED from both capacitor configs. The APK loads its
- * own local bundle from assets/public/. All /api/* calls in the bundle use
- * relative paths which resolve to capacitor://localhost/api/ — these return 404.
- *
- * We fix this by injecting a fetch() interceptor via evaluateJavascript() that
- * rewrites any relative /api/ request to https://quietkeep.com/api/.
- *
- * Additionally, __QK_APP_TYPE__ is injected from the package name so routing
- * works correctly even if the build env var was somehow not baked in.
- *
- * INJECTION TIMING: evaluateJavascript() fires after the WebView DOM is ready.
- * We use addJavascriptInterface() + onPageStarted to inject before any JS runs.
- * Actually we use a <script> injected via shouldInterceptRequest for index.html.
- * Simplest reliable approach: inject via evaluateJavascript after page load AND
- * also patch it into the WebView's initial HTML via a custom WebViewClient.
- *
- * v4 retained: WebChromeClient audio bridge, WebSettings, KeepAliveService.
- * v3 retained: KeepAliveService before super.onCreate() blocks Hans UID freeze.
+ * v5 retained: fetch interceptor, __QK_APP_TYPE__, WebChromeClient audio bridge,
+ *   file chooser, KeepAliveService Hans-freeze prevention.
  */
 public class MainActivity extends BridgeActivity {
 
@@ -53,7 +39,6 @@ public class MainActivity extends BridgeActivity {
     private android.webkit.ValueCallback<android.net.Uri[]> mFilePathCallback;
 
     // Server URL baked in at build time — always the production API host.
-    // The WebView loads local assets; all /api/ fetch calls must be rewritten to this.
     private static final String SERVER_URL = "https://quietkeep.com";
 
     @Override
@@ -68,8 +53,18 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(VoicePlugin.class);
         registerPlugin(ReminderAlarmPlugin.class);
 
+        // v6: Eagerly initialise TTS engine so it is ready by first speak call
+        TTSManager.getInstance(this);
+
         // Apply WebView bridge after super.onCreate() so getBridge() is available.
         applyWebViewBridge();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // v6: Release TTS engine when Activity is destroyed
+        TTSManager.getInstance(this).shutdown();
     }
 
     // ── WebView audio bridge + runtime injection ──────────────────────────
@@ -95,10 +90,13 @@ public class MainActivity extends BridgeActivity {
 
             webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
+            // v6: Register TTSBridge so JS can call window.AndroidTTS.speak(text)
+            // Must be done BEFORE the page loads — addJavascriptInterface is safe
+            // to call here because we're before the first page navigation.
+            webView.addJavascriptInterface(new TTSBridge(this), "AndroidTTS");
+            Log.d(TAG, "TTSBridge registered as 'AndroidTTS' ✓");
+
             // ── Inject runtime constants + fetch rewrite ────────────────────
-            // Fires after Capacitor's own WebViewClient has loaded the page.
-            // We hook into the existing WebViewClient's onPageFinished so we
-            // don't replace Capacitor's client (which would break the bridge).
             android.webkit.WebViewClient existingClient = webView.getWebViewClient();
 
             webView.setWebViewClient(new android.webkit.WebViewClient() {
@@ -107,7 +105,6 @@ public class MainActivity extends BridgeActivity {
                 public boolean shouldOverrideUrlLoading(
                         android.webkit.WebView view,
                         android.webkit.WebResourceRequest request) {
-                    // Delegate to existing Capacitor client
                     if (existingClient != null) {
                         return existingClient.shouldOverrideUrlLoading(view, request);
                     }
@@ -128,14 +125,11 @@ public class MainActivity extends BridgeActivity {
 
                 @Override
                 public void onPageFinished(android.webkit.WebView view, String url) {
-                    // Delegate to Capacitor first so bridge is fully ready
                     if (existingClient != null) {
                         existingClient.onPageFinished(view, url);
                     } else {
                         super.onPageFinished(view, url);
                     }
-
-                    // Now inject our runtime constants
                     injectRuntimeJS(view);
                 }
 
@@ -209,44 +203,29 @@ public class MainActivity extends BridgeActivity {
                     }
                 }
 
-                // ── File chooser for <input type="file"> (camera + gallery) ──
                 @Override
                 public boolean onShowFileChooser(
                         android.webkit.WebView view,
                         android.webkit.ValueCallback<android.net.Uri[]> filePathCallback,
                         FileChooserParams fileChooserParams) {
-                    // Delegate to Capacitor's existing handler first
                     if (existing != null) {
                         boolean handled = existing.onShowFileChooser(view, filePathCallback, fileChooserParams);
                         if (handled) return true;
                     }
-                    // Fallback: camera-first chooser with gallery option
                     try {
                         if (mFilePathCallback != null) {
                             mFilePathCallback.onReceiveValue(null);
                         }
                         mFilePathCallback = filePathCallback;
 
-                        // Check if accept type requests camera specifically
-                        String[] acceptTypes = fileChooserParams.getAcceptTypes();
-                        boolean wantsCamera = false;
-                        if (acceptTypes != null) {
-                            for (String t : acceptTypes) {
-                                if (t != null && t.contains("image")) { wantsCamera = true; break; }
-                            }
-                        }
-
-                        // Camera intent — opens camera directly
                         android.content.Intent takePictureIntent = new android.content.Intent(
                                 android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
 
-                        // Gallery fallback
                         android.content.Intent galleryIntent = new android.content.Intent(
                                 android.content.Intent.ACTION_GET_CONTENT);
                         galleryIntent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
                         galleryIntent.setType("image/*");
 
-                        // Chooser: camera as primary, gallery as extra
                         android.content.Intent chooserIntent = new android.content.Intent(
                                 android.content.Intent.ACTION_CHOOSER);
                         chooserIntent.putExtra(android.content.Intent.EXTRA_INTENT, takePictureIntent);
@@ -275,27 +254,15 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * Inject runtime JS constants into the WebView after each page load.
+     * v6: Inject runtime JS constants + __QK_TTS__ alias.
      *
-     * FIX v5: Without server.url, Capacitor loads local assets. All fetch('/api/...')
-     * calls in the Next.js bundle use relative paths, which resolve to
-     * capacitor://localhost/api/ and return 404.
+     * __QK_TTS__(text) → window.AndroidTTS.speak(text) → TTSBridge → TTSManager
      *
-     * This injection does two things:
-     *
-     * 1. Sets window.__QK_APP_TYPE__ from the package name — the JS routing
-     *    in page.jsx reads this first before process.env.NEXT_PUBLIC_APP_TYPE.
-     *    This is the runtime safety net for APK variant isolation.
-     *
-     * 2. Patches window.fetch() to rewrite relative /api/ paths to
-     *    https://quietkeep.com/api/ so all API calls hit the production server.
-     *    This is transparent to all existing JS code — no other changes needed.
-     *
-     * IDEMPOTENT: The guard `if (window.__QK_PATCHED__)` prevents double-patching
-     * on React client-side navigations that re-trigger onPageFinished.
+     * The alias lets all JS code call window.__QK_TTS__("text") without
+     * caring about the JavascriptInterface name. The fallback to
+     * speechSynthesis is handled in VoiceTalkback.jsx speak() function.
      */
     private void injectRuntimeJS(android.webkit.WebView view) {
-        // Determine app type from package name — 100% reliable, no env var dependency
         String appType = getPackageName().contains(".business") ? "business" : "personal";
 
         String js = "javascript:(function() {\n"
@@ -306,9 +273,20 @@ public class MainActivity extends BridgeActivity {
             + "  window.__QK_SERVER_URL__ = '" + SERVER_URL + "';\n"
             + "  window.__QK_APP_TYPE__   = '" + appType + "';\n"
             + "\n"
-            + "  // 2. Fetch interceptor: rewrite relative /api/ → production server\n"
-            + "  //    Only fires for relative paths starting with /api/\n"
-            + "  //    Absolute URLs (https://...) pass through unchanged.\n"
+            + "  // 2. Native TTS alias — __QK_TTS__(text) calls TTSBridge.speak()\n"
+            + "  //    AndroidTTS is registered via addJavascriptInterface in applyWebViewBridge().\n"
+            + "  //    VoiceTalkback.jsx checks window.__QK_TTS__ before falling back\n"
+            + "  //    to browser speechSynthesis.\n"
+            + "  if (window.AndroidTTS && typeof window.AndroidTTS.speak === 'function') {\n"
+            + "    window.__QK_TTS__ = function(text) {\n"
+            + "      try { window.AndroidTTS.speak(String(text || '')); } catch(e) {}\n"
+            + "    };\n"
+            + "    console.log('[QK] __QK_TTS__ native bridge active');\n"
+            + "  } else {\n"
+            + "    console.log('[QK] AndroidTTS not available — TTS will use speechSynthesis');\n"
+            + "  }\n"
+            + "\n"
+            + "  // 3. Fetch interceptor: rewrite relative /api/ → production server\n"
             + "  var _origFetch = window.fetch;\n"
             + "  window.fetch = function(input, init) {\n"
             + "    var url = (typeof input === 'string') ? input\n"

@@ -1,5 +1,6 @@
 'use client';
 import { useAuth } from '@/lib/context/auth';
+import { resolveVoiceCommand } from '@/lib/voiceQueryEngine'; // TASK 5+10
 import { speak, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord } from '@/components/VoiceTalkback';
 import InAppNotifications from '@/components/InAppNotifications';
 import ContactPicker from '@/components/ContactPicker';
@@ -21,6 +22,7 @@ import {
   isBatteryOptimizationExempt, requestBatteryOptimizationExemption,
   captureWithFallback,
   requestPermissionsOnStart,  // v10: auto-request on first launch
+  warmUpWebViewMic,           // v10: sync WebView audio context after OS grant
 } from '@/lib/capacitor/voice';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -672,11 +674,27 @@ export default function Dashboard() {
     // This triggers the Android system dialog if not yet granted.
     // Must happen BEFORE calling startService, or AudioRecord fails silently.
     showToast('Requesting microphone permission…');
-    const hasMic = await requestMicPermission();
+    let hasMic = await requestMicPermission();
+
+    // TASK 1 FIX: On ColorOS/Realme, the OS dialog may have been shown and
+    // granted in a previous session (PermissionOnboarding), but the plugin
+    // still returns false on first call due to Activity context lag.
+    // Re-check after 600ms covers this without re-showing the OS dialog.
     if (!hasMic) {
-      showToast('⚠ Microphone permission denied — cannot start TAU');
+      await new Promise(r => setTimeout(r, 600));
+      hasMic = await requestMicPermission();
+      console.log('[QK] mic permission re-check result:', hasMic);
+    }
+
+    if (!hasMic) {
+      showToast('⚠ Microphone permission denied — enable in Settings → Apps → QuietKeep → Permissions');
       return;
     }
+
+    // TASK 1 FIX: Warm up the WebView audio context so it syncs with the OS
+    // grant. Without this, speechSynthesis has no audio session and
+    // onPermissionRequest in MainActivity never fires for this session.
+    await warmUpWebViewMic();
 
     // Step 2: Request POST_NOTIFICATIONS permission (Android 13+)
     // Without this the foreground service notification is silently suppressed.
@@ -956,7 +974,10 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, [accessToken, user, gpsLat, gpsLng]);
 
-  // Android back button handler — plain JS, no TypeScript annotations
+  // Android back button handler — TASK 9 FIX
+  // Previous: only called history.back() — when history stack is empty on
+  // dashboard cold-open, this did nothing and Android's default handler
+  // exited the app. Now we explicitly prevent exit on the dashboard.
   useEffect(() => {
     var App = window && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
     if (!App) return;
@@ -964,6 +985,17 @@ export default function Dashboard() {
     App.addListener('backButton', function(data) {
       if (data && data.canGoBack) {
         window.history.back();
+      } else {
+        // On dashboard with no history: minimize app instead of exiting
+        // App.minimizeApp() moves app to background — requires @capacitor/app v5+
+        try {
+          if (App.minimizeApp) {
+            App.minimizeApp();
+          }
+          // Fallback: do nothing — prevents accidental exit
+        } catch (e) {
+          console.log('[QK] minimizeApp not available');
+        }
       }
     }).then(function(handle) { listenerHandle = handle; });
     return function() { if (listenerHandle) listenerHandle.remove(); };
@@ -972,22 +1004,38 @@ export default function Dashboard() {
   async function handleSave() {
     if (savingRef.current || !content.trim() || !user) return;
 
-    // ── WAKE WORD FILTER (Phase 5) ────────────────────────────────────────
-    // processWithWakeWord() returns { triggered, command }.
-    // If wake mode is OFF it always returns triggered=true (pass-through).
-    // If wake mode is ON and transcript doesn't start with the wake word,
-    // the input is silently ignored — no save, no error.
-    const wakeResult = processWithWakeWord(content.trim());
-    if (!wakeResult.triggered) {
-      // Wake word not detected — store silently without triggering actions
-      setContent('');
-      return;
+    // ── WAKE WORD FILTER (Phase 5) — VOICE INPUT ONLY ─────────────────────
+    // Wake word check only applies when the user is in voice (listening) mode.
+    // Manual text input always passes through regardless of wake mode setting.
+    // This prevents the user's typed text from being silently dropped.
+    let commandText = content.trim();
+    if (listening) {
+      const wakeResult = processWithWakeWord(content.trim());
+      if (!wakeResult.triggered) {
+        // Wake word not in voice input — ignore silently, clear field
+        setContent('');
+        return;
+      }
+      // Strip wake word from command before sending to API
+      commandText = wakeResult.command || content.trim();
     }
-    // Replace content with the stripped command (wake word removed)
-    const commandText = wakeResult.command || content.trim();
     // Patch content ref so all downstream code uses the stripped command
     // We do this by setting a local var and using it explicitly below.
     // Note: setContent is NOT called here to avoid re-render before save completes.
+
+    // TASK 5+10: Route voice commands to query engine / navigation BEFORE API save.
+    // Only fires for voice (listening) input — manual text always goes to capture.
+    if (listening) {
+      const resolved = await resolveVoiceCommand(commandText, {
+        supabase, user, accessToken, router, speak,
+      });
+      if (resolved.handled) {
+        setContent('');
+        setSaving(false);
+        savingRef.current = false;
+        return;
+      }
+    }
 
     // Check voice capture limit for free users
     const profile = await supabase.from('profiles').select('subscription_tier, is_beta').eq('user_id', user.id).maybeSingle();
@@ -1160,18 +1208,31 @@ export default function Dashboard() {
   }
 
   async function handleEdit(id, updates) {
-    // Refresh token before edit to prevent stale-token 401 during hourly JWT rotation
-    const freshToken = await refreshToken();
-    const { error } = await supabase.from('keeps').update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    }).eq('id', id).eq('user_id', user.id);
-    if (error) throw new Error(error.message || 'Could not update keep. Please try again.');
-    // Optimistic UI update — update local state immediately
-    setIntents(prev => prev.map(k => k.id === id ? { ...k, ...updates } : k));
-    try { await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_edited', intent_id: id, service: 'dashboard', details: updates }); } catch {}
-    showToast('Keep updated ✓');
-    VoiceResponses.keepUpdated();
+    // TASK 8 FIX: wrap entire edit in try/catch so errors never bubble to
+    // the root error.tsx boundary. Shows a toast instead of crashing the page.
+    try {
+      if (!id || !updates) throw new Error('Invalid edit params');
+      // Guard against undefined/null values that crash Supabase update
+      const safeUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([, v]) => v !== undefined)
+      );
+      if (Object.keys(safeUpdates).length === 0) return;
+
+      const freshToken = await refreshToken();
+      const { error } = await supabase.from('keeps').update({
+        ...safeUpdates,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id).eq('user_id', user.id);
+      if (error) throw new Error(error.message || 'Could not update keep');
+      // Optimistic UI update
+      setIntents(prev => prev.map(k => k.id === id ? { ...k, ...safeUpdates } : k));
+      try { await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_edited', intent_id: id, service: 'dashboard', details: safeUpdates }); } catch {}
+      showToast('Keep updated ✓');
+      VoiceResponses.keepUpdated();
+    } catch (err) {
+      console.error('[QK] handleEdit failed:', err);
+      showToast('⚠ ' + (err?.message || 'Failed to update keep'));
+    }
   }
 
   // GAP-1 FIX: feedback loop — closes the learning loop by calling update_intent_priority DB fn

@@ -1,5 +1,4 @@
 'use client';
-import { Geolocation } from '@capacitor/geolocation';
 // TASK 7: use Capacitor Geolocation (avoids WebView browser permission prompt)
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
@@ -57,7 +56,10 @@ export default function GeoPage() {
       const isNative = typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.();
       if (watchRef.current !== null) {
         if (isNative) {
-          try { Geolocation.clearWatch({ id: watchRef.current }); } catch {}
+          try {
+            const { Geolocation: GeoLib } = await import('@capacitor/geolocation');
+            GeoLib.clearWatch({ id: watchRef.current });
+          } catch {}
         } else {
           navigator.geolocation?.clearWatch(watchRef.current);
         }
@@ -156,6 +158,8 @@ export default function GeoPage() {
       const isNative = typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.();
       if (isNative) {
         // Native Android: use Capacitor Geolocation (bypasses WebView prompt)
+        // Dynamic import avoids Vercel build error on missing @capacitor/geolocation
+        const { Geolocation } = await import('@capacitor/geolocation');
         const perm = await Geolocation.checkPermissions();
         if (perm.location !== 'granted') {
           const req = await Geolocation.requestPermissions();

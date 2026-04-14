@@ -30,36 +30,58 @@ jobs:
         build_type:
           - personal
           - business
-    # Skip matrix rows that don't match a manual single-type dispatch
-    # If build_type input is 'both' or absent, both rows run.
-    # If build_type input is 'personal', only the personal row runs.
-    # If build_type input is 'business', only the business row runs.
-    if: |
-      github.event_name == 'push' ||
-      github.event.inputs.build_type == 'both' ||
-      github.event.inputs.build_type == '' ||
-      github.event.inputs.build_type == matrix.build_type
+    # Matrix filtering for manual dispatch is handled inside each step via
+    # a dedicated early-exit step below. Job-level if: cannot reference
+    # matrix context in GitHub Actions — it is evaluated before matrix expansion.
 
     steps:
 
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ── MATRIX FILTER: skip this row on manual single-type dispatch ──────
+      # Job-level if: cannot reference matrix.* in GitHub Actions.
+      # This step exits cleanly (not a failure) when the user picks a specific
+      # build_type via workflow_dispatch and this matrix row is the other one.
+      # On push events, both rows always run (BUILD_INPUT is empty).
+      - name: Check if this matrix variant should run
+        run: |
+          BUILD_INPUT="${{ github.event.inputs.build_type }}"
+          THIS_TYPE="${{ matrix.build_type }}"
+          # Empty input = push event or "both" selected → always run
+          if [ -z "$BUILD_INPUT" ] || [ "$BUILD_INPUT" = "both" ] || [ "$BUILD_INPUT" = "$THIS_TYPE" ]; then
+            echo "Running $THIS_TYPE build ✓"
+          else
+            echo "Skipping $THIS_TYPE build (user requested $BUILD_INPUT only)"
+            # Use a special exit to mark all remaining steps as skipped
+            echo "SKIP_BUILD=true" >> $GITHUB_ENV
+          fi
+
+      - name: Skip guard
+        if: env.SKIP_BUILD == 'true'
+        run: |
+          echo "This matrix variant (${{ matrix.build_type }}) was skipped for this dispatch."
+          exit 0
+
       - name: Set up Java 17
+        if: env.SKIP_BUILD != 'true'
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Set up Node.js 20
+        if: env.SKIP_BUILD != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Set up Android SDK
+        if: env.SKIP_BUILD != 'true'
         uses: android-actions/setup-android@v3
 
       - name: Install project dependencies
+        if: env.SKIP_BUILD != 'true'
         run: |
           echo "=== Node: $(node --version) | npm: $(npm --version) ==="
           echo "=== Build type: ${{ matrix.build_type }} ==="
@@ -67,6 +89,7 @@ jobs:
           echo "=== npm install complete ==="
 
       - name: Install Capacitor (pinned to 6.x)
+        if: env.SKIP_BUILD != 'true'
         run: |
           npm install --save-exact --legacy-peer-deps \
             @capacitor/core@6.2.0 \
@@ -92,6 +115,7 @@ jobs:
       # routes work correctly because fetch("/api/...") resolves against Vercel.
       # ─────────────────────────────────────────────────────────────────────
       - name: Build Next.js static export for Capacitor
+        if: env.SKIP_BUILD != 'true'
         run: |
           set -euo pipefail
 
@@ -134,6 +158,7 @@ jobs:
           NEXT_PUBLIC_APP_TYPE: ${{ matrix.build_type }}
 
       - name: Scaffold Android project
+        if: env.SKIP_BUILD != 'true'
         run: |
           set -euo pipefail
 
@@ -187,6 +212,7 @@ jobs:
           echo "=== Business config applied ==="
 
       - name: Write google-services.json
+        if: env.SKIP_BUILD != 'true'
         env:
           GOOGLE_SERVICES_PERSONAL: ${{ secrets.GOOGLE_SERVICES_PERSONAL }}
           GOOGLE_SERVICES_BUSINESS: ${{ secrets.GOOGLE_SERVICES_BUSINESS }}
@@ -209,12 +235,14 @@ jobs:
           fi
 
       - name: Sync Capacitor to Android
+        if: env.SKIP_BUILD != 'true'
         run: |
           echo "=== STEP: cap sync android ==="
           npx cap sync android
           echo "=== cap sync complete ==="
 
       - name: Verify bundle was synced into APK assets
+        if: env.SKIP_BUILD != 'true'
         run: |
           set -euo pipefail
 
@@ -251,9 +279,11 @@ jobs:
           fi
 
       - name: Make gradlew executable
+        if: env.SKIP_BUILD != 'true'
         run: chmod +x android/gradlew
 
       - name: Decode signing keystore (if configured)
+        if: env.SKIP_BUILD != 'true'
         run: |
           if [ -n "$SIGNING_KEY_BASE64" ]; then
             echo "=== STEP: Decode signing keystore ==="
@@ -266,6 +296,7 @@ jobs:
           SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY_BASE64 }}
 
       - name: Build APK (release if signed, debug otherwise)
+        if: env.SKIP_BUILD != 'true'
         working-directory: android
         run: |
           set -euo pipefail
@@ -286,6 +317,7 @@ jobs:
           echo "=== Gradle build complete ==="
 
       - name: Upload APK artifact
+        if: env.SKIP_BUILD != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: QuietKeep-${{ matrix.build_type }}-${{ github.run_number }}
@@ -305,6 +337,7 @@ jobs:
         continue-on-error: true
 
       - name: Show APK details
+        if: env.SKIP_BUILD != 'true'
         run: |
           APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
           if [ ! -f "$APK_PATH" ]; then APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"; fi

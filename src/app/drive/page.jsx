@@ -1,4 +1,5 @@
 'use client';
+import useAndroidBack from '@/lib/useAndroidBack';
 import { useAuth } from '@/lib/context/auth';
 import { speak, cancelSpeech } from '@/components/VoiceTalkback';
 // src/app/drive/page.jsx — Drive Mode UI (voice-first, big-button layout)
@@ -23,6 +24,7 @@ function drivespeak(text, onEnd) {
 
 export default function DriveModePage() {
   const { user, accessToken, loading: authLoading } = useAuth();
+  useAndroidBack();
   const [keeps, setKeeps] = useState([]);
   const [keepIdx, setKeepIdx] = useState(0);
   const [speaking, setSpeaking] = useState(false);
@@ -342,4 +344,4 @@ export default function DriveModePage() {
       </div>
     </div>
   );
-                        }
+}

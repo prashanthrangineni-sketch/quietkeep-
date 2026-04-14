@@ -804,10 +804,23 @@ export default function Dashboard() {
       window?.Capacitor?.isNativePlatform?.() &&
       !localStorage.getItem('qk_perms_requested')
     ) {
-      localStorage.setItem('qk_perms_requested', '1');
-      // Small delay so the dashboard renders fully before dialogs appear
+      // P4 FIX: Write flag AFTER result resolves, and only when mic was granted.
+      // Previous: flag written before async call — a denied dialog permanently
+      // silenced future re-requests even on reinstall or permission reset.
+      // Now: if mic is denied, flag is NOT written, so next open retries.
       setTimeout(() => {
-        requestPermissionsOnStart().catch(() => {});
+        requestPermissionsOnStart()
+          .then((result) => {
+            if (result.mic) {
+              // Mic granted — mark done so we don't re-prompt on every open
+              localStorage.setItem('qk_perms_requested', '1');
+              console.log('[QK] Permissions granted on start — mic:', result.mic,
+                'notifications:', result.notifications, 'location:', result.location);
+            } else {
+              console.log('[QK] Mic not granted on start — will retry next open');
+            }
+          })
+          .catch(() => {});
       }, 1800);
     }
 

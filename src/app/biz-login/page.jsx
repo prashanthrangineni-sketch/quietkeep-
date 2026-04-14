@@ -4,17 +4,16 @@
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase as _supabaseSingleton } from '@/lib/supabase';
 
 // Beta verification now handled server-side via /api/auth/beta-verify
 const OTP_LEN = 8;
 const G = '#10b981';
 
+// FIX: Use the shared singleton so session writes land in the same
+// storageKey ('qk-auth-token') that AuthContext listens on.
 function getClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
+  return _supabaseSingleton;
 }
 
 // ← ADDED: Sets app mode cookie so middleware enforces business-only routing

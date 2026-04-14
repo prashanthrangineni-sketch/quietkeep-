@@ -5,7 +5,7 @@
 // All other emails get real OTP via Supabase
 
 import { useState, useRef } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase as _supabaseSingleton } from '@/lib/supabase';
 import Link from 'next/link';
 
 // APP_TYPE is baked into the bundle at build time by next.config.js.
@@ -18,13 +18,12 @@ const POST_AUTH_PATH = APP_TYPE === 'business' ? '/b/dashboard' : '/dashboard';
 
 // Beta verification now handled server-side via /api/auth/beta-verify
 // No credentials exposed in client bundle
-const OTP_LEN = 6;
+const OTP_LEN = 8; // MUST match auth/verify/page.jsx and Supabase OTP length setting
 
+// FIX: Use singleton so signInWithOtp and setSession write to 'qk-auth-token',
+// the same key AuthContext listens on.
 function getClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  return _supabaseSingleton;
 }
 
 // ← ADDED: Sets app mode cookie so middleware enforces personal-only routing
@@ -312,4 +311,4 @@ export default function LoginPage() {
       </div>
     </div>
   );
-}
+        }

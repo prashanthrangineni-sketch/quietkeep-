@@ -1,8 +1,7 @@
 'use client';
 import { useAuth } from '@/lib/context/auth';
 import { resolveVoiceCommand } from '@/lib/voiceQueryEngine'; // TASK 5+10
-import { parseVoiceIntent, getIntentAction, isQueryIntent, stripWakeVariants } from '@/lib/voiceIntentEngine'; // Phase 2-4
-import { registerLotusWakeListener } from '@/lib/capacitor/alwaysListening'; // Phase 5 arch stub
+import { parseVoiceIntent, getIntentAction, isQueryIntent } from '@/lib/voiceIntentEngine'; // Phase 2-4
 import { speak, speakLow, cancelSpeech, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord, setWakeMode } from '@/components/VoiceTalkback';
 import InAppNotifications from '@/components/InAppNotifications';
 import ContactPicker from '@/components/ContactPicker';
@@ -472,14 +471,11 @@ export default function Dashboard() {
   const { voiceLang, displayLocale } = useLanguage();
 
   // Phase 7: Sync language to native TTS when voiceLang changes.
-  // Supports en-IN, te-IN (Telugu), hi-IN (Hindi), en-US.
-  // No-op on web/PWA — browser speechSynthesis reads utter.lang per utterance.
   useEffect(() => {
-    if (!voiceLang) return;
+    if (!voiceLang || typeof window === 'undefined') return;
     try {
-      if (typeof window !== 'undefined' && window.AndroidTTS?.setLanguage) {
+      if (window.AndroidTTS?.setLanguage) {
         window.AndroidTTS.setLanguage(voiceLang);
-        console.log('[QK TTS] Language synced to native:', voiceLang);
       }
     } catch {}
   }, [voiceLang]);
@@ -1029,17 +1025,17 @@ export default function Dashboard() {
     return function() { if (listenerHandle) listenerHandle.remove(); };
   }, []);
 
-  // Phase 5 arch: listen for 'lotus_wake' event dispatched by VoiceService.
-  // This fires ONLY when Phase 5 Java code detects the wake word in background.
-  // Safe to register now — window.addEventListener is a no-op until the event fires.
+  // Phase 5 arch: lotus_wake event — fired by VoiceService when wake word
+  // detected in background. Safe now; only activates when Phase 5 Java ships.
   useEffect(() => {
-    const cleanup = registerLotusWakeListener(({ source }) => {
-      console.log('[QK] lotus_wake event received from:', source);
-      // Activate STT and give audio feedback
+    if (typeof window === 'undefined') return;
+    function onLotusWake(e) {
+      console.log('[QK] lotus_wake from:', e?.detail?.source);
       startVoice();
       speak('Listening.');
-    });
-    return cleanup;
+    }
+    window.addEventListener('lotus_wake', onLotusWake);
+    return () => window.removeEventListener('lotus_wake', onLotusWake);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSave() {
@@ -1064,43 +1060,33 @@ export default function Dashboard() {
     // We do this by setting a local var and using it explicitly below.
     // Note: setContent is NOT called here to avoid re-render before save completes.
 
-    // ── Phase 2-4: Lotus voice intent pipeline ───────────────────────────────
-    // Three-layer resolution for voice input only.
-    // Manual text input always goes directly to /api/voice/capture (keeps).
+    // ── Phase 2-4: Lotus voice intent pipeline ─────────────────────────────
+    // Voice input only. Manual text always goes to /api/voice/capture.
     if (listening) {
-      // Layer 1: parseVoiceIntent — sync, zero latency, no DB.
-      // Handles: navigation, control, inline queries (time/date), wake mode.
+      // Layer 1: sync intent parse — zero latency, no DB
       const intent = parseVoiceIntent(commandText);
 
       if (intent.handled) {
-        // Speak the response immediately
         if (intent.response) speak(intent.response);
 
-        // Execute action (navigation etc) — getIntentAction is lazy
+        // Execute navigation / wake-mode action
         const action = getIntentAction(intent.actionKey, {
           router,
           setWakeMode: (enabled) => setWakeMode(enabled),
         });
         action?.();
 
-        // Layer 2: if this is a DB-backed query, also fire resolveVoiceCommand
-        // which will speak the actual data once fetched (replaces the "fetching" response).
+        // Layer 2: if DB-backed query, fire async fetch for real data
         if (isQueryIntent(intent.intentType)) {
           resolveVoiceCommand(commandText, {
             supabase, user, accessToken, router, speak,
           }).catch(() => {});
-          // Still exit — query engine handles its own TTS response
         }
 
         setContent('');
         setSaving(false);
         savingRef.current = false;
         return;
-      }
-      // intent.handled === false → fall through to /api/voice/capture
-      // Log the classified intent for observability (non-blocking)
-      if (intent.intentType !== 'unknown') {
-        console.log('[QK] Intent classified:', intent.intentType, '→ saving as keep');
       }
     }
 

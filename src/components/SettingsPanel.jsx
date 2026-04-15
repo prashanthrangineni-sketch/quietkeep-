@@ -30,6 +30,85 @@ function Toggle({ on, onChange }) {
   )
 }
 
+// ── Step 9: BiometricToggle ──────────────────────────────────────────────
+// Isolated component — only visible on native APK. Safe no-op on web/PWA.
+// Uses dynamic import of biometricLock to avoid SSR failures.
+function BiometricToggle() {
+  const [supported, setSupported] = React.useState(false);
+  const [enabled,   setEnabled]   = React.useState(false);
+  const [loading,   setLoading]   = React.useState(false);
+  const [msg,       setMsg]       = React.useState('');
+
+  React.useEffect(() => {
+    // Dynamic import — avoids bundling Capacitor types on web
+    import('@/lib/biometricLock').then(m => {
+      setSupported(m.isBiometricSupported());
+      setEnabled(m.isBiometricEnabled());
+    }).catch(() => {});
+  }, []);
+
+  if (!supported) return null; // invisible on web/PWA
+
+  async function toggle(newVal) {
+    setLoading(true);
+    setMsg('');
+    try {
+      const { setBiometricEnabled } = await import('@/lib/biometricLock');
+      const result = await setBiometricEnabled(newVal);
+      if (result.ok) {
+        setEnabled(newVal);
+        setMsg(newVal ? 'Fingerprint lock enabled.' : 'Fingerprint lock disabled.');
+      } else {
+        setMsg(result.message ?? 'Failed to update.');
+      }
+    } catch (e) {
+      setMsg('Error: ' + (e?.message ?? 'Unknown'));
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+      <p className="text-sm font-medium" style={{ color: 'var(--foreground)', marginBottom: 8 }}>
+        🔐 Security
+      </p>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'var(--background)', border: '1px solid var(--border)',
+        borderRadius: 10, padding: '10px 12px',
+      }}>
+        <div>
+          <p style={{ fontSize: 13, color: 'var(--foreground)', fontWeight: 500 }}>
+            Fingerprint Lock
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+            Require fingerprint when opening app
+          </p>
+        </div>
+        <button
+          disabled={loading}
+          onClick={() => toggle(!enabled)}
+          style={{
+            width: 44, height: 24, borderRadius: 12,
+            background: enabled ? 'var(--accent)' : 'var(--border)',
+            border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
+            position: 'relative', flexShrink: 0,
+          }}
+        >
+          <span style={{
+            display: 'block', width: 18, height: 18, borderRadius: '50%',
+            background: '#fff', position: 'absolute', top: 3,
+            left: enabled ? 23 : 3, transition: 'left 0.2s',
+          }} />
+        </button>
+      </div>
+      {msg && (
+        <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>{msg}</p>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPanel() {
   const { user } = useAuth();
   const [appSettings, setAppSettings]   = useState(null)
@@ -208,6 +287,9 @@ export default function SettingsPanel() {
           {error}
         </p>
       )}
+
+      {/* Step 9: Biometric / Fingerprint Lock toggle (APK only) */}
+      <BiometricToggle />
 
       <button onClick={handleSave} disabled={saving}
         className="w-full py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50"

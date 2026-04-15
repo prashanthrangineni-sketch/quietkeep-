@@ -41,10 +41,26 @@ function getVoice(lang) {
 
 // ── Phase 4: dedup guard ─────────────────────────────────────────────────
 // Prevents identical text from being spoken twice within DEDUP_MS.
-// Covers the case where a component re-renders and triggers speak() twice.
 let _lastSpokenText = '';
 let _lastSpokenTime = 0;
-const DEDUP_MS = 1500;
+const DEDUP_MS     = 1500;
+
+// Step 4: 100ms debounce — collapses rapid-fire speak() calls in same event tick.
+// Prevents overlapping speech when a component triggers speak() in quick succession.
+const DEBOUNCE_MS  = 100;
+let   _debounce    = null;
+
+// Step 5: Standard error response — spoken when no intent matches.
+export const NOT_UNDERSTOOD = "Sorry, I didn't understand. Try saying 'help' for commands.";
+
+/**
+ * speakError()
+ * Step 5: Speak the standard "didn't understand" message.
+ * Low-priority so it doesn't interrupt any in-progress response.
+ */
+export function speakError() {
+  speak(NOT_UNDERSTOOD, { priority: 'low' });
+}
 
 /**
  * speak(text, options)
@@ -73,6 +89,11 @@ export function speak(text, options = {}) {
   }
   _lastSpokenText = text;
   _lastSpokenTime = now;
+
+  // Step 4: debounce — defer execution 100ms, cancel if speak() called again
+  if (_debounce) clearTimeout(_debounce);
+  _debounce = setTimeout(() => {
+    _debounce = null;
 
   // ── NATIVE TTS (Android) ──────────────────────────────────────────────
   // window.__QK_TTS__ is injected by MainActivity.injectRuntimeJS() via
@@ -124,6 +145,7 @@ export function speak(text, options = {}) {
     });
     setTimeout(doSpeak, 600);
   }
+  }, DEBOUNCE_MS); // end Step 4 debounce
 }
 
 /**

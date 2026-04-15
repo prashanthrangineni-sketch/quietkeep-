@@ -151,23 +151,17 @@ export function isAlwaysListening(): boolean {
 }
 
 /**
- * isAlwaysOnReady() — returns true when the device supports always-on
- * background wake word detection (Phase 9 WakeWordEngine is deployed).
- *
- * Conditions required:
- *   1. Running as native Android APK (window.Capacitor.isNativePlatform)
- *   2. VoicePlugin available (registered in MainActivity)
- *   3. Phase 9 WakeWordEngine is compiled into the APK (always true after Phase 9 commit)
- *
- * Returns false on Web/PWA — background mic access is not available there.
+ * isAlwaysOnReady() — returns true when the device + Phase 5 Java code
+ * supports always-on background wake word detection.
+ * Currently always false — placeholder for Phase 5.
  */
 export function isAlwaysOnReady(): boolean {
   if (typeof window === 'undefined') return false;
-  // Check 1: native Android platform
-  const isNative = window?.Capacitor?.isNativePlatform?.() === true;
+  // Cast to any — Capacitor globals are not in the TypeScript window type
+  const w = window as any;
+  const isNative = w?.Capacitor?.isNativePlatform?.() === true;
   if (!isNative) return false;
-  // Check 2: VoicePlugin available (confirms APK has the service registered)
-  const hasVoicePlugin = !!(window?.Capacitor?.Plugins?.VoicePlugin);
+  const hasVoicePlugin = !!(w?.Capacitor?.Plugins?.VoicePlugin);
   return hasVoicePlugin;
 }
 

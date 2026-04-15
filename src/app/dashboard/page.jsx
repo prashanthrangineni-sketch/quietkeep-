@@ -9,7 +9,7 @@ import { getVoiceMode, setVoiceMode, isWakeMode } from '@/lib/voiceMode'; // Pha
 import { acquireVoiceLock, releaseVoiceLock, isVoiceLocked, getCurrentLockSource } from '@/lib/voiceLock'; // Step 3
 import { isSensitiveIntent, requireVoiceConfirmation, getSessionTrust, markVoiceVerified } from '@/lib/trustState'; // Step 1
 import { recordIntent, tryResolveContinuation, clearContext } from '@/lib/voiceContext'; // Phase 8B
-import { speak, speakLow, cancelSpeech, speakError, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord, setWakeMode } from '@/components/VoiceTalkback'; // Step 5: speakError added
+import { speak, speakLow, cancelSpeech, speakError, speakConfirmation, speakFollowUp, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord, setWakeMode } from '@/components/VoiceTalkback'; // Jarvis: speakConfirmation added
 import InAppNotifications from '@/components/InAppNotifications';
 import ContactPicker from '@/components/ContactPicker';
 import PermissionOnboarding from '@/components/PermissionOnboarding';
@@ -525,6 +525,7 @@ export default function Dashboard() {
   const [whyPanel, setWhyPanel]                 = useState(null);     // { message, why_text, score, signals }
   // GAP-7 FIX: native Android voice service state
   const [nativeVoiceActive, setNativeVoiceActive] = useState(false);
+  const [showVoiceHelp,    setShowVoiceHelp]    = useState(false); // Jarvis: help panel
   // FIX: always-on status for clear lifecycle states
   // 'off' | 'starting' | 'active' | 'error'
   const [alwaysOnStatus, setAlwaysOnStatus] = useState('off');
@@ -1215,6 +1216,13 @@ export default function Dashboard() {
         // Phase 8B: record for continuation context
         recordIntent(intent.intentType, intent.entities, commandText);
 
+        // Jarvis: follow-up prompts for specific intents
+        if (intent.intentType === 'query_bills') {
+          speakFollowUp("Do you want to open the bills page for details?");
+        } else if (intent.intentType === 'query_reminders' && intent.entities?.date === 'today') {
+          speakFollowUp("Say: Lotus open reminders — to see the full list.");
+        }
+
         // ── Step 1c: AI provider selection (advisory, no API call) ──────
         // selectAIProvider is a pure function — reads user settings, returns
         // provider id. Stored for next API call; does NOT trigger any network.
@@ -1234,17 +1242,30 @@ export default function Dashboard() {
     // Step 5 + 3.1: if listening but no intent matched — check for help intent first
     if (listening && commandText && commandText === content.trim()) {
       const lower = commandText.toLowerCase().trim();
-      // Help intent: "what can you do", "help", "commands"
+      // Jarvis: "what can you do" — structured category help
       if (/what\s+can\s+you\s+do|help|commands?|show\s+help/i.test(lower)) {
         speak(
-          "You can say: Lotus open reminders. Lotus pending bills. " +
-          "Lotus show expenses. Lotus open calendar. " +
-          "Lotus how many keeps. Or just speak a note and I will save it."
+          "Here is what I can do. " +
+          "Tasks: say Lotus add task, or just speak any task. " +
+          "Reminders: say Lotus remind me, or Lotus show reminders. " +
+          "Finance: say Lotus pending bills, Lotus show expenses, or Lotus subscriptions. " +
+          "Navigation: say Lotus open calendar, open reminders, open finance, or open settings. " +
+          "Keeps: say Lotus how many keeps, or just speak a note to save it. " +
+          "Voice control: say Lotus confirm for sensitive actions, or Lotus unlock followed by your PIN."
         );
+        // Show the help panel visually too
+        setShowVoiceHelp(true);
+        setTimeout(() => setShowVoiceHelp(false), 8000);
         setContent(''); setSaving(false); savingRef.current = false;
         return;
       }
-      speakError();
+      // Jarvis: contextual error — more natural than generic "didn't understand"
+      const lowerCmd = commandText.toLowerCase();
+      if (lowerCmd.includes('lotus') || lowerCmd.includes('add') || lowerCmd.includes('set')) {
+        speak("I heard you, but could not match a command. Try saying: Lotus help for a full list.");
+      } else {
+        speakError();
+      }
     }
 
     // Check voice capture limit for free users
@@ -2006,6 +2027,19 @@ export default function Dashboard() {
               })}
             </div>
 
+            {/* Jarvis: Wake word guidance — shown when wake mode ON but service OFF */}
+            {isWakeMode() && !nativeVoiceActive && isNativeVoiceAvailable() && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+                background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+                borderRadius: 8, padding: '7px 12px',
+              }}>
+                <span style={{ fontSize: 11, color: '#f59e0b' }}>
+                  💡 Enable Always-On to use "Lotus" wake word hands-free
+                </span>
+              </div>
+            )}
+
             {/* Voice mode status indicator — shows when wake word mode active */}
             {listening && isWakeMode() && !autoDetected && (
               <div style={{
@@ -2024,6 +2058,61 @@ export default function Dashboard() {
                 borderRadius: 8, padding: '8px 12px',
               }}>
                 <span style={{ fontSize: 12, color: '#a5b4fc' }}>✨ Auto-detected: {autoDetected}</span>
+              </div>
+            )}
+
+            {/* Jarvis: Voice hints strip — shown when not listening */}
+            {!listening && !content && (
+              <div style={{
+                display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center',
+              }}>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', marginRight: 2 }}>Try:</span>
+                {[
+                  { label: 'Lotus show reminders', cmd: 'Lotus show reminders' },
+                  { label: 'Lotus pending bills',  cmd: 'Lotus pending bills'  },
+                  { label: 'What can you do?',     cmd: 'what can you do'      },
+                ].map(h => (
+                  <button key={h.label}
+                    onClick={() => { setContent(h.cmd); textareaRef.current?.focus(); }}
+                    style={{
+                      fontSize: 10, padding: '3px 9px', borderRadius: 99, cursor: 'pointer',
+                      background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
+                      color: '#a5b4fc', fontFamily: 'inherit',
+                    }}>
+                    {h.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Jarvis: Visual help panel — shown after "what can you do" */}
+            {showVoiceHelp && (
+              <div style={{
+                marginBottom: 10, background: 'rgba(99,102,241,0.06)',
+                border: '1px solid rgba(99,102,241,0.2)', borderRadius: 10, padding: '12px 14px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#a5b4fc' }}>🎙 Voice Commands</span>
+                  <button onClick={() => setShowVoiceHelp(false)} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 14 }}>×</button>
+                </div>
+                {[
+                  { cat: '📋 Tasks',    cmds: ['Add task buy groceries', 'Lotus add task call Suresh'] },
+                  { cat: '⏰ Reminders', cmds: ['Lotus remind me at 5pm', 'Lotus show reminders'] },
+                  { cat: '💰 Finance',  cmds: ['Lotus pending bills', 'Lotus show expenses'] },
+                  { cat: '🧭 Navigate', cmds: ['Lotus open calendar', 'Lotus open settings'] },
+                ].map(({ cat, cmds }) => (
+                  <div key={cat} style={{ marginBottom: 6 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{cat}</div>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {cmds.map(cmd => (
+                        <button key={cmd} onClick={() => { setContent(cmd); setShowVoiceHelp(false); textareaRef.current?.focus(); }}
+                          style={{ fontSize: 10, padding: '2px 8px', borderRadius: 99, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontFamily: 'inherit' }}>
+                          {cmd}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 

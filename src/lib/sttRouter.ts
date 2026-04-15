@@ -62,17 +62,28 @@ export interface STTStrategy {
 
 export interface STTContext {
   /** Is this an Android native app (Capacitor)? */
-  isNative:       boolean;
+  isNative:         boolean;
   /** Is the device online? (navigator.onLine) */
-  isOnline:       boolean;
+  isOnline:         boolean;
   /** Current voice mode ('manual' | 'wake' | 'always_on') */
-  voiceMode?:     string;
+  voiceMode?:       string;
   /** User-selected override ('sarvam' | 'native' | 'web' | null) */
-  userOverride?:  string | null;
+  userOverride?:    string | null;
   /** Current voice language (BCP-47) */
-  voiceLang?:     string;
+  voiceLang?:       string;
   /** Sarvam API availability (optional — from health check) */
   sarvamAvailable?: boolean;
+  /**
+   * Step 3 (offlineAssistant): when true skip Sarvam, use local STT only.
+   * Set from: offlineAssistant.shouldUseOfflineMode()
+   */
+  forceOffline?:    boolean;
+  /**
+   * Step 2 (languageRouter): detected BCP-47 locale from voice input.
+   * When set to an Indian locale, Sarvam is preferred over WebSpeech
+   * because Sarvam has significantly better accuracy for Indian languages.
+   */
+  detectedLocale?:  string;
 }
 
 // ── Strategy definitions ──────────────────────────────────────────────────
@@ -154,11 +165,37 @@ export function selectSTTStrategy(context: STTContext): STTStrategy {
     };
   }
 
-  // Rule 5: APK + online → prefer Sarvam for tap-to-speak
-  // Note: tap-to-speak on APK uses WebView SpeechRecognition (not VoiceService).
-  // Sarvam is used by VoiceService, not by the JS SpeechRecognition path.
-  // So for the JS tap-to-speak path: use 'web' (WebView STT) on APK too.
-  // VoiceService's Sarvam path is separate and doesn't need routing here.
+  // Step 3 — Offline override: network gone or explicitly forced offline.
+  // Both APK and web fall back to local STT. Skips Sarvam entirely.
+  if (context.forceOffline || !isOnline) {
+    const offlineType: STTStrategyType = isNative ? 'native' : 'web';
+    return {
+      type:   offlineType,
+      reason: context.forceOffline
+        ? 'forceOffline=true — skipping Sarvam'
+        : 'Device offline — skipping Sarvam, using local STT',
+      ...STRATEGIES[offlineType],
+    };
+  }
+
+  // Step 2 — Indian locale + APK + online → prefer Sarvam.
+  // Sarvam has best-in-class accuracy for te-IN, hi-IN, and other Indian languages.
+  // This is additive: only applies when languageRouter detected an Indian locale.
+  const isIndianLocale = !!(context.detectedLocale &&
+    context.detectedLocale !== 'en-US' &&
+    context.detectedLocale.endsWith('-IN') &&
+    context.detectedLocale !== 'en-IN');  // en-IN is fine on WebSpeech; te/hi/ta need Sarvam
+
+  if (isNative && isIndianLocale && context.sarvamAvailable !== false) {
+    return {
+      type:   'sarvam',
+      reason: `Indian locale ${context.detectedLocale} — Sarvam for higher accuracy`,
+      ...STRATEGIES.sarvam,
+    };
+  }
+
+  // Rule 5: APK + online — WebView SpeechRecognition.
+  // Note: VoiceService handles its own Sarvam path independently.
   if (isOnline) {
     return {
       type:   'web',

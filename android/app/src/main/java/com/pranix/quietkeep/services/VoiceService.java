@@ -89,8 +89,13 @@ public class VoiceService extends Service {
     // all audio to Sarvam STT. Only audio AFTER wake word detection is sent.
     private volatile boolean alwaysOnMode = false;
 
-    // ── Phase 9C: battery safety ─────────────────────────────────────────
-    private volatile boolean batterySafe = true;   // true = safe to run
+    // ── Phase 9C + Step 7: battery safety (tiered) ──────────────────────────
+    // batterySafe = true  → full wake-word detection
+    // batterySafe = false → skip every 2nd chunk (screenOff style)
+    // batteryCritical = true → pause detection entirely (< 10%)
+    private volatile boolean batterySafe     = true;
+    private volatile boolean batteryCritical = false;  // Step 7: hard stop below 10%
+    private volatile int     batteryPct      = 100;    // Step 7: current level (0-100)
 
     // ── Step 5: Screen state — adaptive sampling when screen is off ────────────
     // Updated by screenReceiver. When screen is OFF we skip every other chunk
@@ -127,11 +132,20 @@ public class VoiceService extends Service {
             boolean charging = status == BatteryManager.BATTERY_STATUS_CHARGING
                             || status == BatteryManager.BATTERY_STATUS_FULL;
             double pct = (double) level / scale * 100.0;
-            // Safe if charging OR battery > 15%
-            batterySafe = charging || pct > 15.0;
-            Log.d(TAG, String.format("Battery: %.0f%% charging=%b safe=%b", pct, charging, batterySafe));
-            if (!batterySafe && alwaysOnMode) {
-                Log.w(TAG, "Battery low — pausing always-on wake word scanning");
+            // Step 7: tiered battery policy
+            // < 10%: critical — pause detection entirely (batteryCritical)
+            // 10-20%: low — skip alternating chunks (batterySafe=false, existing logic)
+            // > 20% OR charging: full operation
+            batteryPct      = (int) pct;
+            batteryCritical = !charging && pct < 10.0;
+            batterySafe     = charging || pct > 15.0;
+            Log.d(TAG, String.format(
+                "Battery: %d%% charging=%b safe=%b critical=%b",
+                batteryPct, charging, batterySafe, batteryCritical));
+            if (batteryCritical && alwaysOnMode) {
+                Log.w(TAG, "Battery CRITICAL (< 10%%) — pausing wake detection entirely");
+            } else if (!batterySafe && alwaysOnMode) {
+                Log.w(TAG, "Battery low (< 15%%) — reducing wake detection frequency");
             }
         }
     };
@@ -313,8 +327,15 @@ public class VoiceService extends Service {
 
                     // ── Phase 9A+9B: always-on wake word detection ───────────────
                     if (alwaysOnMode) {
-                        // Phase 9C: skip detection if battery unsafe
+                        // Step 7: tiered battery gate
+                        if (batteryCritical) {
+                            // Hard stop — below 10%, pause entirely to save power
+                            Log.d(TAG, "Skip wake detect — battery CRITICAL");
+                            try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
+                            continue;
+                        }
                         if (!batterySafe) {
+                            // Soft skip — below 15%, let screenOff logic handle alternating
                             Log.d(TAG, "Skip wake detect — battery low");
                             continue;
                         }

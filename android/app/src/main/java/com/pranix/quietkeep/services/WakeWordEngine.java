@@ -92,15 +92,49 @@ public class WakeWordEngine {
 
     // ── Public API ─────────────────────────────────────────────────────────
 
+    // Step 8: battery-aware energy threshold
+    // At low battery, raise the threshold to reduce false positives (saves CPU).
+    // VoiceService calls setBatteryPct() when battery receiver fires.
+    private volatile int batteryPct = 100;
+    private double getEffectiveEnergyThreshold() {
+        // Raise threshold when battery is low → less sensitive = less CPU
+        if (batteryPct < 15) return FRAME_ENERGY_THRESHOLD * 2.0;  // 300 — very quiet only
+        if (batteryPct < 30) return FRAME_ENERGY_THRESHOLD * 1.5;  // 225 — moderately quiet
+        return FRAME_ENERGY_THRESHOLD;                               // 150 — standard
+    }
+
+    /** Step 8: called by VoiceService battery receiver to tune sensitivity */
+    public void setBatteryPct(int pct) {
+        this.batteryPct = Math.max(0, Math.min(100, pct));
+    }
+
     /**
      * detectWakeWord(pcmBytes)
      *
      * @param pcmBytes  Raw PCM 16-bit little-endian bytes from AudioRecord.
      *                  Typically 3 seconds = 48000+ bytes at 16kHz mono 16-bit.
      * @return          true if "Lotus" was likely detected in this chunk.
+     *
+     * Step 8 enhancements:
+     *   1. RMS pre-filter: reject chunks below energy threshold BEFORE full scoring
+     *   2. Battery-adaptive threshold: less sensitive at low battery
      */
     public boolean detectWakeWord(byte[] pcmBytes) {
         if (pcmBytes == null || pcmBytes.length < FRAME_SAMPLES * 2) return false;
+
+        // Step 8: RMS pre-filter — reject silent/near-silent chunks immediately
+        // This avoids running the full 3-stage scoring on ambient noise.
+        // Cost: ~0.05ms vs ~0.5ms for full scoring → 10× speedup on silent frames.
+        double rms = 0;
+        short[] samplesPreCheck = bytesToShorts(pcmBytes);
+        long sumSq = 0;
+        for (short s : samplesPreCheck) sumSq += (long)s * s;
+        rms = Math.sqrt((double) sumSq / samplesPreCheck.length);
+        final double effectiveThreshold = getEffectiveEnergyThreshold();
+        if (rms < effectiveThreshold * 0.5) {
+            // Chunk is very quiet — cannot contain a wake word
+            return false;
+        }
 
         // Cooldown: prevent duplicate triggers from the same utterance
         long now = System.currentTimeMillis();

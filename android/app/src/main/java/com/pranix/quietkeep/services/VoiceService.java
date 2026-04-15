@@ -139,6 +139,8 @@ public class VoiceService extends Service {
             batteryPct      = (int) pct;
             batteryCritical = !charging && pct < 10.0;
             batterySafe     = charging || pct > 15.0;
+            // Step 8: propagate battery level to WakeWordEngine for adaptive threshold
+            wakeWordEngine.setBatteryPct(batteryPct);
             Log.d(TAG, String.format(
                 "Battery: %d%% charging=%b safe=%b critical=%b",
                 batteryPct, charging, batterySafe, batteryCritical));

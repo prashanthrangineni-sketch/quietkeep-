@@ -244,6 +244,7 @@ public class VoicePlugin extends Plugin {
         String workspaceId  = call.getString("workspace_id",  null);
         // STT fix: language_code from app settings — overrides device locale inside VoiceService
         String languageCode = call.getString("language_code", "en-IN");
+        boolean alwaysOn     = Boolean.TRUE.equals(call.getBoolean("always_on", false)); // Phase 9B
 
         Log.d(TAG, "mode=" + mode + " serverUrl=" + serverUrl + " lang=" + languageCode);
 
@@ -258,6 +259,7 @@ public class VoicePlugin extends Plugin {
             intent.putExtra("mode",          mode);
             intent.putExtra("workspace_id",  workspaceId);
             intent.putExtra("language_code", languageCode);  // STT fix
+            intent.putExtra("always_on",     alwaysOn);          // Phase 9B
 
             new Handler(Looper.getMainLooper()).post(() -> {
                 try {

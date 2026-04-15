@@ -1097,6 +1097,29 @@ export default function Dashboard() {
         commandText = wakeResult.command || content.trim();
       }
 
+      // Step 2.2: Voice unlock — "Lotus unlock 1234" or "Lotus my voice passcode is 1234"
+      // Checks BEFORE intent engine so PIN commands are never saved as keeps.
+      if (/unlock|passcode|voice\s+pin/i.test(commandText)) {
+        try {
+          const { validateVoicePin, isVoicePinEnabled } = await import('@/lib/voiceUnlock');
+          if (isVoicePinEnabled()) {
+            const result = validateVoicePin(commandText);
+            if (result.success) {
+              markVoiceVerified();
+              speak('Voice PIN accepted. You are verified.');
+            } else if (result.reason === 'locked_out') {
+              speak(`Too many attempts. Try again in ${result.lockoutSeconds} seconds.`);
+            } else if (result.reason === 'incorrect') {
+              speak(`Incorrect PIN. ${result.attemptsRemaining} attempt${result.attemptsRemaining !== 1 ? 's' : ''} remaining.`);
+            } else if (result.reason === 'no_digits') {
+              speak('Please say your PIN number clearly. For example: Lotus unlock 1 2 3 4.');
+            }
+            setContent(''); setSaving(false); savingRef.current = false;
+            return;
+          }
+        } catch {}
+      }
+
       // Phase 8B: continuation detection
       const continuation = tryResolveContinuation(commandText);
       if (continuation.isContinuation && continuation.intentType) {
@@ -1161,10 +1184,19 @@ export default function Dashboard() {
       }
     }
 
-    // Step 5: if listening but no intent matched (falls through intent engine + offline),
-    // speak a "didn't understand" message. Only for voice input — text falls through silently.
+    // Step 5 + 3.1: if listening but no intent matched — check for help intent first
     if (listening && commandText && commandText === content.trim()) {
-      // commandText is unchanged = no intent handled, not a keep prefix = truly unrecognised
+      const lower = commandText.toLowerCase().trim();
+      // Help intent: "what can you do", "help", "commands"
+      if (/what\s+can\s+you\s+do|help|commands?|show\s+help/i.test(lower)) {
+        speak(
+          'You can say: Lotus open reminders. Lotus pending bills. ' +
+          'Lotus show expenses. Lotus open calendar. ' +
+          'Lotus how many keeps. Or just speak a note and I'll save it.'
+        );
+        setContent(''); setSaving(false); savingRef.current = false;
+        return;
+      }
       speakError();
     }
 
@@ -1881,6 +1913,43 @@ export default function Dashboard() {
               )}
             </div>
 
+            {/* Step 3.2: Voice mode selector — persist in localStorage via voiceMode.ts */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+              {[
+                { key: 'manual', label: '🎙️ Manual', desc: 'Tap to speak' },
+                { key: 'wake',   label: '🌸 Wake Word', desc: 'Say Lotus first' },
+              ].map(m => {
+                const active = getVoiceMode() === m.key;
+                return (
+                  <button
+                    key={m.key}
+                    onClick={() => setVoiceMode(m.key, 'ui_toggle')}
+                    title={m.desc}
+                    style={{
+                      fontSize: 11, padding: '3px 10px', borderRadius: 99, cursor: 'pointer',
+                      background: active ? 'rgba(99,102,241,0.18)' : 'transparent',
+                      border: `1px solid ${active ? 'rgba(99,102,241,0.5)' : 'var(--border)'}`,
+                      color: active ? '#a5b4fc' : 'var(--text-muted)',
+                      fontWeight: active ? 600 : 400,
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Voice mode status indicator — shows when wake word mode active */}
+            {listening && isWakeMode() && !autoDetected && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+                background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
+                borderRadius: 8, padding: '8px 12px',
+              }}>
+                <span style={{ width: 7, height: 7, background: '#10b981', borderRadius: '50%', display: 'inline-block', animation: 'qk-pulse 1.2s ease infinite', flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: '#10b981' }}>Listening for "Lotus"…</span>
+              </div>
+            )}
             {autoDetected && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,

@@ -1,4 +1,5 @@
 'use client';
+import React from 'react';
 import useAndroidBack from '@/lib/useAndroidBack';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
@@ -60,6 +61,73 @@ const THEMES = [
   { value: 'light', label: '☀️ Light' },
   { value: 'amoled', label: '⚫ AMOLED (pure black)' },
 ];
+
+// FIX: Biometric lock toggle for settings page
+// Dynamically imports biometricLock to avoid SSR issues.
+// Shows only when isBiometricSupported() returns true (APK only).
+function BiometricToggleSection() {
+  const [supported, setSupported] = React.useState(false);
+  const [enabled,   setEnabled]   = React.useState(false);
+  const [loading,   setLoading]   = React.useState(false);
+  const [msg,       setMsg]       = React.useState('');
+
+  React.useEffect(() => {
+    import('@/lib/biometricLock').then(m => {
+      setSupported(m.isBiometricSupported());
+      setEnabled(m.isBiometricEnabled());
+    }).catch(() => {});
+  }, []);
+
+  if (!supported) return null;
+
+  async function toggle(newVal) {
+    setLoading(true); setMsg('');
+    try {
+      const { setBiometricEnabled } = await import('@/lib/biometricLock');
+      const result = await setBiometricEnabled(newVal);
+      if (result.ok) {
+        setEnabled(newVal);
+        setMsg(newVal ? 'Fingerprint lock enabled.' : 'Fingerprint lock disabled.');
+      } else {
+        setMsg(result.message ?? 'Failed to update.');
+      }
+    } catch (e) { setMsg('Error: ' + (e?.message ?? 'Unknown')); }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+      <h3 style={{ color: 'var(--text)', fontSize: '0.85rem', fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6, marginBottom: 12 }}>
+        🔐 Security
+      </h3>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'var(--input-bg, var(--bg-raised))', border: '1px solid var(--border)',
+        borderRadius: 10, padding: '10px 14px' }}>
+        <div>
+          <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 500 }}>
+            Fingerprint Lock
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            Require fingerprint when opening app
+          </div>
+        </div>
+        <button disabled={loading} onClick={() => toggle(!enabled)} style={{
+          width: 44, height: 24, borderRadius: 12, flexShrink: 0,
+          background: enabled ? 'var(--accent, #6366f1)' : 'var(--border)',
+          border: 'none', cursor: loading ? 'not-allowed' : 'pointer', position: 'relative',
+        }}>
+          <span style={{
+            display: 'block', width: 18, height: 18, borderRadius: '50%',
+            background: '#fff', position: 'absolute', top: 3,
+            left: enabled ? 23 : 3, transition: 'left 0.2s',
+          }} />
+        </button>
+      </div>
+      {msg && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{msg}</p>}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const router = useRouter();

@@ -7,6 +7,7 @@ import { processOfflineCommand } from '@/lib/offlineAssistant'; // Step 4
 import { selectAIProvider } from '@/lib/aiRouter'; // Step 4 BYO-AI (advisory)
 import { getVoiceMode, setVoiceMode, isWakeMode } from '@/lib/voiceMode'; // Phase 8I
 import { acquireVoiceLock, releaseVoiceLock, isVoiceLocked, getCurrentLockSource } from '@/lib/voiceLock'; // Step 3
+import { isSensitiveIntent, requireVoiceConfirmation, getSessionTrust, markVoiceVerified } from '@/lib/trustState'; // Step 1
 import { recordIntent, tryResolveContinuation, clearContext } from '@/lib/voiceContext'; // Phase 8B
 import { speak, speakLow, cancelSpeech, speakError, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord, setWakeMode } from '@/components/VoiceTalkback'; // Step 5: speakError added
 import InAppNotifications from '@/components/InAppNotifications';
@@ -567,8 +568,8 @@ export default function Dashboard() {
     recognition.lang = voiceLang || 'en-IN'; recognition.continuous = false; recognition.interimResults = true;
     recognitionRef.current = recognition;
     recognition.onstart = () => setListening(true);
-    recognition.onend = () => setListening(false);
-    recognition.onerror = () => setListening(false);
+    recognition.onend = () => { setListening(false); releaseVoiceLock(); }; // Fix: release lock on natural end
+    recognition.onerror = () => { setListening(false); releaseVoiceLock(); }; // Fix: release lock on error
     recognition.onresult = (e) => {
       const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
       setContent(transcript);
@@ -1107,6 +1108,21 @@ export default function Dashboard() {
       const intentConf = intent.confidence ?? 1.0;
 
       if (intent.handled && intentConf >= CONFIDENCE_THRESHOLD) {
+        // Step 1 Layer 2: sensitive intent verification
+        if (isSensitiveIntent(intent.intentType, commandText)) {
+          const trust = getSessionTrust();
+          if (!trust.voice_verified && !trust.biometric_verified) {
+            // Require voice confirmation before executing sensitive action
+            const confirmed = requireVoiceConfirmation(commandText);
+            if (!confirmed) {
+              speak("This action needs confirmation. Say 'Lotus confirm' or 'Yes proceed' to continue.");
+              setContent(''); setSaving(false); savingRef.current = false;
+              return;
+            }
+          }
+          markVoiceVerified();
+        }
+
         if (intent.response) speak(intent.response);
 
         const action = getIntentAction(intent.actionKey, {

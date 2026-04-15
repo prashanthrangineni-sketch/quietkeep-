@@ -104,3 +104,50 @@ export function listAvailableProviders(settings: UserAISettings = {}): AIProvide
   list.push(build('local', 'Coming soon', false));
   return list;
 }
+
+// ── Step 6: Usage tracking ────────────────────────────────────────────────
+// In-memory counter. Supabase daily_usage table handles persistent tracking.
+// This is a fast client-side gate to prevent accidental over-use.
+
+interface AIUsageState {
+  requests:     number;
+  resetAt:      number;  // start of current day (epoch ms)
+}
+
+const _usage: AIUsageState = { requests: 0, resetAt: 0 };
+
+const DAILY_LIMITS: Record<string, number> = {
+  default:  1000,   // QuietKeep AI — effectively unlimited
+  openai:   200,    // User's OpenAI key — rate limit protection
+  gemini:   200,    // User's Gemini key — rate limit protection
+  local:    9999,   // Local — no limit
+};
+
+function todayStart(): number {
+  const d = new Date(); d.setHours(0,0,0,0); return d.getTime();
+}
+
+/**
+ * incrementUsage(providerId) → { allowed: boolean; remaining: number }
+ * Step 6: Track AI request count. Call before each AI API call.
+ */
+export function incrementUsage(providerId: AIProviderType): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  if (now > _usage.resetAt + 86_400_000) {
+    _usage.requests = 0;
+    _usage.resetAt  = todayStart();
+  }
+  _usage.requests++;
+  const limit     = DAILY_LIMITS[providerId] ?? 200;
+  const remaining = Math.max(0, limit - _usage.requests);
+  const allowed   = _usage.requests <= limit;
+  if (!allowed) console.warn(`[QK AI] Daily limit reached for provider: ${providerId}`);
+  return { allowed, remaining };
+}
+
+/**
+ * getUsageStats() → current usage counters
+ */
+export function getUsageStats(): { requests: number; resetAt: number } {
+  return { requests: _usage.requests, resetAt: _usage.resetAt };
+}

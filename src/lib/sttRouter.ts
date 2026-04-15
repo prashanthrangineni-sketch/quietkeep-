@@ -178,6 +178,15 @@ export function selectSTTStrategy(context: STTContext): STTStrategy {
     };
   }
 
+  // Step 5: API delay fallback — if Sarvam was recently slow, use web
+  if (isSarvamSlow() && !isIndianLocale) {
+    return {
+      type:   isNative ? 'web' : 'web',
+      reason: 'Sarvam API slow — using web STT temporarily',
+      ...STRATEGIES.web,
+    };
+  }
+
   // Step 2 — Indian locale + APK + online → prefer Sarvam.
   // Sarvam has best-in-class accuracy for te-IN, hi-IN, and other Indian languages.
   // This is additive: only applies when languageRouter detected an Indian locale.
@@ -302,4 +311,18 @@ export function markSarvamFailed(): void {
   _sarvamAvailable = false;
   _sarvamLastCheck = Date.now();
   console.warn('[QK STT] Sarvam marked unavailable — routing to fallback');
+}
+
+// Step 5: API delay tracking — if Sarvam takes > 4s, mark as slow for 2 mins
+let _sarvamSlowUntil = 0;
+const SLOW_THRESHOLD_MS = 4000;
+const SLOW_PENALTY_MS   = 120_000;
+
+export function markSarvamSlow(): void {
+  _sarvamSlowUntil = Date.now() + SLOW_PENALTY_MS;
+  console.warn('[QK STT] Sarvam marked slow — using web fallback for 2 min');
+}
+
+export function isSarvamSlow(): boolean {
+  return Date.now() < _sarvamSlowUntil;
 }

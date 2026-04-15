@@ -223,3 +223,74 @@ export function getOfflineSyncStatus(): { pendingCount: number; oldestAt: number
     isReady:      isNetworkAvailable() && queue.length > 0,
   };
 }
+
+// ── Step 4: Auto-sync on reconnect ───────────────────────────────────────
+//
+// When the device comes back online, automatically flush queued items.
+// Called once from layout/app root — idempotent (safe to call multiple times).
+// Does NOT call any API directly — delegates to offlineVoice.flushOfflineQueue.
+
+let _syncListenerAttached = false;
+
+/**
+ * registerAutoSync(getToken)
+ *
+ * Attaches a 'online' event listener that flushes the offline queue
+ * when the device reconnects. Safe to call multiple times (idempotent).
+ *
+ * @param getToken  Function that returns the current Supabase access token.
+ *                  Pass from the auth context: () => accessToken
+ *
+ * Usage (in layout or _app):
+ *   import { registerAutoSync } from '@/lib/offlineAssistant';
+ *   registerAutoSync(() => accessToken);
+ */
+export function registerAutoSync(getToken: () => string): void {
+  if (typeof window === 'undefined' || _syncListenerAttached) return;
+  _syncListenerAttached = true;
+
+  window.addEventListener('online', async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      // Import dynamically to avoid circular deps
+      const { flushOfflineQueue } = await import('./offlineVoice');
+      const synced = await flushOfflineQueue(token);
+      if (synced > 0) {
+        console.log(`[QK Offline] Auto-synced ${synced} queued items`);
+        // Sync the offline reminders queue too
+        await syncOfflineReminders(token);
+      }
+    } catch (e) {
+      console.debug('[QK Offline] Auto-sync failed (non-critical):', e);
+    }
+  });
+}
+
+/**
+ * syncOfflineReminders(token)
+ *
+ * Sends queued offline reminders to the /api/reminders endpoint.
+ * Called after flushOfflineQueue on reconnect.
+ */
+async function syncOfflineReminders(token: string): Promise<void> {
+  try {
+    const raw = localStorage.getItem('qk_offline_reminders');
+    if (!raw) return;
+    const reminders: Array<{ text: string; queuedAt: number }> = JSON.parse(raw);
+    if (reminders.length === 0) return;
+
+    const { apiPost } = await import('./safeFetch');
+    for (const r of reminders) {
+      await apiPost('/api/voice/capture', {
+        transcript: r.text,
+        source:     'offline_queue',
+        session_id: null,
+      }, token).catch(() => {}); // fire-and-forget per item
+    }
+
+    // Clear synced reminders
+    localStorage.removeItem('qk_offline_reminders');
+    console.log(`[QK Offline] Synced ${reminders.length} offline reminders`);
+  } catch {}
+}

@@ -27,6 +27,13 @@ export default function BiometricGate({ children }) {
     try {
       const { checkBiometricGate } = await import('@/lib/biometricLock');
       const allowed = await checkBiometricGate();
+      if (allowed) {
+        // Notify trustState so sensitive intent layer knows biometric was verified
+        try {
+          const { markBiometricVerified } = await import('@/lib/trustState');
+          markBiometricVerified();
+        } catch {}
+      }
       setStatus(allowed ? 'unlocked' : 'locked');
     } catch {
       // If biometricLock fails to load (web build), allow through

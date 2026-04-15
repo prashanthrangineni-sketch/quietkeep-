@@ -151,3 +151,75 @@ export function processOfflineCommand(transcript: string): OfflineCommandResult 
   // 4. Unknown — save as queued keep
   return { handled: true, response: "Saved offline. I'll sync when you're back online.", queued: true };
 }
+
+// ── Step 6: Offline queue inspection + sync-ready metadata ───────────────
+//
+// These functions prepare offline data for future background sync.
+// NO API calls are made here. The sync worker (service worker or app resume
+// handler) calls getOfflineQueue() to retrieve pending items.
+
+export interface OfflineQueueItem {
+  type:      'reminder' | 'keep' | 'unknown';
+  text:      string;
+  queuedAt:  number;
+  syncedAt?: number;
+}
+
+/**
+ * getOfflineQueue() → OfflineQueueItem[]
+ *
+ * Returns all queued offline items (reminders + keeps) from localStorage.
+ * Called by the sync layer on reconnect — does NOT call any API.
+ */
+export function getOfflineQueue(): OfflineQueueItem[] {
+  const items: OfflineQueueItem[] = [];
+  try {
+    const reminders: any[] = JSON.parse(localStorage.getItem('qk_offline_reminders') || '[]');
+    reminders.forEach(r => items.push({ type: 'reminder', text: r.text, queuedAt: r.queuedAt }));
+  } catch {}
+  try {
+    // offlineVoice.ts also queues keeps under 'qk_offline_queue'
+    const keeps: any[] = JSON.parse(localStorage.getItem('qk_offline_queue') || '[]');
+    keeps.forEach(k => items.push({ type: 'keep', text: k.text ?? k.transcript ?? '', queuedAt: k.queuedAt ?? Date.now() }));
+  } catch {}
+  return items;
+}
+
+/**
+ * getOfflineQueueCount() → number
+ * Returns total pending items count (for badge/UI display).
+ */
+export function getOfflineQueueCount(): number {
+  return getOfflineQueue().length;
+}
+
+/**
+ * clearSyncedItems(before: number)
+ *
+ * Removes items from the offline reminder queue that were queued before `before` ms.
+ * Called by the sync worker after successfully syncing items.
+ * Does NOT touch qk_offline_queue (managed by offlineVoice.ts).
+ */
+export function clearSyncedItems(before: number): void {
+  try {
+    const reminders: any[] = JSON.parse(localStorage.getItem('qk_offline_reminders') || '[]');
+    const remaining = reminders.filter((r: any) => r.queuedAt >= before);
+    localStorage.setItem('qk_offline_reminders', JSON.stringify(remaining));
+  } catch {}
+}
+
+/**
+ * getOfflineSyncStatus() → { pendingCount, oldestAt, isReady }
+ *
+ * Returns sync readiness info. `isReady` = true when network is available
+ * AND there are items to sync.
+ */
+export function getOfflineSyncStatus(): { pendingCount: number; oldestAt: number | null; isReady: boolean } {
+  const queue = getOfflineQueue();
+  const oldestAt = queue.length > 0 ? Math.min(...queue.map(i => i.queuedAt)) : null;
+  return {
+    pendingCount: queue.length,
+    oldestAt,
+    isReady:      isNetworkAvailable() && queue.length > 0,
+  };
+}

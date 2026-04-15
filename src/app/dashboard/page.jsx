@@ -6,8 +6,9 @@ import { detectLanguage, setStoredLanguagePreference } from '@/lib/languageRoute
 import { processOfflineCommand } from '@/lib/offlineAssistant'; // Step 4
 import { selectAIProvider } from '@/lib/aiRouter'; // Step 4 BYO-AI (advisory)
 import { getVoiceMode, setVoiceMode, isWakeMode } from '@/lib/voiceMode'; // Phase 8I
+import { acquireVoiceLock, releaseVoiceLock, isVoiceLocked, getCurrentLockSource } from '@/lib/voiceLock'; // Step 3
 import { recordIntent, tryResolveContinuation, clearContext } from '@/lib/voiceContext'; // Phase 8B
-import { speak, speakLow, cancelSpeech, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord, setWakeMode } from '@/components/VoiceTalkback';
+import { speak, speakLow, cancelSpeech, speakError, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord, setWakeMode } from '@/components/VoiceTalkback'; // Step 5: speakError added
 import InAppNotifications from '@/components/InAppNotifications';
 import ContactPicker from '@/components/ContactPicker';
 import PermissionOnboarding from '@/components/PermissionOnboarding';
@@ -557,8 +558,10 @@ export default function Dashboard() {
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2800); }
 
   function startVoice() {
+    // Step 3: global voice lock — prevents wake + manual conflict
+    if (!acquireVoiceLock('manual')) return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
+    if (!SR) { releaseVoiceLock(); return; }
     const recognition = new SR();
     console.log('[QuietKeep] STT LANG:', voiceLang || 'en-IN');  // debug: verify STT language
     recognition.lang = voiceLang || 'en-IN'; recognition.continuous = false; recognition.interimResults = true;
@@ -579,7 +582,11 @@ export default function Dashboard() {
     recognition.start();
   }
 
-  function stopVoice() { recognitionRef.current?.stop(); setListening(false); }
+  function stopVoice() {
+    recognitionRef.current?.stop();
+    setListening(false);
+    releaseVoiceLock(); // Step 3
+  }
 
   // ── AUTO-EXECUTION ENGINE ─────────────────────────────────────────────────
   // Reuses executeClientAction from intent-executor — no new execution logic.
@@ -1036,6 +1043,12 @@ export default function Dashboard() {
     if (typeof window === 'undefined') return;
     function onLotusWake(e) {
       console.log('[QK] lotus_wake from:', e?.detail?.source);
+      // Step 3: do not start if manual mic is already active
+      if (isVoiceLocked()) {
+        console.log('[QK] lotus_wake ignored — voice locked by:', getCurrentLockSource?.() ?? 'unknown');
+        return;
+      }
+      if (!acquireVoiceLock('wake')) return;
       startVoice();
       speak('Listening.');
     }
@@ -1125,6 +1138,13 @@ export default function Dashboard() {
         setContent(''); setSaving(false); savingRef.current = false;
         return;
       }
+    }
+
+    // Step 5: if listening but no intent matched (falls through intent engine + offline),
+    // speak a "didn't understand" message. Only for voice input — text falls through silently.
+    if (listening && commandText && commandText === content.trim()) {
+      // commandText is unchanged = no intent handled, not a keep prefix = truly unrecognised
+      speakError();
     }
 
     // Check voice capture limit for free users

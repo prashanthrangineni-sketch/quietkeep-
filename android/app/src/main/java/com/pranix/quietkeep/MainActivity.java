@@ -323,7 +323,6 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    @Override
     /**
      * Phase 9B: LotusWakeBridgeHolder
      *

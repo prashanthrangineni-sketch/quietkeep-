@@ -685,12 +685,16 @@ export default function Dashboard() {
 
   // GAP-7 FIX v2: toggle native Android VoiceService with full permission flow
   async function toggleNativeVoice() {
-    if (!isNativeVoiceAvailable()) return;
+    if (!isNativeVoiceAvailable()) {
+      showToast('Always-on not supported on this device');
+      return;
+    }
 
     if (nativeVoiceActive) {
       await stopNativeVoice();
       setNativeVoiceActive(false);
-      showToast('Native voice stopped');
+      releaseVoiceLock(); // ensure lock released on manual stop
+      showToast('Always-on voice stopped');
       return;
     }
 
@@ -734,7 +738,8 @@ export default function Dashboard() {
     });
 
     if (!started) {
-      showToast('Could not start voice service');
+      showToast('⚠ Could not start voice service — check mic permission in Settings');
+      console.error('[QK Always-On] startNativeVoice returned false');
       return;
     }
 
@@ -749,7 +754,7 @@ export default function Dashboard() {
         showToast('🎙 Always-on voice active');
       } else {
         setNativeVoiceActive(false);
-        showToast('⚠ Voice service started but mic capture failed — check permissions');
+        showToast('⚠ Always-on not available — mic access failed. Enable in Settings → Apps → QuietKeep');
       }
     }, 900);
   }
@@ -1861,7 +1866,7 @@ export default function Dashboard() {
                 </button>
               )}
               {/* GAP-7: Native Android always-on voice button */}
-              {(isNativeVoiceAvailable() || !!(window && window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform())) && (
+              {isNativeVoiceAvailable() && (
                 <button
                   onClick={toggleNativeVoice}
                   className="qk-btn qk-btn-sm"

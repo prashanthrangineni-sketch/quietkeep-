@@ -314,8 +314,9 @@ export default function SettingsPage() {
         value={value}
         onChange={e => onChange(e.target.value)}
         style={{
-          width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8,
-          color: '#fff', padding: '0.6rem 0.8rem', fontSize: '0.9rem', outline: 'none',
+          width: '100%', background: 'var(--input-bg, var(--bg-raised))',
+          border: '1px solid var(--border)', borderRadius: 8,
+          color: 'var(--text)', padding: '0.6rem 0.8rem', fontSize: '0.9rem', outline: 'none',
         }}
       >
         {options.map(o => (
@@ -341,7 +342,7 @@ export default function SettingsPage() {
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               placeholder="Enter your name"
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.6rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', background: 'var(--input-bg, var(--bg-raised))', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.6rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
           <Select label="I am a…" value={persona} onChange={setPersona} options={PERSONAS} />
@@ -395,7 +396,7 @@ export default function SettingsPage() {
               type="time"
               value={briefTime}
               onChange={e => setBriefTime(e.target.value)}
-              style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: '#fff', padding: '0.6rem 0.8rem', fontSize: '0.9rem', outline: 'none' }}
+              style={{ background: 'var(--input-bg, var(--bg-raised))', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.6rem 0.8rem', fontSize: '0.9rem', outline: 'none' }}
             />
           </div>
           <Toggle label="Show Weather" desc="Local weather in morning brief" value={showWeather} onChange={setShowWeather} />

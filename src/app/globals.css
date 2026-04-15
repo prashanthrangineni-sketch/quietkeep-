@@ -11,6 +11,7 @@ body{font-family:var(--font-script,'Inter',-apple-system,BlinkMacSystemFont,'Seg
 :root{
   --bg:#f4f6fb;
   --bg-raised:#ffffff;
+  --input-bg:#ffffff;  /* input fields — raised above page bg */
   --surface:#ffffff;
   --surface-hover:#eef0f6;
   --surface-elevated:#ffffff;
@@ -44,7 +45,7 @@ body{font-family:var(--font-script,'Inter',-apple-system,BlinkMacSystemFont,'Seg
 
 /* ── DARK THEME ───────────────────────────────────────────────── */
 [data-theme="dark"]{
-  --bg:#0d1117;--bg-raised:#161b27;
+  --bg:#0d1117;--bg-raised:#161b27;--input-bg:#1a2035;
   --surface:rgba(255,255,255,0.05);--surface-hover:rgba(255,255,255,0.09);
   --surface-elevated:rgba(22,27,39,0.95);
   --border:rgba(255,255,255,0.09);--border-strong:rgba(255,255,255,0.16);
@@ -61,7 +62,7 @@ body{font-family:var(--font-script,'Inter',-apple-system,BlinkMacSystemFont,'Seg
 
 /* ── AMOLED THEME ─────────────────────────────────────────────── */
 [data-theme="amoled"]{
-  --bg:#000000;--bg-raised:#0a0a0a;
+  --bg:#000000;--bg-raised:#0a0a0a;--input-bg:#111111;
   --surface:rgba(255,255,255,0.03);--surface-hover:rgba(255,255,255,0.06);
   --border:rgba(255,255,255,0.06);--border-strong:rgba(255,255,255,0.12);
   --primary:#6366f1;--primary-hover:#5254cc;

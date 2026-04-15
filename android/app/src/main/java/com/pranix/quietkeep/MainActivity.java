@@ -340,7 +340,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         // Register this Activity so VoiceService can dispatch wake events to WebView
         LotusWakeBridgeHolder.sActivity = this;
@@ -348,7 +348,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onPause() {
+    public void onPause() {
         super.onPause();
         // Keep registration when paused (service still needs it for background detection)
         // Only clear on full destroy
@@ -362,6 +362,7 @@ public class MainActivity extends BridgeActivity {
         TTSManager.getInstance(this).shutdown();
     }
 
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {

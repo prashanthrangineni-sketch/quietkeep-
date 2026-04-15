@@ -92,7 +92,6 @@ public class VoiceService extends Service {
     // ── Phase 9C: battery safety ─────────────────────────────────────────
     private volatile boolean batterySafe = true;   // true = safe to run
 
-    @Override
     // ── Phase 9C: battery safety receiver ───────────────────────────────
     private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
         @Override
@@ -720,13 +719,17 @@ public class VoiceService extends Service {
             mainHandler.post(() -> {
                 try {
                     // Access the Capacitor bridge via the Application instance
-                    com.pranix.quietkeep.MainActivity mainActivity =
-                        (com.pranix.quietkeep.MainActivity) LotusWakeBridgeHolder.sActivity;
-                    if (mainActivity == null) {
+                    android.app.Activity act = com.pranix.quietkeep.MainActivity.LotusWakeBridgeHolder.sActivity;
+                    if (act == null) {
                         Log.w(TAG, "dispatchLotusWakeEvent: MainActivity not available");
                         return;
                     }
-                    android.webkit.WebView webView = mainActivity.getBridge().getWebView();
+                    if (!(act instanceof com.getcapacitor.BridgeActivity)) {
+                        Log.w(TAG, "dispatchLotusWakeEvent: not a BridgeActivity");
+                        return;
+                    }
+                    android.webkit.WebView webView =
+                        ((com.getcapacitor.BridgeActivity) act).getBridge().getWebView();
                     if (webView == null) {
                         Log.w(TAG, "dispatchLotusWakeEvent: WebView not available");
                         return;

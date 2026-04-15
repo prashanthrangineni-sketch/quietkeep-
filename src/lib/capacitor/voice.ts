@@ -201,6 +201,8 @@ export interface VoiceServiceOptions {
   mode?:        'personal' | 'business';
   workspaceId?: string;
   languageCode?:string;
+  /** Phase 9B: enable always-on wake word detection in VoiceService */
+  alwaysOn?:    boolean;
 }
 
 export async function startNativeVoice(opts: VoiceServiceOptions): Promise<boolean> {
@@ -215,6 +217,7 @@ export async function startNativeVoice(opts: VoiceServiceOptions): Promise<boole
       mode:          opts.mode         ?? 'personal',
       workspace_id:  opts.workspaceId  ?? null,
       language_code: opts.languageCode ?? 'en-IN',
+      always_on:     opts.alwaysOn     ?? false,  // Phase 9B
     });
     if (typeof localStorage !== 'undefined') localStorage.setItem('qk_voice_active', 'true');
     return true;

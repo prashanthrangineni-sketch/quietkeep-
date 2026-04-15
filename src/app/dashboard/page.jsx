@@ -1190,9 +1190,9 @@ export default function Dashboard() {
       // Help intent: "what can you do", "help", "commands"
       if (/what\s+can\s+you\s+do|help|commands?|show\s+help/i.test(lower)) {
         speak(
-          'You can say: Lotus open reminders. Lotus pending bills. ' +
-          'Lotus show expenses. Lotus open calendar. ' +
-          'Lotus how many keeps. Or just speak a note and I'll save it.'
+          "You can say: Lotus open reminders. Lotus pending bills. " +
+          "Lotus show expenses. Lotus open calendar. " +
+          "Lotus how many keeps. Or just speak a note and I will save it."
         );
         setContent(''); setSaving(false); savingRef.current = false;
         return;

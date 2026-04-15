@@ -327,6 +327,114 @@ const QUERY_PATTERNS: QueryPattern[] = [
   },
 ];
 
+
+// ── Step 2: Telugu + Tenglish NLP scoring ────────────────────────────────
+//
+// Extends the keyword scoring to cover Telugu speakers.
+// These patterns are ADDITIVE — they run only when the English regexes miss.
+// finalScore = max(english, telugu) with same 0.55 threshold.
+//
+// Three layers:
+//   1. Telugu Unicode script (U+0C00–U+0C7F): highest confidence
+//   2. Tenglish keywords: Telugu commands written in English script
+//   3. Mixed: English intent keywords with Telugu filler words
+
+interface TeluguPattern {
+  intentType:      IntentType;
+  teluguKeywords:  string[];   // Telugu Unicode keywords
+  tenglishPhrases: string[];   // Romanised Telugu phrases
+  fillers:         string[];   // Filler words to ignore during scoring
+}
+
+const TELUGU_PATTERNS: TeluguPattern[] = [
+  {
+    intentType:      'query_bills',
+    teluguKeywords:  ['బిల్లులు', 'చెల్లింపు', 'బాకీ', 'డబ్బు'],
+    tenglishPhrases: ['bills cheppu', 'naa bills', 'bills emi', 'chellinchadam', 'kattu', 'rupayalu'],
+    fillers:         ['naa', 'mee', 'ikkada', 'adi', 'meeru'],
+  },
+  {
+    intentType:      'query_reminders',
+    teluguKeywords:  ['రిమైండర్', 'గుర్తు', 'పని', 'సమయం'],
+    tenglishPhrases: ['remind cheyyi', 'gurtupettu', 'naa reminders', 'alarms cheppu', 'matla'],
+    fillers:         ['naa', 'ku', 'ki', 'adi', 'ivi'],
+  },
+  {
+    intentType:      'query_expenses',
+    teluguKeywords:  ['ఖర్చు', 'వ్యయం', 'డబ్బు', 'మొత్తం'],
+    tenglishPhrases: ['kharchu cheppu', 'spend cheyyi', 'total yekkuva', 'paisa ela', 'rupayalu'],
+    fillers:         ['ee', 'nenu', 'aa', 'anni', 'naa'],
+  },
+  {
+    intentType:      'query_subscriptions',
+    teluguKeywords:  ['సదస్యత', 'నెల', 'చందా'],
+    tenglishPhrases: ['subscription renew', 'monthly plan', 'maasam charge', 'renew avutundi'],
+    fillers:         ['naa', 'mee', 'ivi', 'adi'],
+  },
+  {
+    intentType:      'query_keeps_count',
+    teluguKeywords:  ['నోట్సు', 'కీప్', 'లిస్టు'],
+    tenglishPhrases: ['naa keeps', 'notes cheppu', 'list chudandi', 'emi undi'],
+    fillers:         ['naa', 'lo', 'ki', 'aa'],
+  },
+  {
+    intentType:      'control_cancel',
+    teluguKeywords:  ['ఆపు', 'వద్దు', 'మానేయి'],
+    tenglishPhrases: ['aapandi', 'aappu', 'vaddandi', 'vaddhu', 'cancel cheyyi'],
+    fillers:         [],
+  },
+];
+
+/** TELUGU_SCRIPT_RANGE: U+0C00–U+0C7F */
+function hasTeluguScript(text: string): boolean {
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (cp >= 0x0C00 && cp <= 0x0C7F) return true;
+  }
+  return false;
+}
+
+/**
+ * scoreTeluguIntent(norm) → { intentType, score } | null
+ *
+ * Returns the best-matching Telugu intent above CONFIDENCE_THRESHOLD.
+ * Called from parseVoiceIntent ONLY when English regex + fuzzy match both fail.
+ * Safe: pure function, no side effects, no network.
+ */
+function scoreTeluguIntent(norm: string): { intentType: IntentType; score: number } | null {
+  const lower = norm.toLowerCase();
+  const hasScript = hasTeluguScript(norm);
+
+  let best: { intentType: IntentType; score: number } | null = null;
+
+  for (const tp of TELUGU_PATTERNS) {
+    let score = 0;
+
+    // Layer 1: Telugu Unicode script keywords (highest weight)
+    if (hasScript) {
+      const teHits = tp.teluguKeywords.filter(k => norm.includes(k));
+      if (teHits.length > 0) score = Math.max(score, 0.7 + teHits.length * 0.1);
+    }
+
+    // Layer 2: Tenglish phrase matching
+    const tenglishHits = tp.tenglishPhrases.filter(p => lower.includes(p));
+    if (tenglishHits.length >= 2) score = Math.max(score, 0.75);
+    else if (tenglishHits.length === 1) score = Math.max(score, 0.60);
+
+    // Layer 3: token overlap with Telugu keywords (romanised approximation)
+    const tokens = lower.split(/\s+/).filter(t => !tp.fillers.includes(t) && t.length > 1);
+    const keyTokens = [...tp.tenglishPhrases.flatMap(p => p.split(' ')), ...tp.fillers];
+    const overlap = tokens.filter(t => keyTokens.some(k => k.includes(t) || t.includes(k)));
+    if (overlap.length >= 2) score = Math.max(score, 0.58);
+
+    if (score >= CONFIDENCE_THRESHOLD && (!best || score > best.score)) {
+      best = { intentType: tp.intentType, score: Math.min(1.0, score) };
+    }
+  }
+
+  return best;
+}
+
 // ── Control patterns ──────────────────────────────────────────────────────
 
 const CANCEL_PATTERNS = [
@@ -504,6 +612,22 @@ export function parseVoiceIntent(rawText: string): IntentResult {
         entities: { path: route.path },
       };
     }
+  }
+
+  // ── 6b. Step 2: Telugu NLP scoring (additive fallback) ──────────────
+  // Runs only when English regex + fuzzy both returned handled=false.
+  // Uses finalScore = max(english, telugu, tenglish). Same 0.55 threshold.
+  const teluguMatch = scoreTeluguIntent(norm);
+  if (teluguMatch) {
+    const qp = QUERY_PATTERNS.find(q => q.intentType === teluguMatch.intentType);
+    return {
+      handled:    true,
+      intentType: teluguMatch.intentType,
+      response:   qp?.offlineResponse ?? 'Fetching that.',
+      actionKey:  `query:${teluguMatch.intentType}`,
+      entities:   {},
+      confidence: teluguMatch.score,
+    };
   }
 
   // ── 6. Explicit create-keep prefix ───────────────────────────────────

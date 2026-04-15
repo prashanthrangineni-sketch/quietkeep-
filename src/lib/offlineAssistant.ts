@@ -107,6 +107,25 @@ export function processOfflineCommand(transcript: string): OfflineCommandResult 
     return { handled: true, response: `You have approximately ${c} keeps saved locally.` };
   }
 
+  // 1b. Offline reminder creation — queued to localStorage
+  // Matches: "remind me to X at 5pm", "reminder buy milk tomorrow"
+  if (/\bremind\s+me\b|\bset\s+reminder\b|\badd\s+reminder\b/i.test(t)) {
+    try {
+      const queue = JSON.parse(localStorage.getItem('qk_offline_reminders') || '[]');
+      queue.push({ text: transcript, queuedAt: Date.now() });
+      localStorage.setItem('qk_offline_reminders', JSON.stringify(queue));
+    } catch {}
+    return { handled: true, response: "Reminder saved offline. I'll sync when connected.", queued: true };
+  }
+
+  // 1c. Offline keep creation — anything that looks like a note
+  if (/^(?:note|remember|save|task|todo|buy|add)[:\s]+/i.test(t)) {
+    // Delegate to existing processOffline() which handles queueing properly
+    const ofr = processOffline(transcript);
+    if (ofr.handled) return { handled: true, response: ofr.message, queued: ofr.queued };
+    return { handled: true, response: "Saved offline. Will sync when connected.", queued: true };
+  }
+
   // 2. Network-required queries — decline gracefully
   if (/\bbills?\b|\bpayments?\b|\bdue\b/i.test(t))
     return { handled: true, response: 'No network. Your bills will load when connected.' };

@@ -60,12 +60,7 @@ public class MainActivity extends BridgeActivity {
         applyWebViewBridge();
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        // v6: Release TTS engine when Activity is destroyed
-        TTSManager.getInstance(this).shutdown();
-    }
+    // onDestroy() moved to LotusWakeBridgeHolder registration block above
 
     // ── WebView audio bridge + runtime injection ──────────────────────────
 
@@ -329,6 +324,44 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    /**
+     * Phase 9B: LotusWakeBridgeHolder
+     *
+     * Allows VoiceService (a background Service) to dispatch events to the
+     * WebView without a direct reference to MainActivity.
+     *
+     * SAFETY: sActivity is set to null in onDestroy() to prevent memory leaks.
+     * VoiceService checks for null before using it.
+     * WeakReference is intentionally NOT used — we need a reliable reference
+     * during active voice capture sessions, and the service is bound to app lifetime.
+     */
+    public static class LotusWakeBridgeHolder {
+        public static volatile android.app.Activity sActivity = null;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Register this Activity so VoiceService can dispatch wake events to WebView
+        LotusWakeBridgeHolder.sActivity = this;
+        Log.d(TAG, "LotusWakeBridgeHolder: Activity registered ✓");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Keep registration when paused (service still needs it for background detection)
+        // Only clear on full destroy
+    }
+
+    @Override
+    public void onDestroy() {
+        // Clear bridge holder to prevent memory leak
+        LotusWakeBridgeHolder.sActivity = null;
+        super.onDestroy();
+        TTSManager.getInstance(this).shutdown();
+    }
+
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {

@@ -51,7 +51,7 @@ const DEBOUNCE_MS  = 100;
 let   _debounce    = null;
 
 // Step 5: Standard error response — spoken when no intent matches.
-export const NOT_UNDERSTOOD = "Sorry, I didn't understand. Try saying 'help' for commands.";
+export const NOT_UNDERSTOOD = "I couldn't catch that. Say: Lotus help — to see what I can do.";
 
 /**
  * speakError()
@@ -247,6 +247,38 @@ export function farewellOnLogout(user) {
 }
 
 // ── Contextual voice responses ────────────────────────────────────
+// ── Jarvis assistant confirmations ───────────────────────────────────────
+// Natural, contextual responses for key actions.
+
+/**
+ * speakConfirmation(action, detail)
+ * Speaks a natural language confirmation for a completed action.
+ */
+export function speakConfirmation(action, detail) {
+  const msgs = {
+    reminder_set:   detail ? `Reminder set for ${detail}.` : 'Reminder set.',
+    task_added:     detail ? `Task added: ${detail}.` : 'Task saved.',
+    keep_saved:     detail ? `Got it. ${detail}.` : 'Saved.',
+    keep_updated:   'Done. Keep updated.',
+    keep_deleted:   'Deleted.',
+    nav_opening:    detail ? `Opening ${detail}.` : 'Opening.',
+    query_fetching: detail ? `Fetching your ${detail}.` : 'On it.',
+    error_retry:    detail || "I couldn't do that. Please try again.",
+    bills_summary:  detail || 'No pending bills.',
+  };
+  speak(msgs[action] || detail || 'Done.', { priority: 'high' });
+}
+
+/**
+ * speakFollowUp(prompt)
+ * Speaks a follow-up prompt after an action. Low priority — won't interrupt.
+ */
+export function speakFollowUp(prompt) {
+  if (!prompt) return;
+  // Small delay so it follows the confirmation naturally
+  setTimeout(() => speak(prompt, { priority: 'low' }), 1200);
+}
+
 export const VoiceResponses = {
   keepSaved: (content) => {
     const preview = content ? content.slice(0, 60).trim() : '';
@@ -258,6 +290,10 @@ export const VoiceResponses = {
   },
   keepDeleted: () => speak('Keep deleted.'),
   keepUpdated: () => speak('Keep updated.'),
+  /**
+   * reminderSet — Jarvis: confirms reminder with time, then optionally prompts
+   * for additional context.
+   */
   reminderSet: (text, time) => {
     if (text && time) {
       const d = new Date(time);

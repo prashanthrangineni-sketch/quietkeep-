@@ -92,6 +92,31 @@ public class VoiceService extends Service {
     // ── Phase 9C: battery safety ─────────────────────────────────────────
     private volatile boolean batterySafe = true;   // true = safe to run
 
+    // ── Step 5: Screen state — adaptive sampling when screen is off ────────────
+    // Updated by screenReceiver. When screen is OFF we skip every other chunk
+    // (effectively halving the detection frequency) to save CPU + battery.
+    // SAFE: only reads this flag in the capture loop — no lock needed (volatile).
+    private volatile boolean screenOff = false;
+    private volatile int     skipChunkCounter = 0;  // used for alternating skip
+
+    // Screen state receiver — ACTION_SCREEN_OFF / ACTION_SCREEN_ON
+    // These intents have no extras — no data parsing needed.
+    private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            if (android.content.Intent.ACTION_SCREEN_OFF.equals(action)) {
+                screenOff = true;
+                skipChunkCounter = 0;
+                Log.d(TAG, "VoiceService: screen OFF — halving detection frequency");
+            } else if (android.content.Intent.ACTION_SCREEN_ON.equals(action)) {
+                screenOff = false;
+                skipChunkCounter = 0;
+                Log.d(TAG, "VoiceService: screen ON — restoring full detection");
+            }
+        }
+    };
+
     // ── Phase 9C: battery safety receiver ───────────────────────────────
     private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
         @Override
@@ -150,6 +175,14 @@ public class VoiceService extends Service {
         try {
             IntentFilter bf = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
             registerReceiver(batteryReceiver, bf);
+        } catch (Exception ignored) {}
+
+        // Step 5: register screen state receiver (no permission required)
+        try {
+            IntentFilter sf = new IntentFilter();
+            sf.addAction(android.content.Intent.ACTION_SCREEN_OFF);
+            sf.addAction(android.content.Intent.ACTION_SCREEN_ON);
+            registerReceiver(screenReceiver, sf);
         } catch (Exception ignored) {}
 
             createNotificationChannel();
@@ -285,6 +318,19 @@ public class VoiceService extends Service {
                             Log.d(TAG, "Skip wake detect — battery low");
                             continue;
                         }
+
+                        // Step 5: adaptive sampling when screen is off.
+                        // Skip every other chunk — halves CPU usage with minimal
+                        // detection accuracy loss (wake word is ~0.5s, chunks are 3s).
+                        // DO NOT modify the capture loop — this is a pure continue guard.
+                        if (screenOff) {
+                            skipChunkCounter++;
+                            if (skipChunkCounter % 2 == 0) {
+                                Log.d(TAG, "Skip wake detect — screen off (adaptive)");
+                                continue;
+                            }
+                        }
+
                         boolean wakeDetected = wakeWordEngine.detectWakeWord(chunk);
                         if (wakeDetected) {
                             Log.d(TAG, "WakeWordEngine: LOTUS DETECTED — dispatching event");
@@ -751,6 +797,8 @@ public class VoiceService extends Service {
         Log.d(TAG, "VoiceService.stopCapture");
         // Phase 9C: unregister battery receiver
         try { unregisterReceiver(batteryReceiver); } catch (Exception ignored) {}
+        // Step 5: unregister screen receiver
+        try { unregisterReceiver(screenReceiver); } catch (Exception ignored) {}
         isCapturing = false;
         captureActive = false;
         if (wakeLock != null && wakeLock.isHeld()) {

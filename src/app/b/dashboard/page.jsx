@@ -1,4 +1,7 @@
 'use client';
+// Step 2.4: Business intent engine — isolated to /b/* pages only
+// This import MUST NOT appear in src/app/dashboard/page.jsx
+import { parseBusinessIntent, getBusinessAction } from '@/lib/businessIntentEngine';
 import { useAuth } from '@/lib/context/auth';
 /**
  * src/app/b/dashboard/page.jsx
@@ -104,6 +107,24 @@ export default function BizDashboardPage() {
   async function saveLedgerEntry() {
     if (!voiceText.trim() || !workspace) return;
     setSavingVoice(true);
+
+    // Step 2.4: Business intent engine — parse BEFORE API call
+    // If the business engine handles it locally, no API call needed.
+    try {
+      const bizIntent = parseBusinessIntent(voiceText.trim(), workspace.id);
+      if (bizIntent.handled && bizIntent.confidence >= 0.60) {
+        const bizAction = getBusinessAction(bizIntent.actionKey, { router });
+        if (bizAction) {
+          bizAction(); // navigate to relevant business page
+          setVoiceMsg(bizIntent.response || 'Opening…');
+          setVoiceText('');
+          setSavingVoice(false);
+          setTimeout(() => setVoiceMsg(''), 3000);
+          return; // handled locally — no API call
+        }
+      }
+    } catch {}
+
     try {
       if (!accessToken) throw new Error('no session');
       const { data, error } = await apiPost('/api/voice/capture', {

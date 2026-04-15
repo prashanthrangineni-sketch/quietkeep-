@@ -2,6 +2,9 @@
 import { useAuth } from '@/lib/context/auth';
 import { resolveVoiceCommand } from '@/lib/voiceQueryEngine'; // TASK 5+10
 import { parseVoiceIntent, getIntentAction, isQueryIntent, CONFIDENCE_THRESHOLD } from '@/lib/voiceIntentEngine'; // Phase 2-4
+import { detectLanguage, setStoredLanguagePreference } from '@/lib/languageRouter'; // Step 2
+import { processOfflineCommand } from '@/lib/offlineAssistant'; // Step 4
+import { selectAIProvider } from '@/lib/aiRouter'; // Step 4 BYO-AI (advisory)
 import { getVoiceMode, setVoiceMode, isWakeMode } from '@/lib/voiceMode'; // Phase 8I
 import { recordIntent, tryResolveContinuation, clearContext } from '@/lib/voiceContext'; // Phase 8B
 import { speak, speakLow, cancelSpeech, VoiceResponses, greetOnLogin, greetOnReturn, processWithWakeWord, setWakeMode } from '@/components/VoiceTalkback';
@@ -1046,6 +1049,28 @@ export default function Dashboard() {
     // ── Phase 8 voice pipeline ───────────────────────────────────────────
     let commandText = content.trim();
     if (listening) {
+      // ── Step 1a: Language detection (non-blocking, advisory) ─────────
+      // detectLanguage is a pure function — zero latency, no network.
+      // Stores locale to qk_voice_lang so VoiceTalkback auto-switches TTS.
+      // Does NOT modify commandText or the intent pipeline.
+      const langResult = detectLanguage(commandText);
+      if (langResult.confidence > 0.65 && langResult.locale !== 'en-IN') {
+        setStoredLanguagePreference(langResult.locale);
+      }
+
+      // ── Step 1b: Offline routing (before ANY network call) ───────────
+      // Intercepts commands that can be answered locally.
+      // Falls through to normal pipeline if not handled offline.
+      if (!navigator.onLine) {
+        const offlineResult = processOfflineCommand(commandText);
+        if (offlineResult.handled) {
+          if (offlineResult.response) speak(offlineResult.response);
+          if (offlineResult.navigate) router.push(offlineResult.navigate);
+          setContent(''); setSaving(false); savingRef.current = false;
+          return;
+        }
+      }
+
       // Phase 8I: wake word required in wake/always_on mode; manual = pass-through
       if (isWakeMode()) {
         const wakeResult = processWithWakeWord(content.trim());
@@ -1085,6 +1110,18 @@ export default function Dashboard() {
 
         // Phase 8B: record for continuation context
         recordIntent(intent.intentType, intent.entities, commandText);
+
+        // ── Step 1c: AI provider selection (advisory, no API call) ──────
+        // selectAIProvider is a pure function — reads user settings, returns
+        // provider id. Stored for next API call; does NOT trigger any network.
+        // The actual API layer will read this on the next /api/voice/capture call.
+        try {
+          const aiProv = selectAIProvider({ tier: tier || 'free' });
+          if (aiProv.id !== 'default') {
+            sessionStorage.setItem('qk_ai_provider', aiProv.id);
+          }
+        } catch (_) {}
+
         setContent(''); setSaving(false); savingRef.current = false;
         return;
       }

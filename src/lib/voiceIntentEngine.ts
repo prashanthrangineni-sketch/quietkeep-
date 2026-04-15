@@ -385,70 +385,6 @@ const TELUGU_PATTERNS: TeluguPattern[] = [
   },
 ];
 
-// ── Step 7: Indian English voice dataset patterns ────────────────────────
-// High-frequency Indian English variants from voice_samples analysis.
-
-interface IndianPatternEntry {
-  intentType:  IntentType;
-  patterns:    RegExp[];
-  score:       number;
-}
-
-const INDIAN_ENGLISH_PATTERNS: IndianPatternEntry[] = [
-  {
-    intentType: 'query_bills',
-    patterns: [
-      /pending\s+amount/i, /how\s+much\s+dues?/i, /balance\s+due/i,
-      /what\s+(?:all\s+)?(?:is\s+)?(?:my\s+)?dues?/i,
-      /emi\s+(?:pending|due|left)/i, /installment\s+(?:due|pending)/i,
-    ],
-    score: 0.80,
-  },
-  {
-    intentType: 'query_reminders',
-    patterns: [
-      /what\s+(?:all\s+)?work\s+(?:I\s+have|is\s+there|pending)/i,
-      /any\s+(?:pending\s+)?tasks?/i, /today['s]*\s+work/i,
-      /what\s+(?:I\s+need\s+to|to)\s+do/i,
-    ],
-    score: 0.78,
-  },
-  {
-    intentType: 'query_expenses',
-    patterns: [
-      /how\s+much\s+(?:I\s+)?spent\s+today/i, /total\s+amount\s+spent/i,
-      /today['s]*\s+expense/i, /what\s+(?:I\s+have\s+)?spent/i,
-    ],
-    score: 0.79,
-  },
-  {
-    intentType: 'query_subscriptions',
-    patterns: [
-      /which\s+(?:all\s+)?plans?\s+(?:I\s+have|are\s+active)/i,
-      /active\s+subscriptions?/i, /monthly\s+(?:charges?|deductions?)/i,
-    ],
-    score: 0.77,
-  },
-  {
-    intentType: 'query_brief',
-    patterns: [
-      /what['s]*\s+(?:the\s+)?today['s]*\s+plan/i, /today\s+(?:ka\s+)?schedule/i,
-    ],
-    score: 0.76,
-  },
-];
-
-function scoreIndianEnglishIntent(norm: string): { intentType: IntentType; score: number } | null {
-  const lower = norm.toLowerCase();
-  let best: { intentType: IntentType; score: number } | null = null;
-  for (const entry of INDIAN_ENGLISH_PATTERNS) {
-    if (entry.patterns.some(p => p.test(lower))) {
-      if (!best || entry.score > best.score) best = { intentType: entry.intentType, score: entry.score };
-    }
-  }
-  return best;
-}
-
 /** TELUGU_SCRIPT_RANGE: U+0C00–U+0C7F */
 function hasTeluguScript(text: string): boolean {
   for (const ch of text) {
@@ -491,6 +427,8 @@ function scoreTeluguIntent(norm: string): { intentType: IntentType; score: numbe
     const overlap = tokens.filter(t => keyTokens.some(k => k.includes(t) || t.includes(k)));
     if (overlap.length >= 2) score = Math.max(score, 0.58);
 
+    // Step 3: script boost — explicit Telugu Unicode gets +0.15 confidence
+    const scriptBoost = hasScript ? 0.15 : 0.0;
     const finalScore = Math.min(1.0, score + scriptBoost);
     if (finalScore >= CONFIDENCE_THRESHOLD && (!best || finalScore > best.score)) {
       best = { intentType: tp.intentType, score: finalScore };
@@ -679,19 +617,9 @@ export function parseVoiceIntent(rawText: string): IntentResult {
     }
   }
 
-  // ── 6b. Step 7: Indian English dataset patterns (before Telugu) ─────
-  // High-frequency Indian English variants from voice_samples analysis.
-  const indianMatch = scoreIndianEnglishIntent(norm);
-  if (indianMatch) {
-    const qpI = QUERY_PATTERNS.find(q => q.intentType === indianMatch.intentType);
-    return {
-      handled: true, intentType: indianMatch.intentType,
-      response: qpI?.offlineResponse ?? 'Fetching that.', actionKey: `query:${indianMatch.intentType}`,
-      entities: {}, confidence: indianMatch.score,
-    };
-  }
-
-  // ── 6c. Step 2+3: Telugu NLP scoring (additive fallback) ──────────────
+  // ── 6b. Step 2: Telugu NLP scoring (additive fallback) ──────────────
+  // Runs only when English regex + fuzzy both returned handled=false.
+  // Uses finalScore = max(english, telugu, tenglish). Same 0.55 threshold.
   const teluguMatch = scoreTeluguIntent(norm);
   if (teluguMatch) {
     const qp = QUERY_PATTERNS.find(q => q.intentType === teluguMatch.intentType);

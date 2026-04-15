@@ -525,6 +525,9 @@ export default function Dashboard() {
   const [whyPanel, setWhyPanel]                 = useState(null);     // { message, why_text, score, signals }
   // GAP-7 FIX: native Android voice service state
   const [nativeVoiceActive, setNativeVoiceActive] = useState(false);
+  // FIX: always-on status for clear lifecycle states
+  // 'off' | 'starting' | 'active' | 'error'
+  const [alwaysOnStatus, setAlwaysOnStatus] = useState('off');
   // CHANGE D: user behavior model — used to personalise detectUserState
   const [userModel, setUserModel] = useState(null);
   const recognitionRef = useRef(null);
@@ -691,6 +694,7 @@ export default function Dashboard() {
     }
 
     if (nativeVoiceActive) {
+      setAlwaysOnStatus('off');
       await stopNativeVoice();
       setNativeVoiceActive(false);
       releaseVoiceLock(); // ensure lock released on manual stop
@@ -746,14 +750,17 @@ export default function Dashboard() {
     // Step 4: Confirm service is actually running after 900ms
     // Plugin resolves immediately after dispatching startForegroundService —
     // we poll isRunning() to confirm AudioRecord actually initialised.
+    setAlwaysOnStatus('starting');
     showToast('Starting always-on voice…');
     setTimeout(async () => {
       const confirmed = await isNativeVoiceRunning();
       if (confirmed) {
         setNativeVoiceActive(true);
+        setAlwaysOnStatus('active');
         showToast('🎙 Always-on voice active');
       } else {
         setNativeVoiceActive(false);
+        setAlwaysOnStatus('error');
         showToast('⚠ Always-on not available — mic access failed. Enable in Settings → Apps → QuietKeep');
       }
     }, 900);
@@ -813,6 +820,22 @@ export default function Dashboard() {
     // Auth from AuthContext — single onAuthStateChange listener in layout
     if (authLoading) return; // wait for context to resolve
     if (!user) { router.replace('/login'); return; }
+
+    // ── FIX: Restore always-on state on page reload (APK only) ─────────
+    // VoiceService may still be running after page reload (Capacitor WebView reload).
+    // Poll after 1.5s so the plugin is ready before we query.
+    if (typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.()) {
+      setTimeout(async () => {
+        try {
+          const running = await isNativeVoiceRunning();
+          if (running) {
+            setNativeVoiceActive(true);
+            setAlwaysOnStatus('active');
+            console.log('[QK Always-On] restored: service was already running');
+          }
+        } catch {}
+      }, 1500);
+    }
 
     // ── PERMISSION ONBOARDING: first Android launch ──────────────────────
     if (
@@ -1062,6 +1085,30 @@ export default function Dashboard() {
     return () => window.removeEventListener('lotus_wake', onLotusWake);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // FIX: Always-On resume sync — re-poll VoiceService state when app comes to foreground
+  // Handles: Capacitor WebView reload, Android task switch, screen lock/unlock
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    async function onResume() {
+      if (document.visibilityState !== 'visible') return;
+      if (!window?.Capacitor?.isNativePlatform?.()) return;
+      try {
+        const running = await isNativeVoiceRunning();
+        // Only update if state is out of sync
+        if (running && !nativeVoiceActive) {
+          setNativeVoiceActive(true);
+          setAlwaysOnStatus('active');
+        } else if (!running && nativeVoiceActive) {
+          setNativeVoiceActive(false);
+          setAlwaysOnStatus('off');
+          releaseVoiceLock(); // safety: release lock if service died unexpectedly
+        }
+      } catch {}
+    }
+    document.addEventListener('visibilitychange', onResume);
+    return () => document.removeEventListener('visibilitychange', onResume);
+  }, [nativeVoiceActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleSave() {
     if (savingRef.current || !content.trim() || !user) return;
 
@@ -1223,6 +1270,8 @@ export default function Dashboard() {
 
       const res = await safeFetch('/api/voice/capture', {
         method: 'POST',
+        // FIX 2.3: Pass AI provider hint — advisory, never blocks request
+        headers: { 'X-AI-Provider': (() => { try { return sessionStorage.getItem('qk_ai_provider') || 'default'; } catch { return 'default'; } })() },
         body: JSON.stringify({
           transcript:   commandText,
           source:       listening ? 'voice' : 'text',
@@ -1371,31 +1420,43 @@ export default function Dashboard() {
   }
 
   async function handleEdit(id, updates) {
-    // TASK 8 FIX: wrap entire edit in try/catch so errors never bubble to
-    // the root error.tsx boundary. Shows a toast instead of crashing the page.
-    try {
-      if (!id || !updates) throw new Error('Invalid edit params');
-      // Guard against undefined/null values that crash Supabase update
-      const safeUpdates = Object.fromEntries(
-        Object.entries(updates).filter(([, v]) => v !== undefined)
-      );
-      if (Object.keys(safeUpdates).length === 0) return;
+    // FIX: handleEdit now re-throws after toast so EditKeepModal.saveError
+    // is populated and the modal shows an inline error message.
+    // Previously: caught internally only → modal never saw the error.
+    if (!id || !updates) throw new Error('Invalid edit params');
 
-      const freshToken = await refreshToken();
-      const { error } = await supabase.from('keeps').update({
-        ...safeUpdates,
-        updated_at: new Date().toISOString(),
-      }).eq('id', id).eq('user_id', user.id);
-      if (error) throw new Error(error.message || 'Could not update keep');
-      // Optimistic UI update
-      setIntents(prev => prev.map(k => k.id === id ? { ...k, ...safeUpdates } : k));
-      try { await supabase.from('audit_log').insert({ user_id: user.id, action: 'keep_edited', intent_id: id, service: 'dashboard', details: safeUpdates }); } catch {}
-      showToast('Keep updated ✓');
-      VoiceResponses.keepUpdated();
-    } catch (err) {
-      console.error('[QK] handleEdit failed:', err);
-      showToast('⚠ ' + (err?.message || 'Failed to update keep'));
+    // Strip undefined — null is intentional (e.g. clearing reminder_at)
+    const safeUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([, v]) => v !== undefined)
+    );
+    if (Object.keys(safeUpdates).length === 0) return;
+
+    // FIX: always call refreshToken, but do NOT await it if it fails —
+    // the Supabase client already auto-refreshes; this is belt-and-suspenders.
+    try { await refreshToken(); } catch {}
+
+    const { error } = await supabase.from('keeps').update({
+      ...safeUpdates,
+      updated_at: new Date().toISOString(),
+    }).eq('id', id).eq('user_id', user.id);
+
+    if (error) {
+      const msg = error.message || 'Could not update keep';
+      console.error('[QK] handleEdit Supabase error:', error);
+      showToast('⚠ ' + msg);
+      throw new Error(msg); // re-throw → modal shows inline saveError
     }
+
+    // Optimistic UI update — no need for full reload
+    setIntents(prev => prev.map(k => k.id === id ? { ...k, ...safeUpdates } : k));
+    try {
+      await supabase.from('audit_log').insert({
+        user_id: user.id, action: 'keep_edited',
+        intent_id: id, service: 'dashboard', details: safeUpdates,
+      });
+    } catch {}
+    showToast('Keep updated ✓');
+    VoiceResponses.keepUpdated();
   }
 
   // GAP-1 FIX: feedback loop — closes the learning loop by calling update_intent_priority DB fn
@@ -1908,7 +1969,13 @@ export default function Dashboard() {
                     color: nativeVoiceActive ? '#ef4444' : '#10b981',
                   }}
                 >
-                  {nativeVoiceActive ? '🎙 Always-On: Stop' : '🎙 Always-On'}
+                  {nativeVoiceActive
+                    ? '🎙 Always-On: Stop'
+                    : alwaysOnStatus === 'starting'
+                      ? '⏳ Starting…'
+                      : alwaysOnStatus === 'error'
+                        ? '⚠ Always-On (Error)'
+                        : '🎙 Always-On'}
                 </button>
               )}
             </div>

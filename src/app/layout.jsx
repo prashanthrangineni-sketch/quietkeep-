@@ -1,4 +1,5 @@
 import localFont from 'next/font/local';
+import BiometricGate from '@/components/BiometricGate'; // Step 9: biometric lock gate
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { cookies } from 'next/headers';
@@ -112,7 +113,7 @@ export default async function RootLayout({ children }) {
         <NextIntlClientProvider messages={messages} locale={displayLocale}>
           <LanguageProvider initialLang={initialLang}>
             <AuthProvider>
-              {children}
+              <BiometricGate>{children}</BiometricGate>
             </AuthProvider>
           </LanguageProvider>
         </NextIntlClientProvider>

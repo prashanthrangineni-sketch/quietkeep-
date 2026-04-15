@@ -178,15 +178,6 @@ export function selectSTTStrategy(context: STTContext): STTStrategy {
     };
   }
 
-  // Step 5: API delay fallback — if Sarvam was recently slow, use web
-  if (isSarvamSlow() && !isIndianLocale) {
-    return {
-      type:   isNative ? 'web' : 'web',
-      reason: 'Sarvam API slow — using web STT temporarily',
-      ...STRATEGIES.web,
-    };
-  }
-
   // Step 2 — Indian locale + APK + online → prefer Sarvam.
   // Sarvam has best-in-class accuracy for te-IN, hi-IN, and other Indian languages.
   // This is additive: only applies when languageRouter detected an Indian locale.
@@ -194,6 +185,17 @@ export function selectSTTStrategy(context: STTContext): STTStrategy {
     context.detectedLocale !== 'en-US' &&
     context.detectedLocale.endsWith('-IN') &&
     context.detectedLocale !== 'en-IN');  // en-IN is fine on WebSpeech; te/hi/ta need Sarvam
+
+  // Step 5: API delay fallback — if Sarvam was recently slow, skip it.
+  // Indian locales (te-IN, hi-IN) still prefer Sarvam even when slow,
+  // because accuracy matters more than latency for non-English speakers.
+  if (isSarvamSlow() && !isIndianLocale) {
+    return {
+      type:   'web',
+      reason: 'Sarvam API slow — using web STT temporarily',
+      ...STRATEGIES.web,
+    };
+  }
 
   if (isNative && isIndianLocale && context.sarvamAvailable !== false) {
     return {

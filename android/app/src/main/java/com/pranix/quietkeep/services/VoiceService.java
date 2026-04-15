@@ -13,6 +13,11 @@ import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.os.PowerManager;
 import android.util.Log;
 import androidx.annotation.Nullable;
@@ -74,7 +79,38 @@ public class VoiceService extends Service {
     // Service alive ≠ capture alive — they can diverge on AudioRecord failure.
     public static volatile boolean captureActive = false;
 
-    @Override
+    // ── Phase 9A: WakeWordEngine (offline wake word detection) ───────────
+    // Instantiated once — stateless per-call, thread-safe.
+    private final WakeWordEngine wakeWordEngine = new WakeWordEngine();
+
+    // ── Phase 9B+9F: always-on mode flag ─────────────────────────────────
+    // Set via intent extra "always_on=true". When true, the capture loop
+    // runs wake-word detection on every non-silent chunk instead of sending
+    // all audio to Sarvam STT. Only audio AFTER wake word detection is sent.
+    private volatile boolean alwaysOnMode = false;
+
+    // ── Phase 9C: battery safety ─────────────────────────────────────────
+    private volatile boolean batterySafe = true;   // true = safe to run
+
+    // ── Phase 9C: battery safety receiver ───────────────────────────────
+    private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int level  = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 100);
+            int scale  = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100);
+            int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+            boolean charging = status == BatteryManager.BATTERY_STATUS_CHARGING
+                            || status == BatteryManager.BATTERY_STATUS_FULL;
+            double pct = (double) level / scale * 100.0;
+            // Safe if charging OR battery > 15%
+            batterySafe = charging || pct > 15.0;
+            Log.d(TAG, String.format("Battery: %.0f%% charging=%b safe=%b", pct, charging, batterySafe));
+            if (!batterySafe && alwaysOnMode) {
+                Log.w(TAG, "Battery low — pausing always-on wake word scanning");
+            }
+        }
+    };
+
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "VoiceService.onCreate");
@@ -98,6 +134,8 @@ public class VoiceService extends Service {
         if ("START".equals(action)) {
             authToken    = intent.getStringExtra("auth_token");
             serverUrl    = intent.getStringExtra("server_url");
+            alwaysOnMode = intent.getBooleanExtra("always_on", false);
+            Log.d(TAG, "VoiceService alwaysOnMode=" + alwaysOnMode);
             sessionId    = intent.getStringExtra("session_id");
             mode         = intent.getStringExtra("mode");
             workspaceId  = intent.getStringExtra("workspace_id");
@@ -107,6 +145,12 @@ public class VoiceService extends Service {
             Log.d(TAG, "VoiceService STT lang: " + languageCode);
 
             Log.d(TAG, "VoiceService START: mode=" + mode + " server=" + serverUrl);
+
+        // Phase 9C: register battery receiver to monitor level during capture
+        try {
+            IntentFilter bf = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+            registerReceiver(batteryReceiver, bf);
+        } catch (Exception ignored) {}
 
             createNotificationChannel();
             startForegroundWithMicType(buildNotification(mode));
@@ -225,12 +269,37 @@ public class VoiceService extends Service {
                 if (silent) {
                     silentChunks++;
                     if (silentChunks >= SILENCE_CHUNKS) {
-                        sendChunk(chunk, true);
+                        if (!alwaysOnMode) {
+                            // Normal mode: send silent chunks to STT as usual
+                            sendChunk(chunk, true);
+                        }
                         silentChunks = 0;
                     }
                 } else {
                     silentChunks = 0;
-                    sendChunk(chunk, false);
+
+                    // ── Phase 9A+9B: always-on wake word detection ───────────────
+                    if (alwaysOnMode) {
+                        // Phase 9C: skip detection if battery unsafe
+                        if (!batterySafe) {
+                            Log.d(TAG, "Skip wake detect — battery low");
+                            continue;
+                        }
+                        boolean wakeDetected = wakeWordEngine.detectWakeWord(chunk);
+                        if (wakeDetected) {
+                            Log.d(TAG, "WakeWordEngine: LOTUS DETECTED — dispatching event");
+                            dispatchLotusWakeEvent();
+                            // After wake detection: send this chunk to STT so the
+                            // command following the wake word is captured immediately.
+                            // This gives ~3s of audio containing the wake word + command.
+                            sendChunk(chunk, false);
+                        }
+                        // In always-on mode: only send audio AFTER wake word detected.
+                        // Audio without wake word is discarded (saves Sarvam quota).
+                    } else {
+                        // Normal (non-always-on) mode: send all non-silent chunks
+                        sendChunk(chunk, false);
+                    }
                 }
             }
             Log.d(TAG, "VoiceService: capture thread ended");
@@ -631,8 +700,57 @@ public class VoiceService extends Service {
         return w;
     }
 
+    /**
+     * Phase 9B: dispatchLotusWakeEvent()
+     *
+     * Fires window.dispatchEvent(new CustomEvent('lotus_wake', {detail:{source:'background'}}))
+     * in the WebView via MainActivity bridge. Must be called from any thread —
+     * uses getBridge().getWebView().post() to marshal to the UI thread.
+     *
+     * SAFETY: wrapped in try/catch. If MainActivity/Bridge is not available
+     * (e.g. app backgrounded, Activity destroyed), this is silently ignored.
+     * The VoiceService capture loop continues regardless.
+     */
+    private void dispatchLotusWakeEvent() {
+        try {
+            // Get the Application context and find the WebView via a static accessor.
+            // We use a Handler on the main looper to safely evaluate JS from a background thread.
+            android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+            mainHandler.post(() -> {
+                try {
+                    // Access the Capacitor bridge via the Application instance
+                    android.app.Activity act = com.pranix.quietkeep.MainActivity.LotusWakeBridgeHolder.sActivity;
+                    if (act == null) {
+                        Log.w(TAG, "dispatchLotusWakeEvent: MainActivity not available");
+                        return;
+                    }
+                    if (!(act instanceof com.getcapacitor.BridgeActivity)) {
+                        Log.w(TAG, "dispatchLotusWakeEvent: not a BridgeActivity");
+                        return;
+                    }
+                    android.webkit.WebView webView =
+                        ((com.getcapacitor.BridgeActivity) act).getBridge().getWebView();
+                    if (webView == null) {
+                        Log.w(TAG, "dispatchLotusWakeEvent: WebView not available");
+                        return;
+                    }
+                    String js = "window.dispatchEvent(new CustomEvent('lotus_wake',"
+                              + "{detail:{source:'background'}}));";
+                    webView.evaluateJavascript(js, null);
+                    Log.d(TAG, "lotus_wake event dispatched to WebView ✓");
+                } catch (Exception e) {
+                    Log.w(TAG, "dispatchLotusWakeEvent (inner): " + e.getMessage());
+                }
+            });
+        } catch (Exception e) {
+            Log.w(TAG, "dispatchLotusWakeEvent: " + e.getMessage());
+        }
+    }
+
     private void stopCapture() {
         Log.d(TAG, "VoiceService.stopCapture");
+        // Phase 9C: unregister battery receiver
+        try { unregisterReceiver(batteryReceiver); } catch (Exception ignored) {}
         isCapturing = false;
         captureActive = false;
         if (wakeLock != null && wakeLock.isHeld()) {

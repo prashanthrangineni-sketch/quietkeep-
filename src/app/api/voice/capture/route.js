@@ -245,9 +245,12 @@ export async function POST(request) {
       user_id:        user.id,
       content:        text,
       voice_text:     text,
-      // FIX 2.3: AI provider advisory — from X-AI-Provider header, non-blocking
-      // Dashboard sets sessionStorage → fetch header → stored with keep for analytics.
-      ai_provider:    (request.headers.get('X-AI-Provider') || 'default').slice(0, 32),
+      // Step 4 FIX: AI provider — from validated header, stored for analytics
+      ai_provider:    (() => {
+        const raw = (request.headers.get('X-AI-Provider') || 'default').toLowerCase().slice(0, 32);
+        // Whitelist valid providers — reject arbitrary values
+        return ['default', 'openai', 'gemini', 'local'].includes(raw) ? raw : 'default';
+      })(),
       intent_type:    parsed.type !== 'unknown' ? parsed.type : 'note',
       confidence:     parsed.confidence,
       parsing_method: 'rule',

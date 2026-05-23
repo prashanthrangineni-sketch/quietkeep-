@@ -142,21 +142,22 @@ export default function BizDashboardPage() {
         setVoiceMsg('⚠ ' + (error || 'Could not save. Try again.'));
       }
     } catch (e) {
-      try {
-        const text  = voiceText.toLowerCase();
-        const type  = /received|paid me|collected|sale/.test(text) ? 'credit' : 'debit';
-        const amtM  = voiceText.match(/[₹]?\s*(\d+[\d,]*)/);
-        const amount = amtM ? parseFloat(amtM[1].replace(',', '')) : 0;
-        const partyM = voiceText.match(/(?:from|to|by|for)\s+([A-Za-z]+)/i);
-        await supabase.from('business_ledger').insert({
-          workspace_id: workspace.id, entry_type: type, amount: amount || 1,
-          description: voiceText, party_name: partyM ? partyM[1] : null,
-          payment_method: 'cash', payment_status: 'paid',
-          source: 'voice', voice_transcript: voiceText, created_by: user.id,
-        });
-        setVoiceMsg(type === 'credit' ? `✓ Income \u20b9${amount} recorded` : `✓ Expense \u20b9${amount} recorded`);
-        setVoiceText(''); loadStats(workspace.id);
-      } catch { setVoiceMsg('⚠ Error saving entry'); }
+      // P0 urgency fix (May 23, 2026): the previous offline fallback silently
+      // regex-parsed the transcript and inserted to business_ledger with
+      // `amount: amount || 1` default. That corrupted the ledger any time the
+      // amount regex didn't match (any non-numeric phrase became a ₹1 entry).
+      // We now refuse to write a ledger entry from the client when the server
+      // call fails: show a clear error and keep the transcript in the input
+      // field so the user can retry once connectivity / server returns.
+      // Full retry queue + intent-engine routing comes in P1.2.
+      const amtM   = voiceText.match(/[₹]?\s*(\d+[\d,]*)/);
+      const amount = amtM ? parseFloat(amtM[1].replace(',', '')) : 0;
+      if (!amount) {
+        setVoiceMsg('⚠ Could not save (no amount detected). Try again or check connection.');
+      } else {
+        setVoiceMsg('⚠ Could not reach server. Tap Save again when connection returns.');
+      }
+      // Transcript intentionally kept in voiceText so the user can retry.
     } finally {
       setSavingVoice(false);
       setTimeout(() => setVoiceMsg(''), 4000);

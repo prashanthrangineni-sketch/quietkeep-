@@ -34,14 +34,22 @@ export interface UserAISettings {
 }
 
 // ── Provider metadata ──────────────────────────────────────────────────────
+//
+// Bible P0.1 (May 23, 2026): model strings updated.
+//   - default: claude-3-5-haiku → claude-haiku-4-5-20251001
+//       (Anthropic versioned identifier; verified current per Anthropic platform docs.)
+//   - gemini:  gemini-1.5-flash → gemini-2.5-flash
+//       (Gemini 1.5 was shut down by Google and returns 404; 2.5-flash is the
+//        current stable Flash string per ai.google.dev/gemini-api/docs/models.)
+//   - openai:  gpt-4o left unchanged in this commit (separate decision).
 
 type ProviderMeta = Omit<AIProvider, 'id' | 'reason' | 'hasKey'>;
 
 const META: Record<AIProviderType, ProviderMeta> = {
-  default: { name: 'QuietKeep AI',   model: 'claude-3-5-haiku',   supportsSTT: true,  supportsTTS: true  },
-  openai:  { name: 'OpenAI',         model: 'gpt-4o',             supportsSTT: true,  supportsTTS: true  },
-  gemini:  { name: 'Google Gemini',  model: 'gemini-1.5-flash',   supportsSTT: false, supportsTTS: false },
-  local:   { name: 'Local Model',    model: undefined,            supportsSTT: false, supportsTTS: false },
+  default: { name: 'QuietKeep AI',   model: 'claude-haiku-4-5-20251001', supportsSTT: true,  supportsTTS: true  },
+  openai:  { name: 'OpenAI',         model: 'gpt-4o',                    supportsSTT: true,  supportsTTS: true  },
+  gemini:  { name: 'Google Gemini',  model: 'gemini-2.5-flash',          supportsSTT: false, supportsTTS: false },
+  local:   { name: 'Local Model',    model: undefined,                   supportsSTT: false, supportsTTS: false },
 };
 
 function build(id: AIProviderType, reason: string, hasKey: boolean, modelOverride?: string | null): AIProvider {

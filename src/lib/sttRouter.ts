@@ -78,7 +78,8 @@ export interface STTContext {
   userOverride?:    string | null;
   /** Current voice language (BCP-47) */
   voiceLang?:       string;
-  /** Groq API availability (optional — from health check) */
+  /** Groq API availability (optional — from health check).
+   *  undefined = unknown (optimistic, treated as available). */
   groqAvailable?:   boolean;
   /** @deprecated Legacy alias for groqAvailable — still accepted for callers
    *  that haven't been updated. Set to undefined to defer to groqAvailable. */
@@ -125,6 +126,15 @@ function normalizeOverride(v: string | null | undefined): STTStrategyType | null
   return null;
 }
 
+// Returns true when Groq is known to be available (or status is unknown).
+// Returns false only when we have an explicit false signal.
+// Accepts both the new groqAvailable and the legacy sarvamAvailable field.
+function isCloudAvailable(context: STTContext): boolean {
+  const v = context.groqAvailable ?? context.sarvamAvailable;
+  // undefined = not checked yet → optimistic (treat as available)
+  return v !== false;
+}
+
 // ── Main selection function ───────────────────────────────────────────────
 
 /**
@@ -143,11 +153,6 @@ function normalizeOverride(v: string | null | undefined): STTStrategyType | null
  */
 export function selectSTTStrategy(context: STTContext): STTStrategy {
   const { isNative, isOnline, voiceMode, userOverride } = context;
-
-  // Treat groqAvailable as primary; fall back to legacy sarvamAvailable
-  // for any caller that hasn't been updated yet.
-  const cloudAvailable =
-    context.groqAvailable ?? context.sarvamAvailable;
 
   // Rule 1: User override takes precedence
   const overrideType = normalizeOverride(userOverride);
@@ -181,8 +186,8 @@ export function selectSTTStrategy(context: STTContext): STTStrategy {
     };
   }
 
-  // Rule 4: Groq explicitly unavailable
-  if (cloudAvailable === false) {
+  // Rule 4: Groq explicitly unavailable (health check returned false)
+  if (!isCloudAvailable(context)) {
     return {
       type:   'native',
       reason: 'Groq unavailable — falling back to native STT',
@@ -222,7 +227,9 @@ export function selectSTTStrategy(context: STTContext): STTStrategy {
     };
   }
 
-  if (isNative && isIndianLocale && cloudAvailable !== false) {
+  // At this point isCloudAvailable(context) is guaranteed true (returned above
+  // if false), so this branch is safe — no redundant !== false comparison.
+  if (isNative && isIndianLocale) {
     return {
       type:   'groq',
       reason: `Indian locale ${context.detectedLocale} — Groq Whisper for higher accuracy`,
@@ -324,7 +331,7 @@ export async function checkGroqAvailability(): Promise<boolean> {
     });
     _groqAvailable = res.ok;
   } catch {
-    // Network error or no /health endpoint → assume available (optimistic)
+    // Network error → assume available (optimistic)
     _groqAvailable = true;
   }
   return _groqAvailable;
@@ -341,9 +348,6 @@ export function markGroqFailed(): void {
 }
 
 // ── Legacy aliases (kept for any caller not yet updated) ──────────────────
-// These are direct passthroughs to the Groq equivalents so the rename does
-// not break sites that still reference the old names. Safe to remove once
-// every callsite has been updated.
 
 /** @deprecated Use checkGroqAvailability instead. */
 export const checkSarvamAvailability = checkGroqAvailability;

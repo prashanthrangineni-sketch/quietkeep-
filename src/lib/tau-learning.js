@@ -169,10 +169,11 @@ export async function learnFromCapture({ supabase, userId, intentType, transcrip
   // Fire and forget — non-blocking
   logIntent({ supabase, userId, intentType, rawTranscript: transcript, language, confidence, locationName, executed: true });
 
-  // Every 20 captures, update the behaviour profile
+  // Every 5 captures, update the behaviour profile.
+  // P1 change: was 20 — lowered so users with fewer captures get predictions sooner.
   try {
     const { count } = await supabase.from('tau_intent_log').select('id', { count: 'exact', head: true }).eq('user_id', userId);
-    if (count && count % 20 === 0) {
+    if (count && count % 5 === 0) {
       updateBehaviourProfile({ supabase, userId });
     }
   } catch {}

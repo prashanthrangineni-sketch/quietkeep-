@@ -6,6 +6,11 @@
  * Selects the best speech-to-text path dynamically based on platform,
  * network, and user preferences. ADVISORY ONLY — never calls STT directly.
  *
+ * P1 update (May 2026): Sarvam AI was discontinued. The 'sarvam' strategy
+ * has been renamed to 'groq', pointing at /api/groq-stt (Whisper Large v3
+ * Turbo). The 'sarvam' string is preserved as a legacy alias in user
+ * overrides so existing localStorage values keep working.
+ *
  * ── DESIGN CONSTRAINTS ────────────────────────────────────────────────────
  *   Does NOT modify existing STT calls.
  *   Does NOT import from dashboard or VoiceTalkback.
@@ -14,13 +19,14 @@
  *
  * ── STT STRATEGIES ────────────────────────────────────────────────────────
  *
- *   'sarvam'   Cloud STT via /api/sarvam-stt.
- *              Best accuracy for Indian languages (en-IN, te-IN, hi-IN).
+ *   'groq'     Cloud STT via /api/groq-stt (Groq Whisper Large v3 Turbo).
+ *              Replaces the discontinued Sarvam path.
+ *              Good accuracy for Indian languages (en-IN, te-IN, hi-IN, etc).
  *              Requires network. Used by VoiceService on APK.
- *              Latency: ~500ms–2s.
+ *              Latency: ~300ms–1.5s (turbo model is fast).
  *
- *   'native'   Android VoiceService AudioRecord + Sarvam fallback.
- *              Used when Sarvam is unavailable (network error).
+ *   'native'   Android VoiceService AudioRecord + Groq fallback.
+ *              Used when Groq is unavailable (network error).
  *              Falls back to raw audio queue for retry on reconnect.
  *
  *   'web'      SpeechRecognition / webkitSpeechRecognition.
@@ -40,7 +46,7 @@
  *     userOverride:  localStorage.getItem('qk_stt_override') || null,
  *   });
  *
- *   // strategy.type: 'sarvam' | 'native' | 'web'
+ *   // strategy.type: 'groq' | 'native' | 'web'
  *   // strategy.reason: why this was chosen (for debugging)
  *
  *   // Then use strategy.type to decide which path to take:
@@ -50,7 +56,7 @@
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type STTStrategyType = 'sarvam' | 'native' | 'web';
+export type STTStrategyType = 'groq' | 'native' | 'web';
 
 export interface STTStrategy {
   type:         STTStrategyType;
@@ -67,21 +73,25 @@ export interface STTContext {
   isOnline:         boolean;
   /** Current voice mode ('manual' | 'wake' | 'always_on') */
   voiceMode?:       string;
-  /** User-selected override ('sarvam' | 'native' | 'web' | null) */
+  /** User-selected override ('groq' | 'native' | 'web' | null).
+   *  Legacy: 'sarvam' is silently aliased to 'groq'. */
   userOverride?:    string | null;
   /** Current voice language (BCP-47) */
   voiceLang?:       string;
-  /** Sarvam API availability (optional — from health check) */
+  /** Groq API availability (optional — from health check) */
+  groqAvailable?:   boolean;
+  /** @deprecated Legacy alias for groqAvailable — still accepted for callers
+   *  that haven't been updated. Set to undefined to defer to groqAvailable. */
   sarvamAvailable?: boolean;
   /**
-   * Step 3 (offlineAssistant): when true skip Sarvam, use local STT only.
+   * Step 3 (offlineAssistant): when true skip cloud STT, use local STT only.
    * Set from: offlineAssistant.shouldUseOfflineMode()
    */
   forceOffline?:    boolean;
   /**
    * Step 2 (languageRouter): detected BCP-47 locale from voice input.
-   * When set to an Indian locale, Sarvam is preferred over WebSpeech
-   * because Sarvam has significantly better accuracy for Indian languages.
+   * When set to an Indian locale, Groq is preferred over WebSpeech
+   * because Whisper has significantly better accuracy for Indian languages.
    */
   detectedLocale?:  string;
 }
@@ -89,9 +99,9 @@ export interface STTContext {
 // ── Strategy definitions ──────────────────────────────────────────────────
 
 const STRATEGIES: Record<STTStrategyType, Omit<STTStrategy, 'type' | 'reason'>> = {
-  sarvam: {
+  groq: {
     fallback:    'native',
-    latencyMs:   800,
+    latencyMs:   500,
     langSupport: ['en-IN', 'te-IN', 'hi-IN', 'ta-IN', 'kn-IN', 'ml-IN'],
   },
   native: {
@@ -106,6 +116,15 @@ const STRATEGIES: Record<STTStrategyType, Omit<STTStrategy, 'type' | 'reason'>> 
   },
 };
 
+// Normalize a possibly-legacy override value to the current STTStrategyType.
+// 'sarvam' (legacy localStorage values) maps to 'groq'.
+function normalizeOverride(v: string | null | undefined): STTStrategyType | null {
+  if (!v) return null;
+  if (v === 'sarvam') return 'groq';
+  if (v === 'groq' || v === 'native' || v === 'web') return v;
+  return null;
+}
+
 // ── Main selection function ───────────────────────────────────────────────
 
 /**
@@ -116,21 +135,27 @@ const STRATEGIES: Record<STTStrategyType, Omit<STTStrategy, 'type' | 'reason'>> 
  *
  *   1. User override (explicit preference stored in localStorage)
  *   2. Web/PWA → always 'web'
- *   3. APK + online + not always_on → 'sarvam' (best accuracy)
+ *   3. APK + online + not always_on → 'groq' (best accuracy)
  *   4. APK + offline → 'native' (VoiceService handles its own retry queue)
  *   5. APK + always_on mode → 'native' (wake word engine handles gating)
- *   6. Sarvam known unavailable → 'native'
+ *   6. Groq known unavailable → 'native'
  *   7. Default fallback → 'web'
  */
 export function selectSTTStrategy(context: STTContext): STTStrategy {
-  const { isNative, isOnline, voiceMode, userOverride, sarvamAvailable } = context;
+  const { isNative, isOnline, voiceMode, userOverride } = context;
+
+  // Treat groqAvailable as primary; fall back to legacy sarvamAvailable
+  // for any caller that hasn't been updated yet.
+  const cloudAvailable =
+    context.groqAvailable ?? context.sarvamAvailable;
 
   // Rule 1: User override takes precedence
-  if (userOverride && (userOverride === 'sarvam' || userOverride === 'native' || userOverride === 'web')) {
+  const overrideType = normalizeOverride(userOverride);
+  if (overrideType) {
     return {
-      type:    userOverride as STTStrategyType,
+      type:    overrideType,
       reason:  'User preference override',
-      ...STRATEGIES[userOverride as STTStrategyType],
+      ...STRATEGIES[overrideType],
     };
   }
 
@@ -145,7 +170,7 @@ export function selectSTTStrategy(context: STTContext): STTStrategy {
 
   // APK paths below:
 
-  // Rule 3: Always-on mode — VoiceService handles its own STT via Sarvam
+  // Rule 3: Always-on mode — VoiceService handles its own STT via Groq
   // The WakeWordEngine runs in VoiceService, which calls sendChunk() directly.
   // JS should NOT start a parallel SpeechRecognition in this mode.
   if (voiceMode === 'always_on') {
@@ -156,61 +181,61 @@ export function selectSTTStrategy(context: STTContext): STTStrategy {
     };
   }
 
-  // Rule 4: Sarvam explicitly unavailable
-  if (sarvamAvailable === false) {
+  // Rule 4: Groq explicitly unavailable
+  if (cloudAvailable === false) {
     return {
       type:   'native',
-      reason: 'Sarvam unavailable — falling back to native STT',
+      reason: 'Groq unavailable — falling back to native STT',
       ...STRATEGIES.native,
     };
   }
 
   // Step 3 — Offline override: network gone or explicitly forced offline.
-  // Both APK and web fall back to local STT. Skips Sarvam entirely.
+  // Both APK and web fall back to local STT. Skips Groq entirely.
   if (context.forceOffline || !isOnline) {
     const offlineType: STTStrategyType = isNative ? 'native' : 'web';
     return {
       type:   offlineType,
       reason: context.forceOffline
-        ? 'forceOffline=true — skipping Sarvam'
-        : 'Device offline — skipping Sarvam, using local STT',
+        ? 'forceOffline=true — skipping Groq'
+        : 'Device offline — skipping Groq, using local STT',
       ...STRATEGIES[offlineType],
     };
   }
 
-  // Step 2 — Indian locale + APK + online → prefer Sarvam.
-  // Sarvam has best-in-class accuracy for te-IN, hi-IN, and other Indian languages.
+  // Step 2 — Indian locale + APK + online → prefer Groq.
+  // Whisper has strong accuracy for te-IN, hi-IN, and other Indian languages.
   // This is additive: only applies when languageRouter detected an Indian locale.
   const isIndianLocale = !!(context.detectedLocale &&
     context.detectedLocale !== 'en-US' &&
     context.detectedLocale.endsWith('-IN') &&
-    context.detectedLocale !== 'en-IN');  // en-IN is fine on WebSpeech; te/hi/ta need Sarvam
+    context.detectedLocale !== 'en-IN');  // en-IN is fine on WebSpeech; te/hi/ta need Groq
 
-  // Step 5: API delay fallback — if Sarvam was recently slow, skip it.
-  // Indian locales (te-IN, hi-IN) still prefer Sarvam even when slow,
+  // Step 5: API delay fallback — if Groq was recently slow, skip it.
+  // Indian locales (te-IN, hi-IN) still prefer Groq even when slow,
   // because accuracy matters more than latency for non-English speakers.
-  if (isSarvamSlow() && !isIndianLocale) {
+  if (isGroqSlow() && !isIndianLocale) {
     return {
       type:   'web',
-      reason: 'Sarvam API slow — using web STT temporarily',
+      reason: 'Groq API slow — using web STT temporarily',
       ...STRATEGIES.web,
     };
   }
 
-  if (isNative && isIndianLocale && context.sarvamAvailable !== false) {
+  if (isNative && isIndianLocale && cloudAvailable !== false) {
     return {
-      type:   'sarvam',
-      reason: `Indian locale ${context.detectedLocale} — Sarvam for higher accuracy`,
-      ...STRATEGIES.sarvam,
+      type:   'groq',
+      reason: `Indian locale ${context.detectedLocale} — Groq Whisper for higher accuracy`,
+      ...STRATEGIES.groq,
     };
   }
 
   // Rule 5: APK + online — WebView SpeechRecognition.
-  // Note: VoiceService handles its own Sarvam path independently.
+  // Note: VoiceService handles its own Groq path independently.
   if (isOnline) {
     return {
       type:   'web',
-      reason: 'APK online — WebView SpeechRecognition (VoiceService handles Sarvam separately)',
+      reason: 'APK online — WebView SpeechRecognition (VoiceService handles Groq separately)',
       ...STRATEGIES.web,
     };
   }
@@ -274,57 +299,71 @@ export function getSamplingConfig(batteryPct: number, charging: boolean): STTSam
   return { sampleRateHz: 8000, chunkMs: 5000, silenceThreshold: 400 };
 }
 
-// ── Sarvam health check stub ──────────────────────────────────────────────
+// ── Groq health check ─────────────────────────────────────────────────────
 
-let _sarvamLastCheck   = 0;
-let _sarvamAvailable   = true;
-const SARVAM_CHECK_TTL = 60_000; // recheck every 60s
+let _groqLastCheck   = 0;
+let _groqAvailable   = true;
+const GROQ_CHECK_TTL = 60_000; // recheck every 60s
 
 /**
- * checkSarvamAvailability() → Promise<boolean>
+ * checkGroqAvailability() → Promise<boolean>
  *
- * Lightweight health probe for the Sarvam STT API.
+ * Lightweight health probe for the Groq STT endpoint.
  * Cached for 60s to avoid hammering the endpoint.
  * Returns true optimistically if the check fails with a network error.
  */
-export async function checkSarvamAvailability(): Promise<boolean> {
+export async function checkGroqAvailability(): Promise<boolean> {
   const now = Date.now();
-  if (now - _sarvamLastCheck < SARVAM_CHECK_TTL) return _sarvamAvailable;
+  if (now - _groqLastCheck < GROQ_CHECK_TTL) return _groqAvailable;
 
-  _sarvamLastCheck = now;
+  _groqLastCheck = now;
   try {
-    const res = await fetch('/api/sarvam-stt/health', {
+    const res = await fetch('/api/groq-stt', {
       method: 'GET',
       signal: AbortSignal.timeout(3000),
     });
-    _sarvamAvailable = res.ok;
+    _groqAvailable = res.ok;
   } catch {
     // Network error or no /health endpoint → assume available (optimistic)
-    _sarvamAvailable = true;
+    _groqAvailable = true;
   }
-  return _sarvamAvailable;
+  return _groqAvailable;
 }
 
 /**
- * markSarvamFailed() — call from catch blocks when Sarvam returns 5xx.
- * Forces fallback routing for the next SARVAM_CHECK_TTL window.
+ * markGroqFailed() — call from catch blocks when Groq returns 5xx.
+ * Forces fallback routing for the next GROQ_CHECK_TTL window.
  */
-export function markSarvamFailed(): void {
-  _sarvamAvailable = false;
-  _sarvamLastCheck = Date.now();
-  console.warn('[QK STT] Sarvam marked unavailable — routing to fallback');
+export function markGroqFailed(): void {
+  _groqAvailable = false;
+  _groqLastCheck = Date.now();
+  console.warn('[QK STT] Groq marked unavailable — routing to fallback');
 }
 
-// Step 5: API delay tracking — if Sarvam takes > 4s, mark as slow for 2 mins
-let _sarvamSlowUntil = 0;
-const SLOW_THRESHOLD_MS = 4000;
-const SLOW_PENALTY_MS   = 120_000;
+// ── Legacy aliases (kept for any caller not yet updated) ──────────────────
+// These are direct passthroughs to the Groq equivalents so the rename does
+// not break sites that still reference the old names. Safe to remove once
+// every callsite has been updated.
 
-export function markSarvamSlow(): void {
-  _sarvamSlowUntil = Date.now() + SLOW_PENALTY_MS;
-  console.warn('[QK STT] Sarvam marked slow — using web fallback for 2 min');
+/** @deprecated Use checkGroqAvailability instead. */
+export const checkSarvamAvailability = checkGroqAvailability;
+/** @deprecated Use markGroqFailed instead. */
+export const markSarvamFailed         = markGroqFailed;
+
+// Step 5: API delay tracking — if Groq takes > 4s, mark as slow for 2 mins
+let _groqSlowUntil = 0;
+const SLOW_PENALTY_MS = 120_000;
+
+export function markGroqSlow(): void {
+  _groqSlowUntil = Date.now() + SLOW_PENALTY_MS;
+  console.warn('[QK STT] Groq marked slow — using web fallback for 2 min');
 }
 
-export function isSarvamSlow(): boolean {
-  return Date.now() < _sarvamSlowUntil;
+export function isGroqSlow(): boolean {
+  return Date.now() < _groqSlowUntil;
 }
+
+/** @deprecated Use markGroqSlow instead. */
+export const markSarvamSlow = markGroqSlow;
+/** @deprecated Use isGroqSlow instead. */
+export const isSarvamSlow   = isGroqSlow;

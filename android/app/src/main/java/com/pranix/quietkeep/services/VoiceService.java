@@ -32,27 +32,31 @@ import android.content.SharedPreferences;
 import org.json.JSONArray;
 
 /**
- * VoiceService v8
- * v8: Non-blocking suggestion fetch after successful capture.
- *     Calls /api/agent/predict with same authToken on a background thread.
- *     Logs suggestions to logcat only — no UI interaction.
- *     Completely fail-safe: any error is silently swallowed.
- *     workspaceId already supported (v6) — no change needed.
+ * VoiceService v9
+ * v9: FIX — replace discontinued /api/sarvam-stt endpoint with /api/groq-stt.
  *
- * FIX v7: WakeLock now uses acquire(timeoutMs) instead of acquire().
- *   - acquire() with no timeout = permanent WakeLock.
- *   - If the OS kills the service while the WakeLock is held, the WakeLock
- *     is never released, causing a WakeLock leak that ANR-watchdogs flag.
- *   - acquire(30 * 60 * 1000L) = 30-minute maximum, auto-releases after that.
- *   - 10 minutes is well beyond any single voice session. The service stops
- *     capturing long before this, so the WakeLock is released normally via
- *     stopCapture(). The timeout is a safety net only.
+ *   ROOT CAUSE OF COLOROS FREEZE:
+ *   sendChunk() was calling /api/sarvam-stt which was discontinued (Sarvam AI shut down).
+ *   Every chunk call timed out at 25 seconds (10s connect + 15s read timeout).
+ *   The capture thread was alive but stuck in timeout loops, which OplusHansManager
+ *   (ColorOS battery arbiter) classified as a frozen UID and killed the service.
  *
+ *   FIX: Point sendChunk() at /api/groq-stt which accepts the same multipart
+ *   form-data (file + language_code fields) and returns the same JSON shape
+ *   ({transcript: "..."}). No other changes required — the response parsing,
+ *   timeout values, and WAV encoding are all unchanged.
+ *
+ *   /api/groq-stt uses Groq Whisper Large v3 Turbo (~300-500ms latency vs
+ *   25s timeout on the dead Sarvam endpoint). This also fixes the STT accuracy
+ *   regression that users were seeing (silence because sarvam returned nothing).
+ *
+ * v8 retained: Non-blocking suggestion fetch after successful capture.
+ * v7 retained: WakeLock acquire(timeoutMs) fix.
  * v6 retained: Android 14+ FOREGROUND_SERVICE_TYPE_MICROPHONE fix.
  * v5 retained: captureActive static flag, verbose diagnostics.
  * v4 retained: Bug fixes B7, B9, B12.
  *
- * Pipeline: mic → 3s WAV chunk → POST /api/sarvam-stt → transcript
+ * Pipeline: mic → 3s WAV chunk → POST /api/groq-stt → transcript
  *           → POST /api/voice/capture → read auto_exec → fire Intent
  */
 public class VoiceService extends Service {
@@ -86,7 +90,7 @@ public class VoiceService extends Service {
     // ── Phase 9B+9F: always-on mode flag ─────────────────────────────────
     // Set via intent extra "always_on=true". When true, the capture loop
     // runs wake-word detection on every non-silent chunk instead of sending
-    // all audio to Sarvam STT. Only audio AFTER wake word detection is sent.
+    // all audio to Groq STT. Only audio AFTER wake word detection is sent.
     private volatile boolean alwaysOnMode = false;
 
     // ── Phase 9C + Step 7: battery safety (tiered) ──────────────────────────
@@ -364,7 +368,7 @@ public class VoiceService extends Service {
                             sendChunk(chunk, false);
                         }
                         // In always-on mode: only send audio AFTER wake word detected.
-                        // Audio without wake word is discarded (saves Sarvam quota).
+                        // Audio without wake word is discarded (saves Groq STT quota).
                     } else {
                         // Normal (non-always-on) mode: send all non-silent chunks
                         sendChunk(chunk, false);
@@ -428,7 +432,11 @@ public class VoiceService extends Service {
             try {
                 byte[]  wav      = buildWav(pcm);
                 String  boundary = "QK" + System.currentTimeMillis();
-                String  endpoint = serverUrl + "/api/sarvam-stt";
+                // v9 FIX: /api/sarvam-stt replaced with /api/groq-stt
+                // Sarvam AI was discontinued — every call to sarvam-stt was timing out
+                // at 25s (connect + read timeout), causing ColorOS to freeze the UID.
+                // groq-stt accepts the same multipart form-data and returns {transcript}.
+                String  endpoint = serverUrl + "/api/groq-stt";
                 Log.d(TAG, "sendChunk: opening connection to " + endpoint);
                 URL     u        = new URL(endpoint);
                 HttpURLConnection c = (HttpURLConnection) u.openConnection();
@@ -451,7 +459,7 @@ public class VoiceService extends Service {
                     + boundary + "--\r\n").getBytes());
                 os.flush();
 
-                Log.d(TAG, "sendChunk: awaiting response from sarvam-stt...");
+                Log.d(TAG, "sendChunk: awaiting response from groq-stt...");
                 int code = c.getResponseCode();
                 Log.d(TAG, "sendChunk: response code=" + code);
                 if (code == 200) {
@@ -460,10 +468,10 @@ public class VoiceService extends Service {
                     String line;
                     while ((line = br.readLine()) != null) sb.append(line);
                     String t = extractField(sb.toString(), "transcript");
-                    Log.d(TAG, "sarvam-stt transcript: " + t);
+                    Log.d(TAG, "groq-stt transcript: " + t);
                     if (t != null && !t.isEmpty()) postCapture(t, isFinal);
                 } else {
-                    Log.w(TAG, "sarvam-stt response code: " + code);
+                    Log.w(TAG, "groq-stt response code: " + code);
                 }
                 c.disconnect();
             } catch (java.io.IOException e) {
@@ -493,11 +501,6 @@ public class VoiceService extends Service {
             return;
         }
 
-        // FIX: declare c before try so the catch block can call c.disconnect() safely.
-        // URL construction, openConnection(), and setRequestMethod() all throw checked
-        // exceptions (MalformedURLException, IOException, ProtocolException).
-        // They must be inside the try/catch — previously they were outside it, causing
-        // "unreported exception" compile errors in javac strict mode.
         HttpURLConnection c = null;
         try {
             URL u = new URL(serverUrl + "/api/voice/capture");
@@ -533,8 +536,6 @@ public class VoiceService extends Service {
                 new Thread(() -> { try { flushRetryQueue(); } catch (Exception ignored) {} }).start();
 
                 // v8: Non-blocking suggestion fetch — fires after every successful capture.
-                // Completely fail-safe: wrapped in try/catch, runs on background thread,
-                // never blocks the main capture flow, never throws to caller.
                 new Thread(() -> { try { fetchSuggestions(); } catch (Exception ignored) {} }).start();
 
                 String intentType    = extractNestedField(json, "auto_exec", "intent_type");
@@ -585,7 +586,6 @@ public class VoiceService extends Service {
             c.disconnect();
 
         } catch (java.io.IOException e) {
-            // Fix 1: network timeout / connection failure — enqueue transcript for retry
             Log.w(TAG, "postCapture: IOException (" + e.getMessage() + ") — queuing transcript for retry");
             try { enqueueFailedTranscript(transcript); } catch (Exception ignored) {}
             try { if (c != null) c.disconnect(); } catch (Exception ignored) {}
@@ -593,10 +593,6 @@ public class VoiceService extends Service {
     }
 
     // ── v8: fetchSuggestions — non-blocking, called after every successful capture ────
-    // Calls /api/agent/predict with the current authToken.
-    // If workspace_id is set, the backend already handles business scoring.
-    // On any failure (IOException, non-200, parse error) → silently returns.
-    // SAFE: never modifies state, never throws, never blocks main flow.
     private void fetchSuggestions() {
         if (serverUrl == null || authToken == null) return;
         try {
@@ -618,21 +614,14 @@ public class VoiceService extends Service {
             }
             c.disconnect();
         } catch (Exception e) {
-            // Completely silent — suggestion fetch is best-effort only
             Log.d(TAG, "[SUGGEST] fetch skipped (" + e.getMessage() + ")");
         }
     }
 
     // ── Feature 3: Auto-Save Guarantee ──────────────────────────────────────────
-    // SharedPreferences retry queue: transcripts that got a non-2xx response
-    // are saved here and flushed on the next successful 201.
-    // Cap: 5 items × 500 chars to prevent unbounded growth.
-    // All ops are try/catch — never throws, never breaks existing flow.
     private static final String PREFS_RETRY = "qk_voice_retry";
     private static final String PREFS_KEY   = "retry_queue";
     private static final int    QUEUE_MAX   = 5;
-
-    // Max age for queued items: 24 hours. Stale items are silently dropped on flush.
     private static final long QUEUE_MAX_AGE_MS = 24 * 60 * 60 * 1000L;
 
     private void enqueueFailedTranscript(String transcript) {
@@ -642,11 +631,9 @@ public class VoiceService extends Service {
             String raw = prefs.getString(PREFS_KEY, "[]");
             JSONArray arr = new JSONArray(raw);
 
-            // Dedup: compute a simple hash of the truncated transcript text
             String text = transcript.substring(0, Math.min(transcript.length(), 500));
             int    hash = text.hashCode();
 
-            // Check if this exact transcript is already queued (prevent double-enqueue)
             for (int i = 0; i < arr.length(); i++) {
                 try {
                     JSONObject item = arr.getJSONObject(i);
@@ -657,7 +644,7 @@ public class VoiceService extends Service {
                 } catch (Exception ignored) {}
             }
 
-            if (arr.length() >= QUEUE_MAX) arr.remove(0); // drop oldest when full
+            if (arr.length() >= QUEUE_MAX) arr.remove(0);
 
             JSONObject entry = new JSONObject();
             entry.put("text",      text);
@@ -679,14 +666,13 @@ public class VoiceService extends Service {
             JSONArray arr = new JSONArray(raw);
             if (arr.length() == 0) return;
             Log.d(TAG, "flushRetryQueue: flushing " + arr.length() + " queued transcript(s)");
-            prefs.edit().putString(PREFS_KEY, "[]").apply(); // clear before sending
+            prefs.edit().putString(PREFS_KEY, "[]").apply();
 
             long now = System.currentTimeMillis();
             for (int i = 0; i < arr.length(); i++) {
                 try {
-                    // Support both old format (plain string) and new format (JSONObject)
                     String t;
-                    long queuedAt = now; // default: treat as fresh if no timestamp
+                    long queuedAt = now;
                     Object item = arr.get(i);
                     if (item instanceof JSONObject) {
                         JSONObject obj = (JSONObject) item;
@@ -696,7 +682,6 @@ public class VoiceService extends Service {
                         t = item.toString();
                     }
 
-                    // Drop stale items silently — no infinite retry across days
                     if (now - queuedAt > QUEUE_MAX_AGE_MS) {
                         Log.d(TAG, "flushRetryQueue: dropping stale item (age=" + (now - queuedAt) / 1000 + "s)");
                         continue;
@@ -704,7 +689,7 @@ public class VoiceService extends Service {
 
                     if (t != null && !t.isEmpty()) {
                         postCapture(t, true);
-                        Thread.sleep(300); // brief pause between retries
+                        Thread.sleep(300);
                     }
                 } catch (Exception inner) {
                     Log.w(TAG, "flushRetryQueue item " + i + " failed: " + inner.getMessage());
@@ -771,23 +756,12 @@ public class VoiceService extends Service {
 
     /**
      * Phase 9B: dispatchLotusWakeEvent()
-     *
-     * Fires window.dispatchEvent(new CustomEvent('lotus_wake', {detail:{source:'background'}}))
-     * in the WebView via MainActivity bridge. Must be called from any thread —
-     * uses getBridge().getWebView().post() to marshal to the UI thread.
-     *
-     * SAFETY: wrapped in try/catch. If MainActivity/Bridge is not available
-     * (e.g. app backgrounded, Activity destroyed), this is silently ignored.
-     * The VoiceService capture loop continues regardless.
      */
     private void dispatchLotusWakeEvent() {
         try {
-            // Get the Application context and find the WebView via a static accessor.
-            // We use a Handler on the main looper to safely evaluate JS from a background thread.
             android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
             mainHandler.post(() -> {
                 try {
-                    // Access the Capacitor bridge via the Application instance
                     android.app.Activity act = com.pranix.quietkeep.MainActivity.LotusWakeBridgeHolder.sActivity;
                     if (act == null) {
                         Log.w(TAG, "dispatchLotusWakeEvent: MainActivity not available");

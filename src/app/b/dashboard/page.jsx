@@ -115,6 +115,22 @@ export default function BizDashboardPage() {
       if (bizIntent.handled && bizIntent.confidence >= 0.60) {
         const bizAction = getBusinessAction(bizIntent.actionKey, { router });
         if (bizAction) {
+          // P1: fire-and-forget intent signal log so business voice navigations
+          // still contribute to behavior patterns. The main /api/voice/capture
+          // path below already logs; this branch returns early, so without
+          // this call business voice signals were being dropped on the floor.
+          // Errors are swallowed — must NEVER block navigation.
+          fetch('/api/voice/capture', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              transcript:   voiceText,
+              source:       'voice',
+              workspace_id: workspace.id,
+              domain_type:  'business',
+            }),
+          }).catch(() => {}); // fire and forget — don't block navigation
+
           bizAction(); // navigate to relevant business page
           setVoiceMsg(bizIntent.response || 'Opening…');
           setVoiceText('');

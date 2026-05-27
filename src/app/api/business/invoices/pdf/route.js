@@ -1,21 +1,24 @@
 // src/app/api/business/invoices/pdf/route.js
-// Generates a shareable invoice HTML file, stores it in Supabase storage
-// (documents bucket), writes pdf_url + pdf_path back to business_invoices,
-// and returns a signed URL valid for 1 year.
+// SPRINT 1 FIX: Use service role (svc) for the final pdf_url write-back.
 //
-// POST { invoice_id: string }
-// Returns { pdf_url: string, path: string }
+// BEFORE: Step 8 (business_invoices.update pdf_url/pdf_path) used anon Bearer sb client.
+//         auth.uid()=NULL in RLS -> update silently failed.
+//         Result: PDF generated and uploaded to storage successfully, but url never
+//         written back to invoice row. Link existed once in the response but was never
+//         persisted. Next load: no PDF url on the invoice.
+//
+// AFTER: Step 8 uses svc (already created for storage operations). One client for all writes.
+//        All other logic unchanged — storage upload, URL generation, HTML builder preserved exactly.
 
 export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// ── Auth helpers ──────────────────────────────────────────────────────────────
 function authSB(token) {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { global: { headers: { Authorization: `Bearer ${token}` } } }
+    { global: { headers: { Authorization: 'Bearer ' + token } } }
   );
 }
 
@@ -26,7 +29,6 @@ function serviceSB() {
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function rupee(n) {
   return '\u20b9' + (parseFloat(n) || 0).toLocaleString('en-IN', {
     minimumFractionDigits: 2,
@@ -42,9 +44,6 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
-// ── HTML invoice builder ──────────────────────────────────────────────────────
-// Matches the client-side buildInvoiceHTML() in b/invoices/page.jsx exactly
-// so the stored PDF looks identical to the print preview.
 function buildInvoiceHTML(inv, ws) {
   const rows = (inv.line_items || []).map(i =>
     '<tr>' +
@@ -133,10 +132,8 @@ ${inv.notes ? `<div style="clear:both;padding:10px;background:#f9fafb;border-rad
 </body></html>`;
 }
 
-// ── Route handler ─────────────────────────────────────────────────────────────
 export async function POST(req) {
   try {
-    // 1. Auth
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -144,43 +141,32 @@ export async function POST(req) {
     const { data: { user }, error: authErr } = await sb.auth.getUser();
     if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // 2. Parse body
     let invoice_id;
-    try {
-      ({ invoice_id } = await req.json());
-    } catch {
+    try { ({ invoice_id } = await req.json()); } catch {
       return NextResponse.json({ error: 'invoice_id required' }, { status: 400 });
     }
     if (!invoice_id) return NextResponse.json({ error: 'invoice_id required' }, { status: 400 });
 
-    // 3. Fetch invoice — RLS ensures user can only access their workspace's invoices
+    // Read invoice — anon Bearer SELECT is safe (RLS SELECT uses user_id column).
     const { data: inv, error: invErr } = await sb
-      .from('business_invoices')
-      .select('*')
-      .eq('id', invoice_id)
-      .single();
+      .from('business_invoices').select('*').eq('id', invoice_id).single();
     if (invErr || !inv) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
 
-    // 4. Fetch workspace for letterhead
     const { data: ws } = await sb
       .from('business_workspaces')
       .select('name, gstin, phone, email, address')
-      .eq('id', inv.workspace_id)
-      .maybeSingle();
+      .eq('id', inv.workspace_id).maybeSingle();
 
-    // 5. Build HTML
-    const html = buildInvoiceHTML(inv, ws);
+    const html      = buildInvoiceHTML(inv, ws);
     const htmlBytes = new TextEncoder().encode(html);
-    const storagePath = `invoices/${inv.workspace_id}/${invoice_id}.html`;
+    const storagePath = 'invoices/' + inv.workspace_id + '/' + invoice_id + '.html';
 
-    // 6. Upload to Supabase storage (service role needed for storage write)
+    // Service role for all storage operations and the write-back.
     const svc = serviceSB();
+
     const { error: uploadErr } = await svc.storage
       .from('documents')
-      .upload(storagePath, htmlBytes, {
-        contentType: 'text/html; charset=utf-8',
-        upsert: true, // overwrite if regenerated
-      });
+      .upload(storagePath, htmlBytes, { contentType: 'text/html; charset=utf-8', upsert: true });
 
     if (uploadErr) {
       return NextResponse.json(
@@ -189,7 +175,6 @@ export async function POST(req) {
       );
     }
 
-    // 7. Generate signed URL valid for 1 year
     const { data: signed, error: signErr } = await svc.storage
       .from('documents')
       .createSignedUrl(storagePath, 60 * 60 * 24 * 365);
@@ -198,9 +183,9 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Could not generate signed URL' }, { status: 500 });
     }
 
-    // 8. Write pdf_url + pdf_path back to the invoice row
-    await sb
-      .from('business_invoices')
+    // SPRINT 1 FIX: Use svc (service role) for write-back, not anon sb.
+    // Previously this write silently failed RLS -> pdf_url never persisted on invoice row.
+    await svc.from('business_invoices')
       .update({ pdf_url: signed.signedUrl, pdf_path: storagePath })
       .eq('id', invoice_id);
 

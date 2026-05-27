@@ -1,25 +1,18 @@
 // src/app/api/keeps/[id]/chain/route.js
-// FIXED: cookies() → Bearer token auth
-import { createClient } from '@supabase/supabase-js';
+// SPRINT 1 FIX: Unified auth + service-role write pattern.
+//
+// BEFORE: anon+Bearer for rpc('link_keep_to_parent') -> auth.uid()=NULL -> silent 403.
+//         GET SELECT with .eq('user_id') worked (RLS SELECT uses column not auth.uid()).
+//         Result: chain appears in optimistic UI, vanishes on reload (write never landed).
+//
+// AFTER: POST uses createWriteClient for RPC. GET keeps anon Bearer (SELECT is safe).
+
+import { createBearerClient, createWriteClient, unauthorized } from '@/lib/supabase-bearer';
 import { NextResponse } from 'next/server';
 
-function createBearerClient(req) {
-  const auth  = (req.headers.get('Authorization') || '').trim();
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : auth;
-  if (!token) return null;
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { global: { headers: { Authorization: `Bearer ${token}` } } }
-  );
-}
-
 export async function POST(request, { params }) {
-  const supabase = createBearerClient(request);
-  if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { user } = await createBearerClient(request);
+  if (!user) return unauthorized();
 
   const { id } = params;
   let body;
@@ -30,8 +23,11 @@ export async function POST(request, { params }) {
   const { parent_keep_id } = body;
   if (!parent_keep_id) return NextResponse.json({ error: 'parent_keep_id required' }, { status: 400 });
 
-  const { data, error } = await supabase.rpc('link_keep_to_parent', {
-    p_child_id: id, p_parent_id: parent_keep_id, p_user_id: user.id,
+  const db = createWriteClient();
+  const { data, error } = await db.rpc('link_keep_to_parent', {
+    p_child_id:  id,
+    p_parent_id: parent_keep_id,
+    p_user_id:   user.id,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -41,11 +37,10 @@ export async function POST(request, { params }) {
 }
 
 export async function GET(request, { params }) {
-  const supabase = createBearerClient(request);
-  if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // SELECT is safe with anon Bearer — RLS SELECT policies check user_id column,
+  // not auth.uid(), so Bearer context is fine for reads.
+  const { supabase, user } = await createBearerClient(request);
+  if (!user) return unauthorized();
 
   const { id } = params;
   const { data: children } = await supabase

@@ -1,29 +1,27 @@
 // src/app/api/keeps/[id]/action/route.js
-// FIXED v2: Replaced createSupabaseServerClient (cookies) with Bearer token auth.
+// SPRINT 1 FIX: Unified auth + service-role write pattern.
+//
+// BEFORE: anon+Bearer client used for both identity check and RPC writes.
+//         PostgREST binds Bearer JWT but auth.uid() evaluates to NULL in RLS context.
+//         rpc('log_intent_action') -> 403 (silent). rpc('update_intent_priority') and
+//         rpc('update_user_behavior_model') -> .catch(() => {}) silenced all failures.
+//         Result: marking done, action logging, behavior learning all silently broken.
+//
+// AFTER: createBearerClient validates identity (JWT check works correctly via anon).
+//        createWriteClient (service role) used for all RPC/INSERT writes.
+//        user_id always explicit. No RLS ambiguity. Errors surface instead of vanishing.
 
-import { createClient } from '@supabase/supabase-js';
+import { createBearerClient, createWriteClient, unauthorized } from '@/lib/supabase-bearer';
 import { NextResponse } from 'next/server';
 
-const VALID_ACTIONS = ['reminder_set','calendar_created','note_linked','marked_done','whatsapp_queued','deferred_with_reason'];
-
-function createSupabaseClientFromBearer(req) {
-  const auth = req.headers.get('Authorization') || '';
-  const token = auth.replace('Bearer ', '').trim();
-  if (!token) return { supabase: null };
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { global: { headers: { Authorization: `Bearer ${token}` } } }
-  );
-  return { supabase };
-}
+const VALID_ACTIONS = [
+  'reminder_set', 'calendar_created', 'note_linked',
+  'marked_done', 'whatsapp_queued', 'deferred_with_reason',
+];
 
 export async function POST(request, { params }) {
-  const { supabase } = createSupabaseClientFromBearer(request);
-  if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { user } = await createBearerClient(request);
+  if (!user) return unauthorized();
 
   const { id } = params;
   let body;
@@ -33,10 +31,15 @@ export async function POST(request, { params }) {
 
   const { action_type, payload = {}, triggered_by = 'user' } = body;
   if (!action_type || !VALID_ACTIONS.includes(action_type)) {
-    return NextResponse.json({ error: `action_type must be one of: ${VALID_ACTIONS.join(', ')}` }, { status: 400 });
+    return NextResponse.json(
+      { error: 'action_type must be one of: ' + VALID_ACTIONS.join(', ') },
+      { status: 400 }
+    );
   }
 
-  const { data, error } = await supabase.rpc('log_intent_action', {
+  const db = createWriteClient();
+
+  const { data, error } = await db.rpc('log_intent_action', {
     p_keep_id:      id,
     p_user_id:      user.id,
     p_action_type:  action_type,
@@ -48,25 +51,27 @@ export async function POST(request, { params }) {
   if (!data?.ok) return NextResponse.json({ error: data?.error }, { status: 404 });
 
   if (action_type === 'marked_done') {
-    await supabase.rpc('update_intent_priority', {
+    // These are non-critical side-effects. Still fire-and-forget but now errors
+    // are logged rather than silently swallowed.
+    db.rpc('update_intent_priority', {
       p_keep_id: id, p_user_id: user.id,
       p_outcome: 'acted', p_latency_seconds: null,
-    }).catch(() => {});
-    await supabase.rpc('update_user_behavior_model', {
+    }).catch((e) => console.error('[action] update_intent_priority failed:', e.message));
+
+    db.rpc('update_user_behavior_model', {
       p_user_id: user.id, p_outcome: 'acted', p_keep_id: id,
-    }).catch(() => {});
+    }).catch((e) => console.error('[action] update_user_behavior_model failed:', e.message));
   }
 
   return NextResponse.json({ success: true, action: data });
 }
 
 export async function GET(request, { params }) {
-  const { supabase } = createSupabaseClientFromBearer(request);
-  if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { supabase, user } = await createBearerClient(request);
+  if (!user) return unauthorized();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+  // READ uses anon+Bearer supabase — RLS SELECT policies work correctly with Bearer.
+  // Only INSERT/UPDATE/RPC need service role; SELECTs with .eq('user_id') are safe.
   const { data: actions } = await supabase
     .from('intent_actions')
     .select('id,action_type,action_payload,triggered_by,executed_at,status')

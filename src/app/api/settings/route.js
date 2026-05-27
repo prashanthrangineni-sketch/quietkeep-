@@ -1,36 +1,27 @@
 // src/app/api/settings/route.js
-// FIXED v2: Replaced createSupabaseServerClient (cookies) with Bearer token auth.
-// Both GET and POST now require Authorization: Bearer header.
-// Fails gracefully — returns defaults on GET if no auth (settings page still renders).
+// SPRINT 1 FIX: Unified auth + service-role write pattern.
+//
+// BEFORE: anon+Bearer for user_settings.upsert() -> auth.uid()=NULL -> silent failure.
+//         Settings appeared to save (auth check passed, 200 returned), but DB row
+//         never written. Every session: settings reverted to DEFAULT_SETTINGS.
+//
+// AFTER: Identity via createBearerClient. Write via createWriteClient (service role).
+//        GET remains anon Bearer — SELECT is safe.
 
 export const dynamic = 'force-dynamic';
 
-import { createClient } from '@supabase/supabase-js';
+import { createBearerClient, createWriteClient, unauthorized } from '@/lib/supabase-bearer';
 import { NextResponse } from 'next/server';
 
 const DEFAULT_SETTINGS = {
-  confidence_threshold: 0.5,
+  confidence_threshold:         0.5,
   auto_confirm_high_confidence: false,
-  notifications_enabled: true,
+  notifications_enabled:        true,
 };
 
-function createSupabaseClientFromBearer(req) {
-  const auth = req.headers.get('Authorization') || '';
-  const token = auth.replace('Bearer ', '').trim();
-  if (!token) return { supabase: null };
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { global: { headers: { Authorization: `Bearer ${token}` } } }
-  );
-  return { supabase };
-}
-
 export async function GET(request) {
-  const { supabase } = createSupabaseClientFromBearer(request);
-  if (!supabase) return NextResponse.json({ settings: DEFAULT_SETTINGS, voice_language: 'en-IN' });
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await createBearerClient(request);
+  // Settings GET degrades gracefully — return defaults if not authenticated.
   if (!user) return NextResponse.json({ settings: DEFAULT_SETTINGS, voice_language: 'en-IN' });
 
   const { data } = await supabase
@@ -40,41 +31,40 @@ export async function GET(request) {
     .maybeSingle();
 
   return NextResponse.json({
-    settings: data?.settings || DEFAULT_SETTINGS,
+    settings:       data?.settings       || DEFAULT_SETTINGS,
     voice_language: data?.voice_language || 'en-IN',
   });
 }
 
 export async function POST(request) {
-  const { supabase } = createSupabaseClientFromBearer(request);
-  if (!supabase) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { supabase, user } = await createBearerClient(request);
+  if (!user) return unauthorized();
 
   let body;
   try { body = await request.json(); } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  // Phase 7: Merge settings instead of replacing — prevents toggleAutomationPause
-  // from wiping other settings keys (automation.types, auto_threshold, etc.)
+  const db = createWriteClient();
+
+  // Partial update: merge settings JSONB at top level.
+  // Prevents toggleAutomationPause from wiping other settings keys.
   if (body.settings && !body.voice_language) {
-    // Partial update: merge settings JSONB at the top level
     const { data: existing } = await supabase
       .from('user_settings')
       .select('settings')
       .eq('user_id', user.id)
       .maybeSingle();
+
     const merged = { ...(existing?.settings || {}), ...body.settings };
-    // Deep merge automation sub-object if present
     if (body.settings.automation && existing?.settings?.automation) {
       merged.automation = { ...existing.settings.automation, ...body.settings.automation };
     }
-    await supabase.from('user_settings')
+
+    await db.from('user_settings')
       .upsert({ user_id: user.id, settings: merged }, { onConflict: 'user_id' });
   } else {
-    await supabase.from('user_settings').upsert(
+    await db.from('user_settings').upsert(
       {
         user_id:        user.id,
         settings:       body.settings       || {},

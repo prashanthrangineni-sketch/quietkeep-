@@ -48,7 +48,7 @@ export async function POST(request) {
     headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${apiKey}` },
     body: JSON.stringify({
       app_id: appId,
-      include_player_ids: [settings.onesignal_player_id],
+      include_player_ids: [playerId],
       headings: { en: title }, contents: { en: message },
       data: { keep_id: keep_id || '', ...extraData },
       android_channel_id: 'quietkeep-nudges', priority: 10,

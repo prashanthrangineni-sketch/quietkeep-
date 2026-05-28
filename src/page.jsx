@@ -446,6 +446,8 @@ export default function HomePage() {
         @media (max-width: 768px) {
           section:first-of-type { grid-template-columns: 1fr !important; }
           section:first-of-type > div:last-child { display: none !important; }
+          .qk-nav-links a:not([href="/login"]):not([href="/biz-login"]) { display: none !important; }
+          .qk-nav-links { gap: 8px !important; }
         }
       `}</style>
     </div>

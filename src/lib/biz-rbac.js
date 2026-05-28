@@ -81,7 +81,8 @@ export async function resolveWorkspaceContext(req) {
 
   if (!workspace) return { error: Response.json({ error: 'No workspace found' }, { status: 404 }) };
 
-  return { user, workspace, token };
+  const sb = authSB(token);
+  return { user, workspace, token, supabase: sb };
 }
 
 // ── requireBizPermission ──────────────────────────────────────────────────────

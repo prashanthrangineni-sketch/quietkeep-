@@ -413,29 +413,24 @@ function IntentCard({ intent, onUpdateState, onDelete, onEdit, onFeedback, acces
           >
             🗑 Delete
           </button>
-          {/* Safety pass: TTS Read button — tracks speaking state, prevents overlap, toggles off.
-              speak() from VoiceTalkback cancels any current speech before starting new one. */}
+          {/* Safety pass: TTS Read button */}
           <button
             onClick={() => {
               try {
                 if (speaking) {
-                  // Already reading this keep — stop it
                   if (typeof window !== 'undefined') {
                     try { window.speechSynthesis?.cancel(); } catch {}
                   }
                   setSpeaking(false);
                 } else {
-                  // Cancel any other speech, then start
                   setSpeaking(true);
                   speak(intent.content || '');
-                  // Reset state when speech ends (poll — speechSynthesis has no reliable onend in all browsers)
                   const poll = setInterval(() => {
                     if (!window.speechSynthesis?.speaking) {
                       setSpeaking(false);
                       clearInterval(poll);
                     }
                   }, 300);
-                  // Safety: always reset after 30s maximum
                   setTimeout(() => { setSpeaking(false); clearInterval(poll); }, 30000);
                 }
               } catch { setSpeaking(false); }
@@ -477,7 +472,6 @@ export default function Dashboard() {
   const router = useRouter();
   const { voiceLang, displayLocale } = useLanguage();
 
-  // Phase 7: Sync language to native TTS when voiceLang changes.
   useEffect(() => {
     if (!voiceLang || typeof window === 'undefined') return;
     try {
@@ -504,32 +498,26 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [autoDetected, setAutoDetected] = useState(null);
   const [followUpData, setFollowUpData] = useState(null);
-  const [clarificationData, setClarificationData] = useState(null); // Phase 3: low-confidence clarification
+  const [clarificationData, setClarificationData] = useState(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [upgradeInfo, setUpgradeInfo] = useState({});
   const [talkResponse, setTalkResponse] = useState({ show: false, type: 'saved', language: 'en-IN', params: {} });
   const [userTier, setUserTier] = useState('free');
   const [userIsBeta, setUserIsBeta] = useState(false);
-  // Phase 3 Step 2: Geo intelligence
   const [gpsLat, setGpsLat]                 = useState(null);
   const [gpsLng, setGpsLng]                 = useState(null);
-  const [proactiveCtx, setProactiveCtx]     = useState(null); // { locationName, keeps[], summary }
-  const [subKeepsToast, setSubKeepsToast] = useState(null);         // Phase 3: multi-step confirmation
-  const [predictedCards, setPredictedCards] = useState([]);         // Phase 3 Step 3: behavior predictions
-  const [strongSuggestions, setStrongSuggestions] = useState([]);  // Phase 4: high-confidence proactive
-  const [autonomyEnabled, setAutonomyEnabled] = useState(false);    // Phase 4: read from user settings
-  // Phase 6: Safety locks
-  const [automationPaused, setAutomationPaused] = useState(false);  // pause all auto-triggers
-  const [showReviewPanel, setShowReviewPanel]   = useState(false);   // last 10 auto actions
-  const [autoHistory, setAutoHistory]           = useState([]);       // from decision_logs
-  const [whyPanel, setWhyPanel]                 = useState(null);     // { message, why_text, score, signals }
-  // GAP-7 FIX: native Android voice service state
+  const [proactiveCtx, setProactiveCtx]     = useState(null);
+  const [subKeepsToast, setSubKeepsToast] = useState(null);
+  const [predictedCards, setPredictedCards] = useState([]);
+  const [strongSuggestions, setStrongSuggestions] = useState([]);
+  const [autonomyEnabled, setAutonomyEnabled] = useState(false);
+  const [automationPaused, setAutomationPaused] = useState(false);
+  const [showReviewPanel, setShowReviewPanel]   = useState(false);
+  const [autoHistory, setAutoHistory]           = useState([]);
+  const [whyPanel, setWhyPanel]                 = useState(null);
   const [nativeVoiceActive, setNativeVoiceActive] = useState(false);
-  const [showVoiceHelp,    setShowVoiceHelp]    = useState(false); // Jarvis: help panel
-  // FIX: always-on status for clear lifecycle states
-  // 'off' | 'starting' | 'active' | 'error'
+  const [showVoiceHelp,    setShowVoiceHelp]    = useState(false);
   const [alwaysOnStatus, setAlwaysOnStatus] = useState('off');
-  // CHANGE D: user behavior model — used to personalise detectUserState
   const [userModel, setUserModel] = useState(null);
   const recognitionRef = useRef(null);
   const textareaRef = useRef(null);
@@ -542,15 +530,13 @@ export default function Dashboard() {
   const [permState, setPermState] = useState({ mic: true, notifications: true, battery: true });
   const [offlineQueueCount, setOfflineQueueCount] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
-  // AUTO-EXEC: countdown state + cancel ref
-  const [pendingAutoExec, setPendingAutoExec] = useState(null); // { intent_type, contact_name, contact_phone, content, countdown }
+  const [pendingAutoExec, setPendingAutoExec] = useState(null);
   const autoExecTimerRef = useRef(null);
 
   useEffect(() => {
     const hasBrowserSpeech = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
     const hasNativeVoice = !!(window?.Capacitor?.Plugins?.VoicePlugin);
     setVoiceSupported(hasBrowserSpeech || hasNativeVoice);
-    // Load user tier for monetisation gates
     if (user?.id) {
       supabase.from('profiles').select('subscription_tier, is_beta').eq('user_id', user.id).maybeSingle()
         .then(({ data }) => {
@@ -563,17 +549,16 @@ export default function Dashboard() {
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2800); }
 
   function startVoice() {
-    // Step 3: global voice lock — prevents wake + manual conflict
     if (!acquireVoiceLock('manual')) return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { releaseVoiceLock(); return; }
     const recognition = new SR();
-    console.log('[QuietKeep] STT LANG:', voiceLang || 'en-IN');  // debug: verify STT language
+    console.log('[QuietKeep] STT LANG:', voiceLang || 'en-IN');
     recognition.lang = voiceLang || 'en-IN'; recognition.continuous = false; recognition.interimResults = true;
     recognitionRef.current = recognition;
     recognition.onstart = () => setListening(true);
-    recognition.onend = () => { setListening(false); releaseVoiceLock(); }; // Fix: release lock on natural end
-    recognition.onerror = () => { setListening(false); releaseVoiceLock(); }; // Fix: release lock on error
+    recognition.onend = () => { setListening(false); releaseVoiceLock(); };
+    recognition.onerror = () => { setListening(false); releaseVoiceLock(); };
     recognition.onresult = (e) => {
       const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
       setContent(transcript);
@@ -590,17 +575,9 @@ export default function Dashboard() {
   function stopVoice() {
     recognitionRef.current?.stop();
     setListening(false);
-    releaseVoiceLock(); // Step 3
+    releaseVoiceLock();
   }
 
-  // ── AUTO-EXECUTION ENGINE ─────────────────────────────────────────────────
-  // Reuses executeClientAction from intent-executor — no new execution logic.
-  // Shows a 2.5s countdown overlay. User can cancel at any time.
-  // Only runs for: contact (with phone), navigation, purchase.
-  // Never runs for: business mode, financial, reminder, compliance.
-  // Never runs twice (cleared immediately after fire or cancel).
-
-  // Phase 6: Pause/resume automation — writes to user_settings.settings.automation.paused
   async function toggleAutomationPause() {
     const newPaused = !automationPaused;
     setAutomationPaused(newPaused);
@@ -615,7 +592,6 @@ export default function Dashboard() {
     } catch { /* non-blocking — local state already updated */ }
   }
 
-  // Phase 6: Load last 10 auto actions from decision_logs
   async function loadAutoHistory() {
     if (!accessToken) return;
     try {
@@ -628,7 +604,6 @@ export default function Dashboard() {
 
   function cancelAutoExec() {
     if (autoExecTimerRef.current) { clearTimeout(autoExecTimerRef.current); autoExecTimerRef.current = null; }
-    // LEARNING LOOP: user cancellation = dismissed signal → lowers future priority for this intent
     if (pendingAutoExec?.keep_id && accessToken) {
       fetch(`/api/keeps/${pendingAutoExec.keep_id}/feedback`, {
         method: 'POST',
@@ -640,17 +615,11 @@ export default function Dashboard() {
   }
 
   function launchAutoExec(autoExecPayload) {
-    // Abort if any other execution is in progress
     if (autoExecTimerRef.current) return;
-
     const { intent_type, contact_name, contact_phone, content: execContent, delay_ms } = autoExecPayload;
     const totalMs = typeof delay_ms === 'number' ? delay_ms : 2500;
     const totalSec = Math.round(totalMs / 1000);
-
-    // Show countdown overlay
     setPendingAutoExec({ intent_type, contact_name, contact_phone, content: execContent, countdown: totalSec });
-
-    // Tick countdown every second
     let remaining = totalSec;
     const tick = () => {
       remaining -= 1;
@@ -658,10 +627,8 @@ export default function Dashboard() {
         setPendingAutoExec(prev => prev ? { ...prev, countdown: remaining } : null);
         autoExecTimerRef.current = setTimeout(tick, 1000);
       } else {
-        // Time's up — fire execution using the existing executeClientAction function
         setPendingAutoExec(null);
         autoExecTimerRef.current = null;
-        // Build synthetic intent object matching what executeClientAction expects
         const syntheticIntent = {
           intent_type,
           content: execContent || '',
@@ -670,7 +637,6 @@ export default function Dashboard() {
         };
         try {
           executeClientAction(syntheticIntent);
-          // LEARNING LOOP: successful auto-execution = acted signal → raises future priority
           if (autoExecPayload.keep_id && accessToken) {
             fetch(`/api/keeps/${autoExecPayload.keep_id}/feedback`, {
               method: 'POST',
@@ -679,7 +645,6 @@ export default function Dashboard() {
             }).catch(() => {});
           }
         } catch (err) {
-          // Execution failure is silent — keep is already saved
           console.warn('[auto-exec] execution error:', err);
         }
       }
@@ -687,70 +652,44 @@ export default function Dashboard() {
     autoExecTimerRef.current = setTimeout(tick, 1000);
   }
 
-  // GAP-7 FIX v2: toggle native Android VoiceService with full permission flow
   async function toggleNativeVoice() {
     if (!isNativeVoiceAvailable()) {
       showToast('Always-on not supported on this device');
       return;
     }
-
     if (nativeVoiceActive) {
       setAlwaysOnStatus('off');
       await stopNativeVoice();
       setNativeVoiceActive(false);
-      releaseVoiceLock(); // ensure lock released on manual stop
+      releaseVoiceLock();
       showToast('Always-on voice stopped');
       return;
     }
-
-    // Step 1: Request RECORD_AUDIO runtime permission
-    // This triggers the Android system dialog if not yet granted.
-    // Must happen BEFORE calling startService, or AudioRecord fails silently.
     showToast('Requesting microphone permission…');
     let hasMic = await requestMicPermission();
-
-    // TASK 1 FIX: On ColorOS/Realme, the OS dialog may have been shown and
-    // granted in a previous session (PermissionOnboarding), but the plugin
-    // still returns false on first call due to Activity context lag.
-    // Re-check after 600ms covers this without re-showing the OS dialog.
     if (!hasMic) {
       await new Promise(r => setTimeout(r, 600));
       hasMic = await requestMicPermission();
       console.log('[QK] mic permission re-check result:', hasMic);
     }
-
     if (!hasMic) {
       showToast('⚠ Microphone permission denied — enable in Settings → Apps → QuietKeep → Permissions');
       return;
     }
-
-    // TASK 1 FIX: Warm up the WebView audio context so it syncs with the OS
-    // grant. Without this, speechSynthesis has no audio session and
-    // onPermissionRequest in MainActivity never fires for this session.
     await warmUpWebViewMic();
-
-    // Step 2: Request POST_NOTIFICATIONS permission (Android 13+)
-    // Without this the foreground service notification is silently suppressed.
     await requestNotificationPermission();
-
-    // Step 3: Start VoiceService via plugin bridge
     const started = await startNativeVoice({
       authToken:    accessToken,
       serverUrl:    'https://quietkeep.com',
       mode:         'personal',
       workspaceId:  null,
-      languageCode: voiceLang || 'en-IN',  // STT fix: pass app language to Android
+      languageCode: voiceLang || 'en-IN',
     });
-
     if (!started) {
       showToast('⚠ Could not start voice service — check mic permission in Settings');
       console.error('[QK Always-On] startNativeVoice returned false');
       return;
     }
-
-    // Step 4: Confirm service is actually running after 900ms
-    // Plugin resolves immediately after dispatching startForegroundService —
-    // we poll isRunning() to confirm AudioRecord actually initialised.
     setAlwaysOnStatus('starting');
     showToast('Starting always-on voice…');
     setTimeout(async () => {
@@ -784,7 +723,6 @@ export default function Dashboard() {
       .select('id,content,intent_type,status,loop_state,stale_at,nudge_count,created_at,reminder_at,tags,contact_name,contact_phone,color,is_pinned,show_on_brief,space_type,ai_summary,workspace_id,is_prediction,prediction_id')
       .eq('user_id', uid).order('created_at', { ascending: false }).limit(200);
     if (!error && data) setIntents(data);
-    // FIX: pass Bearer token so loop-count route can authenticate (was failing silently)
     fetch('/api/keeps/loop-count', {
       headers: { 'Authorization': `Bearer ${accessToken || ''}` },
     }).then(r => r.json()).then(d => setOpenLoopCount(d.count || 0)).catch(() => {});
@@ -818,13 +756,9 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    // Auth from AuthContext — single onAuthStateChange listener in layout
-    if (authLoading) return; // wait for context to resolve
+    if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
 
-    // ── FIX: Restore always-on state on page reload (APK only) ─────────
-    // VoiceService may still be running after page reload (Capacitor WebView reload).
-    // Poll after 1.5s so the plugin is ready before we query.
     if (typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.()) {
       setTimeout(async () => {
         try {
@@ -838,7 +772,6 @@ export default function Dashboard() {
       }, 1500);
     }
 
-    // ── PERMISSION ONBOARDING: first Android launch ──────────────────────
     if (
       typeof window !== 'undefined' &&
       window?.Capacitor?.getPlatform?.() === 'android' &&
@@ -847,25 +780,15 @@ export default function Dashboard() {
       setTimeout(() => setShowPermOnboarding(true), 1200);
     }
 
-    // ── AUTO-REQUEST PERMISSIONS (v10): request on first native launch ───
-    // Silently requests RECORD_AUDIO, POST_NOTIFICATIONS, Location so the
-    // user sees the system dialogs immediately on first open rather than
-    // hitting a "permission denied" error mid-session.
-    // Guard: only fires once per install via 'qk_perms_requested' flag.
     if (
       typeof window !== 'undefined' &&
       window?.Capacitor?.isNativePlatform?.() &&
       !localStorage.getItem('qk_perms_requested')
     ) {
-      // P4 FIX: Write flag AFTER result resolves, and only when mic was granted.
-      // Previous: flag written before async call — a denied dialog permanently
-      // silenced future re-requests even on reinstall or permission reset.
-      // Now: if mic is denied, flag is NOT written, so next open retries.
       setTimeout(() => {
         requestPermissionsOnStart()
           .then((result) => {
             if (result.mic) {
-              // Mic granted — mark done so we don't re-prompt on every open
               localStorage.setItem('qk_perms_requested', '1');
               console.log('[QK] Permissions granted on start — mic:', result.mic,
                 'notifications:', result.notifications, 'location:', result.location);
@@ -877,7 +800,6 @@ export default function Dashboard() {
       }, 1800);
     }
 
-    // ── REAL-TIME PERMISSION SYNC ────────────────────────────────────────
     const unsubPerms = onPermissionChange(state => setPermState(state));
     loadIntents(user.id).finally(() => {
       setLoading(false);
@@ -887,7 +809,6 @@ export default function Dashboard() {
       }, 800);
     });
 
-    // Fetch user behavior model for personalised state detection
     safeFetch('/api/user/model', { token: accessToken })
       .then(({ data: d }) => { if (d?.exists && d?.model) setUserModel(d.model); })
       .catch(() => {});
@@ -901,10 +822,8 @@ export default function Dashboard() {
       registerNativePush(accessToken, '').catch(() => {});
     }
 
-    // Background intelligence services (LocationService, perception loop)
     startBackgroundServices(accessToken, 'https://quietkeep.com');
 
-    // Phase 7: load automation pause state from user_settings on mount
     safeFetch('/api/settings', { token: accessToken })
       .then(({ data }) => {
         if (data?.settings?.automation?.paused === true) {
@@ -912,9 +831,6 @@ export default function Dashboard() {
         }
       }).catch(() => {});
 
-    // Phase 3 Step 2: Start dashboard-level geo watch (web/foreground awareness)
-    // This is additive — Android LocationService handles background geo independently.
-    // onTriggered fires when geo/check returns triggered keeps near current position.
     startDashboardGeoWatch(
       accessToken,
       (keeps, locationName) => {
@@ -927,7 +843,6 @@ export default function Dashboard() {
       }
     );
 
-    // Connectivity handlers for offline voice queue
     const unsubConnectivity = registerConnectivityHandlers(
       accessToken,
       (synced) => {
@@ -938,7 +853,6 @@ export default function Dashboard() {
     );
     setOfflineQueueCount(getOfflineQueueCount());
 
-    // ColorOS / Hans freeze fix — battery optimization exemption
     if (
       !batteryPromptedRef.current
       && typeof window !== 'undefined'
@@ -958,7 +872,6 @@ export default function Dashboard() {
       }, 2000);
     }
 
-    // Realtime nudge subscription
     const unsubRealtime = startRealtimeLoop(supabase, user.id, (nudge) => {
       if (typeof window !== 'undefined') {
         const toast = document.createElement('div');
@@ -973,13 +886,12 @@ export default function Dashboard() {
       unsubRealtime();
       unsubPerms();
       stopBackgroundServices();
-      stopDashboardGeoWatch(); // Phase 3 Step 2
+      stopDashboardGeoWatch();
       unsubConnectivity();
       if (autoExecTimerRef.current) { clearTimeout(autoExecTimerRef.current); }
     };
   }, [user, authLoading, accessToken, router, loadIntents]);
 
-  // Phase 3 Step 3: Load behavior predictions (separate from AgentSuggestionCard)
   useEffect(() => {
     if (!accessToken || !user) return;
     let cancelled = false;
@@ -989,7 +901,6 @@ export default function Dashboard() {
         if (typeof gpsLat === 'number') params.set('lat', String(gpsLat));
         if (typeof gpsLng === 'number') params.set('lng', String(gpsLng));
 
-        // Phase 3 Step 3: load predicted cards
         const { data, error } = await safeFetch(
           `/api/agent/predict?${params}`,
           { token: accessToken }
@@ -998,8 +909,6 @@ export default function Dashboard() {
           setPredictedCards(data.predicted.slice(0, 2));
         }
 
-        // Phase 4: load autonomous evaluation (non-blocking, separate call)
-        // Runs after predict to avoid slowing main suggestions.
         try {
           const autoRes = await safeFetch('/api/autonomous/evaluate', {
             method: 'POST',
@@ -1010,13 +919,9 @@ export default function Dashboard() {
             token: accessToken,
           });
           if (!cancelled && !autoRes.error) {
-            // Surface strong suggestions (score ≥ 0.80) in the dashboard
             setStrongSuggestions(autoRes.data?.strongSuggestions?.slice(0, 2) || []);
             setAutonomyEnabled((autoRes.data?.autoTriggers?.length ?? 0) > 0);
-            // Phase 4: wire auto-triggers to the existing launchAutoExec countdown
-            // Each auto-trigger fires through the 5s cancel window (existing UI)
             const triggers = autoRes.data?.autoTriggers || [];
-            // Phase 6: safety lock — skip all triggers if automation is paused
             if (!automationPaused) {
               for (const trigger of triggers) {
                 launchAutoExec({
@@ -1028,11 +933,11 @@ export default function Dashboard() {
                   content:      trigger.label,
                   delay_ms:     5000,
                 });
-                break; // one at a time
+                break;
               }
             }
           }
-        } catch { /* fail-safe — never block main predictions */ }
+        } catch { /* fail-safe */ }
 
       } catch { /* fail-safe */ }
     }
@@ -1040,10 +945,6 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, [accessToken, user, gpsLat, gpsLng]);
 
-  // Android back button handler — TASK 9 FIX
-  // Previous: only called history.back() — when history stack is empty on
-  // dashboard cold-open, this did nothing and Android's default handler
-  // exited the app. Now we explicitly prevent exit on the dashboard.
   useEffect(() => {
     var App = window && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
     if (!App) return;
@@ -1052,13 +953,10 @@ export default function Dashboard() {
       if (data && data.canGoBack) {
         window.history.back();
       } else {
-        // On dashboard with no history: minimize app instead of exiting
-        // App.minimizeApp() moves app to background — requires @capacitor/app v5+
         try {
           if (App.minimizeApp) {
             App.minimizeApp();
           }
-          // Fallback: do nothing — prevents accidental exit
         } catch (e) {
           console.log('[QK] minimizeApp not available');
         }
@@ -1067,13 +965,10 @@ export default function Dashboard() {
     return function() { if (listenerHandle) listenerHandle.remove(); };
   }, []);
 
-  // Phase 5 arch: lotus_wake event — fired by VoiceService when wake word
-  // detected in background. Safe now; only activates when Phase 5 Java ships.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     function onLotusWake(e) {
       console.log('[QK] lotus_wake from:', e?.detail?.source);
-      // Step 3: do not start if manual mic is already active
       if (isVoiceLocked()) {
         console.log('[QK] lotus_wake ignored — voice locked by:', getCurrentLockSource?.() ?? 'unknown');
         return;
@@ -1086,8 +981,6 @@ export default function Dashboard() {
     return () => window.removeEventListener('lotus_wake', onLotusWake);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // FIX: Always-On resume sync — re-poll VoiceService state when app comes to foreground
-  // Handles: Capacitor WebView reload, Android task switch, screen lock/unlock
   useEffect(() => {
     if (typeof window === 'undefined') return;
     async function onResume() {
@@ -1095,14 +988,13 @@ export default function Dashboard() {
       if (!window?.Capacitor?.isNativePlatform?.()) return;
       try {
         const running = await isNativeVoiceRunning();
-        // Only update if state is out of sync
         if (running && !nativeVoiceActive) {
           setNativeVoiceActive(true);
           setAlwaysOnStatus('active');
         } else if (!running && nativeVoiceActive) {
           setNativeVoiceActive(false);
           setAlwaysOnStatus('off');
-          releaseVoiceLock(); // safety: release lock if service died unexpectedly
+          releaseVoiceLock();
         }
       } catch {}
     }
@@ -1113,21 +1005,13 @@ export default function Dashboard() {
   async function handleSave() {
     if (savingRef.current || !content.trim() || !user) return;
 
-    // ── Phase 8 voice pipeline ───────────────────────────────────────────
     let commandText = content.trim();
     if (listening) {
-      // ── Step 1a: Language detection (non-blocking, advisory) ─────────
-      // detectLanguage is a pure function — zero latency, no network.
-      // Stores locale to qk_voice_lang so VoiceTalkback auto-switches TTS.
-      // Does NOT modify commandText or the intent pipeline.
       const langResult = detectLanguage(commandText);
       if (langResult.confidence > 0.65 && langResult.locale !== 'en-IN') {
         setStoredLanguagePreference(langResult.locale);
       }
 
-      // ── Step 1b: Offline routing (before ANY network call) ───────────
-      // Intercepts commands that can be answered locally.
-      // Falls through to normal pipeline if not handled offline.
       if (!navigator.onLine) {
         const offlineResult = processOfflineCommand(commandText);
         if (offlineResult.handled) {
@@ -1138,16 +1022,13 @@ export default function Dashboard() {
         }
       }
 
-      // Phase 8I: wake word required in wake/always_on mode; manual = pass-through
       if (isWakeMode()) {
         const wakeResult = processWithWakeWord(content.trim());
         if (!wakeResult.triggered) { setContent(''); return; }
         commandText = wakeResult.command || content.trim();
       }
 
-      // Step 2.2: Voice unlock — "Lotus unlock 1234" or "Lotus my voice passcode is 1234"
-      // Checks BEFORE intent engine so PIN commands are never saved as keeps.
-      if (/unlock|passcode|voice\s+pin/i.test(commandText)) {
+      if (/\bunlock\b|\bpasscode\b|\bvoice\s+pin\b/i.test(commandText)) {
         try {
           const { validateVoicePin, isVoicePinEnabled } = await import('@/lib/voiceUnlock');
           if (isVoicePinEnabled()) {
@@ -1168,7 +1049,6 @@ export default function Dashboard() {
         } catch {}
       }
 
-      // Phase 8B: continuation detection
       const continuation = tryResolveContinuation(commandText);
       if (continuation.isContinuation && continuation.intentType) {
         speak('Refining that.');
@@ -1179,16 +1059,13 @@ export default function Dashboard() {
         return;
       }
 
-      // Phase 2-4 + 8A: intent parse with confidence gate
       const intent = parseVoiceIntent(commandText);
       const intentConf = intent.confidence ?? 1.0;
 
       if (intent.handled && intentConf >= CONFIDENCE_THRESHOLD) {
-        // Step 1 Layer 2: sensitive intent verification
         if (isSensitiveIntent(intent.intentType, commandText)) {
           const trust = getSessionTrust();
           if (!trust.voice_verified && !trust.biometric_verified) {
-            // Require voice confirmation before executing sensitive action
             const confirmed = requireVoiceConfirmation(commandText);
             if (!confirmed) {
               speak("This action needs confirmation. Say 'Lotus confirm' or 'Yes proceed' to continue.");
@@ -1213,20 +1090,14 @@ export default function Dashboard() {
           }).catch(() => {});
         }
 
-        // Phase 8B: record for continuation context
         recordIntent(intent.intentType, intent.entities, commandText);
 
-        // Jarvis: follow-up prompts for specific intents
         if (intent.intentType === 'query_bills') {
           speakFollowUp("Do you want to open the bills page for details?");
         } else if (intent.intentType === 'query_reminders' && intent.entities?.date === 'today') {
           speakFollowUp("Say: Lotus open reminders — to see the full list.");
         }
 
-        // ── Step 1c: AI provider selection (advisory, no API call) ──────
-        // selectAIProvider is a pure function — reads user settings, returns
-        // provider id. Stored for next API call; does NOT trigger any network.
-        // The actual API layer will read this on the next /api/voice/capture call.
         try {
           const aiProv = selectAIProvider({ tier: tier || 'free' });
           if (aiProv.id !== 'default') {
@@ -1239,11 +1110,9 @@ export default function Dashboard() {
       }
     }
 
-    // Step 5 + 3.1: if listening but no intent matched — check for help intent first
     if (listening && commandText && commandText === content.trim()) {
       const lower = commandText.toLowerCase().trim();
-      // Jarvis: "what can you do" — structured category help
-      if (/what\s+can\s+you\s+do|help|commands?|show\s+help/i.test(lower)) {
+      if (/\bwhat\s+can\s+you\s+do\b|\bhelp\b|\bcommands?\b|\bshow\s+help\b/i.test(lower)) {
         speak(
           "Here is what I can do. " +
           "Tasks: say Lotus add task, or just speak any task. " +
@@ -1253,13 +1122,11 @@ export default function Dashboard() {
           "Keeps: say Lotus how many keeps, or just speak a note to save it. " +
           "Voice control: say Lotus confirm for sensitive actions, or Lotus unlock followed by your PIN."
         );
-        // Show the help panel visually too
         setShowVoiceHelp(true);
         setTimeout(() => setShowVoiceHelp(false), 8000);
         setContent(''); setSaving(false); savingRef.current = false;
         return;
       }
-      // Jarvis: contextual error — more natural than generic "didn't understand"
       const lowerCmd = commandText.toLowerCase();
       if (lowerCmd.includes('lotus') || lowerCmd.includes('add') || lowerCmd.includes('set')) {
         speak("I heard you, but could not match a command. Try saying: Lotus help for a full list.");
@@ -1268,7 +1135,6 @@ export default function Dashboard() {
       }
     }
 
-    // Check voice capture limit for free users
     const profile = await supabase.from('profiles').select('subscription_tier, is_beta').eq('user_id', user.id).maybeSingle();
     const tier = profile?.data?.subscription_tier || 'free';
     const isBeta = profile?.data?.is_beta || false;
@@ -1283,15 +1149,12 @@ export default function Dashboard() {
     setSaving(true);
 
     try {
-      // Track usage
       incrementVoiceCapture({ supabase, userId: user.id });
 
-      // FIXED: always fetch a fresh token before save
       const freshToken = await refreshToken();
 
       const res = await safeFetch('/api/voice/capture', {
         method: 'POST',
-        // FIX 2.3: Pass AI provider hint — advisory, never blocks request
         headers: { 'X-AI-Provider': (() => { try { return sessionStorage.getItem('qk_ai_provider') || 'default'; } catch { return 'default'; } })() },
         body: JSON.stringify({
           transcript:   commandText,
@@ -1303,7 +1166,6 @@ export default function Dashboard() {
       });
 
       if (res.error) {
-        // Network failure → queue offline via captureWithFallback
         const errStr = String(res.error || '');
         if (errStr.toLowerCase().includes('network') || errStr.toLowerCase().includes('fetch') || errStr.toLowerCase().includes('failed')) {
           const fallback = await captureWithFallback(commandText, freshToken, {
@@ -1330,7 +1192,6 @@ export default function Dashboard() {
       if (saved) {
         setIntents(prev => [saved, ...prev]);
 
-        // Learn from this capture (non-blocking)
         learnFromCapture({
           supabase, userId: user.id,
           intentType: saved.intent_type || 'note',
@@ -1350,7 +1211,6 @@ export default function Dashboard() {
           setFollowUpData(data.follow_up);
         }
 
-        // Phase 3: low-confidence clarification (separate from contact/time follow-ups)
         if (data.needs_followup && data.clarification && !data.follow_up) {
           setClarificationData({
             question: data.clarification,
@@ -1359,15 +1219,12 @@ export default function Dashboard() {
           });
         }
 
-        // Phase 3: multi-step confirmation toast
         if (data.sub_keeps?.length > 0) {
           const labels = data.sub_keeps.map(k => k.intent_type).join(', ');
           setSubKeepsToast(`✓ ${data.sub_keeps.length + 1} keeps saved: ${labels}`);
           setTimeout(() => setSubKeepsToast(null), 4000);
         }
 
-        // AUTO-EXEC: if backend signals this intent is safe + high-confidence,
-        // start the countdown. Cancel happens via cancelAutoExec() or user voice "cancel".
         if (data.auto_exec && !data.follow_up) {
           launchAutoExec(data.auto_exec);
         }
@@ -1378,12 +1235,10 @@ export default function Dashboard() {
         setReminderType('app');
         setSuggestions([]);
         setAutoDetected(null);
-        // Activation: prompt user to save location when geo trigger is not yet active
         if (data.suggest_save && data.keep?.location_name) {
           showToast(`📍 Save "${data.keep.location_name}" to activate geo reminder`);
         } else {
           showToast('✓ Kept!');
-          // Talk Assistant response in matched language
           setTalkResponse({
             show: true,
             type: saved.intent_type === 'reminder' ? 'reminder' : saved.intent_type === 'expense' ? 'expense' : 'saved',
@@ -1400,6 +1255,11 @@ export default function Dashboard() {
     }
   }
 
+  // SPRINT 1 FIX: replace res.ok ReferenceError with result?.success check.
+  // safeFetch returns { data, error } — res was never defined in this scope.
+  // Previous: if (!res.ok) always threw ReferenceError → catch block ran every time
+  //           → client-direct supabase fallback executed → transition route never reached.
+  // Fixed: check error from safeFetch directly, then check result?.success from API response.
   async function updateState(id, state) {
     try {
       const { data: result, error } = await safeFetch(`/api/keeps/${id}/transition`, {
@@ -1407,7 +1267,10 @@ export default function Dashboard() {
         body: JSON.stringify({ new_state: state }),
         token: accessToken || '',
       });
-      if (error) return;
+      if (error) {
+        showToast('Transition failed: ' + error);
+        return;
+      }
       // Schedule local SW notification if this keep has a reminder
       if (result?.keep?.reminder_at) {
         const fireAt = new Date(result.keep.reminder_at).getTime();
@@ -1420,8 +1283,8 @@ export default function Dashboard() {
           });
         }
       }
-      if (!res.ok) {
-        showToast('Transition failed: ' + (result.error || 'unknown'));
+      if (!result?.success) {
+        showToast('Transition failed: ' + (result?.error || 'unknown'));
         return;
       }
     } catch {
@@ -1441,19 +1304,13 @@ export default function Dashboard() {
   }
 
   async function handleEdit(id, updates) {
-    // FIX: handleEdit now re-throws after toast so EditKeepModal.saveError
-    // is populated and the modal shows an inline error message.
-    // Previously: caught internally only → modal never saw the error.
     if (!id || !updates) throw new Error('Invalid edit params');
 
-    // Strip undefined — null is intentional (e.g. clearing reminder_at)
     const safeUpdates = Object.fromEntries(
       Object.entries(updates).filter(([, v]) => v !== undefined)
     );
     if (Object.keys(safeUpdates).length === 0) return;
 
-    // FIX: always call refreshToken, but do NOT await it if it fails —
-    // the Supabase client already auto-refreshes; this is belt-and-suspenders.
     try { await refreshToken(); } catch {}
 
     const { error } = await supabase.from('keeps').update({
@@ -1465,10 +1322,9 @@ export default function Dashboard() {
       const msg = error.message || 'Could not update keep';
       console.error('[QK] handleEdit Supabase error:', error);
       showToast('⚠ ' + msg);
-      throw new Error(msg); // re-throw → modal shows inline saveError
+      throw new Error(msg);
     }
 
-    // Optimistic UI update — no need for full reload
     setIntents(prev => prev.map(k => k.id === id ? { ...k, ...safeUpdates } : k));
     try {
       await supabase.from('audit_log').insert({
@@ -1480,14 +1336,13 @@ export default function Dashboard() {
     VoiceResponses.keepUpdated();
   }
 
-  // GAP-1 FIX: feedback loop — closes the learning loop by calling update_intent_priority DB fn
   async function handleFeedback(id, outcome) {
     try {
       await apiPost(`/api/keeps/${id}/feedback`,
         { outcome, latency_seconds: null },
         accessToken
       );
-    } catch { /* non-blocking — never crash UI */ }
+    } catch { /* non-blocking */ }
   }
 
   const openIntents = intents.filter(i => i.status !== 'closed');
@@ -1577,10 +1432,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Phase 3: LOW-CONFIDENCE CLARIFICATION OVERLAY ── */}
-      {/* Shown when confidence < 0.68 and intent type is uncertain.          */}
-      {/* Different from followUpData: this is about WHAT was said,           */}
-      {/* not about WHO to contact or WHEN to remind.                         */}
       {clarificationData && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1001,
@@ -1631,7 +1482,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Phase 3: MULTI-STEP CONFIRMATION TOAST ── */}
       {subKeepsToast && (
         <div style={{
           position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)',
@@ -1644,7 +1494,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── PHASE 6: WHY THIS? EXPLAINABILITY PANEL ── */}
       {whyPanel && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1050,
@@ -1671,7 +1520,6 @@ export default function Dashboard() {
             <div style={{ fontSize: 12, color: '#a5b4fc', marginBottom: 14, lineHeight: 1.6 }}>
               {whyPanel.why_text}
             </div>
-            {/* Confidence bar */}
             {typeof whyPanel.score === 'number' && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11,
@@ -1691,7 +1539,6 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-            {/* Signal breakdown */}
             {whyPanel.signals && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -1728,7 +1575,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── PHASE 6: REVIEW AUTO ACTIONS PANEL ── */}
       {showReviewPanel && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1050,
@@ -1780,9 +1626,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── AUTO-EXECUTION COUNTDOWN OVERLAY ── */}
-      {/* Shows when a high-confidence, safe intent is about to auto-execute. */}
-      {/* User has 2.5 seconds to cancel. Fires executeClientAction on timeout. */}
       {pendingAutoExec && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1100,
@@ -1795,22 +1638,17 @@ export default function Dashboard() {
             borderRadius: 18, padding: '28px 24px', maxWidth: 340, width: '100%',
             textAlign: 'center', boxShadow: '0 8px 48px rgba(34,197,94,0.15)',
           }}>
-            {/* Intent type label */}
             <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
               {pendingAutoExec.intent_type === 'contact' ? '📞 Auto-Calling' :
                pendingAutoExec.intent_type === 'navigation' || pendingAutoExec.intent_type === 'trip' ? '🗺️ Opening Maps' :
                pendingAutoExec.intent_type === 'purchase' ? '🛒 Opening Shop' : '⚡ Executing'}
             </div>
-
-            {/* What will execute */}
             <div style={{ fontSize: 15, color: '#e2e8f0', fontWeight: 600, marginBottom: 6, wordBreak: 'break-word' }}>
               {pendingAutoExec.contact_name || pendingAutoExec.content?.slice(0, 60)}
             </div>
             {pendingAutoExec.contact_phone && (
               <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>{pendingAutoExec.contact_phone}</div>
             )}
-
-            {/* Countdown ring */}
             <div style={{
               width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
               background: `conic-gradient(#22c55e ${(pendingAutoExec.countdown / 3) * 100}%, rgba(34,197,94,0.12) 0%)`,
@@ -1824,8 +1662,6 @@ export default function Dashboard() {
                 {pendingAutoExec.countdown}
               </div>
             </div>
-
-            {/* Cancel button */}
             <button
               onClick={cancelAutoExec}
               style={{
@@ -1887,7 +1723,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* PERMISSION ONBOARDING — guided first-launch flow */}
       {showPermOnboarding && (
         <PermissionOnboarding
           onComplete={() => {
@@ -1906,14 +1741,12 @@ export default function Dashboard() {
       <div className="qk-page">
         <div className="qk-container">
 
-          {/* ZONE 1 — Hero: greeting + top reminder */}
           <DashboardHero
             userName={user?.user_metadata?.full_name || user?.email?.split('@')[0]}
             topReminder={intents.find(k => k.intent_type === 'reminder' && k.status === 'open')}
             onReminderTap={() => router.push('/reminders')}
           />
 
-          {/* ZONE 2 — Contextual suggestion chips */}
           <SuggestionChips
             supabase={supabase}
             userId={user?.id}
@@ -1928,7 +1761,6 @@ export default function Dashboard() {
 
           <ContextCards userId={user?.id} />
 
-          {/* ZONE 3 — Daily Brief card */}
           <DailyBriefCard userId={user?.id} tier={userTier} isBeta={userIsBeta} />
 
           {openLoopCount > 0 && (
@@ -1979,7 +1811,6 @@ export default function Dashboard() {
                   ) : '🎙 Voice'}
                 </button>
               )}
-              {/* GAP-7: Native Android always-on voice button */}
               {isNativeVoiceAvailable() && (
                 <button
                   onClick={toggleNativeVoice}
@@ -2001,7 +1832,6 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Step 3.2: Voice mode selector — persist in localStorage via voiceMode.ts */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
               {[
                 { key: 'manual', label: '🎙️ Manual', desc: 'Tap to speak' },
@@ -2027,7 +1857,6 @@ export default function Dashboard() {
               })}
             </div>
 
-            {/* Jarvis: Wake word guidance — shown when wake mode ON but service OFF */}
             {isWakeMode() && !nativeVoiceActive && isNativeVoiceAvailable() && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
@@ -2040,7 +1869,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Voice mode status indicator — shows when wake word mode active */}
             {listening && isWakeMode() && !autoDetected && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
@@ -2061,7 +1889,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Jarvis: Voice hints strip — shown when not listening */}
             {!listening && !content && (
               <div style={{
                 display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center',
@@ -2085,7 +1912,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Jarvis: Visual help panel — shown after "what can you do" */}
             {showVoiceHelp && (
               <div style={{
                 marginBottom: 10, background: 'rgba(99,102,241,0.06)',
@@ -2275,9 +2101,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* ── PREDICTIONS STRIP ─────────────────────────────────────────── */}
-          {/* Shows pending system predictions above the keep list.        */}
-          {/* Filtered from intents — no extra fetch needed.               */}
           {(() => {
             const predictions = intents.filter(i => i.is_prediction && i.status !== 'closed');
             if (!predictions.length) return null;
@@ -2345,8 +2168,6 @@ export default function Dashboard() {
             );
           })()}
 
-          {/* Activation: agent suggestion card — surfaces geo/routine suggestions */}
-          {/* Phase 3 Step 2: Proactive geo card — "You are near X → N pending keeps" */}
           {proactiveCtx && (
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -2388,7 +2209,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Phase 6: Pause automation + Review panel controls */}
           {autonomyEnabled && (
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
               <button
@@ -2417,7 +2237,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Phase 4: Strong suggestions — high-confidence proactive cards */}
           {strongSuggestions.length > 0 && (
             <div style={{ marginBottom: 14 }}>
               <div style={{
@@ -2439,13 +2258,11 @@ export default function Dashboard() {
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4, marginBottom: 3 }}>
                       ⚡ {s.message}
                     </div>
-                    {/* Why text — explainability */}
                     {s.why_text && (
                       <div style={{ fontSize: 11, color: 'var(--text-subtle)', lineHeight: 1.4, marginBottom: 5 }}>
                         {s.why_text}
                       </div>
                     )}
-                    {/* Confidence bar */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                       <div style={{ width: 48, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${Math.round(s.score * 100)}%`, background: '#fbbf24', borderRadius: 2 }} />
@@ -2506,7 +2323,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Phase 3 Step 3: Predicted for you — behavior intelligence */}
           {predictedCards.length > 0 && (
             <div style={{ marginBottom: 14 }}>
               <div style={{
@@ -2542,7 +2358,6 @@ export default function Dashboard() {
                         display: 'inline-flex', alignItems: 'center', gap: 5,
                         marginTop: 6,
                       }}>
-                        {/* Confidence bar */}
                         <div style={{
                           width: 60, height: 3, borderRadius: 2,
                           background: 'rgba(255,255,255,0.08)', overflow: 'hidden',
@@ -2567,16 +2382,13 @@ export default function Dashboard() {
                     )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
-                    {/* 👍 Accept */}
                     <button
                       onClick={async () => {
                         const intentType = s.action_hint?.replace(/^(contact:|predicted:)/, '') || s.intentType;
                         const contactName = s.action_hint?.startsWith('contact:') ? s.action_hint.replace('contact:', '') : null;
-                        // Pre-fill voice input
                         if (contactName) setContent(`call ${contactName}`);
                         else setContent(s.label || '');
                         setTimeout(() => textareaRef.current?.focus(), 50);
-                        // Send positive feedback
                         await safeFetch('/api/suggestions/feedback', {
                           method: 'POST',
                           body: JSON.stringify({ intent_type: intentType, outcome: 'acted', contact_name: contactName }),
@@ -2591,7 +2403,6 @@ export default function Dashboard() {
                       }}>
                       👍 Yes
                     </button>
-                    {/* 👎 Not relevant */}
                     <button
                       onClick={async () => {
                         const intentType = s.action_hint?.replace(/^(contact:|predicted:)/, '') || s.intentType;
@@ -2616,7 +2427,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Activation: agent suggestion card — surfaces geo/routine suggestions */}
           <AgentSuggestionCard
             accessToken={accessToken}
             lat={gpsLat}
@@ -2628,7 +2438,6 @@ export default function Dashboard() {
                 setTimeout(() => textareaRef.current?.focus(), 50);
               }
               if (hint?.startsWith('view_nearby:')) {
-                // Phase 3 Step 2: scroll to keeps or filter — set content for now
                 const loc = hint.replace('view_nearby:', '');
                 showToast(`📍 Showing keeps near ${loc}`);
               }
@@ -2682,7 +2491,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Talk Assistant Response */}
       <TalkAssistantResponse
         show={talkResponse.show}
         type={talkResponse.type}
@@ -2691,7 +2499,6 @@ export default function Dashboard() {
         onDismiss={() => setTalkResponse(p => ({ ...p, show: false }))}
       />
 
-      {/* Upgrade Modal */}
       <UpgradeModal
         show={showUpgrade}
         onClose={() => setShowUpgrade(false)}

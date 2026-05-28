@@ -54,5 +54,14 @@ export async function POST(request, { params }) {
     processed:    false,
   }).then(() => {}).catch((e) => console.error('[transition] behaviour_signals failed:', e.message));
 
-  return NextResponse.json({ success: true, transition: data });
+  // Fetch the updated keep so dashboard can schedule SW reminder if reminder_at is set.
+  // dashboard code: if (result?.keep?.reminder_at) { postMessage SCHEDULE_REMINDER }
+  const { data: keep } = await db
+    .from('keeps')
+    .select('id, content, status, loop_state, reminder_at, updated_at')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  return NextResponse.json({ success: true, transition: data, keep: keep || null });
 }

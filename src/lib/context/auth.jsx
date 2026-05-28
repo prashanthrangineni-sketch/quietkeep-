@@ -3,29 +3,16 @@
  * src/lib/context/auth.jsx
  *
  * BLOCK 3: Central AuthContext
- *
- * Replaces 33 independent supabase.auth.getSession() calls across the app.
- *
- * WHY:
- * - Each page calling getSession() independently creates race conditions
- *   when Supabase silently refreshes the JWT (every hour). React state lags
- *   behind — stale tokens cause 401s on voice/capture, keeps/transition, etc.
- * - 33 network calls on every cold page load.
- * - No single source of truth for the current user.
- *
- * HOW:
- * - Wraps layout.jsx children
- * - Single auth.onAuthStateChange listener updates context
- * - All pages read { user, accessToken, session, loading } from useAuth()
- * - Token is always the freshest from onAuthStateChange
- *
- * USAGE:
- *   import { useAuth } from '@/lib/context/auth'
- *   const { user, accessToken, loading } = useAuth()
+ * SPRINT 2 ADDITION: Wire keepsStore.setTokenProvider(refreshToken)
+ * so the outbox can refresh tokens automatically before retrying writes.
  */
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+
+// keepsStore import is dynamic to avoid SSR issues (IndexedDB is browser-only).
+// setTokenProvider is called once after first session is resolved.
+let _storeWired = false;
 
 const AuthContext = createContext({
   user:        null,
@@ -49,6 +36,20 @@ export function AuthProvider({ children }) {
       setUser(s?.user ?? null);
       setAccessToken(s?.access_token ?? '');
       setLoading(false);
+
+      // Wire keepsStore token provider once we have a session.
+      // Dynamic import avoids SSR crash (IndexedDB not available server-side).
+      if (s?.access_token && !_storeWired) {
+        _storeWired = true;
+        import('@/lib/keeps/store').then(({ keepsStore }) => {
+          keepsStore.setTokenProvider(async () => {
+            const { data: { session: fresh } } = await supabase.auth.getSession();
+            return fresh?.access_token ?? null;
+          });
+          // Flush any pending outbox rows from a previous session.
+          keepsStore.flush().catch(() => {});
+        }).catch(() => {});
+      }
     });
 
     // Subscribe to all auth state changes (login, logout, token refresh)
@@ -58,6 +59,22 @@ export function AuthProvider({ children }) {
         setUser(s?.user ?? null);
         setAccessToken(s?.access_token ?? '');
         if (loading) setLoading(false);
+
+        // On token refresh: flush outbox immediately — pending writes may have
+        // failed with 401 and are waiting for a fresh token.
+        if (s?.access_token) {
+          import('@/lib/keeps/store').then(({ keepsStore }) => {
+            keepsStore.flush().catch(() => {});
+          }).catch(() => {});
+        }
+
+        // On sign-out: clear outbox (no cross-user data leakage).
+        if (!s) {
+          import('@/lib/keeps/store').then(({ keepsStore }) => {
+            keepsStore.clear().catch(() => {});
+          }).catch(() => {});
+          _storeWired = false;
+        }
       }
     );
 

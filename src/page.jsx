@@ -174,7 +174,7 @@ export default function HomePage() {
           </div>
           <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: '-0.5px', color: 'var(--text)' }}>QuietKeep</span>
         </div>
-        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }} className="qk-nav-links">
           <Link href="/pricing" style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Pricing</Link>
           <Link href="/brand" style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Brand</Link>
           {(typeof window === 'undefined' || !(window && window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform())) && (

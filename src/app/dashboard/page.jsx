@@ -49,6 +49,10 @@ import { checkVoiceCapLimit, incrementVoiceCapture } from '@/lib/usage-gate';
 import UpgradeModal from '@/components/UpgradeModal';
 // AUTO-EXEC: reuse existing execution function — no new logic
 import { executeClientAction } from '@/lib/intent-executor';
+// SPRINT 2: Centralized write surface with IndexedDB outbox.
+// handleEdit now routes through keepsStore.update() for guaranteed delivery.
+// storeOutboxCount tracks pending writes for the UI badge.
+import { keepsStore } from '@/lib/keeps/store';
 
 // ── All logic below is untouched — UI-only upgrade ──────────────
 
@@ -132,7 +136,6 @@ function EditKeepModal({ intent, onSave, onClose }) {
     intent.reminder_at ? new Date(intent.reminder_at).toISOString().slice(0, 16) : ''
   );
   const [intentType, setIntentType] = useState(intent.intent_type || 'note');
-  // FIX: geo fields — allows assigning location triggers from the keep edit modal
   const [locationName, setLocationName] = useState(intent.location_name || '');
   const [enableGeo, setEnableGeo] = useState(intent.geo_trigger_enabled || false);
   const [saving, setSaving] = useState(false);
@@ -147,7 +150,6 @@ function EditKeepModal({ intent, onSave, onClose }) {
         content: content.trim(),
         reminder_at: reminderAt || null,
         intent_type: intentType,
-        // FIX: persist geo fields so /geo page can show and trigger them
         location_name: locationName.trim() || null,
         geo_trigger_enabled: enableGeo,
       });
@@ -207,7 +209,6 @@ function EditKeepModal({ intent, onSave, onClose }) {
           </div>
         )}
 
-        {/* FIX: Geo location trigger — wires up to geo_trigger_enabled + location_name columns */}
         <div style={{ marginTop: 10 }}>
           <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             📍 Location Trigger
@@ -246,7 +247,6 @@ function EditKeepModal({ intent, onSave, onClose }) {
           </button>
         </div>
       </div>
-      {/* ── Offline badge ── */}
       {(isOffline || offlineQueueCount > 0) && (
         <div style={{
           position: 'fixed', top: 60, left: '50%', transform: 'translateX(-50%)',
@@ -268,7 +268,7 @@ function EditKeepModal({ intent, onSave, onClose }) {
 function IntentCard({ intent, onUpdateState, onDelete, onEdit, onFeedback, accessToken, userLanguage }) {
   const [expanded, setExpanded] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [speaking, setSpeaking] = useState(false);  // Safety pass: tracks TTS state for this card
+  const [speaking, setSpeaking] = useState(false);
   const emoji = TYPE_EMOJI[intent.intent_type] || '📝';
   const color = STATE_COLOR[intent.status] || '#22c55e';
   const isClosed = intent.status === 'closed';
@@ -278,11 +278,9 @@ function IntentCard({ intent, onUpdateState, onDelete, onEdit, onFeedback, acces
     <div className="qk-keep-card" style={{
       opacity: isClosed ? 0.55 : 1,
       animation: 'qk-fade-in 0.25s ease forwards',
-      // Prediction keeps: distinct purple-tinted border
       border: isPrediction && !isClosed ? '1px solid rgba(139,92,246,0.4)' : undefined,
       background: isPrediction && !isClosed ? 'rgba(139,92,246,0.04)' : undefined,
     }}>
-    {/* Prediction badge — only shown when not closed */}
     {isPrediction && !isClosed && (
       <div style={{
         fontSize: 10, color: '#a78bfa', fontWeight: 700,
@@ -355,7 +353,6 @@ function IntentCard({ intent, onUpdateState, onDelete, onEdit, onFeedback, acces
 
       {expanded && (
         <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {/* STALE UX: When a keep is stale, show "Still relevant?" prompt at the top */}
           {!isClosed && intent.stale_at && new Date(intent.stale_at) < new Date() && (
             <div style={{
               width: '100%', background: 'rgba(245,158,11,0.08)',
@@ -382,7 +379,6 @@ function IntentCard({ intent, onUpdateState, onDelete, onEdit, onFeedback, acces
             <button
               onClick={() => {
                 onFeedback && onFeedback(intent.id, 'dismissed');
-                // For predictions: also close the keep so it disappears from the list
                 if (isPrediction) onUpdateState(intent.id, 'closed');
               }}
               className="qk-btn qk-btn-sm"
@@ -413,7 +409,6 @@ function IntentCard({ intent, onUpdateState, onDelete, onEdit, onFeedback, acces
           >
             🗑 Delete
           </button>
-          {/* Safety pass: TTS Read button */}
           <button
             onClick={() => {
               try {
@@ -530,8 +525,16 @@ export default function Dashboard() {
   const [permState, setPermState] = useState({ mic: true, notifications: true, battery: true });
   const [offlineQueueCount, setOfflineQueueCount] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
+  // SPRINT 2: IndexedDB outbox pending count — drives the "Syncing N edits…" badge
+  const [storeOutboxCount, setStoreOutboxCount] = useState(0);
   const [pendingAutoExec, setPendingAutoExec] = useState(null);
   const autoExecTimerRef = useRef(null);
+
+  // SPRINT 2: Subscribe to keeps store outbox changes
+  useEffect(() => {
+    const unsub = keepsStore.onOutboxChange((count) => setStoreOutboxCount(count));
+    return unsub;
+  }, []);
 
   useEffect(() => {
     const hasBrowserSpeech = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
@@ -589,7 +592,7 @@ export default function Dashboard() {
         }),
         token: accessToken,
       });
-    } catch { /* non-blocking — local state already updated */ }
+    } catch { /* non-blocking */ }
   }
 
   async function loadAutoHistory() {
@@ -1256,10 +1259,6 @@ export default function Dashboard() {
   }
 
   // SPRINT 1 FIX: replace res.ok ReferenceError with result?.success check.
-  // safeFetch returns { data, error } — res was never defined in this scope.
-  // Previous: if (!res.ok) always threw ReferenceError → catch block ran every time
-  //           → client-direct supabase fallback executed → transition route never reached.
-  // Fixed: check error from safeFetch directly, then check result?.success from API response.
   async function updateState(id, state) {
     try {
       const { data: result, error } = await safeFetch(`/api/keeps/${id}/transition`, {
@@ -1271,7 +1270,6 @@ export default function Dashboard() {
         showToast('Transition failed: ' + error);
         return;
       }
-      // Schedule local SW notification if this keep has a reminder
       if (result?.keep?.reminder_at) {
         const fireAt = new Date(result.keep.reminder_at).getTime();
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -1303,6 +1301,10 @@ export default function Dashboard() {
     await loadIntents(user.id);
   }
 
+  // SPRINT 2: handleEdit now routes through keepsStore.update() for guaranteed delivery.
+  // keepsStore commits to IndexedDB immediately (offline-safe), then syncs to the server
+  // with exponential backoff. Eliminates the client-direct supabase.update() call which
+  // had no retry, no offline queuing, and no recovery on token expiry.
   async function handleEdit(id, updates) {
     if (!id || !updates) throw new Error('Invalid edit params');
 
@@ -1311,29 +1313,18 @@ export default function Dashboard() {
     );
     if (Object.keys(safeUpdates).length === 0) return;
 
-    try { await refreshToken(); } catch {}
-
-    const { error } = await supabase.from('keeps').update({
-      ...safeUpdates,
-      updated_at: new Date().toISOString(),
-    }).eq('id', id).eq('user_id', user.id);
-
-    if (error) {
-      const msg = error.message || 'Could not update keep';
-      console.error('[QK] handleEdit Supabase error:', error);
+    try {
+      // Commit to IndexedDB immediately — visible in UI before network round-trip.
+      await keepsStore.update(id, safeUpdates);
+      // Optimistic UI update immediately — user sees change without waiting for sync.
+      setIntents(prev => prev.map(k => k.id === id ? { ...k, ...safeUpdates } : k));
+      showToast('Keep updated ✓');
+      VoiceResponses.keepUpdated();
+    } catch (e) {
+      const msg = e.message || 'Could not update keep';
       showToast('⚠ ' + msg);
       throw new Error(msg);
     }
-
-    setIntents(prev => prev.map(k => k.id === id ? { ...k, ...safeUpdates } : k));
-    try {
-      await supabase.from('audit_log').insert({
-        user_id: user.id, action: 'keep_edited',
-        intent_id: id, service: 'dashboard', details: safeUpdates,
-      });
-    } catch {}
-    showToast('Keep updated ✓');
-    VoiceResponses.keepUpdated();
   }
 
   async function handleFeedback(id, outcome) {
@@ -1790,9 +1781,21 @@ export default function Dashboard() {
 
           <div className="qk-card" style={{ padding: 18, marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                + New Keep
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  + New Keep
+                </span>
+                {/* SPRINT 2: Outbox badge — shows pending edits from keeps store */}
+                {storeOutboxCount > 0 && (
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, color: '#fbbf24',
+                    background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)',
+                    padding: '1px 6px', borderRadius: 99, letterSpacing: '0.04em',
+                  }}>
+                    ↑ {storeOutboxCount} syncing
+                  </span>
+                )}
+              </div>
               {voiceSupported && (
                 <button
                   onClick={listening ? stopVoice : startVoice}

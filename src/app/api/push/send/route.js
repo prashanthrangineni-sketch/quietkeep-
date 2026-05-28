@@ -35,10 +35,11 @@ export async function POST(request) {
   const { title, message, keep_id = null, data: extraData = {} } = body;
   if (!title || !message) return NextResponse.json({ error: 'title and message required' }, { status: 400 });
 
-  const { data: settings } = await supabase
-    .from('user_settings').select('onesignal_player_id').eq('user_id', user.id).single();
+  const { data: settingsRow } = await supabase
+    .from('user_settings').select('settings').eq('user_id', user.id).single();
 
-  if (!settings?.onesignal_player_id) {
+  const playerId = settingsRow?.settings?.onesignal_player_id;
+  if (!playerId) {
     return NextResponse.json({ error: 'No push token registered for this user' }, { status: 404 });
   }
 

@@ -46,5 +46,24 @@ export async function POST(request) {
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Sync player_id to user_settings so /api/push/send can find it.
+  // Non-blocking — registration succeeds even if this write fails.
+  if (deviceToken && provider === 'onesignal') {
+    try {
+      const svc = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+      const { data: existing } = await svc
+        .from('user_settings').select('settings').eq('user_id', user.id).maybeSingle();
+      const merged = { ...(existing?.settings || {}), onesignal_player_id: deviceToken };
+      await svc.from('user_settings').upsert(
+        { user_id: user.id, settings: merged },
+        { onConflict: 'user_id' }
+      );
+    } catch {}
+  }
+
   return NextResponse.json({ ok: true, registered: data });
 }

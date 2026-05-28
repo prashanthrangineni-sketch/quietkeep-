@@ -217,18 +217,7 @@ function EditKeepModal({ intent, onSave, onClose }) {
           <button onClick={onClose} style={{ padding: '12px 20px', borderRadius: 10, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Cancel</button>
         </div>
       </div>
-      {(isOffline || offlineQueueCount > 0) && (
-        <div style={{
-          position: 'fixed', top: 60, left: '50%', transform: 'translateX(-50%)',
-          background: isOffline ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)',
-          border: '1px solid ' + (isOffline ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'),
-          color: isOffline ? '#f87171' : '#fbbf24',
-          padding: '5px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600,
-          zIndex: 9000, whiteSpace: 'nowrap', pointerEvents: 'none',
-        }}>
-          {isOffline ? '📡 Offline' : `📥 ${offlineQueueCount} queued — syncing…`}
-        </div>
-      )}
+
     </div>
   );
 }

@@ -180,7 +180,8 @@ export default function HomePage() {
           {(typeof window === 'undefined' || !(window && window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform())) && (
             <Link href="/biz-login" style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Business</Link>
           )}
-          <Link href="/login" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--primary)', padding: '8px 18px', borderRadius: 8, textDecoration: 'none', lineHeight: 1 }}>Sign In</Link>
+          <Link href="/biz-login" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: '#10b981', padding: '8px 14px', borderRadius: 8, textDecoration: 'none', lineHeight: 1, whiteSpace: 'nowrap' }}>🏢 Business</Link>
+          <Link href="/login" style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--primary)', padding: '8px 14px', borderRadius: 8, textDecoration: 'none', lineHeight: 1 }}>Sign In</Link>
         </div>
       </nav>
 

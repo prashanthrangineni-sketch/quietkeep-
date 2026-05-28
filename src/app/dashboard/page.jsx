@@ -813,6 +813,11 @@ export default function Dashboard() {
           navigator.serviceWorker.controller.postMessage({ type: 'SCHEDULE_REMINDER', id: result.keep.id, text: result.keep.content || '', fireAt });
         }
       }
+      // P0.4 FIX: reload from server after success to reconfirm server state.
+      // Optimistic update may differ from server if: RPC rejected, prior offline
+      // writes created conflict, or multi-device state diverged.
+      // Non-blocking — UI already shows optimistic state.
+      loadIntents(user.id).catch(() => {});
     } catch {
       // keepsStore queues to IndexedDB on failure — reload will reflect server state
       // when outbox syncs. No fallback write needed; store handles recovery.

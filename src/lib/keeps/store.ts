@@ -20,23 +20,20 @@
  * Idempotency:
  *   Every write gets an idempotency_key = uuid. The server deduplicates
  *   on this key, so replaying a pending outbox row is always safe.
+ *   Updates: last-write-wins (replaying an update is harmless — same fields applied twice).
+ *
+ * P0.2 FIX (2026-05-28):
+ *   update operation was previously client-direct via anon key supabase.update().
+ *   PostgREST auth.uid()=NULL in RLS context → updates silently failed with 403.
+ *   Fixed: update now calls PATCH /api/keeps/[id] (service role, same as transition).
  *
  * Usage:
  *   import { keepsStore } from '@/lib/keeps/store';
  *
- *   // Create a keep (typed text or voice transcript)
  *   const keep = await keepsStore.create({ content: 'Buy groceries', source: 'text' });
- *
- *   // Update fields on an existing keep
  *   await keepsStore.update(keepId, { content: 'Buy groceries tomorrow' });
- *
- *   // Mark done
  *   await keepsStore.transition(keepId, 'closed');
- *
- *   // Subscribe to outbox count (for UI indicator)
  *   keepsStore.onOutboxChange(count => setPendingCount(count));
- *
- *   // Flush pending writes (call on app focus, online event, auth refresh)
  *   await keepsStore.flush();
  */
 
@@ -154,8 +151,6 @@ function uuid(): string {
 }
 
 // ── Token provider ────────────────────────────────────────────────────────────
-// Injected by the AuthProvider so the store never imports supabase directly.
-// Set via keepsStore.setTokenProvider(refreshToken) in _app or layout.
 
 type TokenProvider = () => Promise<string | null>;
 let _tokenProvider: TokenProvider | null = null;
@@ -201,7 +196,7 @@ async function _apiWrite(
 ): Promise<{ ok: boolean; data: unknown; status: number }> {
   const token = await _getToken();
   const headers: Record<string, string> = {
-    'Content-Type':  'application/json',
+    'Content-Type':    'application/json',
     'Idempotency-Key': idempotencyKey,
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
@@ -236,19 +231,22 @@ async function _flushRow(db: IDBDatabase, row: OutboxRow): Promise<void> {
     let result: { ok: boolean; data: unknown; status: number };
 
     if (row.operation === 'create') {
+      // Create routes through voice/capture for AI classification.
       result = await _apiWrite('POST', '/api/voice/capture', row.payload as Record<string, unknown>, row.id);
     } else if (row.operation === 'update') {
-      // Updates go directly via supabase client (no dedicated update API route yet).
-      // This is the one client-direct write we intentionally keep — Sprint 3 adds /api/keeps/update.
-      // For now: import supabase inline to avoid circular dep.
-      const { supabase } = await import('@/lib/supabase');
-      const token = await _getToken();
-      if (!token) throw new Error('No auth token for update');
-      const { error } = await supabase
-        .from('keeps')
-        .update({ ...(row.payload as Record<string, unknown>), updated_at: new Date().toISOString() })
-        .eq('id', row.keepId!);
-      result = { ok: !error, data: null, status: error ? 500 : 200 };
+      // P0.2 FIX: Previously used client-direct anon key supabase.update() which bypassed
+      // service-role requirement and caused 403 failures due to auth.uid()=NULL in RLS context.
+      // Now correctly routes to PATCH /api/keeps/[id] which uses createWriteClient().
+      if (!row.keepId) {
+        await idbPut(db, { ...row, status: 'failed', error: 'update has no keepId' });
+        return;
+      }
+      result = await _apiWrite(
+        'PATCH',
+        `/api/keeps/${row.keepId}`,
+        row.payload as Record<string, unknown>,
+        row.id
+      );
     } else if (row.operation === 'transition') {
       result = await _apiWrite('POST', `/api/keeps/${row.keepId}/transition`, row.payload as Record<string, unknown>, row.id);
     } else {
@@ -260,8 +258,7 @@ async function _flushRow(db: IDBDatabase, row: OutboxRow): Promise<void> {
     if (result.ok) {
       await idbPut(db, { ...row, status: 'flushed', error: null });
     } else if (result.status === 409) {
-      // Conflict — server says this keep already exists (idempotency dedup hit).
-      // Treat as success — the keep is already saved.
+      // Conflict — idempotency dedup hit or stale write. Treat as success.
       await idbPut(db, { ...row, status: 'flushed', error: null });
     } else if (result.status === 401) {
       // Auth error — token expired. Put back as pending; flush() after next refresh will retry.
@@ -293,31 +290,16 @@ async function _flushRow(db: IDBDatabase, row: OutboxRow): Promise<void> {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const keepsStore = {
-  /**
-   * Inject the token provider from AuthContext.
-   * Call once in layout.tsx or _app.tsx:
-   *   keepsStore.setTokenProvider(refreshToken);
-   */
   setTokenProvider(fn: TokenProvider): void {
     _tokenProvider = fn;
   },
 
-  /**
-   * Subscribe to pending outbox count changes.
-   * Returns an unsubscribe function.
-   */
   onOutboxChange(fn: OutboxListener): () => void {
     _listeners.add(fn);
     _notifyListeners().catch(() => {});
     return () => _listeners.delete(fn);
   },
 
-  /**
-   * Create a new keep.
-   * Commits to IndexedDB immediately, then attempts network write.
-   * Returns an optimistic local ID instantly — the real server ID
-   * is not available until flush succeeds.
-   */
   async create(payload: KeepPayload): Promise<{ localId: string }> {
     const localId = uuid();
     const row: OutboxRow = {
@@ -325,14 +307,14 @@ export const keepsStore = {
       operation:   'create',
       keepId:      null,
       payload: {
-        transcript:   payload.content,
-        source:       payload.source || 'text',
-        workspace_id: payload.workspace_id || null,
-        language:     payload.language || 'en-IN',
-        reminder_at:  payload.reminder_at || null,
-        location_name: payload.location_name || null,
+        transcript:          payload.content,
+        source:              payload.source || 'text',
+        workspace_id:        payload.workspace_id || null,
+        language:            payload.language || 'en-IN',
+        reminder_at:         payload.reminder_at || null,
+        location_name:       payload.location_name || null,
         geo_trigger_enabled: payload.geo_trigger_enabled || false,
-        idempotency_key: localId,
+        idempotency_key:     localId,
       },
       status:      'pending',
       retries:     0,
@@ -349,10 +331,6 @@ export const keepsStore = {
     return { localId };
   },
 
-  /**
-   * Update fields on an existing keep.
-   * Idempotent — replaying the same update is safe.
-   */
   async update(keepId: string, updates: Partial<KeepPayload>): Promise<void> {
     const localId = uuid();
     const row: OutboxRow = {
@@ -373,9 +351,6 @@ export const keepsStore = {
     _scheduleFlush();
   },
 
-  /**
-   * Transition keep state (open → active → done → closed etc).
-   */
   async transition(keepId: string, newState: KeepStatus, reason?: string): Promise<void> {
     const localId = uuid();
     const row: OutboxRow = {
@@ -396,11 +371,6 @@ export const keepsStore = {
     _scheduleFlush();
   },
 
-  /**
-   * Flush all pending outbox rows.
-   * Safe to call concurrently — in-flight rows are skipped.
-   * Call on: app open, window focus, online event, after auth token refresh.
-   */
   async flush(): Promise<{ flushed: number; failed: number; pending: number }> {
     let flushedCount = 0;
     let failedCount  = 0;
@@ -420,8 +390,6 @@ export const keepsStore = {
       }
 
       await _notifyListeners();
-
-      // Prune old flushed rows (> 24h) to prevent IndexedDB growth.
       await keepsStore.pruneOld();
 
       const remaining = await idbGetByStatus(db, 'pending');
@@ -432,9 +400,6 @@ export const keepsStore = {
     }
   },
 
-  /**
-   * Get current outbox summary for UI display.
-   */
   async getOutboxSummary(): Promise<{ pending: number; failed: number; total: number }> {
     try {
       const db      = await openDB();
@@ -447,9 +412,6 @@ export const keepsStore = {
     }
   },
 
-  /**
-   * Get all failed rows for user-facing error display.
-   */
   async getFailed(): Promise<OutboxRow[]> {
     try {
       const db = await openDB();
@@ -459,9 +421,6 @@ export const keepsStore = {
     }
   },
 
-  /**
-   * Retry a specific failed row (user-initiated).
-   */
   async retryFailed(rowId: string): Promise<void> {
     try {
       const db  = await openDB();
@@ -473,9 +432,6 @@ export const keepsStore = {
     } catch {}
   },
 
-  /**
-   * Delete a specific outbox row (user wants to discard a failed write).
-   */
   async discard(rowId: string): Promise<void> {
     try {
       const db = await openDB();
@@ -484,10 +440,6 @@ export const keepsStore = {
     } catch {}
   },
 
-  /**
-   * Prune flushed rows older than FLUSHED_TTL_MS.
-   * Called automatically at end of flush(). Also available for manual pruning.
-   */
   async pruneOld(): Promise<void> {
     try {
       const db       = await openDB();
@@ -499,9 +451,6 @@ export const keepsStore = {
     } catch {}
   },
 
-  /**
-   * Wipe entire outbox (use only in testing or on user sign-out).
-   */
   async clear(): Promise<void> {
     try {
       const db  = await openDB();
@@ -513,8 +462,6 @@ export const keepsStore = {
 };
 
 // ── Auto-register online listener ─────────────────────────────────────────────
-// Flushes pending outbox whenever the device comes back online.
-// Safe to call multiple times — addEventListener deduplicates by reference.
 
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {

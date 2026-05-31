@@ -1,0 +1,52 @@
+# Pranix Engineering Safety Layer — standardized template (Sprint 2)
+#
+# Report-only by design: these jobs NEVER fail the build or block a merge.
+# Findings appear in the Actions run logs and as uploaded artifacts.
+# Standardize this same file across Pranix repos; update centrally when changed.
+#
+# Covered now: Semgrep (SAST), Trivy (dependencies + IaC misconfig + secrets).
+# Not here (need per-repo app boot + env, or credentials): Lighthouse, Axe, Sentry.
+name: Pranix Safety Layer
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: Semgrep (SAST) — report-only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Semgrep
+        run: pip install --quiet semgrep
+      - name: Scan (auto ruleset, non-blocking)
+        run: |
+          semgrep scan --config auto --sarif --output semgrep.sarif . || true
+          echo "--- human-readable summary ---"
+          semgrep scan --config auto . || true
+      - name: Upload SARIF artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          if-no-files-found: ignore
+
+  trivy:
+    name: Trivy (deps + IaC + secrets) — report-only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Trivy
+        run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      - name: Scan filesystem (HIGH/CRITICAL, non-blocking)
+        run: trivy fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 .

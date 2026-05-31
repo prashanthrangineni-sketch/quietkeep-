@@ -305,7 +305,7 @@ jobs:
 
           if [ -f "app/quietkeep-release.keystore" ]; then
             echo "  Keystore found — building RELEASE APK"
-            ./gradlew assembleRelease --no-daemon --stacktrace \
+            ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace \
               -PKEYSTORE_PATH=quietkeep-release.keystore \
               -PKEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
               -PKEY_ALIAS="${{ secrets.KEY_ALIAS }}" \

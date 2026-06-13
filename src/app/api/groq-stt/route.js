@@ -156,7 +156,7 @@ export async function POST(req) {
 export async function GET() {
   const ok = !!process.env.GROQ_API_KEY;
   return NextResponse.json(
-    { ok, provider: 'groq', model: GROQ_MODEL },
+    { ok, provider: 'groq', model: GROQ_MODEL, method: 'POST' },
     { status: ok ? 200 : 503 },
   );
 }

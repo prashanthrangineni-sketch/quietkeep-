@@ -1,0 +1,15 @@
+# QuietKeep
+
+> QuietKeep is a voice-first personal assistant app. It provides fast, natural voice interaction (speech-to-text and text-to-speech) with wake-word activation, built for everyday tasks on Android.
+
+QuietKeep is built by Pranix AI Labs Private Limited, based in Vijayawada, Andhra Pradesh, India.
+
+## Core
+
+- [Homepage](https://www.quietkeep.com/): Overview of the voice assistant product.
+
+## Capabilities
+
+- Wake-word activated voice interaction.
+- Multi-provider speech pipeline (Sarvam, Bhashini, Kokoro, ElevenLabs and others) for fast, natural responses.
+- Built on the same Aaria voice engine that powers Pranix AI Labs' other products.

@@ -46,6 +46,7 @@ export default function MorePage() {
     { icon: '🧠', title: 'Memories',        sub: 'Life timeline & AI insights',           href: '/memories' },
     { icon: '📷', title: 'AI Camera',       sub: 'Capture with location, people & AI',   href: '/camera' }, // ← NEW
     { icon: '🎤', title: 'Voice History',   sub: 'Past voice inputs',                     href: '/voice' },
+    { icon: '✦', title: 'Ask Aaria',        sub: 'Voice-assistant powered help',          href: '/ask-aaria' },
     { icon: '🛡️', title: 'Trust Dashboard',  sub: 'Governance, patterns & control',        href: '/trust' }, // Phase 7
     { icon: '🆘', title: 'SOS Log',         sub: 'Emergency event history',               href: '/sos' },
     { icon: '🚗', title: 'Driving',         sub: 'Trip logs & fuel tracking',             href: '/driving' },

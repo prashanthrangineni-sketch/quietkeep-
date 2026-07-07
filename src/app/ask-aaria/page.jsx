@@ -80,6 +80,9 @@ export default function AskAariaPage() {
               <div><strong>Confidence:</strong> {(result.confidence * 100).toFixed(0)}%</div>
             )}
             {result.engine_used && <div><strong>Engine:</strong> {result.engine_used}</div>}
+            {result.visual_companion?.expression && (
+              <div><strong>Expression:</strong> {result.visual_companion.expression}</div>
+            )}
           </div>
         )}
       </div>

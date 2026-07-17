@@ -90,6 +90,30 @@ export default async function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-title" content="QuietKeep" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <link rel="apple-touch-startup-image" href="/icon-512.png" />
+        {/* AEO Phase 3 (T6-R3): Organization + SoftwareApplication structured data */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            {
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'Pranix AI Labs',
+              url: 'https://www.pranixailabs.com',
+              address: { '@type': 'PostalAddress', addressLocality: 'Vijayawada', addressRegion: 'Andhra Pradesh', addressCountry: 'IN' },
+            },
+            {
+              '@context': 'https://schema.org',
+              '@type': 'SoftwareApplication',
+              name: 'QuietKeep',
+              url: 'https://quietkeep.com',
+              applicationCategory: 'LifestyleApplication',
+              operatingSystem: 'Web, Android',
+              description: 'Voice-first personal keeper: reminders, notes, finance, family and documents with wake-word voice interaction in English, Hindi and Telugu.',
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'INR', description: 'Free plan available' },
+              publisher: { '@type': 'Organization', name: 'Pranix AI Labs' },
+              inLanguage: ['en', 'hi', 'te'],
+            },
+          ])
+        }} />
         <script dangerouslySetInnerHTML={{
           __html: `(function(){try{var t=localStorage.getItem('qk_theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`
         }} />

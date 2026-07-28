@@ -168,7 +168,11 @@ export default function TeamPage() {
   }
 
   async function updateTaskStatus(id, status) {
-    await supabase.from('business_tasks').update({ status }).eq('id', id);
+    await fetch('/api/business/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ id, status }),
+    });
     setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t));
   }
 

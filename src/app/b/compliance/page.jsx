@@ -89,7 +89,11 @@ export default function CompliancePage() {
     const itYear = now.getMonth() >= 7 ? now.getFullYear() + 1 : now.getFullYear();
     defaults.push({ workspace_id: wsId, type: 'it_return', title: `Income Tax Return FY ${itYear - 1}-${String(itYear).slice(2)}`, due_date: `${itYear}-07-31`, frequency: 'annual', priority: 'critical', auto_generated: true });
 
-    await supabase.from('compliance_reminders').upsert(defaults, { onConflict: 'workspace_id,type,due_date', ignoreDuplicates: true });
+    await fetch('/api/business/compliance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ seed: true, items: defaults }),
+    });
     loadData(wsId);
   }
 
@@ -97,16 +101,19 @@ export default function CompliancePage() {
     if (!form.due_date || !workspace) return;
     setSaving(true);
     const ct = COMPLIANCE_TYPES[form.type];
-    await supabase.from('compliance_reminders').insert({
-      workspace_id: workspace.id,
-      type: form.type,
-      title: form.title || ct?.label || form.type,
-      due_date: form.due_date,
-      amount_estimate: form.amount_estimate ? parseFloat(form.amount_estimate) : null,
-      assigned_to: form.assigned_to || null,
-      notes: form.notes || null,
-      priority: form.priority,
-      frequency: ct?.freq || 'once',
+    await fetch('/api/business/compliance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({
+        type: form.type,
+        title: form.title || ct?.label || form.type,
+        due_date: form.due_date,
+        amount_estimate: form.amount_estimate ? parseFloat(form.amount_estimate) : null,
+        assigned_to: form.assigned_to || null,
+        notes: form.notes || null,
+        priority: form.priority,
+        frequency: ct?.freq || 'once',
+      }),
     });
     setSaving(false); setShowAdd(false);
     setForm({ type: 'gst_return', title: '', due_date: '', amount_estimate: '', assigned_to: '', notes: '', priority: 'high' });
@@ -114,7 +121,11 @@ export default function CompliancePage() {
   }
 
   async function markFiled(id) {
-    await supabase.from('compliance_reminders').update({ status: 'filed' }).eq('id', id);
+    await fetch('/api/business/compliance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ id, status: 'filed' }),
+    });
     setReminders(prev => prev.map(r => r.id === id ? { ...r, status: 'filed' } : r));
   }
 

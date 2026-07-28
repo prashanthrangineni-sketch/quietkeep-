@@ -62,11 +62,11 @@ export default function CustomersPage() {
     if (!form.name || !workspace) return;
     setSaving(true);
     const payload = { ...form, credit_limit: parseFloat(form.credit_limit) || 0 };
-    if (editCustomer) {
-      await supabase.from('business_customers').update(payload).eq('id', editCustomer.id);
-    } else {
-      await supabase.from('business_customers').insert({ workspace_id: workspace.id, ...payload });
-    }
+    await fetch('/api/business/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(editCustomer ? { ...payload, id: editCustomer.id } : payload),
+    });
     setSaving(false);
     setShowForm(false);
     setEditCustomer(null);

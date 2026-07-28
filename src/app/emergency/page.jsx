@@ -161,11 +161,14 @@ export default function EmergencyPage() {
   async function writeSosEvent(contactsNotified, channel) {
     if (!user) return;
     try {
-      await supabase.from('sos_events').insert({
+      // Column names MUST match the sos_events schema: location_lat / location_lng.
+      // This previously inserted `latitude`/`longitude`, which do NOT exist on the
+      // table — PostgREST rejected every insert, so NO SOS event was ever recorded.
+      const { error } = await supabase.from('sos_events').insert({
         user_id: user.id,
         triggered_at: new Date().toISOString(),
-        latitude: location?.lat ?? null,
-        longitude: location?.lng ?? null,
+        location_lat: location?.lat ?? null,
+        location_lng: location?.lng ?? null,
         location_accuracy: location?.acc ?? null,
         contacts_notified: contactsNotified,
         channel: channel,

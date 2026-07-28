@@ -121,7 +121,11 @@ export default function CompliancePage() {
   }
 
   async function markFiled(id) {
-    await supabase.from('compliance_reminders').update({ status: 'filed' }).eq('id', id);
+    await fetch('/api/business/compliance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ id, status: 'filed' }),
+    });
     setReminders(prev => prev.map(r => r.id === id ? { ...r, status: 'filed' } : r));
   }
 

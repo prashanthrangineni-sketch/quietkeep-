@@ -21,6 +21,7 @@ const BIZ_NAV_LINKS = [
   { href: '/b/ledger',      icon: '📒', label: 'Ledger' },
   { href: '/b/scan',        icon: '📷', label: 'Scan & Pay' },
   { href: '/b/team',        icon: '👨‍💼', label: 'Team' },
+  { href: '/b/team/invite', icon: '✉️', label: 'Invite' },
   { href: '/b/attendance',  icon: '👥', label: 'Attendance' },
   { href: '/b/payroll',     icon: '💳', label: 'Payroll' },
   { href: '/b/invoices',    icon: '🧾', label: 'Invoices' },

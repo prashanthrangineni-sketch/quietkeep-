@@ -169,7 +169,7 @@ function SOSCard({ event: e, onResolve, resolving, resolved }) {
         )}
         {e.location_lat && (
           <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
-            📍 {parseFloat(e.latitude).toFixed(4)}, {parseFloat(e.longitude).toFixed(4)}
+            📍 {parseFloat(e.location_lat).toFixed(4)}, {parseFloat(e.location_lng).toFixed(4)}
           </span>
         )}
       </div>

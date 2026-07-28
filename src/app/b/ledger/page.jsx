@@ -78,11 +78,11 @@ export default function LedgerPage() {
     if (!form.amount || !workspace) return;
     setSaving(true);
     const payload = { ...form, amount: parseFloat(form.amount) };
-    if (editEntry) {
-      await supabase.from('business_ledger').update(payload).eq('id', editEntry.id);
-    } else {
-      await supabase.from('business_ledger').insert({ workspace_id: workspace.id, ...payload });
-    }
+    await fetch('/api/business/ledger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(editEntry ? { ...payload, id: editEntry.id } : payload),
+    });
     setSaving(false); setShowForm(false); setEditEntry(null); setForm(EMPTY);
     loadEntries(workspace.id);
   }

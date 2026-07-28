@@ -167,7 +167,7 @@ function SOSCard({ event: e, onResolve, resolving, resolved }) {
             📱 {e.contacts_notified} contact{e.contacts_notified > 1 ? 's' : ''} notified
           </span>
         )}
-        {e.location_lat && (
+        {e.latitude && (
           <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
             📍 {parseFloat(e.location_lat).toFixed(4)}, {parseFloat(e.location_lng).toFixed(4)}
           </span>

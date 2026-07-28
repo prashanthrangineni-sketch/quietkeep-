@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse }   from 'next/server'
 import { createClient }   from '@supabase/supabase-js'
 import { parseIntent }    from '@/lib/intent-parser'
+import { aariaAssist }   from '@/lib/aaria-act' // SOT P1: Aaria action brain for utterances regex can't parse
 import {
   computeReminderAt,
   scheduleReminderNudge,
@@ -504,6 +505,21 @@ export async function POST(request) {
     raw_text: keep.voice_text,
   }
 
+  // ── SOT P1: Aaria action brain ────────────────────────────────────────────
+  // The regex parser files anything it can't understand as a generic 'note' and
+  // then does nothing. For those utterances only, ask Aaria to understand and
+  // act. Scope stays 'read' because this runs automatically — it must never
+  // silently mutate data. Fail-safe and time-boxed: a slow or down Aaria can
+  // never block or break a capture.
+  let aaria = null
+  if (parsed.type === 'unknown' || parsed.confidence < 0.5) {
+    aaria = await aariaAssist(text, {
+      userId: user.id,
+      lang: (language || 'en').split('-')[0],
+      scope: 'read',
+    }).catch(() => null)
+  }
+
   return NextResponse.json({
     keep:              responseKeep,
     intent:            responseKeep,
@@ -521,6 +537,7 @@ export async function POST(request) {
     human_type:        brain.human_type,   // readable intent label
     sub_keeps:         subKeeps,           // array of {id, text, intent_type} for multi-step intents
     entities:          parsed.entities,
+    aaria,             // SOT P1: Aaria's read of utterances the regex missed (null otherwise)
     auto_exec,
     // v2: geo intelligence fields
     geo_detected:   !!(parsed.geo?.detected || parsed.route?.detected),

@@ -117,8 +117,8 @@ export default function SOSPage() {
 }
 
 function SOSCard({ event: e, onResolve, resolving, resolved }) {
-  const mapsUrl = e.latitude && e.longitude
-    ? `https://maps.google.com/?q=${e.latitude},${e.longitude}`
+  const mapsUrl = e.location_lat && e.location_lng
+    ? `https://maps.google.com/?q=${e.location_lat},${e.location_lng}`
     : null;
 
   return (
@@ -167,9 +167,9 @@ function SOSCard({ event: e, onResolve, resolving, resolved }) {
             📱 {e.contacts_notified} contact{e.contacts_notified > 1 ? 's' : ''} notified
           </span>
         )}
-        {e.latitude && (
+        {e.location_lat && (
           <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
-            📍 {parseFloat(e.latitude).toFixed(4)}, {parseFloat(e.longitude).toFixed(4)}
+            📍 {parseFloat(e.location_lat).toFixed(4)}, {parseFloat(e.location_lng).toFixed(4)}
           </span>
         )}
       </div>

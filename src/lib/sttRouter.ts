@@ -33,7 +33,8 @@
  * ── STT STRATEGIES ────────────────────────────────────────────────────────
  *
  *   'groq'     Cloud STT via /api/groq-stt (Groq Whisper Large v3 Turbo).
- *              Replaces the discontinued Sarvam path.
+ *              Current English cloud path (NOT because Sarvam was
+ *              discontinued — see the correction in the header).
  *              Good accuracy for Indian languages (en-IN, te-IN, hi-IN, etc).
  *              Requires network. Used by VoiceService on APK.
  *              Latency: ~300ms–1.5s (turbo model is fast).

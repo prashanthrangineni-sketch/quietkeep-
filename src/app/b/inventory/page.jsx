@@ -55,7 +55,11 @@ export default function InventoryPage() {
     const item = items.find(i => i.id === id);
     if (!item) return;
     const newStock = Math.max(0, parseFloat(item.current_stock) + delta);
-    await supabase.from('inventory_items').update({ current_stock: newStock }).eq('id', id);
+    await fetch('/api/business/inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ id, current_stock: newStock }),
+    });
     setItems(prev => prev.map(i => i.id === id ? { ...i, current_stock: newStock } : i));
   }
 

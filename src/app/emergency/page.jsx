@@ -175,6 +175,9 @@ export default function EmergencyPage() {
         is_resolved: false,
         notes: `SOS via ${channel}. Location: ${location ? `${location.lat.toFixed(5)},${location.lng.toFixed(5)}` : 'unavailable'}`,
       });
+      // supabase-js RESOLVES with { error } instead of throwing, so the catch
+      // below never fired — that is why this failed silently for so long.
+      if (error) console.error('[SOS write-back] failed to record SOS event:', error.message);
     } catch (e) {
       console.error('[SOS write-back]', e);
     }

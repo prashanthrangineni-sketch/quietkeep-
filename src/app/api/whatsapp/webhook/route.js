@@ -97,6 +97,15 @@ export async function POST(req) {
     const bodyText = await req.text();
     const params = Object.fromEntries(new URLSearchParams(bodyText));
 
+    // ── SECURITY: verify the request genuinely came from Twilio (fail closed) ──
+    const twilioSig = req.headers.get('x-twilio-signature') || '';
+    const webhookUrl = process.env.WHATSAPP_WEBHOOK_URL || 'https://quietkeep.com/api/whatsapp/webhook';
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    if (!validateTwilioSignature(webhookUrl, params, twilioSig, authToken)) {
+      console.error('[whatsapp-webhook] Invalid Twilio signature — rejecting');
+      return new Response('Forbidden', { status: 403 });
+    }
+
     const from = params.From || '';
     const body = (params.Body || '').trim();
     const phone = from.replace('whatsapp:', '');

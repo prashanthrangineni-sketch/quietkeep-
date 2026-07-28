@@ -1,29 +1,27 @@
 // src/app/api/business/workspace/route.js
-// SPRINT 1 FIX: Unified auth + service-role write pattern.
-// Also fixed dead branch in GET (string literal comparison always evaluated true).
-//
-// BEFORE: authSB(token) inline factory for workspace.upsert -> auth.uid()=NULL -> silent fail.
-//         GET had: if ('workspace' === 'workspace') — always true, dead else branch.
-//
-// AFTER: createBearerClient for identity. createWriteClient for upsert.
-//        GET simplified — always filters by owner_user_id (correct for workspace owner).
+// RBAC-hardened + mass-assignment fix.
+// The previous POST spread the raw request body into a service-role upsert on
+// business_workspaces, letting a client set id (overwrite/hijack ANOTHER
+// workspace via the service role), owner_user_id (transfer ownership), or
+// plan/tier (grant themselves a paid tier for free). Now: requireBizPermission
+// gates access, privileged/identity fields are stripped, and the write is forced
+// onto the caller's own workspace id (update-only).
 
 export const dynamic = 'force-dynamic';
-import { createBearerClient, createWriteClient, unauthorized } from '@/lib/supabase-bearer';
+import { requireBizPermission } from '@/lib/biz-rbac';
+import { createWriteClient } from '@/lib/supabase-bearer';
 
 export async function GET(req) {
   try {
-    const { supabase, user } = await createBearerClient(req);
-    if (!user) return unauthorized();
+    const ctx = await requireBizPermission(req, 'settings', 'view');
+    if (ctx.error) return ctx.error;
 
-    const { data } = await supabase
-      .from('business_workspaces')
-      .select('*')
-      .eq('owner_user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(200);
+    const db = createWriteClient();
+    const { data } = await db
+      .from('business_workspaces').select('*')
+      .eq('id', ctx.workspace.id).maybeSingle();
 
-    return Response.json({ data: data || [] });
+    return Response.json({ data: data ? [data] : [] });
   } catch (e) {
     console.error('[WORKSPACE GET]', e.message);
     return Response.json({ error: 'Internal error' }, { status: 500 });
@@ -32,26 +30,23 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    const { supabase, user } = await createBearerClient(req);
-    if (!user) return unauthorized();
-
-    const { data: ws } = await supabase
-      .from('business_workspaces')
-      .select('id')
-      .eq('owner_user_id', user.id)
-      .maybeSingle();
-
-    if (!ws) return Response.json({ error: 'No workspace' }, { status: 404 });
+    const ctx = await requireBizPermission(req, 'settings', 'edit');
+    if (ctx.error) return ctx.error;
 
     const body = await req.json();
-    const payload = { ...body, workspace_id: ws.id };
+
+    // Strip privileged / identity fields — never client-settable.
+    const {
+      id, owner_user_id, plan, tier, tier_name, workspace_id, created_at,
+      ...safe
+    } = body;
+
+    // Force the write onto the caller's OWN workspace (update-only).
+    const payload = { ...safe, id: ctx.workspace.id };
 
     const db = createWriteClient();
     const { data, error } = await db
-      .from('business_workspaces')
-      .upsert(payload)
-      .select()
-      .single();
+      .from('business_workspaces').upsert(payload).select().single();
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
     return Response.json({ data });

@@ -79,7 +79,7 @@ export default function BizLoginPage() {
     try {
       const res = await fetch('/api/auth/beta-verify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: norm }),
+        body: JSON.stringify({ email: norm, code: otp.join('') }),
       });
       const data = await res.json();
       if (!data.access_token) {

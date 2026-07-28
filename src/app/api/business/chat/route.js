@@ -1,7 +1,15 @@
 // src/app/api/business/chat/route.js
-// Handles: GET rooms, POST room, GET messages, POST message
-// Auth: Bearer token
-
+// ─────────────────────────────────────────────────────────────────────────────
+// SECURITY FIX (P0): chat previously read/wrote ANY room by id using the
+// service role, checking only that the room EXISTED — so any authenticated user
+// could read or post in any business's chat (cross-tenant leak). Rooms were
+// also resolved by owner only, so real members saw nothing.
+//
+// Fix: a single `accessibleWorkspaceIds()` helper resolves every workspace the
+// caller legitimately belongs to — as OWNER (business_workspaces.owner_user_id)
+// or as a MEMBER (business_members.user_id, active status). Every read and
+// write now verifies the target room's workspace_id is in that set.
+// ─────────────────────────────────────────────────────────────────────────────
 export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
@@ -13,17 +21,35 @@ function auth(token) {
     { global: { headers: { Authorization: `Bearer ${token}` } } }
   );
 }
-
 function svc() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 }
-
 async function getUser(token) {
   const { data: { user } } = await auth(token).auth.getUser();
   return user;
+}
+
+// Every workspace this user may act in: owned + member-of (active).
+async function accessibleWorkspaceIds(db, userId) {
+  const ids = new Set();
+  const owned = await db.from('business_workspaces').select('id').eq('owner_user_id', userId);
+  (owned.data || []).forEach(w => ids.add(w.id));
+  const member = await db.from('business_members')
+    .select('workspace_id,status').eq('user_id', userId);
+  (member.data || []).forEach(m => {
+    if (!m.status || ['active', 'invited'].includes(String(m.status).toLowerCase())) {
+      if (m.workspace_id) ids.add(m.workspace_id);
+    }
+  });
+  return ids;
+}
+
+async function roomWorkspace(db, roomId) {
+  const r = await db.from('business_chat_rooms').select('workspace_id').eq('id', roomId).single();
+  return r.data ? r.data.workspace_id : null;
 }
 
 // GET /api/business/chat?type=rooms | ?type=messages&room_id=xxx
@@ -36,16 +62,16 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type') || 'rooms';
-    const db   = svc();
+    const db = svc();
+    const wsIds = await accessibleWorkspaceIds(db, user.id);
+    if (wsIds.size === 0) {
+      return NextResponse.json(type === 'messages' ? { messages: [] } : { rooms: [] });
+    }
 
     if (type === 'rooms') {
-      const ws = await db.from('business_workspaces')
-        .select('id').eq('owner_user_id', user.id).maybeSingle();
-      if (!ws.data) return NextResponse.json({ rooms: [] });
-
       const { data } = await db.from('business_chat_rooms')
         .select('*')
-        .eq('workspace_id', ws.data.id)
+        .in('workspace_id', Array.from(wsIds))
         .order('updated_at', { ascending: false });
       return NextResponse.json({ rooms: data || [] });
     }
@@ -53,8 +79,14 @@ export async function GET(req) {
     if (type === 'messages') {
       const roomId = searchParams.get('room_id');
       if (!roomId) return NextResponse.json({ error: 'room_id required' }, { status: 400 });
-      const limit  = parseInt(searchParams.get('limit') || '60', 10);
 
+      // ── membership gate: the room must belong to a workspace the caller is in
+      const ws = await roomWorkspace(db, roomId);
+      if (!ws || !wsIds.has(ws)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
+      const limit = parseInt(searchParams.get('limit') || '60', 10);
       const { data } = await db.from('business_chat_messages')
         .select('*').eq('room_id', roomId)
         .order('created_at', { ascending: true }).limit(limit);
@@ -68,7 +100,7 @@ export async function GET(req) {
   }
 }
 
-// POST /api/business/chat  body: { action: 'create_room' | 'send_message', ...payload }
+// POST /api/business/chat  body: { action: 'create_room' | 'send_message', ... }
 export async function POST(req) {
   try {
     const token = req.headers.get('Authorization')?.replace('Bearer ', '').trim();
@@ -82,14 +114,21 @@ export async function POST(req) {
     }
 
     const db = svc();
+    const wsIds = await accessibleWorkspaceIds(db, user.id);
 
     if (body.action === 'create_room') {
-      const ws = await db.from('business_workspaces')
-        .select('id').eq('owner_user_id', user.id).maybeSingle();
-      if (!ws.data) return NextResponse.json({ error: 'No workspace' }, { status: 404 });
+      // Create in a workspace the caller belongs to. Explicit target allowed if
+      // the caller is a member of it; otherwise default to their (single) ws.
+      let targetWs = body.workspace_id;
+      if (targetWs) {
+        if (!wsIds.has(targetWs)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      } else {
+        if (wsIds.size === 0) return NextResponse.json({ error: 'No workspace' }, { status: 404 });
+        targetWs = Array.from(wsIds)[0];
+      }
 
       const { data, error } = await db.from('business_chat_rooms').insert({
-        workspace_id: ws.data.id,
+        workspace_id: targetWs,
         name:         body.name,
         room_type:    body.room_type || 'group',
         created_by:   user.id,
@@ -105,16 +144,16 @@ export async function POST(req) {
         return NextResponse.json({ error: 'room_id and content required' }, { status: 400 });
       }
 
-      // Verify room belongs to user's workspace
-      const room = await db.from('business_chat_rooms')
-        .select('workspace_id').eq('id', room_id).single();
-      if (!room.data) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+      // ── membership gate on the room's workspace before writing ──
+      const ws = await roomWorkspace(db, room_id);
+      if (!ws) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+      if (!wsIds.has(ws)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
       const senderName = user.email?.split('@')[0] || 'User';
 
       const { data, error } = await db.from('business_chat_messages').insert({
         room_id,
-        workspace_id: room.data.workspace_id,
+        workspace_id: ws,
         sender_id:    user.id,
         sender_name:  senderName,
         content,
@@ -124,7 +163,6 @@ export async function POST(req) {
 
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-      // Update room updated_at for sorting
       await db.from('business_chat_rooms')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', room_id);

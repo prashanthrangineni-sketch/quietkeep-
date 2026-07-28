@@ -27,8 +27,8 @@ if [ "$APP_TYPE" = "business" ]; then
   KEYSTORE_FILE="quietkeep-business.keystore"
   KEYSTORE_ALIAS="quietkeep-business"
   # Swap to business config
-  cp capacitor.business.config.ts capacitor.config.ts.bak 2>/dev/null || true
-  cp capacitor.business.config.ts capacitor.config.ts
+  cp capacitor.config.json capacitor.config.json.bak 2>/dev/null || true
+  cp capacitor.business.config.json capacitor.config.json
 else
   APP_ID="com.pranix.quietkeep"
   APP_NAME="QuietKeep"
@@ -36,7 +36,13 @@ else
   KEYSTORE_ALIAS="quietkeep"
 fi
 
-KEYSTORE_PASS="${KEYSTORE_PASS:-QuietKeepPranix2026}"
+# Keystore password comes ONLY from the environment — never committed.
+KEYSTORE_PASS="${KEYSTORE_PASS:-}"
+if [ -z "$KEYSTORE_PASS" ]; then
+  echo "ERROR: KEYSTORE_PASS is not set. Export it before building, e.g.:"
+  echo "  export KEYSTORE_PASS='<your keystore password>'"
+  exit 1
+fi
 echo "App ID    : $APP_ID"
 echo "App Name  : $APP_NAME"
 echo "Keystore  : $KEYSTORE_FILE"

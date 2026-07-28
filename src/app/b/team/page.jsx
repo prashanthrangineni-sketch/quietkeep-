@@ -126,13 +126,12 @@ export default function TeamPage() {
       emergency_contact: form.emergency_contact.trim()||null,
       status: form.status,
     };
-    if (editMember) {
-      await supabase.from('business_members').update(p).eq('id', editMember.id);
-      setMsg('Member updated ✓');
-    } else {
-      await supabase.from('business_members').insert(p);
-      setMsg('Member added ✓');
-    }
+    await fetch('/api/business/team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(editMember ? { ...p, id: editMember.id } : p),
+    });
+    setMsg(editMember ? 'Member updated ✓' : 'Member added ✓');
     setSaving(false); setShowForm(false);
     loadMembers(workspace.id);
     setTimeout(() => setMsg(''), 3000);

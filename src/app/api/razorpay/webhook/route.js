@@ -10,10 +10,18 @@ export async function POST(req) {
   const signature = req.headers.get('x-razorpay-signature') || '';
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
-  // Verify webhook signature
-  if (secret) {
+  // Verify webhook signature — MANDATORY (fail closed). A missing secret or a
+  // bad/missing signature is rejected, so a forged payment.captured can no
+  // longer upgrade an arbitrary user_id to a paid tier.
+  if (!secret) {
+    console.error('[webhook] RAZORPAY_WEBHOOK_SECRET not set — rejecting');
+    return Response.json({ error: 'Webhook not configured' }, { status: 503 });
+  }
+  {
     const expected = crypto.createHmac('sha256', secret).update(body).digest('hex');
-    if (expected !== signature) {
+    const a = Buffer.from(expected, 'utf8');
+    const b = Buffer.from(signature || '', 'utf8');
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
       console.error('[webhook] Invalid signature');
       return Response.json({ error: 'Invalid signature' }, { status: 400 });
     }

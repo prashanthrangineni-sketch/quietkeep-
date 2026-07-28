@@ -48,6 +48,17 @@ export async function POST(req) {
     const db = createWriteClient();
     const { data, error } = await db.from('business_invoices').upsert(payload).select().single();
     if (error) return Response.json({ error: error.message }, { status: 500 });
+
+    // Close the inventory↔sales loop: a NEW, non-draft invoice reduces stock.
+    // Best-effort — never block or fail the sale on an inventory issue.
+    if (!body.id && data && String(data.status || '').toLowerCase() !== 'draft') {
+      try {
+        const { decrementStockForInvoice } = await import('@/lib/inventory-stock');
+        await decrementStockForInvoice(db, ws.id, data.line_items || body.line_items, data.id);
+      } catch (e) {
+        console.warn('[INVOICES] stock decrement skipped:', e.message);
+      }
+    }
     return Response.json({ data });
   } catch (e) {
     console.error('[INVOICES POST]', e.message);

@@ -505,6 +505,21 @@ export async function POST(request) {
     raw_text: keep.voice_text,
   }
 
+  // ── SOT P1: Aaria action brain ────────────────────────────────────────────
+  // The regex parser files anything it can't understand as a generic 'note' and
+  // then does nothing. For those utterances only, ask Aaria to understand and
+  // act. Scope stays 'read' because this runs automatically — it must never
+  // silently mutate data. Fail-safe and time-boxed: a slow or down Aaria can
+  // never block or break a capture.
+  let aaria = null
+  if (parsed.type === 'unknown' || parsed.confidence < 0.5) {
+    aaria = await aariaAssist(text, {
+      userId: user.id,
+      lang: (language || 'en').split('-')[0],
+      scope: 'read',
+    }).catch(() => null)
+  }
+
   return NextResponse.json({
     keep:              responseKeep,
     intent:            responseKeep,

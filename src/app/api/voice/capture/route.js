@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse }   from 'next/server'
 import { createClient }   from '@supabase/supabase-js'
 import { parseIntent }    from '@/lib/intent-parser'
+import { aariaAssist }   from '@/lib/aaria-act' // SOT P1: Aaria action brain for utterances regex can't parse
 import {
   computeReminderAt,
   scheduleReminderNudge,

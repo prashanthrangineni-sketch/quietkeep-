@@ -23,12 +23,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-const BATCH = 50;         // nudges per run
+const BATCH = 25;         // nudges per run (kept small to stay under plan limits)
 const MAX_RETRY = 5;      // give up after this many failures
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -19,6 +19,7 @@ const BIZ_BOTTOM_TABS = [
 const BIZ_NAV_LINKS = [
   { href: '/b/dashboard',   icon: '📊', label: 'Dashboard' },
   { href: '/b/ledger',      icon: '📒', label: 'Ledger' },
+  { href: '/b/scan',        icon: '📷', label: 'Scan & Pay' },
   { href: '/b/team',        icon: '👨‍💼', label: 'Team' },
   { href: '/b/attendance',  icon: '👥', label: 'Attendance' },
   { href: '/b/payroll',     icon: '💳', label: 'Payroll' },

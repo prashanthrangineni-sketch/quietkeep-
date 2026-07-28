@@ -537,6 +537,7 @@ export async function POST(request) {
     human_type:        brain.human_type,   // readable intent label
     sub_keeps:         subKeeps,           // array of {id, text, intent_type} for multi-step intents
     entities:          parsed.entities,
+    aaria,             // SOT P1: Aaria's read of utterances the regex missed (null otherwise)
     auto_exec,
     // v2: geo intelligence fields
     geo_detected:   !!(parsed.geo?.detected || parsed.route?.detected),

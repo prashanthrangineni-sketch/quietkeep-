@@ -26,6 +26,14 @@ function rupee(n) {
     { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// GST place-of-supply: the first 2 digits of a GSTIN are the state code.
+// Different state codes → inter-state supply → IGST (full rate). Same/unknown → CGST+SGST.
+function stateCode(gstin) { return String(gstin || '').trim().slice(0, 2); }
+function isInterState(ws, form) {
+  const a = stateCode(ws?.gstin), b = stateCode(form?.customer_gstin);
+  return !!(a && b && a !== b);
+}
+
 const STATUS_STYLE = {
   draft:     { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8' },
   sent:      { bg: 'rgba(59,130,246,0.15)',  color: '#60a5fa' },
@@ -101,8 +109,10 @@ function buildInvoiceHTML(inv, ws) {
 </table>
 <div class="totals">
   <div class="tot-row"><span>Subtotal</span><span>${rupee(inv.subtotal)}</span></div>
-  <div class="tot-row"><span>CGST</span><span>${rupee(inv.cgst)}</span></div>
-  <div class="tot-row"><span>SGST</span><span>${rupee(inv.sgst)}</span></div>
+  ${(parseFloat(inv.igst)||0) > 0
+    ? `<div class="tot-row"><span>IGST</span><span>${rupee(inv.igst)}</span></div>`
+    : `<div class="tot-row"><span>CGST</span><span>${rupee(inv.cgst)}</span></div>
+  <div class="tot-row"><span>SGST</span><span>${rupee(inv.sgst)}</span></div>`}
   <div class="tot-row tot-final"><span>TOTAL</span><span>${rupee(inv.total_amount)}</span></div>
 </div>
 ${inv.notes?`<div style="clear:both;padding:10px;background:#f9fafb;border-radius:6px;font-size:11px;color:#555;margin-bottom:12px"><strong>Notes:</strong> ${inv.notes}</div>`:''}
@@ -183,7 +193,10 @@ export default function InvoicesPage() {
       invoice_type: form.invoice_type,
       customer_name: form.customer_name, customer_phone: form.customer_phone||null,
       customer_gstin: form.customer_gstin||null, customer_address: form.customer_address||null,
-      line_items: ci, subtotal, cgst: totalGst/2, sgst: totalGst/2,
+      line_items: ci, subtotal,
+      cgst: isInterState(workspace, form) ? 0 : totalGst / 2,
+      sgst: isInterState(workspace, form) ? 0 : totalGst / 2,
+      igst: isInterState(workspace, form) ? totalGst : 0,
       total_gst: totalGst, total_amount: total, amount_paid: 0, amount_due: total,
       invoice_date: form.invoice_date, due_date: form.due_date||null,
       notes: form.notes||null, status: 'draft',

@@ -76,7 +76,10 @@ export default function CustomersPage() {
 
   async function deleteCustomer(id, name) {
     if (!window.confirm('Delete customer "' + name + '"? Their invoice history will be retained.')) return;
-    await supabase.from('business_customers').delete().eq('id', id);
+    await fetch(`/api/business/customers?id=${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     setCustomers(prev => prev.filter(c => c.id !== id));
     setSelected(null);
   }

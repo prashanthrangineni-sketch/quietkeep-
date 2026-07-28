@@ -3,6 +3,20 @@
 // Setup: Twilio Console → WhatsApp Sandbox → Webhook URL: https://quietkeep.com/api/whatsapp/webhook
 
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+
+// ── Twilio request signature validation (X-Twilio-Signature) ─────────────────
+// Twilio signs: the exact configured webhook URL, then each POST param appended
+// as key+value in alphabetical key order, HMAC-SHA1 with the account auth token,
+// base64-encoded. We reject anything that doesn't match (fail closed).
+function validateTwilioSignature(url, params, signature, authToken) {
+  if (!authToken || !signature) return false;
+  const data = Object.keys(params).sort().reduce((acc, k) => acc + k + params[k], url);
+  const expected = crypto.createHmac('sha1', authToken).update(Buffer.from(data, 'utf-8')).digest('base64');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 function detectIntentType(text) {
   const t = (text || '').toLowerCase();

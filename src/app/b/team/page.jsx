@@ -151,13 +151,16 @@ export default function TeamPage() {
   async function saveTask() {
     if (!taskForm.title.trim() || !workspace) return;
     setSavingTask(true);
-    await supabase.from('business_tasks').insert({
-      workspace_id: workspace.id,
-      title: taskForm.title.trim(),
-      assignee_id: taskForm.assignee_id||null,
-      due_date: taskForm.due_date||null,
-      priority: taskForm.priority,
-      status: 'open',
+    await fetch('/api/business/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({
+        title: taskForm.title.trim(),
+        assignee_id: taskForm.assignee_id||null,
+        due_date: taskForm.due_date||null,
+        priority: taskForm.priority,
+        status: 'open',
+      }),
     });
     setTaskForm({ title:'', assignee_id:'', due_date:'', priority:'medium' });
     setShowTaskForm(false); setSavingTask(false);
@@ -165,7 +168,11 @@ export default function TeamPage() {
   }
 
   async function updateTaskStatus(id, status) {
-    await supabase.from('business_tasks').update({ status }).eq('id', id);
+    await fetch('/api/business/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ id, status }),
+    });
     setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t));
   }
 

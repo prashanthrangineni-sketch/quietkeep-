@@ -26,6 +26,14 @@ function rupee(n) {
     { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// GST place-of-supply: the first 2 digits of a GSTIN are the state code.
+// Different state codes → inter-state supply → IGST (full rate). Same/unknown → CGST+SGST.
+function stateCode(gstin) { return String(gstin || '').trim().slice(0, 2); }
+function isInterState(ws, form) {
+  const a = stateCode(ws?.gstin), b = stateCode(form?.customer_gstin);
+  return !!(a && b && a !== b);
+}
+
 const STATUS_STYLE = {
   draft:     { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8' },
   sent:      { bg: 'rgba(59,130,246,0.15)',  color: '#60a5fa' },

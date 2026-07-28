@@ -66,7 +66,10 @@ export default function InventoryPage() {
 
   async function deleteItem(id, name) {
     if (!window.confirm(`Delete "${name}" from inventory?`)) return;
-    await supabase.from('inventory_items').delete().eq('id', id);
+    await fetch(`/api/business/inventory?id=${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     setItems(prev => prev.filter(i => i.id !== id));
   }
 

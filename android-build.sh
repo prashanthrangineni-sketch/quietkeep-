@@ -36,7 +36,13 @@ else
   KEYSTORE_ALIAS="quietkeep"
 fi
 
-KEYSTORE_PASS="${KEYSTORE_PASS:-QuietKeepPranix2026}"
+# Keystore password comes ONLY from the environment — never committed.
+KEYSTORE_PASS="${KEYSTORE_PASS:-}"
+if [ -z "$KEYSTORE_PASS" ]; then
+  echo "ERROR: KEYSTORE_PASS is not set. Export it before building, e.g.:"
+  echo "  export KEYSTORE_PASS='<your keystore password>'"
+  exit 1
+fi
 echo "App ID    : $APP_ID"
 echo "App Name  : $APP_NAME"
 echo "Keystore  : $KEYSTORE_FILE"

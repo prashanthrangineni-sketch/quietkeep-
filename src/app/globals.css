@@ -339,3 +339,70 @@ input[type="datetime-local"],input[type="date"],input[type="time"]{color-scheme:
   75%     { transform: rotate(4deg); }
 }
 .qk-bell-wiggle { animation: qk-bell 0.6s ease-in-out; }
+
+/* ================================================================
+   AURORA LAYER — v4  (light theme only)
+   ----------------------------------------------------------------
+   SOT P5. The homepage Aurora redesign (#22) is self-contained, so app
+   pages had no way to share that language. Rather than rewrite 73 pages,
+   this elevates the TOKEN layer every page already consumes
+   (var(--bg) / var(--surface) / var(--shadow)) — so the whole app picks
+   up the aurora backdrop and glass surfaces with zero per-page edits.
+
+   WHY --bg STAYS A COLOR (not a gradient):
+   5 call sites use `backgroundColor: 'var(--bg)'`, which accepts a COLOR
+   only — a gradient there would silently compute to transparent. So --bg
+   stays a valid rgba() and is merely made translucent, letting the fixed
+   aurora painted on <html> show through page roots.
+
+   Scoped to html[data-theme="light"], so dark and amoled are untouched.
+================================================================ */
+html[data-theme="light"]{
+  background:
+    radial-gradient(48vw 48vw at 10% 6%,  rgba(99,102,241,0.20), transparent 62%),
+    radial-gradient(42vw 42vw at 90% 16%, rgba(236,72,153,0.15), transparent 62%),
+    radial-gradient(40vw 40vw at 46% 96%, rgba(139,92,246,0.17), transparent 62%),
+    linear-gradient(180deg,#f7f8fc 0%,#eef2ff 52%,#fdf2f8 100%);
+  background-attachment: fixed;
+  background-size: 170% 170%, 170% 170%, 170% 170%, 100% 100%;
+  background-position: 0% 0%, 100% 0%, 50% 100%, 0 0;
+  animation: qk-aurora-drift 30s ease-in-out infinite;
+}
+/* body must not paint over the aurora on <html>. */
+html[data-theme="light"] body{ background: transparent; }
+
+/* Translucent tokens so the aurora reads through page shells and cards. */
+html[data-theme="light"]{
+  --bg: rgba(244,246,251,0.55);
+  --surface: rgba(255,255,255,0.84);
+  --surface-elevated: rgba(255,255,255,0.95);
+  --surface-hover: rgba(238,240,246,0.92);
+  --nav-bg: rgba(255,255,255,0.86);
+  --shadow: 0 10px 34px rgba(15,23,42,0.08), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-card: 0 6px 22px rgba(15,23,42,0.07);
+  --shadow-sm: 0 2px 10px rgba(15,23,42,0.06);
+  --shadow-glow: 0 0 26px rgba(91,94,244,0.18);
+}
+
+@keyframes qk-aurora-drift{
+  0%,100%{ background-position: 0% 0%,   100% 0%,  50% 100%, 0 0; }
+  50%    { background-position: 12% 8%,  86% 12%,  56% 88%,  0 0; }
+}
+
+/* Frosted glass for the surfaces that opt in (nav + any .qk-glass). */
+html[data-theme="light"] .qk-glass{
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+@media (prefers-reduced-motion: reduce){
+  html[data-theme="light"]{ animation: none; }
+}
+/* Keep contrast strong when the user asks for it: solidify the glass. */
+@media (prefers-contrast: more){
+  html[data-theme="light"]{
+    --bg: rgba(244,246,251,0.96);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+  }
+}

@@ -40,8 +40,12 @@ export default function InventoryPage() {
     if (!form.name || !workspace) return;
     setSaving(true);
     const payload = { ...form, workspace_id: workspace.id, current_stock: parseFloat(form.current_stock)||0, min_stock_alert: parseFloat(form.min_stock_alert)||5, purchase_price: parseFloat(form.purchase_price)||null, selling_price: parseFloat(form.selling_price)||null, gst_rate: parseFloat(form.gst_rate)||18 };
-    if (editId) await supabase.from('inventory_items').update(payload).eq('id', editId);
-    else await supabase.from('inventory_items').insert(payload);
+    const { workspace_id: _w, ...fields } = payload;
+    await fetch('/api/business/inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(editId ? { ...fields, id: editId } : fields),
+    });
     setSaving(false); setShowForm(false); setEditId(null);
     setForm({ name:'', category:'', unit:'pcs', current_stock:'0', min_stock_alert:'5', purchase_price:'', selling_price:'', supplier_name:'', supplier_phone:'', location:'', gst_rate:'18', expiry_date:'', manufacture_date:'', batch_number:'' });
     loadItems(workspace.id);

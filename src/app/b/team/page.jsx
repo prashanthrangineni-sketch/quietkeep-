@@ -140,7 +140,10 @@ export default function TeamPage() {
   async function deleteMember(id) {
     if (!confirm('Remove this team member?')) return;
     setDeleting(id);
-    await supabase.from('business_members').delete().eq('id', id);
+    await fetch(`/api/business/team?id=${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     setDeleting(null);
     loadMembers(workspace.id);
   }

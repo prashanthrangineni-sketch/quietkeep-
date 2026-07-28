@@ -90,7 +90,11 @@ export default function LedgerPage() {
   async function deleteEntry(id) {
     if (!window.confirm('Delete this entry? This cannot be undone.')) return;
     setDeleting(id);
-    await supabase.from('business_ledger').delete().eq('id', id);
+    await fetch('/api/business/ledger', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ id }),
+    });
     setEntries(prev => prev.filter(e => e.id !== id));
     setDeleting(null);
   }

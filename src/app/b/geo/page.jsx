@@ -52,16 +52,20 @@ export default function GeoPage() {
         locationName = d.display_name?.split(',').slice(0,3).join(', ') || locationName;
       } catch {}
 
-      await supabase.from('geo_checkins').insert({
-        workspace_id: workspace.id, member_id: form.member_id,
-        checkin_type: form.checkin_type,
-        client_name: form.client_name || null,
-        purpose: form.purpose || null,
-        notes: form.notes || null,
-        location_name: locationName,
-        lat: pos.coords.latitude, lng: pos.coords.longitude,
-        accuracy_meters: pos.coords.accuracy,
-        checkin_at: new Date().toISOString(),
+      await fetch('/api/business/geo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          member_id: form.member_id,
+          checkin_type: form.checkin_type,
+          client_name: form.client_name || null,
+          purpose: form.purpose || null,
+          notes: form.notes || null,
+          location_name: locationName,
+          lat: pos.coords.latitude, lng: pos.coords.longitude,
+          accuracy_meters: pos.coords.accuracy,
+          checkin_at: new Date().toISOString(),
+        }),
       });
       setSaving(false); setGeoLoading(false); setShowForm(false);
       setForm({ member_id:'', checkin_type:'field_visit', client_name:'', purpose:'', notes:'' });

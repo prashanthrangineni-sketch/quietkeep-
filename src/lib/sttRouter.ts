@@ -6,7 +6,20 @@
  * Selects the best speech-to-text path dynamically based on platform,
  * network, and user preferences. ADVISORY ONLY — never calls STT directly.
  *
- * P1 update (May 2026): Sarvam AI was discontinued. The 'sarvam' strategy
+ * CORRECTION (28 Jul 2026): an earlier note here claimed "Sarvam AI was
+ * discontinued (May 2026)" — that is FACTUALLY WRONG, and it caused a real
+ * regression (the Indic reply voice was dropped on a false premise). Sarvam is
+ * active and shipped Bulbul v3. Pranix Aaria reports sarvam:saaras:v3 (STT) and
+ * sarvam:bulbul:v3 (TTS) as HEALTHY providers today, so the rename below is a
+ * routing choice, not a forced migration.
+ *
+ * ARCHITECTURE RULE: Aaria is the shared voice engine for ALL Pranix projects
+ * and owns provider choice, keys, cost and fallback. Do NOT wire a STT/TTS
+ * vendor directly into QuietKeep. Reply voice already routes through Aaria via
+ * /api/voice/tts; Indic STT should follow (Aaria's saaras:v3 is newer than the
+ * saarika:v2 in the now-orphaned direct /api/sarvam-stt route).
+ *
+ * Groq Whisper remains a good English cloud path. The 'sarvam' strategy
  * has been renamed to 'groq', pointing at /api/groq-stt (Whisper Large v3
  * Turbo). The 'sarvam' string is preserved as a legacy alias in user
  * overrides so existing localStorage values keep working.
@@ -20,7 +33,8 @@
  * ── STT STRATEGIES ────────────────────────────────────────────────────────
  *
  *   'groq'     Cloud STT via /api/groq-stt (Groq Whisper Large v3 Turbo).
- *              Replaces the discontinued Sarvam path.
+ *              Current English cloud path (NOT because Sarvam was
+ *              discontinued — see the correction in the header).
  *              Good accuracy for Indian languages (en-IN, te-IN, hi-IN, etc).
  *              Requires network. Used by VoiceService on APK.
  *              Latency: ~300ms–1.5s (turbo model is fast).

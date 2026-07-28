@@ -40,10 +40,20 @@ export async function POST(req) {
     if (ctx.error) return ctx.error;
 
     const { workspace } = ctx;
-    const body = await req.json();
-    const payload = { ...body, workspace_id: workspace.id };
-
     const db = createWriteClient();
+    const body = await req.json();
+
+    // Cross-tenant guard: a supplied id must belong to this workspace.
+    if (body.id) {
+      const { data: existing } = await db
+        .from('business_ledger').select('workspace_id').eq('id', body.id).maybeSingle();
+      if (existing && existing.workspace_id !== workspace.id) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+    const { workspace_id: _ignore, ...safe } = body;
+    const payload = { ...safe, workspace_id: workspace.id };
+
     const { data, error } = await db.from('business_ledger').upsert(payload).select().single();
     if (error) return Response.json({ error: error.message }, { status: 500 });
     return Response.json({ data });

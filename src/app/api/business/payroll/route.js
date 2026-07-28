@@ -1,28 +1,22 @@
 // src/app/api/business/payroll/route.js
-// SPRINT 1 FIX: Service role for writes. Removed inline authSB factory.
-// Fixed dead GET branch (if ('payroll' === 'workspace') — always false).
-//
-// BEFORE: authSB anon Bearer for payroll_records.upsert -> auth.uid()=NULL -> silent fail.
-//         Payroll saves never persisted. Business owner entering salaries lost all data on reload.
-//
-// AFTER: createBearerClient for identity. createWriteClient for upsert. GET simplified.
+// RBAC-hardened: requireBizPermission gates access (owner or permitted member,
+// fail-closed). Cross-tenant guard: a client-supplied id must belong to the
+// caller's workspace; workspace_id is always forced from the resolved context,
+// never trusted from the body.
 
 export const dynamic = 'force-dynamic';
-import { createBearerClient, createWriteClient, unauthorized } from '@/lib/supabase-bearer';
+import { requireBizPermission } from '@/lib/biz-rbac';
+import { createWriteClient } from '@/lib/supabase-bearer';
 
 export async function GET(req) {
   try {
-    const { supabase, user } = await createBearerClient(req);
-    if (!user) return unauthorized();
+    const ctx = await requireBizPermission(req, 'payroll', 'view');
+    if (ctx.error) return ctx.error;
 
-    const { data: ws } = await supabase
-      .from('business_workspaces').select('id')
-      .eq('owner_user_id', user.id).maybeSingle();
-    if (!ws) return Response.json({ error: 'No workspace' }, { status: 404 });
-
-    const { data } = await supabase
+    const db = createWriteClient();
+    const { data } = await db
       .from('payroll_records').select('*')
-      .eq('workspace_id', ws.id)
+      .eq('workspace_id', ctx.workspace.id)
       .order('created_at', { ascending: false }).limit(200);
 
     return Response.json({ data: data || [] });
@@ -34,18 +28,25 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    const { supabase, user } = await createBearerClient(req);
-    if (!user) return unauthorized();
-
-    const { data: ws } = await supabase
-      .from('business_workspaces').select('id')
-      .eq('owner_user_id', user.id).maybeSingle();
-    if (!ws) return Response.json({ error: 'No workspace' }, { status: 404 });
-
-    const body = await req.json();
-    const payload = { ...body, workspace_id: ws.id };
+    const ctx = await requireBizPermission(req, 'payroll', 'edit');
+    if (ctx.error) return ctx.error;
 
     const db = createWriteClient();
+    const body = await req.json();
+
+    // Cross-tenant guard: an id, if supplied, must belong to this workspace.
+    if (body.id) {
+      const { data: existing } = await db
+        .from('payroll_records').select('workspace_id').eq('id', body.id).maybeSingle();
+      if (existing && existing.workspace_id !== ctx.workspace.id) {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
+    // Never trust a body-supplied workspace_id.
+    const { workspace_id: _ignore, ...safe } = body;
+    const payload = { ...safe, workspace_id: ctx.workspace.id };
+
     const { data, error } = await db.from('payroll_records').upsert(payload).select().single();
     if (error) return Response.json({ error: error.message }, { status: 500 });
     return Response.json({ data });

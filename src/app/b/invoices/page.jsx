@@ -109,8 +109,10 @@ function buildInvoiceHTML(inv, ws) {
 </table>
 <div class="totals">
   <div class="tot-row"><span>Subtotal</span><span>${rupee(inv.subtotal)}</span></div>
-  <div class="tot-row"><span>CGST</span><span>${rupee(inv.cgst)}</span></div>
-  <div class="tot-row"><span>SGST</span><span>${rupee(inv.sgst)}</span></div>
+  ${(parseFloat(inv.igst)||0) > 0
+    ? `<div class="tot-row"><span>IGST</span><span>${rupee(inv.igst)}</span></div>`
+    : `<div class="tot-row"><span>CGST</span><span>${rupee(inv.cgst)}</span></div>
+  <div class="tot-row"><span>SGST</span><span>${rupee(inv.sgst)}</span></div>`}
   <div class="tot-row tot-final"><span>TOTAL</span><span>${rupee(inv.total_amount)}</span></div>
 </div>
 ${inv.notes?`<div style="clear:both;padding:10px;background:#f9fafb;border-radius:6px;font-size:11px;color:#555;margin-bottom:12px"><strong>Notes:</strong> ${inv.notes}</div>`:''}

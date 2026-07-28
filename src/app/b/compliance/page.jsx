@@ -89,7 +89,11 @@ export default function CompliancePage() {
     const itYear = now.getMonth() >= 7 ? now.getFullYear() + 1 : now.getFullYear();
     defaults.push({ workspace_id: wsId, type: 'it_return', title: `Income Tax Return FY ${itYear - 1}-${String(itYear).slice(2)}`, due_date: `${itYear}-07-31`, frequency: 'annual', priority: 'critical', auto_generated: true });
 
-    await supabase.from('compliance_reminders').upsert(defaults, { onConflict: 'workspace_id,type,due_date', ignoreDuplicates: true });
+    await fetch('/api/business/compliance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ seed: true, items: defaults }),
+    });
     loadData(wsId);
   }
 

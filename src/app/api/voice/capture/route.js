@@ -246,12 +246,9 @@ export async function POST(request) {
       user_id:        user.id,
       content:        text,
       voice_text:     text,
-      // Step 4 FIX: AI provider — from validated header, stored for analytics
-      ai_provider:    (() => {
-        const raw = (request.headers.get('X-AI-Provider') || 'default').toLowerCase().slice(0, 32);
-        // Whitelist valid providers — reject arbitrary values
-        return ['default', 'openai', 'gemini', 'local'].includes(raw) ? raw : 'default';
-      })(),
+      // NOTE: keeps has NO ai_provider column — inserting it made PostgREST
+      // reject the whole insert, so EVERY voice capture returned 500 in
+      // production (found by QA acting as a real user, 30 Jul 2026).
       intent_type:    parsed.type !== 'unknown' ? parsed.type : 'note',
       confidence:     parsed.confidence,
       parsing_method: 'rule',

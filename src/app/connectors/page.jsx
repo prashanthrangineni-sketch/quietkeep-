@@ -119,12 +119,18 @@ export default function ConnectorsPage() {
     const newVal = !enabled[connectorId];
     setSaving(connectorId);
     setEnabled(prev => ({ ...prev, [connectorId]: newVal }));
-    await supabase.from('user_connectors').upsert({
+    // user_connectors has NO updated_at column — including it made PostgREST
+    // reject the WHOLE upsert, so toggles never persisted (the optimistic UI
+    // made it look saved until the next reload).
+    const { error } = await supabase.from('user_connectors').upsert({
       user_id: user.id,
       connector_name: connectorId,
       is_enabled: newVal,
-      updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,connector_name' });
+    if (error) {
+      console.error('[connectors] toggle failed to save:', error.message);
+      setEnabled(prev => ({ ...prev, [connectorId]: !newVal })); // revert optimistic flip
+    }
     setSaving(null);
   }
 

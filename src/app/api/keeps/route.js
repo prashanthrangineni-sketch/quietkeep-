@@ -85,13 +85,16 @@ export async function POST(req) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Non-critical audit — fire-and-forget, log on failure
+  // Non-critical audit — fire-and-forget, log on failure.
+  // supabase-js builders implement .then but NOT .catch — calling .catch threw
+  // a TypeError AFTER the keep insert succeeded, so this route returned an
+  // empty 500 while the keep existed (retry => duplicates).
   db.from('audit_log').insert({
     user_id: user.id,
     action:  'keep_created',
     service: 'api_keeps',
     details: { intent_type, has_reminder: !!reminder_at, source: 'text' },
-  }).catch((e) => console.error('[keeps/route] audit_log failed:', e.message));
+  }).then(({ error }) => { if (error) console.error('[keeps/route] audit_log failed:', error.message) });
 
   return NextResponse.json({ keep });
 }

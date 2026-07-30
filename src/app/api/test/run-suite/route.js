@@ -32,7 +32,7 @@ export async function POST() {
     const duration_ms = Date.now() - start;
     const entry = { name, input: db_before, db_before, action: name, db_after, result, passed, error_msg, duration_ms };
     tests.push(entry);
-    await supabase.from('test_run_log').insert({ run_id, test_name: name, input: db_before, db_before, action: name, db_after, result, passed, error_msg, duration_ms }).throwOnError().catch(() => {});
+    await supabase.from('test_run_log').insert({ run_id, test_name: name, input: db_before, db_before, action: name, db_after, result, passed, error_msg, duration_ms }).then(({ error }) => { if (error) console.error('[test/run-suite] log failed:', error.message) });
     return db_after;
   }
 

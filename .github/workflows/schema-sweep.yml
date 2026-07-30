@@ -1,0 +1,26 @@
+# Schema sweep — blocks the phantom-column bug class at merge time.
+#
+# Ten production bugs shared one root cause: a Supabase write referencing a
+# column that does not exist. PostgREST rejects the write, supabase-js resolves
+# with { error } instead of throwing, and swallowed errors made every one
+# invisible (SOS never recorded, /api/keeps 500s, sub-keeps never created...).
+#
+# Unlike pranix-safety-layer.yml (report-only by design), this job FAILS the
+# build: a phantom column is a guaranteed runtime rejection, never a judgement
+# call. Snapshot refresh instructions live in scripts/schema-sweep.py.
+name: Schema Sweep
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  schema-sweep:
+    name: Phantom-column check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check every Supabase write against the schema snapshot
+        run: python3 scripts/schema-sweep.py

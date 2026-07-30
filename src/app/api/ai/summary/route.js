@@ -65,7 +65,7 @@ export async function POST(request) {
       await supabase.from('keeps').update({ ai_summary: result.summary }).eq('id', target_id).eq('user_id', user.id);
     }
 
-    await supabase.from('audit_log').insert({ user_id: user.id, action: 'ai_summary', service: 'anthropic', details: { mode, target_id } }).throwOnError().catch(() => {});
+    await supabase.from('audit_log').insert({ user_id: user.id, action: 'ai_summary', service: 'anthropic', details: { mode, target_id } }).then(({ error }) => { if (error) console.error('[ai/summary] audit_log failed:', error.message) });
     return NextResponse.json({ summary: result, model: MODEL });
   } catch (e) {
     return NextResponse.json({ error: 'AI request failed — check your connection.' }, { status: 500 });

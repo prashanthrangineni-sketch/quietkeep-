@@ -165,7 +165,7 @@ export async function POST(request) {
                 domain_type:  'business',
                 trigger_type: 'event',
                 processed:    false,
-              }).catch(() => {})
+              }).then(({ error }) => { if (error) console.error('[meta-webhook] write failed:', error.message) })
             }
 
           } else if (buttonId.startsWith('dismiss_')) {
@@ -191,7 +191,7 @@ export async function POST(request) {
               domain_type:  'business',
               trigger_type: 'event',
               processed:    false,
-            }).catch(() => {})
+            }).then(({ error }) => { if (error) console.error('[meta-webhook] write failed:', error.message) })
           }
 
           continue
@@ -217,7 +217,7 @@ export async function POST(request) {
             color:         '#25D366',
             show_on_brief: true,
             is_pinned:     false,
-          }).catch(() => {})
+          }).then(({ error }) => { if (error) console.error('[meta-webhook] write failed:', error.message) })
 
           await supabase.from('whatsapp_sessions').update({
             last_message:    text,

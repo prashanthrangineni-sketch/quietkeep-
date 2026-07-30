@@ -32,7 +32,7 @@ compliance_reminders|amount_estimate,assigned_to,auto_generated,created_at,descr
 connector_logs|connector_name,created_at,direction,duration_ms,id,request_summary,response_summary,status,user_id
 contact_group_members|contact_id,group_id,id,user_id
 contact_groups|created_at,emoji,id,name,user_id
-contacts|avatar_emoji,created_at,email,id,is_favorite,name,phone,relation,user_id
+contacts|avatar_emoji,created_at,email,id,is_favorite,last_synced_at,name,phone,relation,source,user_id
 conversation_sessions|created_at,ended_at,id,last_entities,last_intent,pending_clarification,session_state,short_term_memory,turn_count,updated_at,user_id
 daily_usage|id,usage_date,user_id,voice_captures
 decision_logs|agent_id,context_snapshot,correlation_id,created_at,decision,decision_version,evaluation_path,execution_status,id,inputs,intent_id,keep_id,mode,outcome,parent_decision_id,priority_score,protocol_version,reason,replayable_input,reversal_possible,risk_score,signal_weights,user_id,user_override

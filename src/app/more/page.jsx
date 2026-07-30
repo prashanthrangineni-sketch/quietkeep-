@@ -43,6 +43,7 @@ export default function MorePage() {
     { icon: '🧘', title: 'Mood Log',        sub: 'Track your emotional health',           href: '/mood' },
     { icon: '✈️', title: 'Trip Plans',      sub: 'AI travel itineraries & packing',       href: '/trips' },
     { icon: '🔔', title: 'Reminders',       sub: 'All scheduled reminders',               href: '/reminders' },
+    { icon: '📇', title: 'Contacts',        sub: 'Sync phonebook — "call Ravi" works',    href: '/contacts' },
     { icon: '🧠', title: 'Memories',        sub: 'Life timeline & AI insights',           href: '/memories' },
     { icon: '📷', title: 'AI Camera',       sub: 'Capture with location, people & AI',   href: '/camera' }, // ← NEW
     { icon: '🎤', title: 'Voice History',   sub: 'Past voice inputs',                     href: '/voice' },

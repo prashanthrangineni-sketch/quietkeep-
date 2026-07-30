@@ -28,6 +28,7 @@ const BIZ_NAV_LINKS = [
   { href: '/b/inventory',   icon: '📦', label: 'Inventory' },
   { href: '/b/compliance',  icon: '⚖️', label: 'Compliance' },
   { href: '/b/customers',   icon: '🤝', label: 'Customers' },
+  { href: '/b/collections', icon: '💸', label: 'Collections' },
   { href: '/b/tasks',       icon: '✅', label: 'Tasks' },
   { href: '/b/geo',         icon: '🗺️', label: 'Field' },
 ];

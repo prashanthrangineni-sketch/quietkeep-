@@ -69,11 +69,13 @@ export async function POST(req) {
       location_name:       location_name || null,
       geo_trigger_enabled: geo_trigger_enabled || false,
       workspace_id:        workspace_id || null,
-      language:            language || 'en-IN',
+      // NOTE: keeps has NO `language` or `source` column — including them made
+      // PostgREST reject the insert, so this endpoint returned 500 on EVERY
+      // call. parsing_method is the schema's provenance field.
       tags:                tags || [],
       status:              'open',
       loop_state:          'open',
-      source:              'text',
+      parsing_method:      'text',
       idempotency_key:     idempotency_key || null,
     })
     .select('id,content,intent_type,status,loop_state,created_at,reminder_at,workspace_id')

@@ -199,12 +199,11 @@ export async function executeSubIntents(
           reviewed_at:    new Date().toISOString(),
           reminder_at:    reminderAt ? reminderAt.toISOString() : null,
           contact_name:   entities.names[0] || null,
-          // link to the primary keep so the UI can group them
-          metadata: {
-            parent_keep_id: primaryKeepId,
-            multi_step_index: secondary.indexOf(sub) + 1,
-            multi_step_total: secondary.length + 1,
-          },
+          // Link to the primary keep so the UI can group them. keeps has NO
+          // `metadata` column — the old metadata:{...} shape made PostgREST
+          // reject EVERY sub-keep insert, so multi-step utterances silently
+          // created only their first keep. parent_keep_id is the real column.
+          parent_keep_id: primaryKeepId,
         })
         .select('id,intent_type,content')
         .single();

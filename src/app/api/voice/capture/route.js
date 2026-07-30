@@ -338,17 +338,19 @@ export async function POST(request) {
     })
   }
 
+  // audit_log columns are (action, service, details, intent_id) — NOT
+  // entity_type/entity_id/metadata. The old shape was rejected on EVERY voice
+  // capture and the .then(() => {}) hid it, so no voice capture was ever audited.
   supabase.from('audit_log').insert({
-    user_id:     user.id,
-    action:      'keep.captured_via_voice',
-    entity_type: 'keep',
-    entity_id:   keep.id,
-    metadata: {
-      source, language, confidence: parsed.confidence,
+    user_id: user.id,
+    action:  'keep.captured_via_voice',
+    service: 'voice_capture',
+    details: {
+      keep_id: keep.id, source, language, confidence: parsed.confidence,
       intent_type: parsed.type, contact_matched: !!matchedContact,
       reminder_set: !!reminderAt, follow_up_needed: !!followUp, workspace_id,
     },
-  }).then(() => {})
+  }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
 
   supabase.rpc('queue_keep_for_evaluation', {
     p_keep_id: keep.id, p_user_id: user.id,

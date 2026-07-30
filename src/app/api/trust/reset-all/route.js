@@ -44,11 +44,11 @@ export async function POST(request) {
     }
 
     // Log the reset in audit_log
+    // audit_log has (action, service, details) — not entity_type/entity_id/metadata.
     svc.from('audit_log').insert({
-      user_id: user.id, action: 'intelligence.reset_all',
-      entity_type: 'user', entity_id: user.id,
-      metadata: { pattern_count: patterns?.length || 0, reset_at: new Date().toISOString() },
-    }).then(() => {}).catch(() => {});
+      user_id: user.id, action: 'intelligence.reset_all', service: 'trust',
+      details: { pattern_count: patterns?.length || 0, reset_at: new Date().toISOString() },
+    }).then(({ error }) => { if (error) console.error('[trust/reset-all] audit_log failed:', error.message) });
 
     return NextResponse.json({ ok: true, patterns_reset: patterns?.length || 0 });
   } catch (e) {

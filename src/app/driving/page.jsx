@@ -158,18 +158,18 @@ export default function DrivingPage() {
     if (!sessionId) return;
     try {
       stopGeoWatch();
-      await supabase
+      // driving_sessions has NO distance_km / start_lat / end_lat columns —
+      // including them made PostgREST reject the WHOLE update, so sessions were
+      // never marked ended (ended_at stayed null forever). Write only real
+      // columns, and surface the error (supabase-js resolves, never throws).
+      const { error: endErr } = await supabase
         .from('driving_sessions')
         .update({
           ended_at: new Date().toISOString(),
           duration_seconds: elapsed,
-          distance_km: distanceRef.current,
-          end_lat: lastPosRef.current?.lat || null,
-          end_lng: lastPosRef.current?.lng || null,
-          start_lat: startCoordsRef.current?.lat || null,
-          start_lng: startCoordsRef.current?.lng || null,
         })
         .eq('id', sessionId);
+      if (endErr) console.error('[driving] failed to end session:', endErr.message);
 
       setIsDriving(false);
       setSessionId(null);

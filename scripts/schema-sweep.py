@@ -65,7 +65,33 @@ def extract_obj(src, start):
         i += 1
     return None
 
+def strip_comments(body):
+    # Remove // line comments and /* */ blocks OUTSIDE strings. A comma inside a
+    # comment previously split segments and swallowed the following key — that
+    # false negative hid the phantom ai_provider column on the capture route.
+    out, i, n, in_str, esc = [], 0, len(body), None, False
+    while i < n:
+        c = body[i]
+        if in_str:
+            out.append(c)
+            if esc: esc = False
+            elif c == '\\': esc = True
+            elif c == in_str: in_str = None
+            i += 1
+        elif c in '\'"`':
+            in_str = c; out.append(c); i += 1
+        elif c == '/' and i + 1 < n and body[i+1] == '/':
+            while i < n and body[i] != '\n': i += 1
+        elif c == '/' and i + 1 < n and body[i+1] == '*':
+            i += 2
+            while i + 1 < n and not (body[i] == '*' and body[i+1] == '/'): i += 1
+            i += 2
+        else:
+            out.append(c); i += 1
+    return ''.join(out)
+
 def top_level_keys(body):
+    body = strip_comments(body)
     keys, depth, in_str, esc, cur, segs = [], 0, None, False, [], []
     for c in body:
         if in_str:

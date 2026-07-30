@@ -35,7 +35,7 @@ export async function GET(request, context) {
   await supabase.from('audit_log').insert({
     user_id: user.id, action: 'keep.reviewed', service: 'suggestion-engine',
     details: { keep_id: id, suggestion_count: suggestions.length },
-  }).throwOnError().catch(() => {});
+  }).then(({ error }) => { if (error) console.error('[intents/review] audit_log failed:', error.message) });
 
   return NextResponse.json({ intent: { ...normalised, suggestions } });
 }

@@ -71,7 +71,7 @@ export async function POST(request) {
       action:  `delivery_simulate_${channel}`,
       service: 'delivery-simulator',
       details: sim_result,
-    }).throwOnError().catch(() => {});
+    }).then(({ error }) => { if (error) console.error('[delivery/simulate] audit_log failed:', error.message) });
   }
 
   // Check what's missing

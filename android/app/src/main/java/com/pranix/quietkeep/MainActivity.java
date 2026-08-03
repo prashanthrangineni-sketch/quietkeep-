@@ -12,25 +12,17 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
+import com.pranix.quietkeep.plugins.ContactsPlugin;
+import com.pranix.quietkeep.plugins.OCRPlugin;
 import com.pranix.quietkeep.plugins.PerceptionPlugin;
 import com.pranix.quietkeep.plugins.ReminderAlarmPlugin;
+import com.pranix.quietkeep.plugins.SOSPlugin;
 import com.pranix.quietkeep.plugins.VoicePlugin;
+import com.pranix.quietkeep.plugins.WakeWordPlugin;
 import com.pranix.quietkeep.services.KeepAliveService;
 
 /**
- * MainActivity v6
- *
- * v6 changes over v5:
- *   ADDED: TTSBridge registration via addJavascriptInterface("AndroidTTS").
- *     Exposes window.AndroidTTS.speak(text) to the WebView.
- *   ADDED: window.__QK_TTS__ alias injected in injectRuntimeJS() so all JS
- *     code can call window.__QK_TTS__("text") without knowing the bridge name.
- *   ADDED: TTSManager initialised eagerly in onCreate() so first-speak latency
- *     is minimised (TTS engine init takes ~300-600ms on first call).
- *   ADDED: TTSManager.shutdown() in onDestroy() to release TTS engine resources.
- *
- * v5 retained: fetch interceptor, __QK_APP_TYPE__, WebChromeClient audio bridge,
- *   file chooser, KeepAliveService Hans-freeze prevention.
+ * MainActivity v7
  */
 public class MainActivity extends BridgeActivity {
 
@@ -52,6 +44,10 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PerceptionPlugin.class);
         registerPlugin(VoicePlugin.class);
         registerPlugin(ReminderAlarmPlugin.class);
+        registerPlugin(ContactsPlugin.class);
+        registerPlugin(WakeWordPlugin.class);
+        registerPlugin(OCRPlugin.class);
+        registerPlugin(SOSPlugin.class);
 
         // v6: Eagerly initialise TTS engine so it is ready by first speak call
         TTSManager.getInstance(this);
@@ -90,6 +86,26 @@ public class MainActivity extends BridgeActivity {
             // to call here because we're before the first page navigation.
             webView.addJavascriptInterface(new TTSBridge(this), "AndroidTTS");
             Log.d(TAG, "TTSBridge registered as 'AndroidTTS' ✓");
+
+            // Register ContactsBridge as 'AndroidContacts'
+            webView.addJavascriptInterface(new ContactsBridge(this), "AndroidContacts");
+            Log.d(TAG, "ContactsBridge registered as 'AndroidContacts' ✓");
+
+            // Register WakeWordBridge as 'AndroidWake'
+            webView.addJavascriptInterface(new WakeWordBridge(this), "AndroidWake");
+            Log.d(TAG, "WakeWordBridge registered as 'AndroidWake' ✓");
+
+            // Register OCRBridge as 'AndroidOCR'
+            webView.addJavascriptInterface(new OCRBridge(this), "AndroidOCR");
+            Log.d(TAG, "OCRBridge registered as 'AndroidOCR' ✓");
+
+            // Register GeofenceBridge as 'AndroidGeo'
+            webView.addJavascriptInterface(new GeofenceBridge(this), "AndroidGeo");
+            Log.d(TAG, "GeofenceBridge registered as 'AndroidGeo' ✓");
+
+            // Register SOSBridge as 'AndroidSOS'
+            webView.addJavascriptInterface(new SOSBridge(this), "AndroidSOS");
+            Log.d(TAG, "SOSBridge registered as 'AndroidSOS' ✓");
 
             // ── Inject runtime constants + fetch rewrite ────────────────────
             android.webkit.WebViewClient existingClient = webView.getWebViewClient();
@@ -280,6 +296,62 @@ public class MainActivity extends BridgeActivity {
             + "    console.log('[QK] TTS bridges: __QK_TTS__ __QK_TTS_LOW__ __QK_CANCEL__ active');\n"
             + "  } else {\n"
             + "    console.log('[QK] AndroidTTS not available — TTS will use speechSynthesis');\n"
+            + "  }\n"
+            + "\n"
+            + "  // 2b. Native Contacts Plugin — window.__QK_CONTACTS__.getAll()\n"
+            + "  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ContactsPlugin) {\n"
+            + "    window.__QK_CONTACTS__ = {\n"
+            + "      getAll: async function() {\n"
+            + "        try {\n"
+            + "          var res = await window.Capacitor.Plugins.ContactsPlugin.getAll();\n"
+            + "          return res.contacts || [];\n"
+            + "        } catch(e) {\n"
+            + "          console.error('[QK] Contacts plugin error:', e);\n"
+            + "          return [];\n"
+            + "        }\n"
+            + "      }\n"
+            + "    };\n"
+            + "    console.log('[QK] Contacts plugin __QK_CONTACTS__ active ✓');\n"
+            + "  }\n"
+            + "\n"
+            + "  // 2c. Native Wake Word Plugin — window.__QK_WAKE__\n"
+            + "  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.WakeWordPlugin) {\n"
+            + "    window.__QK_WAKE__ = {\n"
+            + "      ensureInvokeSurfaces: async function() { try { await window.Capacitor.Plugins.WakeWordPlugin.ensureInvokeSurfaces(); } catch(e){} },\n"
+            + "      startHotword: async function() { try { await window.Capacitor.Plugins.WakeWordPlugin.startHotword(); } catch(e){} },\n"
+            + "      stopHotword: async function() { try { await window.Capacitor.Plugins.WakeWordPlugin.stopHotword(); } catch(e){} }\n"
+            + "    };\n"
+            + "    console.log('[QK] Wake word plugin __QK_WAKE__ active ✓');\n"
+            + "  }\n"
+            + "\n"
+            + "  // 2d. Native OCR Plugin — window.__QK_OCR__\n"
+            + "  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.OCRPlugin) {\n"
+            + "    window.__QK_OCR__ = {\n"
+            + "      scanReceipt: async function() {\n"
+            + "        try { return await window.Capacitor.Plugins.OCRPlugin.scanReceipt(); } catch(e){ return { text:'', blocks:[], detected:{} }; }\n"
+            + "      },\n"
+            + "      scanDocument: async function() {\n"
+            + "        try { return await window.Capacitor.Plugins.OCRPlugin.scanDocument(); } catch(e){ return { text:'', detected:{} }; }\n"
+            + "      }\n"
+            + "    };\n"
+            + "    console.log('[QK] OCR plugin __QK_OCR__ active ✓');\n"
+            + "  }\n"
+            + "\n"
+            + "  // 2e. Native SOS Plugin — window.__QK_SOS__\n"
+            + "  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SOSPlugin) {\n"
+            + "    window.__QK_SOS__ = {\n"
+            + "      dispatch112: async function() { try { await window.Capacitor.Plugins.SOSPlugin.dispatch112(); } catch(e){} }\n"
+            + "    };\n"
+            + "    console.log('[QK] SOS plugin __QK_SOS__ active ✓');\n"
+            + "  }\n"
+            + "\n"
+            + "  // 2f. Native Geofence Bridge — window.__QK_GEO__\n"
+            + "  if (window.AndroidGeo) {\n"
+            + "    window.__QK_GEO__ = {\n"
+            + "      registerKeepGeofences: async function() { try { window.AndroidGeo.registerKeepGeofences(); } catch(e){} },\n"
+            + "      clearGeofences: async function() { try { window.AndroidGeo.clearGeofences(); } catch(e){} }\n"
+            + "    };\n"
+            + "    console.log('[QK] Geofence bridge __QK_GEO__ active ✓');\n"
             + "  }\n"
             + "\n"
             + "  // 3. Fetch interceptor: rewrite relative /api/ → production server\n"

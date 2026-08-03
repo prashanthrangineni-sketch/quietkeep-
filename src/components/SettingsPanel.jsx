@@ -155,6 +155,15 @@ export default function SettingsPanel() {
       const { data: r, error: rErr } = await apiPost('/api/settings', { settings: settingsBlob, voice_language });
       if (rErr || !r) throw new Error('Save failed')
 
+      // Sync display language cookie with voice_language (single source of truth)
+      if (voice_language) {
+        const displayLang = voice_language.split('-')[0].toLowerCase();
+        document.cookie = `qk_display_lang=${displayLang}; path=/; max-age=31536000; SameSite=Lax`;
+        if (typeof window !== 'undefined' && typeof window.__QK_SET_LANG__ === 'function') {
+          try { window.__QK_SET_LANG__(voice_language); } catch {}
+        }
+      }
+
       // Save integration settings directly
       if (userSettings) {
         await supabase.from('user_settings').upsert({

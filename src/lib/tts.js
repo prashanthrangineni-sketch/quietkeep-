@@ -158,7 +158,18 @@ export async function speak(
     } catch { /* fall through */ }
   }
 
-  // 4. Browser last resort
+  // 4. Native Android TTS bridge
+  if (typeof window !== 'undefined' && typeof window.__QK_TTS__ === 'function') {
+    try {
+      if (typeof window.__QK_SET_LANG__ === 'function') {
+        window.__QK_SET_LANG__(lang);
+      }
+      window.__QK_TTS__(text);
+      return;
+    } catch { /* fall through */ }
+  }
+
+  // 5. Browser last resort
   await speakBrowser(text, { lang });
 }
 

@@ -367,10 +367,8 @@ public class VoiceService extends Service {
             try {
                 byte[]  wav      = buildWav(pcm);
                 String  boundary = "QK" + System.currentTimeMillis();
-                // v9 FIX: /api/sarvam-stt → /api/groq-stt
-                // Sarvam AI was discontinued — every call timed out at 25s causing ColorOS UID freeze.
-                // groq-stt accepts the same multipart form-data and returns {transcript}.
-                String  endpoint = serverUrl + "/api/groq-stt";
+                // Route via Aaria engine: /api/voice/stt (handles Indic via Aaria + Groq fallback for English)
+                String  endpoint = serverUrl + "/api/voice/stt";
                 Log.d(TAG, "sendChunk: opening connection to " + endpoint);
                 URL     u        = new URL(endpoint);
                 HttpURLConnection c = (HttpURLConnection) u.openConnection();

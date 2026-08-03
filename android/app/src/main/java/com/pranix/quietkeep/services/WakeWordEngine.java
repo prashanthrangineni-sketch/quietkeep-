@@ -113,18 +113,12 @@ public class WakeWordEngine {
      *
      * @param pcmBytes  Raw PCM 16-bit little-endian bytes from AudioRecord.
      *                  Typically 3 seconds = 48000+ bytes at 16kHz mono 16-bit.
-     * @return          true if "Lotus" was likely detected in this chunk.
-     *
-     * Step 8 enhancements:
-     *   1. RMS pre-filter: reject chunks below energy threshold BEFORE full scoring
-     *   2. Battery-adaptive threshold: less sensitive at low battery
+     * @return          true if "Aaria" (or "Lotus" fallback) was detected in this chunk.
      */
     public boolean detectWakeWord(byte[] pcmBytes) {
         if (pcmBytes == null || pcmBytes.length < FRAME_SAMPLES * 2) return false;
 
-        // Step 8: RMS pre-filter — reject silent/near-silent chunks immediately
-        // This avoids running the full 3-stage scoring on ambient noise.
-        // Cost: ~0.05ms vs ~0.5ms for full scoring → 10× speedup on silent frames.
+        // RMS pre-filter — reject silent/near-silent chunks immediately
         double rms = 0;
         short[] samplesPreCheck = bytesToShorts(pcmBytes);
         long sumSq = 0;

@@ -5,11 +5,13 @@ on:
     paths:
       - 'android/**'
       - '.github/workflows/android-build.yml'
+      - 'package.json'
   push:
     branches: [main]
     paths:
       - 'android/**'
       - '.github/workflows/android-build.yml'
+      - 'package.json'
 
 jobs:
   android-build:
@@ -31,7 +33,7 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+        run: npm install --legacy-peer-deps
 
       - name: Sync Capacitor
         run: npx cap sync android

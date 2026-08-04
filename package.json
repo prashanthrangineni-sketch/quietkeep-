@@ -9,15 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/cli": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
+    "@capacitor/android": "^8.5.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.1",
     "framer-motion": "^11.0.0",
-    "razorpay": "^2.9.2",
     "next": "^15.2.3",
     "next-intl": "^3.26.0",
+    "razorpay": "^2.9.2",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },

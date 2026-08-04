@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+
+PRG="$0"
+while [ -h "$PRG" ] ; do
+    ls=ls -ld "$PRG"
+    link=xpr "$ls" : '.*-> \(.*\)'
+    if expr "$link" : '/.*' > /dev/null; then
+        PRG="$link"
+    else
+        PRG=dirname "$PRG""/$link"
+    fi
+done
+SAVED="pwd"
+CDPATH= cd "dirname \"$PRG\"/" >/dev/null 2>&1
+APP_HOME="pwd -P"
+cd "$SAVED" >/dev/null 2>&1
+
+exec gradle "$@"

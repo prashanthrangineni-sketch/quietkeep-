@@ -4,7 +4,15 @@
 import { NextResponse } from 'next/server';
 import { createWriteClient } from '@/lib/supabase-bearer';
 
-const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY || '533749AJNRa3XXw5u6a34f4f6P1';
+// SECURITY FIX: the live MSG91 auth key was previously hardcoded here as a
+// fallback default and got committed to git history in plaintext. It must be
+// rotated in the MSG91 dashboard — this fix only stops the code from shipping
+// a hardcoded secret going forward, it does not undo the exposure already in
+// git history.
+const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY;
+if (!MSG91_AUTH_KEY) {
+  console.error('MSG91_AUTH_KEY env var is not set — OTP verification will fail until it is configured in Vercel.');
+}
 
 export async function POST(req) {
   try {

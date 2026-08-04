@@ -158,5 +158,21 @@
     "add": "जोडा",
     "close": "बंद करा",
     "confirm": "नक्की करा"
+  },
+  "business": {
+    "title": "व्यवसाय",
+    "khata": "खाता लेजर",
+    "collections": "वसुली केंद्र",
+    "invoices": "इनव्हॉइस",
+    "gstr3b": "GSTR-3B कर मसुदा",
+    "payroll": "पगार",
+    "customers": "ग्राहक",
+    "addInvoice": "इनव्हॉइस तयार करा",
+    "addCustomer": "ग्राहक जोडा",
+    "outstanding": "बाकी रक्कम",
+    "overdueDays": "थकित दिवस",
+    "sendReminder": "UPI आठवण पाठवा",
+    "markPaid": "भरले म्हणून चिन्हांकित करा",
+    "draftStatus": "मसुदा मोजला गेला"
   }
 }

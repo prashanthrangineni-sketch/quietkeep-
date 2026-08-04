@@ -158,5 +158,21 @@
     "add": "சேர்",
     "close": "மூடு",
     "confirm": "உறுதிசெய்"
+  },
+  "business": {
+    "title": "வணிகம்",
+    "khata": "கதா கணக்கு",
+    "collections": "வசூல் மையம்",
+    "invoices": "இன்வாய்ஸ்கள்",
+    "gstr3b": "GSTR-3B வரி வரைவு",
+    "payroll": "சம்பளம்",
+    "customers": "வாடிக்கையாளர்கள்",
+    "addInvoice": "இன்வாய்ஸ் உருவாக்கு",
+    "addCustomer": "வாடிக்கையாளர் சேர்",
+    "outstanding": "பாக்கி தொகை",
+    "overdueDays": "தாமத நாட்கள்",
+    "sendReminder": "UPI நினைவூட்டல் அனுப்பு",
+    "markPaid": "செலுத்தப்பட்டதாகக் குறி",
+    "draftStatus": "வரைவு கணக்கிடப்பட்டது"
   }
 }

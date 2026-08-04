@@ -158,5 +158,21 @@
     "add": "যোগ করুন",
     "close": "বন্ধ করুন",
     "confirm": "নিশ্চিত করুন"
+  },
+  "business": {
+    "title": "ব্যবসা",
+    "khata": "খাতা লেজার",
+    "collections": "আদায় কেন্দ্র",
+    "invoices": "ইনভয়েস",
+    "gstr3b": "GSTR-3B কর খসড়া",
+    "payroll": "বেতন",
+    "customers": "গ্রাহকগণ",
+    "addInvoice": "ইনভয়েস তৈরি করুন",
+    "addCustomer": "গ্রাহক যোগ করুন",
+    "outstanding": "বকেয়া পরিমাণ",
+    "overdueDays": "বিলম্বিত দিন",
+    "sendReminder": "UPI রিমাইন্ডার পাঠান",
+    "markPaid": "পরিশোধিত হিসাবে চিহ্নিত করুন",
+    "draftStatus": "খসড়া গণনা করা হয়েছে"
   }
 }

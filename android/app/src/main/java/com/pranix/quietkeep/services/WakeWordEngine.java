@@ -58,6 +58,20 @@ public class WakeWordEngine {
 
     private static final String TAG = "QK_WAKE";
 
+    /** Configurable trigger phrase reference (defaults to "Aaria", swappable via settings) */
+    private volatile String targetWakeWord = "Aaria";
+
+    public String getTargetWakeWord() {
+        return targetWakeWord;
+    }
+
+    public void setTargetWakeWord(String wakeWord) {
+        if (wakeWord != null && !wakeWord.trim().isEmpty()) {
+            this.targetWakeWord = wakeWord.trim();
+            Log.d(TAG, "Target wake word updated to: " + this.targetWakeWord);
+        }
+    }
+
     // ── Tuning constants ──────────────────────────────────────────────────
 
     /** PCM sample rate (must match VoiceService.SAMPLE_RATE = 16000) */

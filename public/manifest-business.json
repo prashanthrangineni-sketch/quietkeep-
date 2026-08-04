@@ -1,0 +1,26 @@
+{
+  "name": "QuietKeep Business",
+  "short_name": "QuietKeep Biz",
+  "description": "Voice-First Business OS for Kiranas, SMBs and Field Teams — Voice Ledger, Attendance, GST Invoices, Payroll",
+  "start_url": "/biz-login",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-business-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-business-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"]
+}

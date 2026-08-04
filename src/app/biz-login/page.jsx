@@ -1,5 +1,5 @@
 'use client';
-// src/app/biz-login/page.jsx — Business Login (pure JS, no TypeScript)
+// src/app/biz-login/page.jsx — Business Login with Welcome Intro & (◕‿◕) Brand Orb
 // Primary Auth: Phone Number SMS OTP via MSG91
 // Secondary Auth: Email + Beta Password / Magic Link
 
@@ -10,6 +10,7 @@ import { supabase as _supabaseSingleton } from '@/lib/supabase';
 const BETA_OTP_LEN = 8;
 const SMS_OTP_LEN = 6;
 const G = '#10b981';
+const G2 = '#059669';
 
 function getClient() {
   return _supabaseSingleton;
@@ -19,11 +20,28 @@ function setBusinessMode() {
   document.cookie = 'qk_app_mode=business; path=/; max-age=2592000; SameSite=Lax';
 }
 
+function SmileyOrb({ size = 36, bg1 = G, bg2 = G2 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: Math.round(size * 0.28),
+      background: `linear-gradient(135deg, ${bg1}, ${bg2})`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: `0 4px 14px rgba(16,185,129,0.35)`, flexShrink: 0
+    }}>
+      <span style={{
+        color: '#ffffff', fontSize: Math.round(size * 0.42), fontWeight: 900,
+        letterSpacing: '-1px', fontFamily: "-apple-system, system-ui, 'Segoe UI', Roboto, sans-serif",
+        lineHeight: 1, userSelect: 'none'
+      }}>(◕‿◕)</span>
+    </div>
+  );
+}
+
 export default function BizLoginPage() {
   const [phone, setPhone] = useState('');
   const [smsOtp, setSmsOtp] = useState(Array(SMS_OTP_LEN).fill(''));
   const [email, setEmail] = useState('');
-  const [step, setStep] = useState('phone'); // 'phone' | 'phone_otp' | 'email' | 'otp' | 'sent'
+  const [step, setStep] = useState('welcome'); // 'welcome' | 'phone' | 'phone_otp' | 'email' | 'otp' | 'sent'
   const [otp, setOtp] = useState(Array(BETA_OTP_LEN).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -199,30 +217,70 @@ export default function BizLoginPage() {
 
   return (
     <div style={{ minHeight: '100dvh', background: 'linear-gradient(135deg,#0a1628 0%,#0d2a1e 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: "'Inter',-apple-system,sans-serif", position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: -200, right: -200, width: 600, height: 600, background: 'radial-gradient(circle,rgba(16,185,129,0.08) 0%,transparent 70%)', pointerEvents: 'none' }} />
+      {/* Aurora Glow */}
+      <div style={{ position: 'absolute', top: -200, right: -200, width: 600, height: 600, background: 'radial-gradient(circle,rgba(16,185,129,0.12) 0%,transparent 70%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: -200, left: -200, width: 600, height: 600, background: 'radial-gradient(circle,rgba(5,150,105,0.1) 0%,transparent 70%)', pointerEvents: 'none' }} />
 
       <div style={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 1 }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg,${G},#059669)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 12, fontWeight: 900, color: '#fff' }}>QB</span>
-            </div>
+            <SmileyOrb size={32} bg1={G} bg2={G2} />
             <span style={{ fontWeight: 800, fontSize: 16, color: '#e2e8f0' }}>
               QuietKeep <span style={{ color: G }}>Business</span>
             </span>
           </Link>
-          <Link href="/login" style={{ fontSize: 12, color: '#64748b', textDecoration: 'none', background: 'rgba(255,255,255,0.05)', padding: '5px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)' }}>
+          <Link href="/login" style={{ fontSize: 12, color: '#64748b', textDecoration: 'none', background: 'rgba(255,255,255,0.05)', padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
             Personal →
           </Link>
         </div>
+
+        {/* Welcome / Intro Step */}
+        {step === 'welcome' && (
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <SmileyOrb size={54} bg1={G} bg2={G2} />
+            </div>
+
+            <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '4px 14px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+              🏢 Built for Indian SMBs
+            </div>
+
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: '#f1f5f9', margin: '0 0 10px', lineHeight: 1.15 }}>
+              Run your business<br />
+              <span style={{ background: `linear-gradient(135deg,${G},#34d399)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                by voice.
+              </span>
+            </h1>
+
+            <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 28px', lineHeight: 1.6 }}>
+              Voice ledger, staff attendance, GST invoices, payroll, and compliance reminders — all in one app.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              <button onClick={() => setStep('phone')}
+                style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 18px rgba(16,185,129,0.35)' }}>
+                Business Sign Up / Sign In with OTP →
+              </button>
+
+              <button onClick={() => setStep('email')}
+                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', borderRadius: 12, padding: '13px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Sign In with Email / Beta Code
+              </button>
+            </div>
+
+            <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+              Replaces Khatabook, StaffPicks, and manual ledgers.
+            </p>
+          </div>
+        )}
 
         {/* Phone Step (Primary) */}
         {step === 'phone' && (
           <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
             <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '3px 12px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
-              🏢 Business Workspace
+              🏢 Business Mobile OTP
             </div>
             <h1 style={{ fontSize: 24, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>Business Sign In</h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>
@@ -251,10 +309,13 @@ export default function BizLoginPage() {
               style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: loading || phone.trim().length < 10 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: loading || phone.trim().length < 10 ? 0.6 : 1 }}>
               {loading ? 'Sending SMS OTP…' : 'Send Business SMS OTP →'}
             </button>
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button onClick={() => setStep('welcome')} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                ← Back
+              </button>
               <button onClick={() => { setStep('email'); setError(''); }}
-                style={{ background: 'none', border: 'none', color: G, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', textDecoration: 'underline' }}>
-                Or sign in with Email / Beta Code →
+                style={{ background: 'none', border: 'none', color: G, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', textDecoration: 'underline' }}>
+                Or Email / Beta Code →
               </button>
             </div>
           </div>
@@ -316,9 +377,9 @@ export default function BizLoginPage() {
               We sent a sign-in link to <strong style={{ color: G }}>{email}</strong>.<br />
               Click the link to open your business workspace.
             </p>
-            <button onClick={() => { setStep('phone'); setError(''); }}
+            <button onClick={() => { setStep('welcome'); setError(''); }}
               style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>
-              Try a different sign in method
+              ← Back to start
             </button>
           </div>
         )}
@@ -354,9 +415,9 @@ export default function BizLoginPage() {
               {loading ? 'Please wait…' : 'Continue →'}
             </button>
             <div style={{ marginTop: 16, textAlign: 'center' }}>
-              <button onClick={() => { setStep('phone'); setError(''); }}
+              <button onClick={() => { setStep('welcome'); setError(''); }}
                 style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
-                ← Back to SMS OTP sign in
+                ← Back to welcome screen
               </button>
             </div>
           </div>

@@ -1,8 +1,7 @@
 'use client';
 // src/app/login/page.tsx
 // QuietKeep Personal Login Page
-// Primary Auth: Phone Number SMS OTP via MSG91
-// Secondary Auth: Email + Password / Beta Code / Magic Link
+// Welcome Intro Step + Primary Auth: Phone Number SMS OTP via MSG91
 
 import { useState, useRef } from 'react';
 import { supabase as _supabaseSingleton } from '@/lib/supabase';
@@ -22,7 +21,24 @@ function setPersonalMode() {
   document.cookie = 'qk_app_mode=personal; path=/; max-age=2592000; SameSite=Lax';
 }
 
-type Step = 'phone' | 'phone_otp' | 'email' | 'password' | 'signup' | 'forgot' | 'otp' | 'sent' | 'reset_sent';
+function SmileyOrb({ size = 36, bg1 = '#5b5ef4', bg2 = '#8b5cf6' }: { size?: number; bg1?: string; bg2?: string }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: Math.round(size * 0.28),
+      background: `linear-gradient(135deg, ${bg1}, ${bg2})`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: `0 4px 14px ${bg1}66`, flexShrink: 0
+    }}>
+      <span style={{
+        color: '#ffffff', fontSize: Math.round(size * 0.42), fontWeight: 900,
+        letterSpacing: '-1px', fontFamily: "-apple-system, system-ui, 'Segoe UI', Roboto, sans-serif",
+        lineHeight: 1, userSelect: 'none'
+      }}>(◕‿◕)</span>
+    </div>
+  );
+}
+
+type Step = 'welcome' | 'phone' | 'phone_otp' | 'email' | 'password' | 'signup' | 'forgot' | 'otp' | 'sent' | 'reset_sent';
 
 export default function LoginPage() {
   const [phone,    setPhone]    = useState('');
@@ -30,7 +46,7 @@ export default function LoginPage() {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [confirm,  setConfirm]  = useState('');
-  const [step,     setStep]     = useState<Step>('phone');
+  const [step,     setStep]     = useState<Step>('welcome');
   const [otp,      setOtp]      = useState(Array(BETA_OTP_LEN).fill(''));
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
@@ -97,7 +113,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Session received! Establish session in Supabase singleton client
       await getClient().auth.setSession({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
@@ -292,18 +307,17 @@ export default function LoginPage() {
     minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text)',
     fontFamily: "'Inter', system-ui, sans-serif",
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
+    position: 'relative', overflow: 'hidden'
   };
   const card: React.CSSProperties = {
     width: '100%', maxWidth: '400px',
     background: 'var(--surface)', border: '1px solid var(--border)',
-    borderRadius: '20px', padding: '32px 24px',
-    boxShadow: 'var(--shadow)',
+    borderRadius: '24px', padding: '32px 24px',
+    boxShadow: 'var(--shadow)', position: 'relative', zIndex: 1
   };
   const logo = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-      <div style={{ width: 36, height: 36, borderRadius: 9, background: 'linear-gradient(135deg,#5b5ef4,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: 14, fontWeight: 900, color: '#fff' }}>QK</span>
-      </div>
+      <SmileyOrb size={36} bg1="#5b5ef4" bg2="#8b5cf6" />
       <div>
         <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px', lineHeight: 1.1 }}>QuietKeep</div>
         <div style={{ fontSize: 11, color: 'var(--text-subtle)' }}>Your Personal Life OS</div>
@@ -316,12 +330,62 @@ export default function LoginPage() {
     </div>
   ) : null;
 
+  // ── Step: Welcome & Intro ──────────────────────────────────────────────────
+  if (step === 'welcome') return (
+    <div style={wrap}>
+      {/* Aurora Ambient Glow */}
+      <div style={{ position: 'absolute', top: -150, right: -150, width: 450, height: 450, background: 'radial-gradient(circle, rgba(91,94,244,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: -150, left: -150, width: 450, height: 450, background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+      <div style={{ ...card, textAlign: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <SmileyOrb size={54} bg1="#5b5ef4" bg2="#8b5cf6" />
+        </div>
+
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--primary-dim)', border: '1px solid var(--primary-glow)', borderRadius: 999, padding: '4px 12px', marginBottom: 16 }}>
+          <span style={{ width: 6, height: 6, background: '#22c55e', borderRadius: '50%', display: 'inline-block' }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>QuietKeep Personal</span>
+        </div>
+
+        <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-1px', color: 'var(--text)', margin: '0 0 10px', lineHeight: 1.15 }}>
+          Keep everything.<br />
+          <span style={{ background: 'linear-gradient(135deg,#5b5ef4,#8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Say it once.
+          </span>
+        </h1>
+
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 28px' }}>
+          Voice-first life OS for reminders, warranty wallet, family space, and daily spoken briefs.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+          <button onClick={() => setStep('phone')}
+            style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg,#5b5ef4,#8b5cf6)', border: 'none', color: '#fff', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 18px rgba(91,94,244,0.35)' }}>
+            Sign Up / Sign In with Mobile OTP →
+          </button>
+
+          <button onClick={() => setStep('email')}
+            style={{ width: '100%', padding: '12px', background: 'var(--surface-hover)', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Sign In with Email / Beta Code
+          </button>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>Need business features?</span>
+          <Link href="/biz-login" style={{ fontSize: 12, color: '#10b981', fontWeight: 700, textDecoration: 'none' }}>
+            Business App →
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+
   // ── Step: Primary Mobile Phone SMS OTP ──────────────────────────────────────
   if (step === 'phone') return (
     <div style={wrap}>
       <div style={card}>
         {logo}
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.5px' }}>Sign in</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.5px' }}>Mobile Sign In</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 22px', lineHeight: 1.6 }}>Enter your mobile number to receive a 6-digit SMS OTP.</p>
         {errorBox}
         <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6, display: 'block' }}>Mobile Number</label>
@@ -338,10 +402,13 @@ export default function LoginPage() {
           {loading ? 'Sending SMS OTP…' : 'Send SMS OTP →'}
         </button>
 
-        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button onClick={() => setStep('welcome')} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+            ← Back
+          </button>
           <button onClick={() => { setStep('email'); setError(''); }}
-            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', textDecoration: 'underline' }}>
-            Or sign in with Email / Beta Password →
+            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', textDecoration: 'underline' }}>
+            Or Email / Password →
           </button>
         </div>
       </div>
@@ -402,9 +469,9 @@ export default function LoginPage() {
             : <>We sent a sign-in link to <strong style={{ color: 'var(--primary)' }}>{email}</strong>. Click the link to access your account.</>
           }
         </div>
-        <button onClick={() => { setStep('phone'); setError(''); }}
+        <button onClick={() => { setStep('welcome'); setError(''); }}
           style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', textDecoration: 'underline' }}>
-          ← Back to sign in
+          ← Back to start
         </button>
       </div>
     </div>
@@ -427,9 +494,9 @@ export default function LoginPage() {
           {loading ? 'Checking…' : 'Continue →'}
         </button>
         <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <button onClick={() => { setStep('phone'); setError(''); }}
+          <button onClick={() => { setStep('welcome'); setError(''); }}
             style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', textDecoration: 'underline' }}>
-            ← Back to SMS OTP sign in
+            ← Back to welcome screen
           </button>
         </div>
       </div>

@@ -25,7 +25,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -41,9 +40,6 @@ jobs:
       - name: Build Android Debug APK
         run: |
           cd android
-          chmod +x gradlew || true
-          if [ -f "gradlew" ]; then
-            ./gradlew assembleDebug --no-daemon
-          else
-            gradle assembleDebug --no-daemon
-          fi
+          gradle wrapper --gradle-version 8.2.1
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon

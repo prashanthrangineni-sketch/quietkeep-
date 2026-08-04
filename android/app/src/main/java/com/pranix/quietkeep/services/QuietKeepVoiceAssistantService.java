@@ -13,7 +13,7 @@ import com.pranix.quietkeep.MainActivity;
  *
  * Implements VoiceInteractionService so QuietKeep can be set as default Assistant app.
  */
-@RequiresApi(api = Build.VERSION_CODES.LOLIPOP)
+@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class QuietKeepVoiceAssistantService extends VoiceInteractionService {
     private static final String TAG = "QK_ASSISTANT_SVC";
 

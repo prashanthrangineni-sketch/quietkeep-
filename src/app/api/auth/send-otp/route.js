@@ -3,9 +3,18 @@
 
 import { NextResponse } from 'next/server';
 
-const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY || '533749AJNRa3XXw5u6a34f4f6P1';
-const DLT_PERSONAL_TEMPLATE_ID = process.env.MSG91_PERSONAL_TEMPLATE_ID || '1777178489105417057';
-const DLT_BUSINESS_TEMPLATE_ID = process.env.MSG91_BUSINESS_TEMPLATE_ID || '1777178489113625810';
+// SECURITY FIX: the live MSG91 auth key and DLT template IDs were previously
+// hardcoded here as fallback defaults and got committed to git history in
+// plaintext. That key must be rotated in the MSG91 dashboard — this fix only
+// stops the code from shipping a hardcoded secret going forward, it does not
+// undo the exposure already in git history.
+const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY;
+const DLT_PERSONAL_TEMPLATE_ID = process.env.MSG91_PERSONAL_TEMPLATE_ID;
+const DLT_BUSINESS_TEMPLATE_ID = process.env.MSG91_BUSINESS_TEMPLATE_ID;
+
+if (!MSG91_AUTH_KEY) {
+  console.error('MSG91_AUTH_KEY env var is not set — OTP sending will fail until it is configured in Vercel.');
+}
 
 export async function POST(req) {
   try {

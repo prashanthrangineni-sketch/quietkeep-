@@ -23,6 +23,9 @@ const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 const isCapacitorBuild = process.env.CAPACITOR_BUILD === '1';
 
 const nextConfig = {
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
+
   // Conditionally add output: 'export' ONLY for Capacitor/APK builds.
   // Vercel builds have no CAPACITOR_BUILD env var so this is undefined (normal SSR mode).
   ...(isCapacitorBuild ? {

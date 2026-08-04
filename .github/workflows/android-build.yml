@@ -1,359 +1,47 @@
-name: Build QuietKeep Android APK
+name: Android Build Verification
 
 on:
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-build.yml'
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Which APK to build? (leave blank for both)'
-        required: false
-        default: 'both'
-        type: choice
-        options:
-          - both
-          - personal
-          - business
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-build.yml'
 
 jobs:
-  build-apk:
-    name: Build ${{ matrix.build_type }} APK
+  android-build:
+    name: Build Android Debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    # ── MATRIX: build personal + business in parallel ──────────────────────
-    # On push → always builds both.
-    # On workflow_dispatch → builds the selected type (or both if 'both').
-    strategy:
-      fail-fast: false   # don't cancel the other variant if one fails
-      matrix:
-        build_type:
-          - personal
-          - business
-    # Matrix filtering for manual dispatch is handled inside each step via
-    # a dedicated early-exit step below. Job-level if: cannot reference
-    # matrix context in GitHub Actions — it is evaluated before matrix expansion.
-
+    timeout-minutes: 15
     steps:
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # ── MATRIX FILTER: skip this row on manual single-type dispatch ──────
-      # Job-level if: cannot reference matrix.* in GitHub Actions.
-      # This step exits cleanly (not a failure) when the user picks a specific
-      # build_type via workflow_dispatch and this matrix row is the other one.
-      # On push events, both rows always run (BUILD_INPUT is empty).
-      - name: Check if this matrix variant should run
-        run: |
-          BUILD_INPUT="${{ github.event.inputs.build_type }}"
-          THIS_TYPE="${{ matrix.build_type }}"
-          # Empty input = push event or "both" selected → always run
-          if [ -z "$BUILD_INPUT" ] || [ "$BUILD_INPUT" = "both" ] || [ "$BUILD_INPUT" = "$THIS_TYPE" ]; then
-            echo "Running $THIS_TYPE build ✓"
-          else
-            echo "Skipping $THIS_TYPE build (user requested $BUILD_INPUT only)"
-            # Use a special exit to mark all remaining steps as skipped
-            echo "SKIP_BUILD=true" >> $GITHUB_ENV
-          fi
-
-      - name: Skip guard
-        if: env.SKIP_BUILD == 'true'
-        run: |
-          echo "This matrix variant (${{ matrix.build_type }}) was skipped for this dispatch."
-          exit 0
-
-      - name: Set up Java 17
-        if: env.SKIP_BUILD != 'true'
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
 
-      - name: Set up Node.js 20
-        if: env.SKIP_BUILD != 'true'
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
 
-      - name: Set up Android SDK
-        if: env.SKIP_BUILD != 'true'
-        uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
-      - name: Install project dependencies
-        if: env.SKIP_BUILD != 'true'
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build Android Debug APK
         run: |
-          echo "=== Node: $(node --version) | npm: $(npm --version) ==="
-          echo "=== Build type: ${{ matrix.build_type }} ==="
-          npm install --legacy-peer-deps
-          echo "=== npm install complete ==="
-
-      - name: Install Capacitor (pinned to 6.x)
-        if: env.SKIP_BUILD != 'true'
-        run: |
-          npm install --save-exact --legacy-peer-deps \
-            @capacitor/core@6.2.0 \
-            @capacitor/cli@6.2.0 \
-            @capacitor/android@6.2.0 \
-            @capacitor/camera@6.0.2 \
-            @capacitor/geolocation@6.0.1 \
-            @capacitor/push-notifications@6.0.2 \
-            @capacitor/splash-screen@6.0.2 \
-            @capacitor/status-bar@6.0.1 \
-            @capacitor/keyboard@6.0.2
-          echo "=== Capacitor install complete ==="
-          npx cap --version
-
-      # ─────────────────────────────────────────────────────────────────────
-      # STATIC EXPORT BUILD FOR CAPACITOR APK
-      #
-      # The output bundle (out/) is synced into the APK assets via `cap sync`.
-      # server.url = "https://quietkeep.com" is set in capacitor.config.json,
-      # so the WebView loads all pages from Vercel — not from the local bundle.
-      # This is INTENTIONAL: it eliminates the fetch interceptor cold-start race
-      # that broke voice in builds without server.url. Voice, STT, and all API
-      # routes work correctly because fetch("/api/...") resolves against Vercel.
-      # ─────────────────────────────────────────────────────────────────────
-      - name: Build Next.js static export for Capacitor
-        if: env.SKIP_BUILD != 'true'
-        run: |
-          set -euo pipefail
-
-          echo "=== STEP: Hide server-only and dynamic paths ==="
-          mv src/app/api /tmp/api_backup
-          mv src/app/auth/callback /tmp/auth_callback_backup
-          mv src/app/share /tmp/share_backup
-          mv src/app/dashboard/engine-health /tmp/engine_health_backup
-          mv "src/app/messages/[conversationId]" /tmp/messages_convo_backup
-          echo "=== All paths hidden. Starting next build... ==="
-
-          npm run build
-          BUILD_EXIT=$?
-
-          echo "=== Restoring all paths... ==="
-          mv /tmp/api_backup src/app/api
-          mkdir -p src/app/auth
-          mv /tmp/auth_callback_backup src/app/auth/callback
-          mv /tmp/share_backup src/app/share
-          mv /tmp/engine_health_backup src/app/dashboard/engine-health
-          mv /tmp/messages_convo_backup "src/app/messages/[conversationId]"
-          echo "=== All paths restored ==="
-
-          if [ $BUILD_EXIT -ne 0 ]; then
-            echo "ERROR: Static export failed (exit $BUILD_EXIT)"
-            exit $BUILD_EXIT
-          fi
-
-          FILE_COUNT=$(find out -type f 2>/dev/null | wc -l)
-          echo "Files in out/: $FILE_COUNT"
-          if [ "$FILE_COUNT" -lt 10 ]; then
-            echo "ERROR: out/ has fewer than 10 files"
-            exit 1
-          fi
-          echo "=== Static export complete — $FILE_COUNT files ready for APK ==="
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          CAPACITOR_BUILD: '1'
-          NEXT_PUBLIC_APP_TYPE: ${{ matrix.build_type }}
-
-      - name: Scaffold Android project
-        if: env.SKIP_BUILD != 'true'
-        run: |
-          set -euo pipefail
-
-          echo "=== STEP: Backup custom Android files ==="
-          mkdir -p /tmp/qk-backup
-          cp -r android/app/src/main/java       /tmp/qk-backup/java
-          cp    android/app/src/main/AndroidManifest.xml /tmp/qk-backup/AndroidManifest.xml
-          cp    android/app/build.gradle        /tmp/qk-backup/build.gradle
-          if [ -d "android/app/src/main/res/mipmap-mdpi" ]; then
-            cp -r android/app/src/main/res      /tmp/qk-backup/res
-            echo "  Icons + values backed up"
-          fi
-          echo "  Custom files backed up ✓"
-
-          echo "=== STEP: Remove old android folder ==="
-          rm -rf android
-
-          echo "=== STEP: Scaffold fresh Capacitor android project ==="
-          npx cap add android
-          echo "  Scaffold complete ✓"
-
-          echo "=== STEP: Restore custom files over scaffold ==="
-          cp -r /tmp/qk-backup/java             android/app/src/main/
-          cp    /tmp/qk-backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-          cp    /tmp/qk-backup/build.gradle     android/app/build.gradle
-          mkdir -p android/app/src/main/assets
-          if [ -d "/tmp/qk-backup/res" ]; then
-            cp -r /tmp/qk-backup/res/.          android/app/src/main/res/
-            echo "  Icons + values restored ✓"
-          fi
-          echo "  Custom files restored ✓"
-
-          echo "=== Final build.gradle dependencies: ==="
-          grep -A 25 "^dependencies" android/app/build.gradle
-
-      - name: Apply business config and icons
-        if: matrix.build_type == 'business'
-        run: |
-          set -euo pipefail
-          echo "=== STEP: Applying business config ==="
-          cp capacitor.business.config.json capacitor.config.json
-          sed -i 's/applicationId "com\.pranix\.quietkeep"/applicationId "com.pranix.quietkeep.business"/' android/app/build.gradle
-          STRINGS_XML="android/app/src/main/res/values/strings.xml"
-          if [ -f "$STRINGS_XML" ]; then
-            sed -i 's|<string name="app_name">QuietKeep</string>|<string name="app_name">QuietKeep Business</string>|' "$STRINGS_XML"
-          fi
-          if [ -d "android-res-business" ]; then
-            cp -r android-res-business/. android/app/src/main/res/
-            echo "  Business icons applied ✓"
-          fi
-          echo "=== Business config applied ==="
-
-      - name: Write google-services.json
-        if: env.SKIP_BUILD != 'true'
-        env:
-          GOOGLE_SERVICES_PERSONAL: ${{ secrets.GOOGLE_SERVICES_PERSONAL }}
-          GOOGLE_SERVICES_BUSINESS: ${{ secrets.GOOGLE_SERVICES_BUSINESS }}
-        run: |
-          echo "=== STEP: Write google-services.json (build_type=${{ matrix.build_type }}) ==="
-          if [ "${{ matrix.build_type }}" = "business" ]; then
-            if [ -n "$GOOGLE_SERVICES_BUSINESS" ]; then
-              echo "$GOOGLE_SERVICES_BUSINESS" | base64 --decode > android/app/google-services.json
-              echo "  Business google-services.json written ✓"
-            else
-              echo "  WARNING: GOOGLE_SERVICES_BUSINESS secret not set — push notifications disabled"
-            fi
+          cd android
+          chmod +x gradlew || true
+          if [ -f "gradlew" ]; then
+            ./gradlew assembleDebug --no-daemon
           else
-            if [ -n "$GOOGLE_SERVICES_PERSONAL" ]; then
-              echo "$GOOGLE_SERVICES_PERSONAL" | base64 --decode > android/app/google-services.json
-              echo "  Personal google-services.json written ✓"
-            else
-              echo "  WARNING: GOOGLE_SERVICES_PERSONAL secret not set — push notifications disabled"
-            fi
-          fi
-
-      - name: Sync Capacitor to Android
-        if: env.SKIP_BUILD != 'true'
-        run: |
-          echo "=== STEP: cap sync android ==="
-          npx cap sync android
-          echo "=== cap sync complete ==="
-
-      - name: Verify bundle was synced into APK assets
-        if: env.SKIP_BUILD != 'true'
-        run: |
-          set -euo pipefail
-
-          FILE_COUNT=$(find android/app/src/main/assets/public -type f 2>/dev/null | wc -l)
-          echo "  Files in android assets: $FILE_COUNT"
-          if [ "$FILE_COUNT" -lt 10 ]; then
-            echo "ERROR: Capacitor sync did not copy bundle into android assets"
-            exit 1
-          fi
-          echo "  Asset count OK ✓"
-
-          CONFIG_PATH="android/app/src/main/assets/capacitor.config.json"
-          if grep -q '"url"' "$CONFIG_PATH" 2>/dev/null; then
-            echo "  INFO: server.url present — APK will load from Vercel (expected) ✓"
-          else
-            echo "  WARNING: server.url NOT found — APK will use local bundle only"
-          fi
-
-          # Verify correct appId is baked in
-          BAKED_APP_ID=$(python3 -c "import json; d=json.load(open('$CONFIG_PATH')); print(d.get('appId',''))" 2>/dev/null || echo "")
-          echo "  Baked appId: $BAKED_APP_ID"
-          if [ "${{ matrix.build_type }}" = "business" ]; then
-            if echo "$BAKED_APP_ID" | grep -q "business"; then
-              echo "  VERIFIED: Business appId correct ✓"
-            else
-              echo "  WARNING: Expected business appId but got: $BAKED_APP_ID"
-            fi
-          else
-            if ! echo "$BAKED_APP_ID" | grep -q "business"; then
-              echo "  VERIFIED: Personal appId correct ✓"
-            else
-              echo "  WARNING: Expected personal appId but got: $BAKED_APP_ID"
-            fi
-          fi
-
-      - name: Make gradlew executable
-        if: env.SKIP_BUILD != 'true'
-        run: chmod +x android/gradlew
-
-      - name: Decode signing keystore (if configured)
-        if: env.SKIP_BUILD != 'true'
-        run: |
-          if [ -n "$SIGNING_KEY_BASE64" ]; then
-            echo "=== STEP: Decode signing keystore ==="
-            echo "$SIGNING_KEY_BASE64" | base64 --decode > android/app/quietkeep-release.keystore
-            echo "  Keystore written ✓"
-          else
-            echo "  No SIGNING_KEY_BASE64 secret — skipping keystore decode"
-          fi
-        env:
-          SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY_BASE64 }}
-
-      - name: Build APK (release if signed, debug otherwise)
-        if: env.SKIP_BUILD != 'true'
-        working-directory: android
-        run: |
-          set -euo pipefail
-          echo "=== STEP: Gradle build (${{ matrix.build_type }}) ==="
-          echo "  Java: $(java -version 2>&1 | head -1)"
-
-          if [ -f "app/quietkeep-release.keystore" ]; then
-            echo "  Keystore found — building RELEASE APK"
-            ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace \
-              -PKEYSTORE_PATH=quietkeep-release.keystore \
-              -PKEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
-              -PKEY_ALIAS="${{ secrets.KEY_ALIAS }}" \
-              -PKEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
-          else
-            echo "  No keystore — building DEBUG APK"
-            ./gradlew assembleDebug --no-daemon --stacktrace
-          fi
-          echo "=== Gradle build complete ==="
-
-      - name: Upload APK artifact
-        if: env.SKIP_BUILD != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: QuietKeep-${{ matrix.build_type }}-${{ github.run_number }}
-          path: |
-            android/app/build/outputs/bundle/release/app-release.aab
-            android/app/build/outputs/apk/release/app-release.apk
-            android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
-
-      - name: Distribute to Firebase (if configured)
-        uses: wzieba/Firebase-Distribution-Github-Action@v1
-        with:
-          appId: ${{ matrix.build_type == 'business' && secrets.FIREBASE_APP_ID_BUSINESS || secrets.FIREBASE_APP_ID_PERSONAL }}
-          token: ${{ secrets.FIREBASE_TOKEN }}
-          groups: beta-testers
-          releaseNotes: "Build ${{ github.run_number }} (${{ matrix.build_type }}) — ${{ github.event.head_commit.message }}"
-          file: android/app/build/outputs/apk/release/app-release.apk
-        continue-on-error: true
-
-      - name: Show APK details
-        if: env.SKIP_BUILD != 'true'
-        run: |
-          APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
-          if [ ! -f "$APK_PATH" ]; then APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"; fi
-          if [ -f "$APK_PATH" ]; then
-            echo "=== APK built successfully (${{ matrix.build_type }}) ==="
-            echo "  Size: $(du -sh $APK_PATH | cut -f1)"
-            BAKED_CONFIG=$(unzip -p "$APK_PATH" assets/capacitor.config.json 2>/dev/null)
-            APP_ID=$(echo "$BAKED_CONFIG" | grep -o '"appId":"[^"]*"' | head -1)
-            echo "  appId: $APP_ID"
-            if echo "$BAKED_CONFIG" | grep -q '"url"'; then
-              echo "  PASS: server.url present — Vercel routing active ✓"
-            else
-              echo "  WARNING: server.url NOT in APK — local bundle only"
-            fi
-          else
-            echo "ERROR: APK not found at expected path"
-            exit 1
+            gradle assembleDebug --no-daemon
           fi

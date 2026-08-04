@@ -32,7 +32,8 @@ import android.content.SharedPreferences;
 import org.json.JSONArray;
 
 /**
- * VoiceService v9
+ * VoiceService v10
+ * v10: Route STT via Pranix Aaria engine endpoint (/api/voice/stt) supporting Indic speech recognition with Groq fallback.
  * v9: FIX — replace discontinued /api/sarvam-stt endpoint with /api/groq-stt.
  *
  *   ROOT CAUSE OF COLOROS FREEZE:

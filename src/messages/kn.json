@@ -38,7 +38,125 @@
     "voice": "ಧ್ವನಿ",
     "stop": "ನಿಲ್ಲಿಸಿ",
     "listening": "ಆಲಿಸುತ್ತಿದೆ...",
+    "autoDetected": "ಸ್ವಯಂಚಾಲಿತ ಪತ್ತೆ",
+    "remindAt": "ಜ್ಞಾಪನೆ ಸಮಯ",
+    "type": "ಮಾದರಿ",
     "search": "ಹುಡುಕಿ...",
-    "signOut": "ಸೈನ್ ಔಟ್"
+    "ctrlEnter": "ಉಳಿಸಲು Ctrl+Enter",
+    "howToRemind": "ಹೇಗೆ ನೆನಪಿಸಬೇಕು?",
+    "smartSuggestions": "ಸಲಹೆಗಳು:",
+    "contactPlaceholder": "ದೂರವಾಣಿ / ಇಮೇಲ್...",
+    "markDone": "ಪೂರ್ಣಗೊಂಡಿದೆ",
+    "reopen": "ಮತ್ತೆ ತೆರೆಯಿರಿ",
+    "delete": "ಅಳಿಸಿ",
+    "signOut": "ಸೈನ್ ಔಟ್",
+    "keepTypes": {
+      "note": "ಟಿಪ್ಪಣಿ",
+      "reminder": "ಜ್ಞಾಪನೆ",
+      "contact": "ಸಂಪರ್ಕ",
+      "task": "ಕಾರ್ಯ",
+      "purchase": "ಖರೀದಿ",
+      "expense": "ಖರ್ಚು",
+      "trip": "ಪ್ರವಾಸ",
+      "document": "ದಸ್ತಾವೇಜು"
+    },
+    "reminderTypes": {
+      "app": "ಆ್ಯಪ್",
+      "alarm": "ಅಲಾರಾಂ",
+      "whatsapp": "ವಾಟ್ಸಾಪ್",
+      "email": "ಇಮೇಲ್"
+    },
+    "whatsappNote": "ವಾಟ್ಸಾಪ್ ಜ್ಞಾಪನೆಯು ಡ್ರಾಫ್ಟ್ ತೆರೆಯುತ್ತದೆ.",
+    "alarmNote": "ಸೈಲೆಂಟ್ మోಡ್‌ನಲ್ಲೂ ಸೌಂಡ್ ಮಾಡುತ್ತದೆ."
+  },
+  "calendar": {
+    "title": "ಕ್ಯಾಲೆಂಡರ್",
+    "today": "ಇಂದು",
+    "addEvent": "+ ಈವೆಂಟ್ ಸೇರಿಸಿ",
+    "noEvents": "ಇಂದು ಯಾವುದೇ ಈವೆಂಟ್‌ಗಳಿಲ್ಲ",
+    "tithi": "ತಿಥಿ",
+    "nakshatra": "ನಕ್ಷತ್ರ",
+    "paksha": "ಪಕ್ಷ",
+    "eventName": "ಈವೆಂಟ್ ಹೆಸರು",
+    "eventDate": "ದಿನಾಂಕ",
+    "eventType": "ಮಾದರಿ",
+    "annualRepeat": "ಪ್ರತಿ ವರ್ಷ ಪುನರಾವರ್ತನೆ",
+    "save": "ಉಳಿಸಿ",
+    "cancel": "ರದ್ದುಗೊಳಿಸಿ"
+  },
+  "dailyBrief": {
+    "title": "ದೈನಂದಿನ ಸಾರಾಂಶ",
+    "greeting": "ಶುಭೋದಯ",
+    "weather": "ಹವಾಮಾನ",
+    "todayEvents": "ಇಂದಿನ ಈವೆಂಟ್‌ಗಳು",
+    "upcomingReminders": "ಮುಂಬರುವ ಜ್ಞಾಪನೆಗಳು",
+    "subscriptionsDue": "ಚಂದಾದಾರಿಕೆಗಳು",
+    "nudges": "ಜ್ಞಾಪನೆಗಳು",
+    "aiSummary": "AI ಸಾರಾಂಶ",
+    "generating": "ಸಾರಾಂಶ ಸಿದ್ಧವಾಗುತ್ತಿದೆ...",
+    "noEvents": "ಯಾವುದೇ ಈವೆಂಟ್‌ಗಳಿಲ್ಲ",
+    "noReminders": "ಜ್ಞಾಪನೆಗಳಿಲ್ಲ"
+  },
+  "finance": {
+    "title": "ಹಣಕಾಸು",
+    "expenses": "ಖರ್ಚುಗಳು",
+    "budgets": "ಬಜೆಟ್",
+    "subscriptions": "ಚಂದಾದಾರಿಕೆಗಳು",
+    "addExpense": "ಖರ್ಚು ಸೇರಿಸಿ",
+    "amount": "ಮೊತ್ತ",
+    "category": "ವರ್ಗ",
+    "notes": "ಟಿಪ್ಪಣಿಗಳು",
+    "save": "ಉಳಿಸಿ",
+    "cancel": "ರದ್ದುಗೊಳಿಸಿ"
+  },
+  "documents": {
+    "title": "ದಸ್ತಾವೇಜುಗಳು",
+    "addDocument": "ದಸ್ತಾವೇಜು ಸೇರಿಸಿ",
+    "docName": "ದಸ್ತಾವೇಜು ಹೆಸರು",
+    "expiryDate": "ಅಂತಿಮ ದಿನಾಂಕ",
+    "uploadFile": "ಫೈಲ್ ಅಪ್ಲೋಡ್ ಮಾಡಿ",
+    "save": "ಉಳಿಸಿ",
+    "cancel": "ರದ್ದುಗೊಳಿಸಿ"
+  },
+  "family": {
+    "title": "ಕುಟುಂಬ",
+    "members": "ಸದಸ್ಯರು",
+    "inviteLink": "ಆಹ್ವಾನ ಲಿಂಕ್",
+    "shareLocation": "ಸ್ಥಳ ಹಂಚಿಕೊಳ್ಳಿ"
+  },
+  "health": {
+    "title": "ಆರೋಗ್ಯ",
+    "water": "ನೀರು (ಗ್ಲಾಸ್)",
+    "sleep": "ನಿದ್ರೆ (ಗಂಟೆ)",
+    "exercise": "ವ್ಯಾಯಾಮ (ನಿಮಿಷ)",
+    "save": "ಉಳಿಸಿ"
+  },
+  "emergency": {
+    "title": "ತುರ್ತು",
+    "contacts": "ತುರ್ತು ಸಂಪರ್ಕಗಳು",
+    "addContact": "ಸಂಪರ್ಕ ಸೇರಿಸಿ",
+    "holdSOS": "SOS ಒತ್ತಿ ಹಿಡಿಯಿರಿ",
+    "save": "ಉಳಿಸಿ"
+  },
+  "settings": {
+    "title": "ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    "language": "ಮುಖ್ಯ ಭಾಷೆ",
+    "voiceLanguage": "ಧ್ವನಿ ಭಾಷೆ",
+    "theme": "ಥೀಮ್",
+    "notifications": "ಸೂಚನೆಗಳು",
+    "save": "ಉಳಿಸಿ",
+    "saving": "ಉಳಿಸಲಾಗುತ್ತಿದೆ..."
+  },
+  "common": {
+    "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+    "error": "ದೋಷ ಸಂಭವಿಸಿದೆ",
+    "cancel": "ರದ್ದುಗೊಳಿಸಿ",
+    "delete": "ಅಳಿಸಿ",
+    "back": "ಹಿಂದಕ್ಕೆ",
+    "save": "ಉಳಿಸಿ",
+    "saving": "ಉಳಿಸಲಾಗುತ್ತಿದೆ...",
+    "add": "ಸೇರಿಸಿ",
+    "close": "ಮುಚ್ಚಿ",
+    "confirm": "ಖಚಿತಪಡಿಸಿ"
   }
 }

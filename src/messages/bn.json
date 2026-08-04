@@ -38,7 +38,125 @@
     "voice": "ভয়েস",
     "stop": "থামুন",
     "listening": "শুনছে...",
+    "autoDetected": "স্বয়ংক্রিয় শণাক্তকরণ",
+    "remindAt": "রিমাইন্ডার সময়",
+    "type": "ধরন",
     "search": "খুঁজুন...",
-    "signOut": "সাইন আউট"
+    "ctrlEnter": "সংরক্ষণ করতে Ctrl+Enter",
+    "howToRemind": "কীভাবে মনে করিয়ে দেবে?",
+    "smartSuggestions": "পরামর্শ:",
+    "contactPlaceholder": "ফোন / ইমেল...",
+    "markDone": "সম্পন্ন",
+    "reopen": "পুনরায় খুলুন",
+    "delete": "মুছুন",
+    "signOut": "সাইন আউট",
+    "keepTypes": {
+      "note": "নোট",
+      "reminder": "রিমাইন্ডার",
+      "contact": "যোগাযোগ",
+      "task": "কাজ",
+      "purchase": "ক্রয়",
+      "expense": "খরচ",
+      "trip": "ভ্রমণ",
+      "document": "নথি"
+    },
+    "reminderTypes": {
+      "app": "অ্যাপ",
+      "alarm": "অ্যালার্ম",
+      "whatsapp": "হোয়াটসঅ্যাপ",
+      "email": "ইমেল"
+    },
+    "whatsappNote": "হোয়াটসঅ্যাপ রিমাইন্ডার খসড়া খুলবে।",
+    "alarmNote": "সাইলেন্ট মোডেও বাজবে।"
+  },
+  "calendar": {
+    "title": "ক্যালেন্ডার",
+    "today": "আজ",
+    "addEvent": "+ ঘটনা যোগ করুন",
+    "noEvents": "আজ কোনো ঘটনা নেই",
+    "tithi": "তিথি",
+    "nakshatra": "নক্ষত্র",
+    "paksha": "পক্ষ",
+    "eventName": "ঘটনার নাম",
+    "eventDate": "তারিখ",
+    "eventType": "ধরন",
+    "annualRepeat": "প্রতি বছর পুনরাবৃত্তি",
+    "save": "সংরক্ষণ করুন",
+    "cancel": "বাতিল"
+  },
+  "dailyBrief": {
+    "title": "দৈনিক সংক্ষিপ্ত বিবরণ",
+    "greeting": "সুপ্রভাত",
+    "weather": "আবহাওয়া",
+    "todayEvents": "আজকের অনুষ্ঠানসমূহ",
+    "upcomingReminders": "আসন্ন রিমাইন্ডার",
+    "subscriptionsDue": "সাবস্ক্রিপশন",
+    "nudges": "রিমাইন্ডার",
+    "aiSummary": "AI সারাংশ",
+    "generating": "তৈরি হচ্ছে...",
+    "noEvents": "কোনো ঘটনা নেই",
+    "noReminders": "কোনো রিমাইন্ডার নেই"
+  },
+  "finance": {
+    "title": "অর্থসংস্থান",
+    "expenses": "খরচ",
+    "budgets": "বাজেট",
+    "subscriptions": "সাবস্ক্রিপশন",
+    "addExpense": "খরচ যোগ করুন",
+    "amount": "পরিমাণ",
+    "category": "বিভাগ",
+    "notes": "নোট",
+    "save": "সংরক্ষণ করুন",
+    "cancel": "বাতিল"
+  },
+  "documents": {
+    "title": "নথিপত্র",
+    "addDocument": "নথি যোগ করুন",
+    "docName": "নথির নাম",
+    "expiryDate": "মেয়াদ শেষের তারিখ",
+    "uploadFile": "ফাইল আপলোড করুন",
+    "save": "সংরক্ষণ করুন",
+    "cancel": "বাতিল"
+  },
+  "family": {
+    "title": "পরিবার",
+    "members": "সদস্যগণ",
+    "inviteLink": "আমন্ত্রণ লিঙ্ক",
+    "shareLocation": "অবস্থান শেয়ার করুন"
+  },
+  "health": {
+    "title": "স্বাস্থ্য",
+    "water": "জল (গ্লাস)",
+    "sleep": "ঘুম (ঘণ্টা)",
+    "exercise": "ব্যায়াম (মিনিট)",
+    "save": "সংরক্ষণ করুন"
+  },
+  "emergency": {
+    "title": "জরুরি",
+    "contacts": "জরুরি যোগাযোগ",
+    "addContact": "যোগাযোগ যোগ করুন",
+    "holdSOS": "SOS ধরে রাখুন",
+    "save": "সংরক্ষণ করুন"
+  },
+  "settings": {
+    "title": "সেটিংস",
+    "language": "প্রধান ভাষা",
+    "voiceLanguage": "ভয়েস ভাষা",
+    "theme": "থিম",
+    "notifications": "বিজ্ঞপ্তি",
+    "save": "সংরক্ষণ করুন",
+    "saving": "সংরক্ষণ হচ্ছে..."
+  },
+  "common": {
+    "loading": "লোড হচ্ছে...",
+    "error": "ত্রুটি ঘটেছে",
+    "cancel": "বাতিল",
+    "delete": "মুছুন",
+    "back": "পিছনে",
+    "save": "সংরক্ষণ করুন",
+    "saving": "সংরক্ষণ হচ্ছে...",
+    "add": "যোগ করুন",
+    "close": "বন্ধ করুন",
+    "confirm": "নিশ্চিত করুন"
   }
 }

@@ -3,6 +3,7 @@
 // Provides caller metadata, notes, khata/ledger status, and active keeps for a phone number.
 
 import { createBearerClient, createWriteClient, unauthorized } from '@/lib/supabase-bearer';
+import { resolveWorkspaceContext } from '@/lib/biz-rbac';
 import { NextResponse } from 'next/server';
 
 export async function GET(req) {
@@ -38,16 +39,11 @@ export async function GET(req) {
     }) || null;
   }
 
-  // 2. Resolve business workspace customer & khata details
+  // 2. Resolve business workspace customer & khata details (supports owners & staff accounts via resolveWorkspaceContext)
   let customer = null;
   let khata = null;
 
-  const { data: wsData } = await db
-    .from('business_workspaces')
-    .select('id')
-    .eq('owner_user_id', user.id)
-    .maybeSingle()
-    .then(({ data, error }) => ({ data: error ? null : data, error }));
+  const { workspace: wsData } = await resolveWorkspaceContext(req).catch(() => ({ workspace: null }));
 
   if (wsData?.id) {
     const { data: custData } = await db

@@ -1,38 +1,125 @@
 'use client';
 // src/app/biz-login/page.jsx — Business Login (pure JS, no TypeScript)
-// Same beta password system as personal login
+// Primary Auth: Phone Number SMS OTP via MSG91
+// Secondary Auth: Email + Beta Password / Magic Link
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { supabase as _supabaseSingleton } from '@/lib/supabase';
 
-// Beta verification now handled server-side via /api/auth/beta-verify
-const OTP_LEN = 8;
+const BETA_OTP_LEN = 8;
+const SMS_OTP_LEN = 6;
 const G = '#10b981';
 
-// FIX: Use the shared singleton so session writes land in the same
-// storageKey ('qk-auth-token') that AuthContext listens on.
 function getClient() {
   return _supabaseSingleton;
 }
 
-// ← ADDED: Sets app mode cookie so middleware enforces business-only routing
 function setBusinessMode() {
   document.cookie = 'qk_app_mode=business; path=/; max-age=2592000; SameSite=Lax';
 }
 
 export default function BizLoginPage() {
+  const [phone, setPhone] = useState('');
+  const [smsOtp, setSmsOtp] = useState(Array(SMS_OTP_LEN).fill(''));
   const [email, setEmail] = useState('');
-  const [step, setStep] = useState('email'); // 'email' | 'otp' | 'sent'
-  const [otp, setOtp] = useState(Array(OTP_LEN).fill(''));
+  const [step, setStep] = useState('phone'); // 'phone' | 'phone_otp' | 'email' | 'otp' | 'sent'
+  const [otp, setOtp] = useState(Array(BETA_OTP_LEN).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const refs = useRef([]);
+  const smsRefs = useRef([]);
 
-  async function handleContinue() {
+  // ── MSG91 Phone SMS OTP (Business) ─────────────────────────────────────────
+  async function handleSendSmsOtp() {
+    const clean = phone.replace(/\D/g, '');
+    if (clean.length < 10) {
+      setError('Enter a valid 10-digit mobile number.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: clean, type: 'business' }),
+      });
+      const data = await res.json();
+      setLoading(false);
+
+      if (!res.ok || data.error) {
+        setError(data.error || 'Failed to send SMS OTP. Try again.');
+        return;
+      }
+
+      setStep('phone_otp');
+      setTimeout(() => smsRefs.current[0]?.focus(), 120);
+    } catch (err) {
+      setLoading(false);
+      setError(err?.message || 'Network error sending SMS OTP.');
+    }
+  }
+
+  async function handleVerifySmsOtp(otpArr) {
+    const clean = phone.replace(/\D/g, '');
+    const code = (otpArr || smsOtp).join('');
+    if (code.length !== SMS_OTP_LEN) {
+      setError(`Enter all ${SMS_OTP_LEN} digits of your SMS OTP.`);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: clean, otp: code }),
+      });
+      const data = await res.json();
+      setLoading(false);
+
+      if (!res.ok || data.error || !data.session) {
+        setError(data.error || 'Invalid OTP code. Please check and try again.');
+        setSmsOtp(Array(SMS_OTP_LEN).fill(''));
+        setTimeout(() => smsRefs.current[0]?.focus(), 100);
+        return;
+      }
+
+      await getClient().auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+
+      setBusinessMode();
+      window.location.href = '/b/dashboard';
+    } catch (err) {
+      setLoading(false);
+      setError(err?.message || 'Verification failed. Try again.');
+    }
+  }
+
+  function handleSmsDigit(i, val) {
+    const char = val.replace(/\D/g, '').slice(-1);
+    const next = [...smsOtp]; next[i] = char; setSmsOtp(next);
+    if (char && i < SMS_OTP_LEN - 1) smsRefs.current[i + 1]?.focus();
+    if (next.every(d => d !== '') && next.join('').length === SMS_OTP_LEN) {
+      setTimeout(() => handleVerifySmsOtp(next), 80);
+    }
+  }
+
+  function handleSmsKey(i, e) {
+    if (e.key === 'Backspace' && !smsOtp[i] && i > 0) smsRefs.current[i - 1]?.focus();
+    if (e.key === 'Enter') handleVerifySmsOtp();
+  }
+
+  // ── Email Step ────────────────────────────────────────────────────────────
+  async function handleContinueEmail() {
     if (!email.trim()) return;
     const norm = email.trim().toLowerCase();
-    // Check beta via server-side API
     try {
       const res = await fetch('/api/auth/beta-verify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -65,12 +152,12 @@ export default function BizLoginPage() {
     const next = [...otp];
     next[idx] = val.slice(-1);
     setOtp(next);
-    if (val && idx < OTP_LEN - 1) refs.current[idx + 1]?.focus();
+    if (val && idx < BETA_OTP_LEN - 1) refs.current[idx + 1]?.focus();
   }
 
   function handleOtpKey(idx, e) {
     if (e.key === 'Backspace' && !otp[idx] && idx > 0) refs.current[idx - 1]?.focus();
-    if (e.key === 'Enter' && otp.join('').length === OTP_LEN) verifyBeta();
+    if (e.key === 'Enter' && otp.join('').length === BETA_OTP_LEN) verifyBeta();
   }
 
   async function verifyBeta() {
@@ -131,24 +218,107 @@ export default function BizLoginPage() {
           </Link>
         </div>
 
+        {/* Phone Step (Primary) */}
+        {step === 'phone' && (
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
+            <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '3px 12px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+              🏢 Business Workspace
+            </div>
+            <h1 style={{ fontSize: 24, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>Business Sign In</h1>
+            <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>
+              Enter your mobile number to receive a 6-digit SMS OTP.
+            </p>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6, fontWeight: 500 }}>
+                Mobile Number
+              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ background: 'rgba(255,255,255,0.08)', border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '14px 14px', fontSize: 15, fontWeight: 700, color: '#f1f5f9', display: 'flex', alignItems: 'center' }}>
+                  +91
+                </div>
+                <input
+                  type="tel" value={phone}
+                  onChange={e => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setError(''); }}
+                  onKeyDown={e => e.key === 'Enter' && !loading && phone.trim().length >= 10 && handleSendSmsOtp()}
+                  placeholder="9876543210"
+                  autoFocus
+                  style={{ ...inp, flex: 1, letterSpacing: '0.05em' }}
+                />
+              </div>
+            </div>
+            {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 12 }}>⚠️ {error}</div>}
+            <button onClick={handleSendSmsOtp} disabled={loading || phone.trim().length < 10}
+              style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: loading || phone.trim().length < 10 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: loading || phone.trim().length < 10 ? 0.6 : 1 }}>
+              {loading ? 'Sending SMS OTP…' : 'Send Business SMS OTP →'}
+            </button>
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+              <button onClick={() => { setStep('email'); setError(''); }}
+                style={{ background: 'none', border: 'none', color: G, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', textDecoration: 'underline' }}>
+                Or sign in with Email / Beta Code →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Phone OTP Step */}
+        {step === 'phone_otp' && (
+          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>💬</div>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>Enter SMS OTP</h1>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 6px' }}>
+              Sent to <strong style={{ color: G }}>+91 {phone}</strong>
+            </p>
+            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 20, lineHeight: 1.6, background: 'rgba(16,185,129,0.1)', borderRadius: 8, padding: '8px 12px' }}>
+              Valid for 10 minutes · Powered by MSG91 SMS
+            </div>
+            {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 12, textAlign: 'left' }}>⚠️ {error}</div>}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 20, justifyContent: 'center' }}>
+              {smsOtp.map((v, i) => (
+                <input
+                  key={i}
+                  ref={el => { smsRefs.current[i] = el; }}
+                  type="text" inputMode="numeric" pattern="[0-9]" maxLength={1} value={v}
+                  onChange={e => handleSmsDigit(i, e.target.value)}
+                  onKeyDown={e => handleSmsKey(i, e)}
+                  style={{
+                    width: 44, height: 54, textAlign: 'center',
+                    background: v ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)',
+                    border: `1.5px solid ${v ? G : 'rgba(255,255,255,0.12)'}`,
+                    borderRadius: 10, color: '#f1f5f9', fontSize: 22,
+                    fontWeight: 700, outline: 'none', fontFamily: 'inherit',
+                  }}
+                />
+              ))}
+            </div>
+            <button onClick={() => handleVerifySmsOtp()} disabled={loading || smsOtp.some(d => !d)}
+              style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: loading || smsOtp.some(d => !d) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: loading || smsOtp.some(d => !d) ? 0.6 : 1 }}>
+              {loading ? 'Verifying…' : 'Verify & Sign In →'}
+            </button>
+            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button onClick={handleSendSmsOtp} disabled={loading}
+                style={{ background: 'none', border: 'none', color: G, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', fontWeight: 600 }}>
+                ↩ Resend SMS
+              </button>
+              <button onClick={() => { setStep('phone'); setSmsOtp(Array(SMS_OTP_LEN).fill('')); setError(''); }}
+                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                ← Change Number
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Sent state */}
         {step === 'sent' && (
           <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '40px 28px', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
             <h2 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', margin: '0 0 10px' }}>Check your email</h2>
             <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>
-              We sent a sign-in email with an 8-digit code to <strong style={{ color: G }}>{email}</strong>.<br />
-              Click it to open your business workspace.
+              We sent a sign-in link to <strong style={{ color: G }}>{email}</strong>.<br />
+              Click the link to open your business workspace.
             </p>
-            <button
-              onClick={() => { window.location.href = `/auth/verify?email=${encodeURIComponent(email)}&next=/b/dashboard`; }}
-              style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10 }}
-            >
-              🔢 Enter 8-digit code →
-            </button>
-            <button onClick={() => { setStep('email'); setError(''); }}
+            <button onClick={() => { setStep('phone'); setError(''); }}
               style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>
-              Try a different email
+              Try a different sign in method
             </button>
           </div>
         )}
@@ -159,7 +329,7 @@ export default function BizLoginPage() {
             <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '3px 12px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
               🏢 Business Workspace
             </div>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>Sign in</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>Email Sign In</h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>
               Enter your email to access your business workspace.
             </p>
@@ -170,7 +340,7 @@ export default function BizLoginPage() {
               <input
                 type="email" value={email}
                 onChange={e => { setEmail(e.target.value); setError(''); }}
-                onKeyDown={e => e.key === 'Enter' && !loading && handleContinue()}
+                onKeyDown={e => e.key === 'Enter' && !loading && handleContinueEmail()}
                 placeholder="beta@quietkeep.com"
                 autoFocus
                 style={inp}
@@ -179,28 +349,29 @@ export default function BizLoginPage() {
               />
             </div>
             {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 12 }}>⚠️ {error}</div>}
-            <button onClick={handleContinue} disabled={loading || !email.trim()}
+            <button onClick={handleContinueEmail} disabled={loading || !email.trim()}
               style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: loading ? 0.7 : 1 }}>
               {loading ? 'Please wait…' : 'Continue →'}
             </button>
-            <div style={{ marginTop: 16, padding: '12px 14px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 10, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
-              <strong style={{ color: G }}>Beta test:</strong> Use{' '}
-              <code style={{ color: '#a5b4fc', fontSize: 11 }}>beta@quietkeep.com</code>{' '}
-              for full business demo with sample data (retail store, 5 staff, inventory, GST).
+            <div style={{ marginTop: 16, textAlign: 'center' }}>
+              <button onClick={() => { setStep('phone'); setError(''); }}
+                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
+                ← Back to SMS OTP sign in
+              </button>
             </div>
           </div>
         )}
 
-        {/* OTP / Password step */}
+        {/* Beta Password step */}
         {step === 'otp' && (
           <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', margin: '0 0 4px' }}>Enter password</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', margin: '0 0 4px' }}>Beta Access Code</h1>
             <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 24px' }}>
               {email}
             </p>
 
             <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 10, fontWeight: 500 }}>
-              Password — enter each character in a box
+              Enter pre-shared beta password in the boxes
             </label>
             <div style={{ display: 'flex', gap: 6, marginBottom: 16, justifyContent: 'center' }}>
               {otp.map((v, i) => (
@@ -223,18 +394,18 @@ export default function BizLoginPage() {
               ))}
             </div>
 
-            <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#94a3b8', marginBottom: 16, lineHeight: 1.6 }}>
-              Enter your beta access password, one character per box.
+            <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#94a3b8', marginBottom: 16, lineHeight: 1.6 }}>
+              Enter your pre-shared 8-character beta password in the boxes.
             </div>
 
             {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 12 }}>⚠️ {error}</div>}
 
-            <button onClick={verifyBeta} disabled={loading || otp.join('').length < OTP_LEN}
-              style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: loading || otp.join('').length < OTP_LEN ? 0.6 : 1 }}>
+            <button onClick={verifyBeta} disabled={loading || otp.join('').length < BETA_OTP_LEN}
+              style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: loading || otp.join('').length < BETA_OTP_LEN ? 0.6 : 1 }}>
               {loading ? 'Signing in…' : 'Sign In →'}
             </button>
 
-            <button onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); }}
+            <button onClick={() => { setStep('email'); setOtp(Array(BETA_OTP_LEN).fill('')); setError(''); }}
               style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', width: '100%', marginTop: 12, fontFamily: 'inherit' }}>
               ← Back
             </button>

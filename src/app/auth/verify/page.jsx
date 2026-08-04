@@ -227,10 +227,10 @@ function VerifyContent() {
 
         <div style={{ fontSize: 36, marginBottom: 12 }}>📬</div>
         <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>
-          Enter your 8-digit code
+          Verification & Access Code
         </div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 4 }}>
-          We sent an 8-digit code to
+          Enter your 8-digit access code or check the magic link sent to
         </div>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)', marginBottom: 20 }}>
           {email || 'your email'}

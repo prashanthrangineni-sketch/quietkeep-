@@ -158,5 +158,21 @@
     "add": "ઉમેરો",
     "close": "બંધ કરો",
     "confirm": "કન્ફર્મ કરો"
+  },
+  "business": {
+    "title": "વ્યવસાય",
+    "khata": "ખાતા લેજર",
+    "collections": "વસૂલાત કેન્દ્ર",
+    "invoices": "ઇનવોઇસ",
+    "gstr3b": "GSTR-3B ટેક્સ ડ્રાફ્ટ",
+    "payroll": "પગાર",
+    "customers": "ગ્રાહકો",
+    "addInvoice": "ઇનવોઇસ બનાવો",
+    "addCustomer": "ગ્રાહક ઉમેરો",
+    "outstanding": "બાકી રકમ",
+    "overdueDays": "વિલંબિત દિવસો",
+    "sendReminder": "UPI યાદ અપાવનાર મોકલો",
+    "markPaid": "ચૂકવાયેલ તરીકે ચિહ્નિત કરો",
+    "draftStatus": "ડ્રાફ્ટ ગણવામાં આવ્યો"
   }
 }

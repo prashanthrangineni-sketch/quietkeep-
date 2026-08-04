@@ -326,5 +326,21 @@
     "copied": "Copied!",
     "required": "Required",
     "optional": "Optional"
+  },
+  "business": {
+    "title": "Business",
+    "khata": "Khata Ledger",
+    "collections": "Collections Cockpit",
+    "invoices": "Invoices",
+    "gstr3b": "GSTR-3B Tax Draft",
+    "payroll": "Payroll",
+    "customers": "Customers",
+    "addInvoice": "Create Invoice",
+    "addCustomer": "Add Customer",
+    "outstanding": "Outstanding Balance",
+    "overdueDays": "Days Overdue",
+    "sendReminder": "Send UPI Reminder",
+    "markPaid": "Mark Paid",
+    "draftStatus": "Draft Calculated"
   }
 }

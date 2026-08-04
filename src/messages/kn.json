@@ -158,5 +158,21 @@
     "add": "ಸೇರಿಸಿ",
     "close": "ಮುಚ್ಚಿ",
     "confirm": "ಖಚಿತಪಡಿಸಿ"
+  },
+  "business": {
+    "title": "ವ್ಯಾಪಾರ",
+    "khata": "ಖಾತಾ ಲೆಡ್ಜರ್",
+    "collections": "ವಸೂಲಾತಿ ಕೇಂದ್ರ",
+    "invoices": "ಇನ್‌ವಾಯ್ಸ್‌ಗಳು",
+    "gstr3b": "GSTR-3B ತೆರಿಗೆ ಕರಡು",
+    "payroll": "ಸಂಬಳ",
+    "customers": "ಗ್ರಾಹಕರು",
+    "addInvoice": "ಇನ್‌ವಾಯ್ಸ್ ರಚಿಸಿ",
+    "addCustomer": "ಗ್ರಾಹಕರನ್ನು ಸೇರಿಸಿ",
+    "outstanding": "ಉಳಿಕೆ ಮೊತ್ತ",
+    "overdueDays": "ವಿಳಂಬ ದಿನಗಳು",
+    "sendReminder": "UPI ಜ್ಞಾಪನೆ ಕಳುಹಿಸಿ",
+    "markPaid": "ಪಾವತಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ",
+    "draftStatus": "ಕರಡು ಲೆಕ್ಕಾಚಾರ ಮಾಡಲಾಗಿದೆ"
   }
 }

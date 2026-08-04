@@ -87,26 +87,6 @@ public class MainActivity extends BridgeActivity {
             webView.addJavascriptInterface(new TTSBridge(this), "AndroidTTS");
             Log.d(TAG, "TTSBridge registered as 'AndroidTTS' ✓");
 
-            // Register ContactsBridge as 'AndroidContacts'
-            webView.addJavascriptInterface(new ContactsBridge(this), "AndroidContacts");
-            Log.d(TAG, "ContactsBridge registered as 'AndroidContacts' ✓");
-
-            // Register WakeWordBridge as 'AndroidWake'
-            webView.addJavascriptInterface(new WakeWordBridge(this), "AndroidWake");
-            Log.d(TAG, "WakeWordBridge registered as 'AndroidWake' ✓");
-
-            // Register OCRBridge as 'AndroidOCR'
-            webView.addJavascriptInterface(new OCRBridge(this), "AndroidOCR");
-            Log.d(TAG, "OCRBridge registered as 'AndroidOCR' ✓");
-
-            // Register GeofenceBridge as 'AndroidGeo'
-            webView.addJavascriptInterface(new GeofenceBridge(this), "AndroidGeo");
-            Log.d(TAG, "GeofenceBridge registered as 'AndroidGeo' ✓");
-
-            // Register SOSBridge as 'AndroidSOS'
-            webView.addJavascriptInterface(new SOSBridge(this), "AndroidSOS");
-            Log.d(TAG, "SOSBridge registered as 'AndroidSOS' ✓");
-
             // ── Inject runtime constants + fetch rewrite ────────────────────
             android.webkit.WebViewClient existingClient = webView.getWebViewClient();
 

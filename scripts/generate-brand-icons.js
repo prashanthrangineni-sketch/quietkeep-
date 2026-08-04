@@ -1,5 +1,6 @@
 // scripts/generate-brand-icons.js
 // Generates official Personal (QK) and Business (QB) launcher icons using sharp
+// Safe zone: inner ~50% of 108dp canvas (fits well within Android's 66dp / 61% safe circle)
 
 const fs = require('fs');
 const path = require('path');
@@ -17,7 +18,7 @@ const sizes = {
 
 function getIconSvg(text, bg1, bg2, size, isRound = false) {
   const r = isRound ? size / 2 : Math.round(size * 0.22);
-  const fontSize = Math.round(size * 0.44);
+  const fontSize = Math.round(size * 0.38);
   return `
   <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -33,11 +34,12 @@ function getIconSvg(text, bg1, bg2, size, isRound = false) {
 }
 
 function getForegroundSvg(text, bg1, bg2, size) {
-  // Foreground for adaptive icon must fit inside 108x108 viewport safe zone (center 66x66)
-  const innerSize = Math.round(size * 0.55);
+  // Android Adaptive Icon Safe Zone: center 66dp of 108dp canvas (61%).
+  // Using 50% inner size ensures generous padding and 0% clipping on all launcher masks.
+  const innerSize = Math.round(size * 0.50);
   const offset = Math.round((size - innerSize) / 2);
   const r = Math.round(innerSize * 0.24);
-  const fontSize = Math.round(innerSize * 0.44);
+  const fontSize = Math.round(innerSize * 0.38);
   return `
   <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -89,7 +91,7 @@ async function main() {
   // Business: QB (Emerald)
   await generateFlavorIcons('business', 'QB', '#10b981', '#059669', businessRes);
 
-  console.log('✅ All launcher icons generated successfully!');
+  console.log('✅ All launcher icons regenerated cleanly inside 50% safe zone!');
 }
 
 main().catch(err => {

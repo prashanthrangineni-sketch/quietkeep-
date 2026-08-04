@@ -33,13 +33,6 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
-      - name: Build Next.js Web Export
-        env:
-          CAPACITOR_BUILD: '1'
-          NEXT_PUBLIC_SUPABASE_URL: 'https://quietkeep-placeholder.supabase.co'
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSJ9.placeholder'
-        run: npm run build
-
       - name: Sync Capacitor
         run: npx cap sync android
 

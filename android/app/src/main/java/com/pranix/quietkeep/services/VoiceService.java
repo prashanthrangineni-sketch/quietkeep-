@@ -32,7 +32,8 @@ import android.content.SharedPreferences;
 import org.json.JSONArray;
 
 /**
- * VoiceService v9
+ * VoiceService v10
+ * v10: Route STT via Pranix Aaria engine endpoint (/api/voice/stt) supporting Indic speech recognition with Groq fallback.
  * v9: FIX — replace discontinued /api/sarvam-stt endpoint with /api/groq-stt.
  *
  *   ROOT CAUSE OF COLOROS FREEZE:
@@ -367,10 +368,8 @@ public class VoiceService extends Service {
             try {
                 byte[]  wav      = buildWav(pcm);
                 String  boundary = "QK" + System.currentTimeMillis();
-                // v9 FIX: /api/sarvam-stt → /api/groq-stt
-                // Sarvam AI was discontinued — every call timed out at 25s causing ColorOS UID freeze.
-                // groq-stt accepts the same multipart form-data and returns {transcript}.
-                String  endpoint = serverUrl + "/api/groq-stt";
+                // Route via Aaria engine: /api/voice/stt (handles Indic via Aaria + Groq fallback for English)
+                String  endpoint = serverUrl + "/api/voice/stt";
                 Log.d(TAG, "sendChunk: opening connection to " + endpoint);
                 URL     u        = new URL(endpoint);
                 HttpURLConnection c = (HttpURLConnection) u.openConnection();

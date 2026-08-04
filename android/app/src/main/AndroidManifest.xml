@@ -10,6 +10,9 @@
     <!-- Camera: photo capture via WebView file chooser + Capacitor Camera plugin -->
     <uses-permission android:name="android.permission.CAMERA" />
 
+    <!-- Contacts: full phonebook sync via ContactsBridge -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
     <!-- Microphone: VoiceService native AudioRecord capture -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
@@ -50,6 +53,7 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <!-- Location: LocationService geo-trigger polling -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -114,7 +118,24 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.pranix.quietkeep" android:host="caller-context" />
+            </intent-filter>
         </activity>
+
+        <!-- QuietKeepCallScreeningService: Track A1 incoming call context moat -->
+        <service
+            android:name=".services.QuietKeepCallScreeningService"
+            android:permission="android.permission.BIND_SCREENING_SERVICE"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
 
         <!-- KeepAliveService: started before WebView load to block Hans UID freeze.
              IMPORTANCE_LOW prevents ColorOS from killing the notification channel. -->
@@ -139,6 +160,17 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!-- PaymentNotificationListener: Track A5 payment SMS & UPI notification auto-capture -->
+        <service
+            android:name=".services.PaymentNotificationListener"
+            android:label="QuietKeep Expense Capture"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <!-- BootReceiver: restarts VoiceService + LocationService after reboot -->
         <receiver
             android:name=".receivers.BootReceiver"
@@ -154,6 +186,39 @@
             android:name=".receivers.AlarmReceiver"
             android:enabled="true"
             android:exported="false" />
+
+        <!-- GeofenceBroadcastReceiver: Track A7 location keep geofence transition receiver -->
+        <receiver
+            android:name=".receivers.GeofenceBroadcastReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <!-- QuickMicWidget: Track A3 Home Screen Mic Tap Target -->
+        <receiver
+            android:name=".widgets.QuickMicWidget"
+            android:label="QuietKeep Mic"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_mic_widget_info" />
+        </receiver>
+
+        <!-- QuietKeepVoiceAssistantService: Hardware power button / default assistant mapping -->
+        <service
+            android:name=".services.QuietKeepVoiceAssistantService"
+            android:label="QuietKeep Voice Assistant"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech"
+                android:resource="@xml/voice_interaction_service" />
+        </service>
 
     </application>
 </manifest>

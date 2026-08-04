@@ -36,8 +36,8 @@ export async function createBearerClient(req) {
   if (!token) return { supabase: null, user: null };
 
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://quietkeep-placeholder.supabase.co',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSJ9.placeholder',
     { global: { headers: { Authorization: 'Bearer ' + token } } }
   );
 
@@ -52,8 +52,8 @@ export async function createBearerClient(req) {
 // user_id MUST always be set explicitly from validated user.id.
 export function createWriteClient() {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://quietkeep-placeholder.supabase.co',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSJ9.placeholder'
   );
 }
 

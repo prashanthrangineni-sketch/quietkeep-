@@ -4,7 +4,6 @@ android {
     namespace "com.pranix.quietkeep"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.pranix.quietkeep"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 3
@@ -12,6 +11,19 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    flavorDimensions "appType"
+    productFlavors {
+        personal {
+            dimension "appType"
+            applicationId "com.pranix.quietkeep"
+            resValue "string", "app_name", "QuietKeep"
+        }
+        business {
+            dimension "appType"
+            applicationId "com.pranix.quietkeep.business"
+            resValue "string", "app_name", "QuietKeep Business"
         }
     }
     signingConfigs {

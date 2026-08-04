@@ -1,0 +1,86 @@
+[
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/xml_voice_interaction_service.xml.flat",
+        "source": "com.pranix.quietkeep.app-main-34:/xml/voice_interaction_service.xml"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-xxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-hdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/xml_quick_mic_widget_info.xml.flat",
+        "source": "com.pranix.quietkeep.app-main-34:/xml/quick_mic_widget_info.xml"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-xxxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-xxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/drawable_splash.xml.flat",
+        "source": "com.pranix.quietkeep.app-main-34:/drawable/splash.xml"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-xhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-mdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/xml_config.xml.flat",
+        "source": "com.pranix.quietkeep.app-main-34:/xml/config.xml"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "com.pranix.quietkeep.app-business-31:/mipmap-xhdpi/ic_launcher_round.png"
+    }
+]

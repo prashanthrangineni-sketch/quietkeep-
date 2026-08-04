@@ -1,0 +1,653 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.pranix.quietkeep"
+4    android:versionCode="3"
+5    android:versionName="1.2.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="23"
+9        android:targetSdkVersion="34" />
+10
+11    <!-- ── Permissions ──────────────────────────────────────────────────── -->
+12    <uses-permission android:name="android.permission.INTERNET" />
+12-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:7:5-67
+12-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:7:22-64
+13    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+13-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:8:5-79
+13-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:8:22-76
+14
+15    <!-- Camera: photo capture via WebView file chooser + Capacitor Camera plugin -->
+16    <uses-permission android:name="android.permission.CAMERA" />
+16-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:11:5-65
+16-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:11:22-62
+17
+18    <!-- Contacts: full phonebook sync via ContactsBridge -->
+19    <uses-permission android:name="android.permission.READ_CONTACTS" />
+19-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:14:5-72
+19-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:14:22-69
+20
+21    <!-- Microphone: VoiceService native AudioRecord capture -->
+22    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+22-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:17:5-71
+22-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:17:22-68
+23
+24    <!--
+25         Audio focus for WebView Web Audio API on Android 14+ / ColorOS 14 / Vivo.
+26         Without this the OEM audio arbiter can deny the WebView audio session
+27         even when RECORD_AUDIO is granted.
+28    -->
+29    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+29-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:22:5-80
+29-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:22:22-77
+30
+31    <!-- Foreground service base permission (Android 9+) -->
+32    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+32-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:25:5-77
+32-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:25:22-74
+33
+34    <!--
+35         Required on Android 14+ (API 34): startForeground() must declare type=microphone
+36         or AudioRecord.read() silently returns 0 bytes on every call.
+37    -->
+38    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+38-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:29:5-88
+38-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:29:22-85
+39
+40    <!-- Data-sync foreground type for KeepAliveService -->
+41    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+41-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:32:5-87
+41-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:32:22-84
+42    <uses-permission android:name="android.permission.WAKE_LOCK" />
+42-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:34:5-68
+42-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:34:22-65
+43
+44    <!-- Battery optimization exemption — prevents OplusHansManager UID freeze -->
+45    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+45-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:37:5-95
+45-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:37:22-92
+46
+47    <!-- Usage stats: PerceptionPlugin.getForegroundApp() -->
+48    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+48-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:40:5-41:46
+48-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:40:22-75
+49
+50    <!-- Push notifications: Android 13+ -->
+51    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+51-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:44:5-77
+51-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:44:22-74
+52
+53    <!-- Boot receiver: restart VoiceService after reboot -->
+54    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+54-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:47:5-81
+54-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:47:22-78
+55    <uses-permission android:name="android.permission.VIBRATE" />
+55-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:49:5-66
+55-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:49:22-63
+56
+57    <!-- AlarmManager exact alarms (Android 12+) -->
+58    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+58-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:52:5-79
+58-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:52:22-76
+59    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+59-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:53:5-74
+59-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:53:22-71
+60    <uses-permission android:name="android.permission.CALL_PHONE" />
+60-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:55:5-69
+60-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:55:22-66
+61    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+61-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:56:5-75
+61-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:56:22-72
+62
+63    <!-- Location: LocationService geo-trigger polling -->
+64    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+64-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:59:5-79
+64-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:59:22-76
+65    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+65-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:60:5-81
+65-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:60:22-78
+66    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+66-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:61:5-85
+66-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:61:22-82
+67    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+67-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:62:5-86
+67-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:62:22-83
+68
+69    <queries>
+69-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:64:5-76:15
+70        <intent>
+70-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:65:9-68:18
+71            <action android:name="android.intent.action.VIEW" />
+71-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:66:13-65
+71-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:66:21-62
+72
+73            <data
+73-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:67:13-65
+74                android:host="wa.me"
+74-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:67:42-62
+75                android:scheme="https" />
+75-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:67:19-41
+76        </intent>
+77        <intent>
+77-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:69:9-71:18
+78            <action android:name="android.intent.action.DIAL" />
+78-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:70:13-65
+78-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:70:21-62
+79        </intent>
+80        <intent>
+80-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:72:9-75:18
+81            <action android:name="android.intent.action.VIEW" />
+81-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:66:13-65
+81-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:66:21-62
+82
+83            <data android:scheme="geo" />
+83-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:67:13-65
+83-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:67:19-41
+84        </intent>
+85    </queries>
+86    <!-- Required by older versions of Google Play services to create IID tokens -->
+87    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+87-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:26:5-82
+87-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:26:22-79
+88
+89    <permission
+89-->[androidx.core:core:1.12.0] C:\Users\ADMIN\.gradle\caches\transforms-3\4f7b0d764f8b5d0d84c4d0344e1adc27\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
+90        android:name="com.pranix.quietkeep.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+90-->[androidx.core:core:1.12.0] C:\Users\ADMIN\.gradle\caches\transforms-3\4f7b0d764f8b5d0d84c4d0344e1adc27\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
+91        android:protectionLevel="signature" />
+91-->[androidx.core:core:1.12.0] C:\Users\ADMIN\.gradle\caches\transforms-3\4f7b0d764f8b5d0d84c4d0344e1adc27\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
+92
+93    <uses-permission android:name="com.pranix.quietkeep.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+93-->[androidx.core:core:1.12.0] C:\Users\ADMIN\.gradle\caches\transforms-3\4f7b0d764f8b5d0d84c4d0344e1adc27\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
+93-->[androidx.core:core:1.12.0] C:\Users\ADMIN\.gradle\caches\transforms-3\4f7b0d764f8b5d0d84c4d0344e1adc27\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
+94
+95    <application
+95-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:78:5-223:19
+96        android:allowBackup="true"
+96-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:79:9-35
+97        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+97-->[androidx.core:core:1.12.0] C:\Users\ADMIN\.gradle\caches\transforms-3\4f7b0d764f8b5d0d84c4d0344e1adc27\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
+98        android:debuggable="true"
+99        android:extractNativeLibs="false"
+100        android:hardwareAccelerated="true"
+100-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:80:9-43
+101        android:icon="@mipmap/ic_launcher"
+101-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:81:9-43
+102        android:label="@string/app_name"
+102-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:82:9-41
+103        android:roundIcon="@mipmap/ic_launcher_round"
+103-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:83:9-54
+104        android:supportsRtl="true"
+104-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:84:9-35
+105        android:theme="@style/AppTheme"
+105-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:85:9-40
+106        android:usesCleartextTraffic="false" >
+106-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:86:9-45
+107
+108        <!-- OEM battery optimization hints (4 major OEMs) -->
+109
+110
+111        <!-- Realme / OPPO / OnePlus (ColorOS / OxygenOS) -->
+112        <meta-data
+112-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:91:9-93:43
+113            android:name="com.oplus.optimization.battery"
+113-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:92:13-58
+114            android:value="no_optimize" />
+114-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:93:13-40
+115
+116        <!-- Xiaomi / Redmi / POCO (MIUI / HyperOS) -->
+117        <meta-data
+117-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:96:9-98:33
+118            android:name="com.miui.autostart"
+118-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:97:13-46
+119            android:value="1" />
+119-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:98:13-30
+120
+121        <!-- Vivo / iQOO (Funtouch OS / OriginOS) -->
+122        <meta-data
+122-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:101:9-103:33
+123            android:name="com.vivo.notification.priority"
+123-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:102:13-58
+124            android:value="1" />
+124-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:103:13-30
+125
+126        <!-- Huawei / Honor (EMUI / MagicUI) -->
+127        <meta-data
+127-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:106:9-108:33
+128            android:name="com.huawei.keepalive"
+128-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:107:13-48
+129            android:value="1" />
+129-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:108:13-30
+130
+131        <activity
+131-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:110:9-127:20
+132            android:name="com.pranix.quietkeep.MainActivity"
+132-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:111:13-41
+133            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+133-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:112:13-129
+134            android:exported="true"
+134-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:113:13-36
+135            android:hardwareAccelerated="true"
+135-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:114:13-47
+136            android:launchMode="singleTask"
+136-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:115:13-44
+137            android:windowSoftInputMode="adjustResize" >
+137-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:116:13-55
+138            <intent-filter>
+138-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:117:13-120:29
+139                <action android:name="android.intent.action.MAIN" />
+139-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:118:17-69
+139-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:118:25-66
+140
+141                <category android:name="android.intent.category.LAUNCHER" />
+141-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:119:17-77
+141-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:119:27-74
+142            </intent-filter>
+143            <intent-filter>
+143-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:121:13-126:29
+144                <action android:name="android.intent.action.VIEW" />
+144-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:66:13-65
+144-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:66:21-62
+145
+146                <category android:name="android.intent.category.DEFAULT" />
+146-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:123:17-76
+146-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:123:27-73
+147                <category android:name="android.intent.category.BROWSABLE" />
+147-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:124:17-78
+147-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:124:27-75
+148
+149                <data
+149-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:67:13-65
+150                    android:host="caller-context"
+150-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:67:42-62
+151                    android:scheme="com.pranix.quietkeep" />
+151-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:67:19-41
+152            </intent-filter>
+153        </activity>
+154
+155        <!-- QuietKeepCallScreeningService: Track A1 incoming call context moat -->
+156        <service
+156-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:130:9-138:19
+157            android:name="com.pranix.quietkeep.services.QuietKeepCallScreeningService"
+157-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:131:13-67
+158            android:enabled="true"
+158-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:133:13-35
+159            android:exported="true"
+159-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:134:13-36
+160            android:permission="android.permission.BIND_SCREENING_SERVICE" >
+160-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:132:13-75
+161            <intent-filter>
+161-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:135:13-137:29
+162                <action android:name="android.telecom.CallScreeningService" />
+162-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:136:17-79
+162-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:136:25-76
+163            </intent-filter>
+164        </service>
+165
+166        <!--
+167             KeepAliveService: started before WebView load to block Hans UID freeze.
+168             IMPORTANCE_LOW prevents ColorOS from killing the notification channel.
+169        -->
+170        <service
+170-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:142:9-146:56
+171            android:name="com.pranix.quietkeep.services.KeepAliveService"
+171-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:143:13-54
+172            android:enabled="true"
+172-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:144:13-35
+173            android:exported="false"
+173-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:145:13-37
+174            android:foregroundServiceType="dataSync" />
+174-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:146:13-53
+175
+176        <!--
+177             VoiceService: continuous mic → Sarvam STT → /api/voice/capture.
+178             foregroundServiceType="microphone" mandatory on Android 14+ (API 34).
+179        -->
+180        <service
+180-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:150:9-154:58
+181            android:name="com.pranix.quietkeep.services.VoiceService"
+181-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:151:13-50
+182            android:enabled="true"
+182-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:152:13-35
+183            android:exported="false"
+183-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:153:13-37
+184            android:foregroundServiceType="microphone" />
+184-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:154:13-55
+185
+186        <!-- LocationService: geo-trigger polling for location-based keeps -->
+187        <service
+187-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:157:9-161:56
+188            android:name="com.pranix.quietkeep.services.LocationService"
+188-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:158:13-53
+189            android:enabled="true"
+189-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:159:13-35
+190            android:exported="false"
+190-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:160:13-37
+191            android:foregroundServiceType="location" />
+191-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:161:13-53
+192
+193        <!-- PaymentNotificationListener: Track A5 payment SMS & UPI notification auto-capture -->
+194        <service
+194-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:164:9-172:19
+195            android:name="com.pranix.quietkeep.services.PaymentNotificationListener"
+195-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:165:13-65
+196            android:exported="true"
+196-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:168:13-36
+197            android:label="QuietKeep Expense Capture"
+197-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:166:13-54
+198            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" >
+198-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:167:13-87
+199            <intent-filter>
+199-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:169:13-171:29
+200                <action android:name="android.service.notification.NotificationListenerService" />
+200-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:170:17-99
+200-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:170:25-96
+201            </intent-filter>
+202        </service>
+203
+204        <!-- BootReceiver: restarts VoiceService + LocationService after reboot -->
+205        <receiver
+205-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:175:9-182:20
+206            android:name="com.pranix.quietkeep.receivers.BootReceiver"
+206-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:176:13-51
+207            android:enabled="true"
+207-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:177:13-35
+208            android:exported="true" >
+208-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:178:13-36
+209            <intent-filter>
+209-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:179:13-181:29
+210                <action android:name="android.intent.action.BOOT_COMPLETED" />
+210-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:180:17-79
+210-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:180:25-76
+211            </intent-filter>
+212        </receiver>
+213
+214        <!-- AlarmReceiver: fires when AlarmManager triggers a reminder -->
+215        <receiver
+215-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:185:9-188:40
+216            android:name="com.pranix.quietkeep.receivers.AlarmReceiver"
+216-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:186:13-52
+217            android:enabled="true"
+217-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:187:13-35
+218            android:exported="false" />
+218-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:188:13-37
+219
+220        <!-- GeofenceBroadcastReceiver: Track A7 location keep geofence transition receiver -->
+221        <receiver
+221-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:191:9-194:40
+222            android:name="com.pranix.quietkeep.receivers.GeofenceBroadcastReceiver"
+222-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:192:13-64
+223            android:enabled="true"
+223-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:193:13-35
+224            android:exported="false" />
+224-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:194:13-37
+225
+226        <!-- QuickMicWidget: Track A3 Home Screen Mic Tap Target -->
+227        <receiver
+227-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:197:9-207:20
+228            android:name="com.pranix.quietkeep.widgets.QuickMicWidget"
+228-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:198:13-51
+229            android:exported="true"
+229-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:200:13-36
+230            android:label="QuietKeep Mic" >
+230-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:199:13-42
+231            <intent-filter>
+231-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:201:13-203:29
+232                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+232-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:202:17-84
+232-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:202:25-81
+233            </intent-filter>
+234
+235            <meta-data
+235-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:204:13-206:65
+236                android:name="android.appwidget.provider"
+236-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:205:17-58
+237                android:resource="@xml/quick_mic_widget_info" />
+237-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:206:17-62
+238        </receiver>
+239
+240        <!-- QuietKeepVoiceAssistantService: Hardware power button / default assistant mapping -->
+241        <service
+241-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:210:9-221:19
+242            android:name="com.pranix.quietkeep.services.QuietKeepVoiceAssistantService"
+242-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:211:13-68
+243            android:exported="true"
+243-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:214:13-36
+244            android:label="QuietKeep Voice Assistant"
+244-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:212:13-54
+245            android:permission="android.permission.BIND_VOICE_INTERACTION" >
+245-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:213:13-75
+246            <intent-filter>
+246-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:215:13-217:29
+247                <action android:name="android.service.voice.VoiceInteractionService" />
+247-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:216:17-88
+247-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:216:25-85
+248            </intent-filter>
+249
+250            <meta-data
+250-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:218:13-220:69
+251                android:name="android.speech"
+251-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:219:17-46
+252                android:resource="@xml/voice_interaction_service" />
+252-->C:\Users\ADMIN\OneDrive\Desktop\Antigravity 2.0 Pranix\Quietkeep\android\app\src\main\AndroidManifest.xml:220:17-66
+253        </service>
+254
+255        <receiver
+255-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:29:9-40:20
+256            android:name="com.google.firebase.iid.FirebaseInstanceIdReceiver"
+256-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:30:13-78
+257            android:exported="true"
+257-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:31:13-36
+258            android:permission="com.google.android.c2dm.permission.SEND" >
+258-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:32:13-73
+259            <intent-filter>
+259-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:33:13-35:29
+260                <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+260-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:34:17-81
+260-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:34:25-78
+261            </intent-filter>
+262
+263            <meta-data
+263-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:37:13-39:40
+264                android:name="com.google.android.gms.cloudmessaging.FINISHED_AFTER_HANDLED"
+264-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:38:17-92
+265                android:value="true" />
+265-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:39:17-37
+266        </receiver>
+267        <!--
+268             FirebaseMessagingService performs security checks at runtime,
+269             but set to not exported to explicitly avoid allowing another app to call it.
+270        -->
+271        <service
+271-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:46:9-53:19
+272            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+272-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:47:13-82
+273            android:directBootAware="true"
+273-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:48:13-43
+274            android:exported="false" >
+274-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:49:13-37
+275            <intent-filter android:priority="-500" >
+275-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:50:13-52:29
+275-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:50:28-51
+276                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+276-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:51:17-78
+276-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:51:25-75
+277            </intent-filter>
+278        </service>
+279        <service
+279-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:54:9-63:19
+280            android:name="com.google.firebase.components.ComponentDiscoveryService"
+280-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:55:13-84
+281            android:directBootAware="true"
+281-->[com.google.firebase:firebase-common:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\79c0f5325dbe10d30d90538c85ebb094\transformed\jetified-firebase-common-20.4.2\AndroidManifest.xml:32:13-43
+282            android:exported="false" >
+282-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:56:13-37
+283            <meta-data
+283-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:57:13-59:85
+284                android:name="com.google.firebase.components:com.google.firebase.messaging.FirebaseMessagingKtxRegistrar"
+284-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:58:17-122
+285                android:value="com.google.firebase.components.ComponentRegistrar" />
+285-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:59:17-82
+286            <meta-data
+286-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:60:13-62:85
+287                android:name="com.google.firebase.components:com.google.firebase.messaging.FirebaseMessagingRegistrar"
+287-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:61:17-119
+288                android:value="com.google.firebase.components.ComponentRegistrar" />
+288-->[com.google.firebase:firebase-messaging:23.4.0] C:\Users\ADMIN\.gradle\caches\transforms-3\97fb2faa5a1fd9b5cdc68fe5e7f0f2d2\transformed\jetified-firebase-messaging-23.4.0\AndroidManifest.xml:62:17-82
+289            <meta-data
+289-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\1ab9b5a6bf4c9f1bc95c3b4720ae1306\transformed\jetified-firebase-installations-17.2.0\AndroidManifest.xml:15:13-17:85
+290                android:name="com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsKtxRegistrar"
+290-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\1ab9b5a6bf4c9f1bc95c3b4720ae1306\transformed\jetified-firebase-installations-17.2.0\AndroidManifest.xml:16:17-130
+291                android:value="com.google.firebase.components.ComponentRegistrar" />
+291-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\1ab9b5a6bf4c9f1bc95c3b4720ae1306\transformed\jetified-firebase-installations-17.2.0\AndroidManifest.xml:17:17-82
+292            <meta-data
+292-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\1ab9b5a6bf4c9f1bc95c3b4720ae1306\transformed\jetified-firebase-installations-17.2.0\AndroidManifest.xml:18:13-20:85
+293                android:name="com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsRegistrar"
+293-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\1ab9b5a6bf4c9f1bc95c3b4720ae1306\transformed\jetified-firebase-installations-17.2.0\AndroidManifest.xml:19:17-127
+294                android:value="com.google.firebase.components.ComponentRegistrar" />
+294-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\1ab9b5a6bf4c9f1bc95c3b4720ae1306\transformed\jetified-firebase-installations-17.2.0\AndroidManifest.xml:20:17-82
+295            <meta-data
+295-->[com.google.firebase:firebase-common-ktx:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\c25121176a7a7a4187c4394a18555395\transformed\jetified-firebase-common-ktx-20.4.2\AndroidManifest.xml:12:13-14:85
+296                android:name="com.google.firebase.components:com.google.firebase.ktx.FirebaseCommonLegacyRegistrar"
+296-->[com.google.firebase:firebase-common-ktx:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\c25121176a7a7a4187c4394a18555395\transformed\jetified-firebase-common-ktx-20.4.2\AndroidManifest.xml:13:17-116
+297                android:value="com.google.firebase.components.ComponentRegistrar" />
+297-->[com.google.firebase:firebase-common-ktx:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\c25121176a7a7a4187c4394a18555395\transformed\jetified-firebase-common-ktx-20.4.2\AndroidManifest.xml:14:17-82
+298            <meta-data
+298-->[com.google.firebase:firebase-common:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\79c0f5325dbe10d30d90538c85ebb094\transformed\jetified-firebase-common-20.4.2\AndroidManifest.xml:35:13-37:85
+299                android:name="com.google.firebase.components:com.google.firebase.FirebaseCommonKtxRegistrar"
+299-->[com.google.firebase:firebase-common:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\79c0f5325dbe10d30d90538c85ebb094\transformed\jetified-firebase-common-20.4.2\AndroidManifest.xml:36:17-109
+300                android:value="com.google.firebase.components.ComponentRegistrar" />
+300-->[com.google.firebase:firebase-common:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\79c0f5325dbe10d30d90538c85ebb094\transformed\jetified-firebase-common-20.4.2\AndroidManifest.xml:37:17-82
+301            <meta-data
+301-->[com.google.firebase:firebase-datatransport:18.1.7] C:\Users\ADMIN\.gradle\caches\transforms-3\986f5fff6f8ab37d3239bd6333bbaaa5\transformed\jetified-firebase-datatransport-18.1.7\AndroidManifest.xml:27:13-29:85
+302                android:name="com.google.firebase.components:com.google.firebase.datatransport.TransportRegistrar"
+302-->[com.google.firebase:firebase-datatransport:18.1.7] C:\Users\ADMIN\.gradle\caches\transforms-3\986f5fff6f8ab37d3239bd6333bbaaa5\transformed\jetified-firebase-datatransport-18.1.7\AndroidManifest.xml:28:17-115
+303                android:value="com.google.firebase.components.ComponentRegistrar" />
+303-->[com.google.firebase:firebase-datatransport:18.1.7] C:\Users\ADMIN\.gradle\caches\transforms-3\986f5fff6f8ab37d3239bd6333bbaaa5\transformed\jetified-firebase-datatransport-18.1.7\AndroidManifest.xml:29:17-82
+304        </service>
+305
+306        <provider
+306-->[androidx.emoji2:emoji2:1.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\87be383d1829025b610e404a53f258be\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
+307            android:name="androidx.startup.InitializationProvider"
+307-->[androidx.emoji2:emoji2:1.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\87be383d1829025b610e404a53f258be\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:25:13-67
+308            android:authorities="com.pranix.quietkeep.androidx-startup"
+308-->[androidx.emoji2:emoji2:1.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\87be383d1829025b610e404a53f258be\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:26:13-68
+309            android:exported="false" >
+309-->[androidx.emoji2:emoji2:1.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\87be383d1829025b610e404a53f258be\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:27:13-37
+310            <meta-data
+310-->[androidx.emoji2:emoji2:1.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\87be383d1829025b610e404a53f258be\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:29:13-31:52
+311                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+311-->[androidx.emoji2:emoji2:1.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\87be383d1829025b610e404a53f258be\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:30:17-75
+312                android:value="androidx.startup" />
+312-->[androidx.emoji2:emoji2:1.2.0] C:\Users\ADMIN\.gradle\caches\transforms-3\87be383d1829025b610e404a53f258be\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:31:17-49
+313            <meta-data
+313-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\ADMIN\.gradle\caches\transforms-3\57e79bb2334266ca900242c1a637e87e\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:29:13-31:52
+314                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+314-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\ADMIN\.gradle\caches\transforms-3\57e79bb2334266ca900242c1a637e87e\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:30:17-78
+315                android:value="androidx.startup" />
+315-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\ADMIN\.gradle\caches\transforms-3\57e79bb2334266ca900242c1a637e87e\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:31:17-49
+316            <meta-data
+316-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:29:13-31:52
+317                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+317-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:30:17-85
+318                android:value="androidx.startup" />
+318-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:31:17-49
+319        </provider>
+320
+321        <activity
+321-->[com.google.android.gms:play-services-base:18.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\929b41e4848abbc3630b7e7d855a64ee\transformed\jetified-play-services-base-18.3.0\AndroidManifest.xml:20:9-22:45
+322            android:name="com.google.android.gms.common.api.GoogleApiActivity"
+322-->[com.google.android.gms:play-services-base:18.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\929b41e4848abbc3630b7e7d855a64ee\transformed\jetified-play-services-base-18.3.0\AndroidManifest.xml:20:19-85
+323            android:exported="false"
+323-->[com.google.android.gms:play-services-base:18.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\929b41e4848abbc3630b7e7d855a64ee\transformed\jetified-play-services-base-18.3.0\AndroidManifest.xml:22:19-43
+324            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+324-->[com.google.android.gms:play-services-base:18.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\929b41e4848abbc3630b7e7d855a64ee\transformed\jetified-play-services-base-18.3.0\AndroidManifest.xml:21:19-78
+325
+326        <provider
+326-->[com.google.firebase:firebase-common:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\79c0f5325dbe10d30d90538c85ebb094\transformed\jetified-firebase-common-20.4.2\AndroidManifest.xml:23:9-28:39
+327            android:name="com.google.firebase.provider.FirebaseInitProvider"
+327-->[com.google.firebase:firebase-common:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\79c0f5325dbe10d30d90538c85ebb094\transformed\jetified-firebase-common-20.4.2\AndroidManifest.xml:24:13-77
+328            android:authorities="com.pranix.quietkeep.firebaseinitprovider"
+328-->[com.google.firebase:firebase-common:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\79c0f5325dbe10d30d90538c85ebb094\transformed\jetified-firebase-common-20.4.2\AndroidManifest.xml:25:13-72
+329            android:directBootAware="true"
+329-->[com.google.firebase:firebase-common:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\79c0f5325dbe10d30d90538c85ebb094\transformed\jetified-firebase-common-20.4.2\AndroidManifest.xml:26:13-43
+330            android:exported="false"
+330-->[com.google.firebase:firebase-common:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\79c0f5325dbe10d30d90538c85ebb094\transformed\jetified-firebase-common-20.4.2\AndroidManifest.xml:27:13-37
+331            android:initOrder="100" />
+331-->[com.google.firebase:firebase-common:20.4.2] C:\Users\ADMIN\.gradle\caches\transforms-3\79c0f5325dbe10d30d90538c85ebb094\transformed\jetified-firebase-common-20.4.2\AndroidManifest.xml:28:13-36
+332
+333        <meta-data
+333-->[com.google.android.gms:play-services-basement:18.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\2269e5bc10be43a0d5cf43bab6b8e370\transformed\jetified-play-services-basement-18.3.0\AndroidManifest.xml:21:9-23:69
+334            android:name="com.google.android.gms.version"
+334-->[com.google.android.gms:play-services-basement:18.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\2269e5bc10be43a0d5cf43bab6b8e370\transformed\jetified-play-services-basement-18.3.0\AndroidManifest.xml:22:13-58
+335            android:value="@integer/google_play_services_version" />
+335-->[com.google.android.gms:play-services-basement:18.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\2269e5bc10be43a0d5cf43bab6b8e370\transformed\jetified-play-services-basement-18.3.0\AndroidManifest.xml:23:13-66
+336
+337        <service
+337-->[com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\43ff1428208d8180682be5781dea01e9\transformed\jetified-transport-backend-cct-3.1.8\AndroidManifest.xml:28:9-34:19
+338            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+338-->[com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\43ff1428208d8180682be5781dea01e9\transformed\jetified-transport-backend-cct-3.1.8\AndroidManifest.xml:29:13-103
+339            android:exported="false" >
+339-->[com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\43ff1428208d8180682be5781dea01e9\transformed\jetified-transport-backend-cct-3.1.8\AndroidManifest.xml:30:13-37
+340            <meta-data
+340-->[com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\43ff1428208d8180682be5781dea01e9\transformed\jetified-transport-backend-cct-3.1.8\AndroidManifest.xml:31:13-33:39
+341                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
+341-->[com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\43ff1428208d8180682be5781dea01e9\transformed\jetified-transport-backend-cct-3.1.8\AndroidManifest.xml:32:17-94
+342                android:value="cct" />
+342-->[com.google.android.datatransport:transport-backend-cct:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\43ff1428208d8180682be5781dea01e9\transformed\jetified-transport-backend-cct-3.1.8\AndroidManifest.xml:33:17-36
+343        </service>
+344        <service
+344-->[com.google.android.datatransport:transport-runtime:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\2ab9d9bdb8f2abe28822fb89b06d3d3d\transformed\jetified-transport-runtime-3.1.8\AndroidManifest.xml:26:9-30:19
+345            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
+345-->[com.google.android.datatransport:transport-runtime:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\2ab9d9bdb8f2abe28822fb89b06d3d3d\transformed\jetified-transport-runtime-3.1.8\AndroidManifest.xml:27:13-117
+346            android:exported="false"
+346-->[com.google.android.datatransport:transport-runtime:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\2ab9d9bdb8f2abe28822fb89b06d3d3d\transformed\jetified-transport-runtime-3.1.8\AndroidManifest.xml:28:13-37
+347            android:permission="android.permission.BIND_JOB_SERVICE" >
+347-->[com.google.android.datatransport:transport-runtime:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\2ab9d9bdb8f2abe28822fb89b06d3d3d\transformed\jetified-transport-runtime-3.1.8\AndroidManifest.xml:29:13-69
+348        </service>
+349
+350        <receiver
+350-->[com.google.android.datatransport:transport-runtime:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\2ab9d9bdb8f2abe28822fb89b06d3d3d\transformed\jetified-transport-runtime-3.1.8\AndroidManifest.xml:32:9-34:40
+351            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
+351-->[com.google.android.datatransport:transport-runtime:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\2ab9d9bdb8f2abe28822fb89b06d3d3d\transformed\jetified-transport-runtime-3.1.8\AndroidManifest.xml:33:13-132
+352            android:exported="false" />
+352-->[com.google.android.datatransport:transport-runtime:3.1.8] C:\Users\ADMIN\.gradle\caches\transforms-3\2ab9d9bdb8f2abe28822fb89b06d3d3d\transformed\jetified-transport-runtime-3.1.8\AndroidManifest.xml:34:13-37
+353        <receiver
+353-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:34:9-52:20
+354            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+354-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:35:13-76
+355            android:directBootAware="false"
+355-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:36:13-44
+356            android:enabled="true"
+356-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:37:13-35
+357            android:exported="true"
+357-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:38:13-36
+358            android:permission="android.permission.DUMP" >
+358-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:39:13-57
+359            <intent-filter>
+359-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:40:13-42:29
+360                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+360-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:41:17-91
+360-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:41:25-88
+361            </intent-filter>
+362            <intent-filter>
+362-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:43:13-45:29
+363                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+363-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:44:17-85
+363-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:44:25-82
+364            </intent-filter>
+365            <intent-filter>
+365-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:46:13-48:29
+366                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+366-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:47:17-88
+366-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:47:25-85
+367            </intent-filter>
+368            <intent-filter>
+368-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:49:13-51:29
+369                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+369-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:50:17-95
+369-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\ADMIN\.gradle\caches\transforms-3\23f9e3f881bcdaca00be9db41956bd48\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:50:25-92
+370            </intent-filter>
+371        </receiver>
+372    </application>
+373
+374</manifest>

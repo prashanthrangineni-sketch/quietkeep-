@@ -1,25 +1,8 @@
 'use client';
 // src/app/login/page.tsx
-// P0.3 FIX: Password login for ALL users.
-//
-// BEFORE: Non-beta users got magic link (signInWithOtp) — forces email check every login.
-//         Founder explicitly rejected this behavior.
-// AFTER:  All users get email + password login. Magic link still available as fallback.
-//         Beta accounts retain their fast-path server-side password verification.
-//         New user signup via email + password with optional email confirmation.
-//
-// AUTH FLOW:
-//   1. User enters email → Continue
-//   2. IF beta email: beta OTP box (unchanged)
-//   3. ELSE: password field + Sign In button
-//             "Forgot password?" → reset email
-//             "No account?" → signup path
-//             "Use magic link instead" → secondary fallback
-//
-// SESSION PERSISTENCE:
-//   Supabase default: 60-day refresh token in localStorage (qk-auth-token).
-//   Sessions survive APK restarts, browser close, token expiry.
-//   No explicit "remember me" needed — already the default.
+// QuietKeep Personal Login Page
+// Primary Auth: Phone Number SMS OTP via MSG91
+// Secondary Auth: Email + Password / Beta Code / Magic Link
 
 import { useState, useRef } from 'react';
 import { supabase as _supabaseSingleton } from '@/lib/supabase';
@@ -28,7 +11,8 @@ import Link from 'next/link';
 const APP_TYPE = process.env.NEXT_PUBLIC_APP_TYPE || 'personal';
 const POST_AUTH_PATH = APP_TYPE === 'business' ? '/b/dashboard' : '/dashboard';
 
-const OTP_LEN = 8; // Beta accounts only
+const BETA_OTP_LEN = 8;
+const SMS_OTP_LEN = 6;
 
 function getClient() {
   return _supabaseSingleton;
@@ -38,26 +22,115 @@ function setPersonalMode() {
   document.cookie = 'qk_app_mode=personal; path=/; max-age=2592000; SameSite=Lax';
 }
 
-type Step = 'email' | 'password' | 'signup' | 'forgot' | 'otp' | 'sent' | 'reset_sent';
+type Step = 'phone' | 'phone_otp' | 'email' | 'password' | 'signup' | 'forgot' | 'otp' | 'sent' | 'reset_sent';
 
 export default function LoginPage() {
+  const [phone,    setPhone]    = useState('');
+  const [smsOtp,   setSmsOtp]   = useState(Array(SMS_OTP_LEN).fill(''));
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [confirm,  setConfirm]  = useState('');
-  const [step,     setStep]     = useState<Step>('email');
-  const [otp,      setOtp]      = useState(Array(OTP_LEN).fill(''));
+  const [step,     setStep]     = useState<Step>('phone');
+  const [otp,      setOtp]      = useState(Array(BETA_OTP_LEN).fill(''));
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
   const [isBeta,   setIsBeta]   = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
+  const smsRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // ── Step 1: email → determine flow ──────────────────────────────────────────
-  async function handleContinue() {
+  // ── MSG91 Phone SMS OTP ──────────────────────────────────────────────────
+  async function handleSendSmsOtp() {
+    const clean = phone.replace(/\D/g, '');
+    if (clean.length < 10) {
+      setError('Enter a valid 10-digit mobile number.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: clean, type: 'personal' }),
+      });
+      const data = await res.json();
+      setLoading(false);
+
+      if (!res.ok || data.error) {
+        setError(data.error || 'Failed to send SMS OTP. Try again.');
+        return;
+      }
+
+      setStep('phone_otp');
+      setTimeout(() => smsRefs.current[0]?.focus(), 120);
+    } catch (err: any) {
+      setLoading(false);
+      setError(err?.message || 'Network error sending SMS OTP.');
+    }
+  }
+
+  async function handleVerifySmsOtp(otpArr?: string[]) {
+    const clean = phone.replace(/\D/g, '');
+    const code = (otpArr || smsOtp).join('');
+    if (code.length !== SMS_OTP_LEN) {
+      setError(`Enter all ${SMS_OTP_LEN} digits of your SMS OTP.`);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: clean, otp: code }),
+      });
+      const data = await res.json();
+      setLoading(false);
+
+      if (!res.ok || data.error || !data.session) {
+        setError(data.error || 'Invalid OTP code. Please check and try again.');
+        setSmsOtp(Array(SMS_OTP_LEN).fill(''));
+        setTimeout(() => smsRefs.current[0]?.focus(), 100);
+        return;
+      }
+
+      // Session received! Establish session in Supabase singleton client
+      await getClient().auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+
+      setPersonalMode();
+      window.location.href = POST_AUTH_PATH;
+    } catch (err: any) {
+      setLoading(false);
+      setError(err?.message || 'Verification failed. Try again.');
+    }
+  }
+
+  function handleSmsDigit(i: number, val: string) {
+    const char = val.replace(/\D/g, '').slice(-1);
+    const next = [...smsOtp]; next[i] = char; setSmsOtp(next);
+    if (char && i < SMS_OTP_LEN - 1) smsRefs.current[i + 1]?.focus();
+    if (next.every(d => d !== '') && next.join('').length === SMS_OTP_LEN) {
+      setTimeout(() => handleVerifySmsOtp(next), 80);
+    }
+  }
+
+  function handleSmsKey(i: number, e: React.KeyboardEvent) {
+    if (e.key === 'Backspace' && !smsOtp[i] && i > 0) smsRefs.current[i - 1]?.focus();
+    if (e.key === 'Enter') handleVerifySmsOtp();
+  }
+
+  // ── Email Step ────────────────────────────────────────────────────────────
+  async function handleContinueEmail() {
     if (!email.trim()) return;
     const norm = email.trim().toLowerCase();
     setError('');
 
-    // Check if beta via server-side API
     try {
       const betaRes = await fetch('/api/auth/beta-verify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -70,20 +143,18 @@ export default function LoginPage() {
         setTimeout(() => refs.current[0]?.focus(), 120);
         return;
       }
-    } catch {} // Non-beta — fall through to password flow
+    } catch {}
 
-    // All general users: password login
     setStep('password');
     setTimeout(() => document.getElementById('qk-password-input')?.focus(), 100);
   }
 
-  // ── Password sign-in (general users) ────────────────────────────────────────
   async function verifyPassword() {
     if (!password) { setError('Enter your password.'); return; }
     setLoading(true);
     setError('');
 
-    const { data, error: authErr } = await getClient().auth.signInWithPassword({
+    const { error: authErr } = await getClient().auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });
@@ -94,10 +165,6 @@ export default function LoginPage() {
       const msg = authErr.message || '';
       if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
         setError('Incorrect password. Use "Forgot password?" if you need to reset it.');
-      } else if (msg.includes('Email not confirmed')) {
-        setError('Please confirm your email first — check your inbox for a verification link.');
-      } else if (msg.includes('Too many requests')) {
-        setError('Too many attempts. Wait a few minutes and try again.');
       } else {
         setError(msg || 'Sign-in failed. Try again.');
       }
@@ -108,7 +175,6 @@ export default function LoginPage() {
     window.location.href = POST_AUTH_PATH;
   }
 
-  // ── Sign up (new accounts) ────────────────────────────────────────────────
   async function signUp() {
     if (!password || password.length < 8) {
       setError('Password must be at least 8 characters.');
@@ -137,38 +203,27 @@ export default function LoginPage() {
     }
 
     if (data.session) {
-      // Email confirmation disabled — user is immediately signed in
       setPersonalMode();
       window.location.href = POST_AUTH_PATH;
     } else {
-      // Email confirmation required
       setStep('sent');
     }
   }
 
-  // ── Forgot password ───────────────────────────────────────────────────────
   async function sendReset() {
     setLoading(true);
     setError('');
 
     const { error: resetErr } = await getClient().auth.resetPasswordForEmail(
       email.trim().toLowerCase(),
-      {
-        redirectTo: `${window.location.origin}/auth/confirm?next=${POST_AUTH_PATH}`,
-      }
+      { redirectTo: `${window.location.origin}/auth/confirm?next=${POST_AUTH_PATH}` }
     );
 
     setLoading(false);
-
-    if (resetErr) {
-      setError(resetErr.message || 'Could not send reset email.');
-      return;
-    }
-
+    if (resetErr) { setError(resetErr.message || 'Could not send reset email.'); return; }
     setStep('reset_sent');
   }
 
-  // ── Magic link fallback (secondary) ──────────────────────────────────────
   async function sendMagicLink() {
     setLoading(true);
     setError('');
@@ -180,30 +235,26 @@ export default function LoginPage() {
       },
     });
     setLoading(false);
-    if (otpErr) {
-      setError(otpErr.message || 'Could not send login link.');
-      return;
-    }
+    if (otpErr) { setError(otpErr.message || 'Could not send login link.'); return; }
     setStep('sent');
   }
 
-  // ── Beta OTP (server-side password) ──────────────────────────────────────
   async function verifyBeta() {
     const norm = email.trim().toLowerCase();
     const pwd = otp.join('');
-    if (!pwd || pwd.length < OTP_LEN) { setError('Enter your full password.'); return; }
+    if (!pwd || pwd.length < BETA_OTP_LEN) { setError('Enter your full beta password.'); return; }
 
     setLoading(true);
     setError('');
     try {
       const res = await fetch('/api/auth/beta-verify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: norm }),
+        body: JSON.stringify({ email: norm, code: pwd }),
       });
       const data = await res.json();
       if (!data.access_token) {
         setError(data.error || 'Beta sign-in failed.');
-        setOtp(Array(OTP_LEN).fill(''));
+        setOtp(Array(BETA_OTP_LEN).fill(''));
         setTimeout(() => refs.current[0]?.focus(), 100);
         setLoading(false);
         return;
@@ -214,7 +265,7 @@ export default function LoginPage() {
       });
     } catch {
       setError('Sign-in failed. Please try again.');
-      setOtp(Array(OTP_LEN).fill(''));
+      setOtp(Array(BETA_OTP_LEN).fill(''));
       setLoading(false);
       return;
     }
@@ -226,8 +277,8 @@ export default function LoginPage() {
   function handleDigit(i: number, val: string) {
     const char = val.slice(-1);
     const next = [...otp]; next[i] = char; setOtp(next);
-    if (char && i < OTP_LEN - 1) refs.current[i + 1]?.focus();
-    if (isBeta && next.every(d => d !== '') && next.join('').length === OTP_LEN) {
+    if (char && i < BETA_OTP_LEN - 1) refs.current[i + 1]?.focus();
+    if (isBeta && next.every(d => d !== '') && next.join('').length === BETA_OTP_LEN) {
       setTimeout(verifyBeta, 80);
     }
   }
@@ -265,6 +316,78 @@ export default function LoginPage() {
     </div>
   ) : null;
 
+  // ── Step: Primary Mobile Phone SMS OTP ──────────────────────────────────────
+  if (step === 'phone') return (
+    <div style={wrap}>
+      <div style={card}>
+        {logo}
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.5px' }}>Sign in</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 22px', lineHeight: 1.6 }}>Enter your mobile number to receive a 6-digit SMS OTP.</p>
+        {errorBox}
+        <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6, display: 'block' }}>Mobile Number</label>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 15, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center' }}>
+            +91
+          </div>
+          <input type="tel" value={phone} onChange={e => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setError(''); }}
+            onKeyDown={e => e.key === 'Enter' && !loading && phone.trim().length >= 10 && handleSendSmsOtp()}
+            placeholder="9876543210" autoFocus className="qk-input" style={{ flex: 1, fontSize: 16, letterSpacing: '0.05em' }} />
+        </div>
+        <button onClick={handleSendSmsOtp} disabled={phone.trim().length < 10 || loading}
+          style={{ width: '100%', padding: '14px', background: phone.trim().length < 10 || loading ? 'var(--surface-hover)' : 'linear-gradient(135deg,#5b5ef4,#818cf8)', border: 'none', color: phone.trim().length < 10 || loading ? 'var(--text-subtle)' : '#fff', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: phone.trim().length < 10 || loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+          {loading ? 'Sending SMS OTP…' : 'Send SMS OTP →'}
+        </button>
+
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+          <button onClick={() => { setStep('email'); setError(''); }}
+            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', textDecoration: 'underline' }}>
+            Or sign in with Email / Beta Password →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Step: Verify Phone SMS OTP ─────────────────────────────────────────────
+  if (step === 'phone_otp') return (
+    <div style={wrap}>
+      <div style={{ ...card, textAlign: 'center' }}>
+        <div style={{ fontSize: 40, marginBottom: 10 }}>💬</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>Enter SMS OTP</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6, lineHeight: 1.6 }}>
+          Sent to <strong style={{ color: 'var(--primary)' }}>+91 {phone}</strong>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginBottom: 20, lineHeight: 1.6, background: 'var(--primary-dim)', borderRadius: 8, padding: '8px 12px' }}>
+          Valid for 10 minutes · Powered by MSG91 SMS
+        </div>
+        {errorBox}
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 20 }}>
+          {smsOtp.map((d, i) => (
+            <input key={i} ref={el => { smsRefs.current[i] = el; }}
+              type="text" inputMode="numeric" pattern="[0-9]" maxLength={1} value={d}
+              onChange={e => handleSmsDigit(i, e.target.value)}
+              onKeyDown={e => handleSmsKey(i, e)}
+              style={{ width: 44, height: 54, textAlign: 'center', background: d ? 'var(--primary-dim)' : 'var(--surface-hover)', border: d ? '2px solid var(--primary)' : '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 22, fontWeight: 700, outline: 'none', fontFamily: 'inherit' }} />
+          ))}
+        </div>
+        <button onClick={() => handleVerifySmsOtp()} disabled={loading || smsOtp.some(d => !d)}
+          style={{ width: '100%', padding: '14px', background: loading || smsOtp.some(d => !d) ? 'var(--surface-hover)' : 'linear-gradient(135deg,#5b5ef4,#818cf8)', border: 'none', color: loading || smsOtp.some(d => !d) ? 'var(--text-subtle)' : '#fff', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: loading || smsOtp.some(d => !d) ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+          {loading ? 'Verifying…' : 'Verify & Sign In →'}
+        </button>
+        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button onClick={handleSendSmsOtp} disabled={loading}
+            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', fontWeight: 600 }}>
+            ↩ Resend SMS
+          </button>
+          <button onClick={() => { setStep('phone'); setSmsOtp(Array(SMS_OTP_LEN).fill('')); setError(''); }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+            ← Change Number
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // ── Sent / Reset sent state ──────────────────────────────────────────────
   if (step === 'sent' || step === 'reset_sent') return (
     <div style={wrap}>
@@ -276,16 +399,10 @@ export default function LoginPage() {
         <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 20 }}>
           {step === 'reset_sent'
             ? <>We sent a password reset link to <strong style={{ color: 'var(--primary)' }}>{email}</strong>. Click the link to set a new password.</>
-            : <>We sent a sign-in link to <strong style={{ color: 'var(--primary)' }}>{email}</strong>. Click the link or enter the 8-digit code.</>
+            : <>We sent a sign-in link to <strong style={{ color: 'var(--primary)' }}>{email}</strong>. Click the link to access your account.</>
           }
         </div>
-        {step === 'sent' && (
-          <button onClick={() => { window.location.href = `/auth/verify?email=${encodeURIComponent(email)}`; }}
-            style={{ width: '100%', padding: '12px', marginBottom: 10, background: 'linear-gradient(135deg,#5b5ef4,#818cf8)', border: 'none', color: '#fff', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-            🔢 Enter 8-digit code →
-          </button>
-        )}
-        <button onClick={() => { setStep('email'); setError(''); }}
+        <button onClick={() => { setStep('phone'); setError(''); }}
           style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', textDecoration: 'underline' }}>
           ← Back to sign in
         </button>
@@ -293,25 +410,28 @@ export default function LoginPage() {
     </div>
   );
 
-  // ── Email step ────────────────────────────────────────────────────────────
+  // ── Email step (secondary fallback) ──────────────────────────────────────
   if (step === 'email') return (
     <div style={wrap}>
       <div style={card}>
         {logo}
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.5px' }}>Sign in</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 22px', lineHeight: 1.6 }}>Enter your email to continue.</p>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.5px' }}>Email Sign In</h1>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 22px', lineHeight: 1.6 }}>Enter your registered email address.</p>
         {errorBox}
         <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6, display: 'block' }}>Email address</label>
         <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }}
-          onKeyDown={e => e.key === 'Enter' && !loading && email.trim() && handleContinue()}
+          onKeyDown={e => e.key === 'Enter' && !loading && email.trim() && handleContinueEmail()}
           placeholder="you@example.com" autoFocus className="qk-input" style={{ marginBottom: 12, fontSize: 15 }} />
-        <button onClick={handleContinue} disabled={!email.trim() || loading}
+        <button onClick={handleContinueEmail} disabled={!email.trim() || loading}
           style={{ width: '100%', padding: '14px', marginTop: 4, background: !email.trim() || loading ? 'var(--surface-hover)' : 'linear-gradient(135deg,#5b5ef4,#818cf8)', border: 'none', color: !email.trim() || loading ? 'var(--text-subtle)' : '#fff', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: !email.trim() || loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
           {loading ? 'Checking…' : 'Continue →'}
         </button>
-        <p style={{ marginTop: 16, fontSize: 11, color: 'var(--text-subtle)', textAlign: 'center', lineHeight: 1.6 }}>
-          No account? You can create one on the next step.
-        </p>
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <button onClick={() => { setStep('phone'); setError(''); }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', textDecoration: 'underline' }}>
+            ← Back to SMS OTP sign in
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -404,15 +524,15 @@ export default function LoginPage() {
     </div>
   );
 
-  // ── Beta OTP step ─────────────────────────────────────────────────────────
+  // ── Beta Access Password Step ─────────────────────────────────────────────
   return (
     <div style={wrap}>
       <div style={{ ...card, textAlign: 'center' }}>
         <div style={{ fontSize: 40, marginBottom: 10 }}>🔑</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Beta Access</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Beta Access Code</div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6, lineHeight: 1.6 }}>{email}</div>
         <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginBottom: 20, lineHeight: 1.6, background: 'var(--primary-dim)', borderRadius: 8, padding: '8px 12px' }}>
-          Enter each character of your beta password in the boxes.
+          Enter your pre-shared 8-character beta access password in the boxes below.
         </div>
         {errorBox}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
@@ -429,7 +549,7 @@ export default function LoginPage() {
           {loading ? 'Signing in…' : 'Sign In'}
         </button>
         <div style={{ marginTop: 12 }}>
-          <button onClick={() => { setStep('email'); setOtp(Array(OTP_LEN).fill('')); setError(''); setIsBeta(false); }}
+          <button onClick={() => { setStep('email'); setOtp(Array(BETA_OTP_LEN).fill('')); setError(''); setIsBeta(false); }}
             style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
             ← Back
           </button>

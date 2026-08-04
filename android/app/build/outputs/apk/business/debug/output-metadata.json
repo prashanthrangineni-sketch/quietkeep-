@@ -1,0 +1,20 @@
+{
+  "version": 3,
+  "artifactType": {
+    "type": "APK",
+    "kind": "Directory"
+  },
+  "applicationId": "com.pranix.quietkeep.business",
+  "variantName": "businessDebug",
+  "elements": [
+    {
+      "type": "SINGLE",
+      "filters": [],
+      "attributes": [],
+      "versionCode": 3,
+      "versionName": "1.2.0",
+      "outputFile": "app-business-debug.apk"
+    }
+  ],
+  "elementType": "File"
+}

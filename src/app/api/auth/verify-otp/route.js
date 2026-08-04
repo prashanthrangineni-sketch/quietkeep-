@@ -4,6 +4,8 @@
 import { NextResponse } from 'next/server';
 import { createWriteClient } from '@/lib/supabase-bearer';
 
+const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY || '533749AJNRa3XXw5u6a34f4f6P1';
+
 export async function POST(req) {
   try {
     const { phone, otp } = await req.json();
@@ -14,13 +16,8 @@ export async function POST(req) {
     const cleanPhone = phone.replace(/\D/g, '');
     const mobile = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
 
-    const authKey = process.env.MSG91_AUTH_KEY;
-    if (!authKey) {
-      return NextResponse.json({ error: 'MSG91_AUTH_KEY is not configured on server' }, { status: 500 });
-    }
-
     // Call MSG91 Verify OTP API
-    const url = `https://control.msg91.com/api/v5/otp/verify?otp=${encodeURIComponent(otp)}&mobile=${encodeURIComponent(mobile)}&authkey=${encodeURIComponent(authKey)}`;
+    const url = `https://control.msg91.com/api/v5/otp/verify?otp=${encodeURIComponent(otp)}&mobile=${encodeURIComponent(mobile)}&authkey=${encodeURIComponent(MSG91_AUTH_KEY)}`;
     const res = await fetch(url, { method: 'POST' });
     const data = await res.json();
 

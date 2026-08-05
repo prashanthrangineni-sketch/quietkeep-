@@ -1,31 +1,47 @@
 [
     {
-        "merged": "com.pranix.quietkeep.app-merged_res-30:/xml_voice_interaction_service.xml.flat",
-        "source": "com.pranix.quietkeep.app-main-32:/xml/voice_interaction_service.xml"
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-mdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-mdpi\\ic_launcher.png"
     },
     {
         "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxhdpi_ic_launcher_round.png.flat",
         "source": "com.pranix.quietkeep.app-personal-33:/mipmap-xxhdpi/ic_launcher_round.png"
     },
     {
-        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "com.pranix.quietkeep.app-main-32:/mipmap-anydpi-v26/ic_launcher.xml"
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\xml_voice_interaction_service.xml.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-main-32:\\xml\\voice_interaction_service.xml"
     },
     {
-        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-hdpi_ic_launcher_foreground.png.flat",
-        "source": "com.pranix.quietkeep.app-personal-33:/mipmap-hdpi/ic_launcher_foreground.png"
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-xxxhdpi\\ic_launcher_round.png"
     },
     {
-        "merged": "com.pranix.quietkeep.app-merged_res-30:/xml_quick_mic_widget_info.xml.flat",
-        "source": "com.pranix.quietkeep.app-main-32:/xml/quick_mic_widget_info.xml"
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-xxhdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-main-32:\\mipmap-anydpi-v26\\ic_launcher.xml"
     },
     {
         "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-mdpi_ic_launcher.png.flat",
         "source": "com.pranix.quietkeep.app-personal-33:/mipmap-mdpi/ic_launcher.png"
     },
     {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\xml_config.xml.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-main-32:\\xml\\config.xml"
+    },
+    {
         "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-mdpi_ic_launcher_round.png.flat",
         "source": "com.pranix.quietkeep.app-personal-33:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-xhdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-xxhdpi\\ic_launcher.png"
     },
     {
         "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxxhdpi_ic_launcher.png.flat",
@@ -36,6 +52,50 @@
         "source": "com.pranix.quietkeep.app-personal-33:/mipmap-xxxhdpi/ic_launcher_round.png"
     },
     {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.pranix.quietkeep.app-personal-33:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "com.pranix.quietkeep.app-personal-33:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pranix.quietkeep.app-personal-33:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\xml_quick_mic_widget_info.xml.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-main-32:\\xml\\quick_mic_widget_info.xml"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-main-32:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "com.pranix.quietkeep.app-personal-33:/mipmap-hdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-xxxhdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-xxxhdpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-mdpi\\ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-mdpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-xxhdpi\\ic_launcher_foreground.png"
+    },
+    {
         "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xhdpi_ic_launcher.png.flat",
         "source": "com.pranix.quietkeep.app-personal-33:/mipmap-xhdpi/ic_launcher.png"
     },
@@ -44,43 +104,43 @@
         "source": "com.pranix.quietkeep.app-personal-33:/mipmap-hdpi/ic_launcher.png"
     },
     {
-        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxhdpi_ic_launcher.png.flat",
-        "source": "com.pranix.quietkeep.app-personal-33:/mipmap-xxhdpi/ic_launcher.png"
-    },
-    {
         "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
         "source": "com.pranix.quietkeep.app-personal-33:/mipmap-xxhdpi/ic_launcher_foreground.png"
-    },
-    {
-        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-hdpi_ic_launcher_round.png.flat",
-        "source": "com.pranix.quietkeep.app-personal-33:/mipmap-hdpi/ic_launcher_round.png"
-    },
-    {
-        "merged": "com.pranix.quietkeep.app-merged_res-30:/drawable_splash.xml.flat",
-        "source": "com.pranix.quietkeep.app-main-32:/drawable/splash.xml"
     },
     {
         "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
         "source": "com.pranix.quietkeep.app-personal-33:/mipmap-xhdpi/ic_launcher_foreground.png"
     },
     {
-        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "com.pranix.quietkeep.app-main-32:/mipmap-anydpi-v26/ic_launcher_round.xml"
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-hdpi\\ic_launcher_round.png"
     },
     {
-        "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
-        "source": "com.pranix.quietkeep.app-personal-33:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-hdpi\\ic_launcher_foreground.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-xhdpi\\ic_launcher_foreground.png"
     },
     {
         "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-mdpi_ic_launcher_foreground.png.flat",
         "source": "com.pranix.quietkeep.app-personal-33:/mipmap-mdpi/ic_launcher_foreground.png"
     },
     {
-        "merged": "com.pranix.quietkeep.app-merged_res-30:/xml_config.xml.flat",
-        "source": "com.pranix.quietkeep.app-main-32:/xml/config.xml"
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-xhdpi\\ic_launcher.png"
     },
     {
         "merged": "com.pranix.quietkeep.app-merged_res-30:/mipmap-xhdpi_ic_launcher_round.png.flat",
         "source": "com.pranix.quietkeep.app-personal-33:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\mipmap-hdpi_ic_launcher.png.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-personal-33:\\mipmap-hdpi\\ic_launcher.png"
+    },
+    {
+        "merged": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-merged_res-30:\\drawable_splash.xml.flat",
+        "source": "C:\\Users\\ADMIN\\.gradle\\daemon\\8.2.1\\com.pranix.quietkeep.app-main-32:\\drawable\\splash.xml"
     }
 ]

@@ -31,7 +31,7 @@ export async function GET() {
 
 export async function POST(req) {
   try {
-    const { phone, type = 'personal' } = await req.json();
+    const { phone, type = 'personal', templateId: overrideTemplateId } = await req.json();
     if (!phone) {
       return NextResponse.json({ error: 'Mobile number is required' }, { status: 400 });
     }
@@ -40,7 +40,10 @@ export async function POST(req) {
     const cleanPhone = phone.replace(/\D/g, '');
     const mobile = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
 
-    const templateId = (type === 'business' ? DLT_BUSINESS_TEMPLATE_ID : DLT_PERSONAL_TEMPLATE_ID) || DLT_PERSONAL_TEMPLATE_ID;
+    // TEMPORARY: allow an explicit templateId override for diagnostics. Remove after branding confirmed.
+    const templateId = ((overrideTemplateId || '').trim())
+      || (type === 'business' ? DLT_BUSINESS_TEMPLATE_ID : DLT_PERSONAL_TEMPLATE_ID)
+      || DLT_PERSONAL_TEMPLATE_ID;
 
     // Call MSG91 Send OTP API
     const url = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(mobile)}&authkey=${encodeURIComponent(MSG91_AUTH_KEY)}&sender=${encodeURIComponent(MSG91_SENDER_ID)}`;

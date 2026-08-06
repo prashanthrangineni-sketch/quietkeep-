@@ -67,14 +67,23 @@ export default function HomePage() {
   const router = useRouter();
   const [mode, setMode] = useState('personal');
 
-  // Native APK users skip the marketing page.
+  // Native APK: signed-in users jump straight to their dashboard; signed-out
+  // users see the full animated homepage (the website experience) and sign in
+  // from here — Personal in violet, Business in green.
   useEffect(() => {
+    let biz = false;
+    if (typeof window !== 'undefined') {
+      const q = new URLSearchParams(window.location.search);
+      const cookieBiz = /(?:^|;\s*)qk_app_mode=business/.test(document.cookie || '');
+      biz = q.get('app') === 'business' || q.get('mode') === 'business' || cookieBiz;
+      if (biz) setMode('business');
+    }
     const isNative = typeof window !== 'undefined'
       && window.Capacitor
       && typeof window.Capacitor.isNativePlatform === 'function'
       && window.Capacitor.isNativePlatform();
-    if (isNative) {
-      router.replace(user ? '/dashboard' : '/login');
+    if (isNative && user) {
+      router.replace(biz ? '/b/dashboard' : '/dashboard');
     }
   }, [user, router]);
 

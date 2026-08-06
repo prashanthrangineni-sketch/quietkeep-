@@ -28,11 +28,11 @@ function SmileyOrb({ size = 36, bg1 = G, bg2 = G2 }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       boxShadow: `0 4px 14px rgba(16,185,129,0.35)`, flexShrink: 0
     }}>
-      <span style={{
-        color: '#ffffff', fontSize: Math.round(size * 0.42), fontWeight: 900,
-        letterSpacing: '-1px', fontFamily: "-apple-system, system-ui, 'Segoe UI', Roboto, sans-serif",
-        lineHeight: 1, userSelect: 'none'
-      }}>(◕‿◕)</span>
+      <svg width={Math.round(size * 0.72)} height={Math.round(size * 0.72)} viewBox="0 0 100 100" aria-hidden="true">
+        <ellipse cx="35" cy="42" rx="8.5" ry="12" fill="#ffffff" />
+        <ellipse cx="65" cy="42" rx="8.5" ry="12" fill="#ffffff" />
+        <path d="M 32 58 Q 50 74 68 58" fill="none" stroke="#ffffff" strokeWidth="7.5" strokeLinecap="round" />
+      </svg>
     </div>
   );
 }

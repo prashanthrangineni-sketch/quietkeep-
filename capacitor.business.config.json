@@ -3,7 +3,7 @@
   "appName": "QuietKeep Business",
   "webDir": "out",
   "server": {
-    "url": "https://quietkeep.com/biz-login",
+    "url": "https://quietkeep.com/?app=business",
     "cleartext": false,
     "allowNavigation": [
       "quietkeep.com",

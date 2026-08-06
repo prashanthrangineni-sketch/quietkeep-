@@ -47,6 +47,7 @@ export default function BizLoginPage() {
   const [error, setError] = useState('');
   const refs = useRef([]);
   const smsRefs = useRef([]);
+  const otpTokenRef = useRef('');
 
   // ── MSG91 Phone SMS OTP (Business) ─────────────────────────────────────────
   async function handleSendSmsOtp() {

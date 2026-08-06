@@ -53,6 +53,7 @@ export default function LoginPage() {
   const [isBeta,   setIsBeta]   = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const smsRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const otpTokenRef = useRef<string>('');
 
   // ── MSG91 Phone SMS OTP ──────────────────────────────────────────────────
   async function handleSendSmsOtp() {

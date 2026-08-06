@@ -18,7 +18,7 @@ android {
         personal {
             dimension "appType"
             applicationId "com.pranix.quietkeep"
-            resValue "string", "app_name", "QuietKeep"
+            resValue "string", "app_name", "QuietKeep Personal"
         }
         business {
             dimension "appType"

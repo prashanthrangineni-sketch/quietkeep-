@@ -97,7 +97,7 @@ export default function BizLoginPage() {
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: clean, otp: code }),
+        body: JSON.stringify({ phone: clean, otp: code, otpToken: otpTokenRef.current }),
       });
       const data = await res.json();
       setLoading(false);

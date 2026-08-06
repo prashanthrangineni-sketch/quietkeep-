@@ -108,7 +108,7 @@ export default function HomePage() {
           <a href="#personal" onClick={() => setMode('personal')}>Personal</a>
           <a href="#business" onClick={() => setMode('business')}>Business</a>
           <a href="#how">How it works</a>
-          <Link href={user ? '/dashboard' : '/login'} className="nav-cta">
+          <Link href={user ? (isBiz ? '/b/dashboard' : '/dashboard') : (isBiz ? '/biz-login' : '/login')} className="nav-cta">
             {user ? 'Open app' : 'Sign in'}
           </Link>
         </div>

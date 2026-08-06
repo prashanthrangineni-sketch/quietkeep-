@@ -76,7 +76,10 @@ export default function HomePage() {
       const q = new URLSearchParams(window.location.search);
       const cookieBiz = /(?:^|;\s*)qk_app_mode=business/.test(document.cookie || '');
       biz = q.get('app') === 'business' || q.get('mode') === 'business' || cookieBiz;
-      if (biz) setMode('business');
+      if (biz) {
+        setMode('business');
+        document.cookie = 'qk_app_mode=business; path=/; max-age=2592000; SameSite=Lax';
+      }
     }
     const isNative = typeof window !== 'undefined'
       && window.Capacitor

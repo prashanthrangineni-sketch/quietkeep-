@@ -3,17 +3,30 @@
 
 import { NextResponse } from 'next/server';
 
-// SECURITY FIX: the live MSG91 auth key and DLT template IDs were previously
-// hardcoded here as fallback defaults and got committed to git history in
-// plaintext. That key must be rotated in the MSG91 dashboard — this fix only
-// stops the code from shipping a hardcoded secret going forward, it does not
-// undo the exposure already in git history.
-const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY;
-const DLT_PERSONAL_TEMPLATE_ID = process.env.MSG91_PERSONAL_TEMPLATE_ID;
-const DLT_BUSINESS_TEMPLATE_ID = process.env.MSG91_BUSINESS_TEMPLATE_ID;
+// Trim to defend against a stray space/newline pasted into the Vercel value,
+// which makes MSG91 reject the template_id as "invalid".
+const MSG91_AUTH_KEY = (process.env.MSG91_AUTH_KEY || '').trim();
+const DLT_PERSONAL_TEMPLATE_ID = (process.env.MSG91_PERSONAL_TEMPLATE_ID || '').trim();
+const DLT_BUSINESS_TEMPLATE_ID = (process.env.MSG91_BUSINESS_TEMPLATE_ID || '').trim();
+const MSG91_SENDER_ID = (process.env.MSG91_SENDER_ID || 'PRANIX').trim();
 
 if (!MSG91_AUTH_KEY) {
   console.error('MSG91_AUTH_KEY env var is not set — OTP sending will fail until it is configured in Vercel.');
+}
+
+// TEMPORARY diagnostic — lets us confirm the live config without exposing secrets.
+// Remove once phone OTP is confirmed working.
+export async function GET() {
+  return NextResponse.json({
+    diagnostic: true,
+    hasAuthKey: MSG91_AUTH_KEY.length > 0,
+    authKeyLength: MSG91_AUTH_KEY.length,
+    sender: MSG91_SENDER_ID,
+    personalTemplateId: DLT_PERSONAL_TEMPLATE_ID,
+    personalTemplateLength: DLT_PERSONAL_TEMPLATE_ID.length,
+    businessTemplateId: DLT_BUSINESS_TEMPLATE_ID,
+    businessTemplateLength: DLT_BUSINESS_TEMPLATE_ID.length,
+  });
 }
 
 export async function POST(req) {
@@ -27,10 +40,10 @@ export async function POST(req) {
     const cleanPhone = phone.replace(/\D/g, '');
     const mobile = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
 
-    const templateId = type === 'business' ? DLT_BUSINESS_TEMPLATE_ID : DLT_PERSONAL_TEMPLATE_ID;
+    const templateId = (type === 'business' ? DLT_BUSINESS_TEMPLATE_ID : DLT_PERSONAL_TEMPLATE_ID) || DLT_PERSONAL_TEMPLATE_ID;
 
     // Call MSG91 Send OTP API
-    const url = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(mobile)}&authkey=${encodeURIComponent(MSG91_AUTH_KEY)}&sender=PRANIX`;
+    const url = `https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(mobile)}&authkey=${encodeURIComponent(MSG91_AUTH_KEY)}&sender=${encodeURIComponent(MSG91_SENDER_ID)}`;
     const res = await fetch(url, { method: 'POST' });
     const data = await res.json();
 
@@ -41,7 +54,16 @@ export async function POST(req) {
         templateId
       });
     } else {
-      return NextResponse.json({ error: data.message || 'Failed to send OTP via MSG91' }, { status: 400 });
+      return NextResponse.json({
+        error: data.message || 'Failed to send OTP via MSG91',
+        _debug: {
+          templateIdUsed: templateId,
+          templateIdLength: templateId.length,
+          hasAuthKey: MSG91_AUTH_KEY.length > 0,
+          sender: MSG91_SENDER_ID,
+          msg91: data,
+        }
+      }, { status: 400 });
     }
   } catch (err) {
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });

@@ -73,6 +73,7 @@ export default function BizLoginPage() {
         return;
       }
 
+      otpTokenRef.current = data.otpToken || '';
       setStep('phone_otp');
       setTimeout(() => smsRefs.current[0]?.focus(), 120);
     } catch (err) {

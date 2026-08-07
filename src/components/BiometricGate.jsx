@@ -42,6 +42,15 @@ export default function BiometricGate({ children }) {
   }, []);
 
   useEffect(() => {
+    // Web/PWA: skip biometric check entirely — render children immediately.
+    // Only Capacitor (native APK) needs the biometric gate.
+    // This avoids the "Verifying..." screen flash on web visitors and
+    // ensures search engines can index the site content.
+    if (typeof window !== 'undefined' && !window.Capacitor?.isNativePlatform?.()) {
+      setStatus('unlocked');
+      return;
+    }
+
     runGate();
 
     // Re-check on app resume (visibilitychange fires when app comes to foreground)

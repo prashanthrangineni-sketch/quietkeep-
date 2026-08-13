@@ -128,6 +128,14 @@ export async function POST(request) {
   // Entirely fail-safe: if the brain is unavailable we keep the regex result.
   const langBase = String(language || 'en').split('-')[0]
   const regexWeak = parsed.type === 'unknown' || parsed.type === 'note' || (parsed.confidence ?? 0) < 0.7
+
+    // The regex parser is CONFIDENTLY WRONG about money direction — measured
+    // 13 Aug 2026: "Ramesh se paanch sau rupaye aaye" (money RECEIVED) came back
+    // as `expense` at 0.95 confidence, so a confidence gate alone never rescues
+    // it. Anything money-shaped, or anything written in romanised Hindi/Telugu
+    // (which arrives tagged en-IN), must go to the brain.
+    const MONEY_TYPES = new Set(['expense', 'income', 'purchase', 'sale', 'invoice', 'ledger_credit', 'ledger_debit'])
+    const ROMAN_INDIC = /\b(se|ko|ka|ki|ke|liye|diye|diya|aaye|aaya|mile|mila|rupaye|rupay|rupees|hazaar|hajaar|sau|lakh|kal|aaj|parso|subah|shaam|raat|baje|yaad|dilana|karna|chahiye|nahi|gurthu|repu|nenu|meeru|cheyyi|kavali|ivvu|vachindi|ravali)\b/i
   let llmAssist = null
 
   if (regexWeak || langBase !== 'en') {

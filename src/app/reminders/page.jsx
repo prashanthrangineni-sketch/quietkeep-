@@ -279,7 +279,7 @@ export default function RemindersPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                     <button onClick={() => toggleActive(r)} className="qk-btn qk-btn-sm" style={{
-                      background: r.is_active ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.05)',
+                      background: r.is_active ? 'rgba(245,158,11,0.15)' : 'var(--surface)',
                       border: `1px solid ${r.is_active ? 'rgba(245,158,11,0.3)' : 'var(--surface)'}`,
                       color: r.is_active ? '#f59e0b' : '#475569',
                       padding: '6px 9px',

@@ -116,7 +116,7 @@ export default function NotificationBell() {
             fontSize: 9, fontWeight: 800,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 3px',
-            border: '2px solid #0a0a0f',
+            border: '2px solid var(--border)',
             lineHeight: 1,
           }}>
             {unread > 9 ? '9+' : unread}
@@ -128,7 +128,7 @@ export default function NotificationBell() {
         <div style={{
           position: 'fixed', top: 58, right: 12,
           width: 320, maxWidth: 'calc(100vw - 24px)',
-          background: '#0f0f1a',
+          background: 'var(--bg)',
           border: '1px solid rgba(99,102,241,0.25)',
           borderRadius: 14, zIndex: 9999,
           boxShadow: '0 12px 40px rgba(0,0,0,0.7)',
@@ -136,10 +136,10 @@ export default function NotificationBell() {
         }}>
           <div style={{
             padding: '13px 16px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid var(--border)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
-            <span style={{ color: '#f1f5f9', fontWeight: 700, fontSize: 14 }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 14 }}>
               Notifications
             </span>
             {loading && <span style={{ fontSize: 11, color: '#475569' }}>refreshing…</span>}

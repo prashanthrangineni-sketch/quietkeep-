@@ -66,6 +66,7 @@ export async function aariaUnderstand(text, { lang = 'en' } = {}) {
  */
 export async function aariaAssist(text, { userId, lang = 'en', scope = 'read' } = {}) {
   if (!userId) return null;
+  if (!REMOTE_NLU_ENABLED) return null;
 
   const understood = await aariaUnderstand(text, { lang });
   if (!understood?.intent) return null;

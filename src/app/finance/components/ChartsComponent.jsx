@@ -120,8 +120,8 @@ export default function ChartsComponent() {
         <button
           onClick={() => setActiveTab('category')}
           style={{
-            backgroundColor: activeTab === 'category' ? '#6366f1' : '#1e1e2e',
-            border: '1px solid #334155',
+            backgroundColor: activeTab === 'category' ? '#6366f1' : 'var(--bg)',
+            border: '1px solid var(--border)',
             color: 'var(--text)',
             padding: '10px',
             borderRadius: '8px',

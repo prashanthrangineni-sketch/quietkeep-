@@ -55,18 +55,18 @@ export function PinSetupModal({ onSave, onCancel }) {
 
   const boxStyle = (filled) => ({
     width: 52, height: 62, textAlign: 'center', fontSize: 26, fontWeight: 700,
-    background: filled ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)',
-    border: filled ? '2px solid #6366f1' : '1px solid rgba(255,255,255,0.12)',
-    borderRadius: 12, color: '#fff', outline: 'none', fontFamily: 'inherit',
+    background: filled ? 'rgba(99,102,241,0.15)' : 'var(--surface)',
+    border: filled ? '2px solid #6366f1' : '1px solid var(--border)',
+    borderRadius: 12, color: 'var(--text)', outline: 'none', fontFamily: 'inherit',
     caretColor: 'transparent',
   });
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: '#12121a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 24, padding: '36px 28px', maxWidth: 380, width: '100%', textAlign: 'center' }}>
+      <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 24, padding: '36px 28px', maxWidth: 380, width: '100%', textAlign: 'center' }}>
         <div style={{ fontSize: 44, marginBottom: 12 }}>🔒</div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Set Kids Lock PIN</div>
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 28, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Set Kids Lock PIN</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 28, lineHeight: 1.5 }}>
           {step === 'set' ? 'Enter a 4-digit PIN to lock Kids Mode' : 'Confirm your PIN'}
         </div>
         {error && <div style={{ color: '#ef4444', fontSize: 13, marginBottom: 16, background: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: '8px 12px' }}>{error}</div>}

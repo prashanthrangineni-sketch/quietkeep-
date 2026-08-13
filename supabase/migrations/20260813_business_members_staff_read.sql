@@ -36,6 +36,21 @@
 --   workspaces the CALLER is an active member of. search_path is pinned so the
 --   definer's rights cannot be redirected at a shadowed table.
 --
+-- APPLIED AND VERIFIED — 13 Aug 2026, project ofnhwpzzxthdvvunxsfs
+--   Ran clean: "Success. No rows returned".
+--
+--   Creating a policy does NOT prove it evaluates; 42P17 recursion only fires
+--   at query time. Verified separately:
+--
+--     begin;
+--     set local role authenticated;
+--     select count(*) from public.business_members;   -- returned 0, not 42P17
+--     rollback;
+--
+--   0 with no JWT is the correct result: auth.uid() is null, so the SECURITY
+--   DEFINER lookup returns no workspaces. The point is that it RETURNED rather
+--   than raising "infinite recursion detected in policy" — the cycle is gone.
+--
 -- SAFETY
 --   Postgres ORs permissive policies together, so the two existing owner
 --   policies are untouched: owners keep full read/write, staff gain read only.

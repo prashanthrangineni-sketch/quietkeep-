@@ -130,18 +130,10 @@ export default function BizLoginPage() {
 
       setBusinessMode();
 
-      const userId = data.session?.user?.id;
-      const { data: profile } = userId ? await getClient()
-        .from('profiles')
-        .select('business_name, business_onboarding_done')
-        .eq('user_id', userId)
-        .maybeSingle() : { data: null };
-
-      if (!profile || !profile.business_name || !profile.business_onboarding_done) {
-        window.location.href = '/b/onboarding';
-      } else {
-        window.location.href = '/b/dashboard';
-      }
+      // Claim any staff row the employer already created for this phone, then
+      // decide. A staff member sent to /b/onboarding is handed their own empty
+      // workspace instead of their employer's.
+      window.location.href = await routeAfterBusinessLogin(getClient(), data.session);
     } catch (err) {
       setLoading(false);
       setError(err?.message || 'Verification failed. Try again.');

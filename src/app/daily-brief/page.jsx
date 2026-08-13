@@ -123,7 +123,7 @@ export default function DailyBriefPage() {
       background: 'var(--surface)', borderRadius: 8, padding: '10px 14px', marginBottom: 8,
       borderLeft: leftBorder ? `3px solid ${leftBorder}` : undefined,
     }}>
-      <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.5 }}>{text}</div>
+      <div style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.5 }}>{text}</div>
       {meta && <div style={{ color: metaColor, fontSize: 12, marginTop: 3 }}>{meta}</div>}
     </div>
   );

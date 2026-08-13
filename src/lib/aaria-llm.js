@@ -38,7 +38,8 @@ const SARVAM_CHAT_URL = 'https://api.sarvam.ai/v1/chat/completions';
 // So: the conversational variant is the brain. Do not switch back without
 // re-running /api/debug/aaria-llm.
 const MODEL = process.env.SARVAM_CHAT_MODEL || 'sarvam-105b-conversations';
-const TIMEOUT_MS = 7000;
+// Sarvam answers the full understanding prompt in ~4-5s. 7s was cutting it off.
+const TIMEOUT_MS = Number(process.env.SARVAM_CHAT_TIMEOUT_MS || 12000);
 
 const LANG_NAMES = {
   en: 'English', hi: 'Hindi (हिंदी)', te: 'Telugu (తెలుగు)', ta: 'Tamil (தமிழ்)',

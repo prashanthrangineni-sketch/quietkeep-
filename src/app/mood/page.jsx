@@ -136,7 +136,7 @@ export default function MoodPage() {
 
       {/* Log mood card */}
       <div style={{ margin:'16px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'16px', padding:'18px' }}>
-        <p style={{ margin:'0 0 14px', fontSize:'14px', color:'rgba(255,255,255,0.7)', fontWeight:500 }}>
+        <p style={{ margin:'0 0 14px', fontSize:'14px', color:'var(--text)', fontWeight:500 }}>
           How are you feeling right now?
         </p>
 

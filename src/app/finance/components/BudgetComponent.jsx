@@ -232,8 +232,8 @@ export default function BudgetComponent() {
             onChange={(e) => setFormData({ ...formData, limit_amount: e.target.value })}
             style={{
               width: '100%',
-              backgroundColor: '#1a1a2e',
-              border: '1px solid #334155',
+              backgroundColor: 'var(--bg)',
+              border: '1px solid var(--border)',
               color: 'var(--text)',
               padding: '10px 12px',
               borderRadius: '8px',

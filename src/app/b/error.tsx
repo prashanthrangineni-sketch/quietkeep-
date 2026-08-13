@@ -23,7 +23,7 @@ export default function BizError({
       fontFamily: "'Inter', system-ui, sans-serif", textAlign: 'center',
     }}>
       <div style={{ fontSize: 52, marginBottom: 16 }}>⚠️</div>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', margin: '0 0 8px' }}>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-muted)', margin: '0 0 8px' }}>
         Something went wrong
       </h1>
       <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, margin: '0 0 24px', maxWidth: 360 }}>

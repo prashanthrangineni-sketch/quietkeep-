@@ -550,7 +550,7 @@ Return ONLY valid JSON matching this structure exactly:
                 {buildBookingLinks(selected.destination).map(b => (
                   <a key={b.label} href={b.url} target="_blank" rel="noopener"
                     style={{ display:'flex', alignItems:'center', gap:7, padding:'8px 10px',
-                      background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)',
+                      background:'var(--surface)', border:'1px solid var(--border)',
                       borderRadius:9, textDecoration:'none', color:'var(--text-muted)', fontSize:11 }}>
                     <span>{b.emoji}</span>
                     <span style={{ fontSize:10 }}>{b.label}</span>

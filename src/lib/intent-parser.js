@@ -88,13 +88,17 @@ function extractEntities(text) {
     const m = text.match(re);
     if (m?.[1]) entities.times.push(m[1]);
   }
-  entities.names = [...new Set(entities.names)];
+  const IGNORED_NAMES = new Set(['me', 'me to', 'to', 'us', 'him', 'her', 'them', 'myself', 'someone']);
+  entities.names = [...new Set(entities.names)].filter(n => !IGNORED_NAMES.has(n.toLowerCase()));
   entities.dates = [...new Set(entities.dates)];
   entities.times = [...new Set(entities.times)];
   return entities;
 }
 
 function classifyIntent(lower) {
+  // Explicit reminder triggers take priority over generic keywords (e.g. "remind me to pay the bill")
+  if (/remind|remember|don.t forget|alert me/.test(lower))              return { type: 'reminder',   conf: 0.90 };
+
   // v12: Business ledger patterns — MUST run before generic expense/invoice patterns
   // Only meaningful when workspace_id is set; resolver confirms the subtype.
   if (/received|paid me|collected/.test(lower) && /\d/.test(lower))
@@ -102,12 +106,11 @@ function classifyIntent(lower) {
   if (/\bsale\b|\bsold\b/.test(lower) && /\d/.test(lower))                  return { type: 'sale',          conf: 0.91 };
   if (/gave|give credit|advance to|credit to|lent/.test(lower) && /\d/.test(lower))
                                                                         return { type: 'ledger_debit',  conf: 0.90 };
-  if (/invoice|bill|receipt|payment due|gst|tax/.test(lower))           return { type: 'invoice',    conf: 0.85 };
+  if (/invoice|\bbill\b|receipt|payment due|gst|tax/.test(lower))        return { type: 'invoice',    conf: 0.85 };
   if (/payroll|salary|wages|pay staff|pay team/.test(lower))            return { type: 'task',       conf: 0.82 };
   if (/attendance|present|absent|leave/.test(lower))                    return { type: 'task',       conf: 0.78 };
   if (/stock|inventory|reorder|out of stock/.test(lower))               return { type: 'task',       conf: 0.80 };
   if (/compliance|license|permit|renewal|expire/.test(lower))           return { type: 'compliance', conf: 0.83 };
-  if (/remind|remember|don.t forget|alert me/.test(lower))              return { type: 'reminder',   conf: 0.88 };
   if (/meet|meeting|call.*\d|catch up|sync|standup/.test(lower))        return { type: 'meeting',    conf: 0.85 };
   if (/buy|purchase|order|shop|get me|pick up/.test(lower))             return { type: 'purchase',   conf: 0.84 };
   if (/spent|paid|expense|₹|\bcost\b|charged/.test(lower))              return { type: 'expense',    conf: 0.85 };

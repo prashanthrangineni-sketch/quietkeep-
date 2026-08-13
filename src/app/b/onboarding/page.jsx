@@ -138,7 +138,7 @@ export default function BizOnboardingPage() {
 
   const inp = {
     width: '100%', background: 'var(--surface)',
-    border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: 12,
+    border: '1.5px solid var(--border)', borderRadius: 12,
     padding: '12px 16px', color: 'var(--text)', fontSize: 14,
     outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
   };
@@ -175,7 +175,7 @@ export default function BizOnboardingPage() {
               {BIZ_TYPES.map(bt => (
                 <button key={bt.value} onClick={() => setBizType(bt.value)}
                   style={{ padding: '12px', borderRadius: 12, textAlign: 'left', cursor: 'pointer',
-                    border: `1.5px solid ${bizType === bt.value ? G : 'rgba(255,255,255,0.1)'}`,
+                    border: `1.5px solid ${bizType === bt.value ? G : 'var(--border)'}`,
                     background: bizType === bt.value ? `${G}18` : 'rgba(255,255,255,0.03)',
                     color: 'var(--text)', fontFamily: 'inherit' }}>
                   <div style={{ fontSize: 22, marginBottom: 4 }}>{bt.emoji}</div>
@@ -207,7 +207,7 @@ export default function BizOnboardingPage() {
                   {BIZ_TYPES.map(bt => (
                     <button key={bt.value} onClick={() => setBizType(bt.value)}
                       style={{ padding: '7px 6px', borderRadius: 8, fontSize: 11, cursor: 'pointer',
-                        border: `1px solid ${bizType === bt.value ? G : 'rgba(255,255,255,0.1)'}`,
+                        border: `1px solid ${bizType === bt.value ? G : 'var(--border)'}`,
                         background: bizType === bt.value ? `${G}18` : 'rgba(255,255,255,0.03)',
                         color: 'var(--text)', fontFamily: 'inherit' }}>
                       {bt.emoji} {bt.label.split('/')[0].trim()}

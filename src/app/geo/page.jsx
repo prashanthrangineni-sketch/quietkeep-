@@ -467,7 +467,7 @@ export default function GeoPage() {
               <button
                 onClick={saveCurrentLocation}
                 disabled={savingLoc || !newLocName.trim()}
-                style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: newLocName.trim() ? '#6366f1' : 'rgba(255,255,255,0.06)', color: newLocName.trim() ? '#fff' : '#475569', fontSize: 13, fontWeight: 600, cursor: newLocName.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: newLocName.trim() ? '#6366f1' : 'var(--surface)', color: newLocName.trim() ? '#fff' : '#475569', fontSize: 13, fontWeight: 600, cursor: newLocName.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
               >
                 {locSaved || (savingLoc ? 'Saving…' : '+ Save here')}
               </button>

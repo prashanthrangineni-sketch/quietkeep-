@@ -143,9 +143,9 @@ export default function BizNavbar() {
 
         {/* Logo + workspace */}
         <Link href="/b/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flex: 1, minWidth: 0 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 7, background: `linear-gradient(135deg,${BIZ_GREEN},#059669)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>QB</span>
-          </div>
+          {/* Aaria's face in green — the same mark as Personal and the
+              homepage, not a "QB" text tile. */}
+          <AariaMark size={28} variant="business" />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2, letterSpacing: '-0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {workspace?.name || 'My Business'}

@@ -75,8 +75,17 @@ export default function Documents() {
       const { error: upErr } = await supabase.storage.from('documents').upload(path, file, { cacheControl:'3600', upsert:false });
       if (upErr) { setErr(upErr.message); setSaving(false); setUploading(false); return; }
       setUploadPct(70);
-      const { data: signed } = await supabase.storage.from('documents').createSignedUrl(path, 60*60*24*365*5);
-      file_url = signed?.signedUrl || path;
+      // A signed URL is what the "Open" link uses. If signing fails we used to
+      // fall back to the raw storage path, which renders as a dead link the
+      // user only discovers later -- fail here instead, the upload is already
+      // safe in the bucket.
+      const { data: signed, error: signErr } = await supabase.storage
+        .from('documents').createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr || !signed?.signedUrl) {
+        setErr(signErr?.message || 'Uploaded, but could not create a link to the file.');
+        setSaving(false); setUploading(false); return;
+      }
+      file_url = signed.signedUrl;
       file_name = file.name; file_size = file.size; file_type = file.type;
       setUploadPct(90); setUploading(false);
     }

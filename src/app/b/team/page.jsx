@@ -39,6 +39,8 @@ export default function TeamPage() {
   const [saving, setSaving]         = useState(false);
   const [deleting, setDeleting]     = useState(null);
   const [msg, setMsg]               = useState('');
+  const [inviteUrl, setInviteUrl]   = useState('');
+  const [inviteName, setInviteName] = useState('');
   const [filter, setFilter]         = useState('active');
   // Tasks
   const [tasks, setTasks]           = useState([]);

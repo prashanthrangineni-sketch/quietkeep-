@@ -69,22 +69,23 @@ MODE: ${workspaceMode === 'business' ? 'Business workspace' : 'Personal'}
 The user said (speech-to-text; may contain errors; may be any Indian language, native script or romanised):
 """${text}"""
 
-Reply with ONLY a JSON object, no explanation, no markdown fence:
+Reply with ONLY a JSON object, no explanation, no markdown fence.
+
+OMIT ANY KEY YOU HAVE NO VALUE FOR. Do not write nulls, do not write empty
+strings, do not pad the object. Every token you emit is time the user spends
+waiting for you to speak, so emit only what you actually know:
 {
   "intent": one of ${JSON.stringify(INTENTS)},
   "confidence": number 0-1,
   "language_detected": BCP-47 code of the language the USER spoke, e.g. "te-IN",
   "entities": {
-    "person": string or null,
-    "datetime_iso": absolute ISO 8601 datetime if a time is stated or implied, else null,
-    "datetime_is_explicit": boolean,
-    "amount": number or null,
-    "currency": "INR" or null,
-    "direction": "in" if money received, "out" if money spent/paid/given, else null,
-    "item": string or null,
-    "location": string or null
+    "person": string,
+    "datetime_iso": absolute ISO 8601 datetime, if a time is stated or implied,
+    "amount": number,
+    "direction": "in" if money received, "out" if money spent/paid/given,
+    "item": string
   },
-  "missing": array from ["datetime","person","amount","item"] — only what you truly need before acting; [] if you can act now,
+  "missing": array from ["datetime","person","amount","item"] — only what you truly need before acting; omit if you can act now,
   "reply": the sentence Aaria SPEAKS next
 }
 

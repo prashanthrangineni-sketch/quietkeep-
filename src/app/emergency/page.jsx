@@ -563,7 +563,7 @@ export default function EmergencyPage() {
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         * { -webkit-tap-highlight-color: transparent; }
-        input::placeholder { color: rgba(255,255,255,0.25); }
+        input::placeholder { color: var(--text-muted); }
         input:focus { border-color: rgba(255,80,80,0.4) !important; box-shadow: 0 0 0 3px rgba(255,60,60,0.1); }
       `}</style>
     </div>

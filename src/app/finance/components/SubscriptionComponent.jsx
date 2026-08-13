@@ -135,7 +135,7 @@ export default function SubscriptionComponent() {
             const isOverdue = daysUntilDue <= 0;
 
             return (
-              <div key={sub.id} style={{ backgroundColor: 'var(--surface)', border: isOverdue ? '1px solid #ef4444' : isDueSoon ? '1px solid #f59e0b' : '1px solid #1e293b', borderRadius: '12px', padding: '14px' }}>
+              <div key={sub.id} style={{ backgroundColor: 'var(--surface)', border: isOverdue ? '1px solid #ef4444' : isDueSoon ? '1px solid #f59e0b' : '1px solid var(--border)', borderRadius: '12px', padding: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)' }}>{sub.name}</div>

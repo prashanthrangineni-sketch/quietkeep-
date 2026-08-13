@@ -641,7 +641,7 @@ export default function SettingsPage() {
           disabled={saving}
           style={{
             width: '100%', padding: '0.9rem', borderRadius: 10, border: 'none',
-            background: saving ? '#333' : '#6366f1', color: '#fff', fontSize: '1rem',
+            background: saving ? 'var(--surface)' : '#6366f1', color: saving ? 'var(--text-muted)' : '#fff', fontSize: '1rem',
             fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
           }}
         >

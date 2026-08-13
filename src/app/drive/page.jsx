@@ -223,7 +223,7 @@ export default function DriveModePage() {
       <div style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 18 }}>🛣️</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>Drive Mode</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Drive Mode</span>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{timeStr}</span>
@@ -255,7 +255,7 @@ export default function DriveModePage() {
           padding: 32,
         }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>📞</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', marginBottom: 8, textAlign: 'center' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', marginBottom: 8, textAlign: 'center' }}>
             Calling {callConfirm.name}
           </div>
           <div style={{ fontSize: 14, color: '#64748b', marginBottom: 32 }}>

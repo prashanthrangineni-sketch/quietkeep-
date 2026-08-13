@@ -15,7 +15,7 @@ const EXP_CATS = ['Food','Groceries','Transport','Shopping','Health','Entertainm
 const PAY_METHODS = ['UPI','Cash','Card','Net Banking','Wallet','Other'];
 const SUB_CYCLES = ['monthly','yearly','weekly','quarterly'];
 const inp = { width:'100%', background:'var(--bg)', border:'1.5px solid var(--border)', borderRadius:8, color:'var(--text)', padding:'0.6rem 0.75rem', fontSize:'0.88rem', outline:'none', boxSizing:'border-box', fontFamily:'inherit', transition:'border-color 0.18s' };
-const btn1 = { padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', fontSize:'0.88rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit' };
+const btn1 = { padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'var(--primary)', color:'var(--text)', fontSize:'0.88rem', fontWeight:600, cursor:'pointer', fontFamily:'inherit' };
 const btn0 = { ...btn1, background:'var(--surface-hover)', border:'1.5px solid var(--border)', color:'var(--text-muted)' };
 const lbl = { color:'var(--text-muted)', fontSize:'0.78rem', display:'block', marginBottom:4, fontWeight:500 };
 const g2 = { display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem', marginBottom:'0.75rem' };
@@ -102,13 +102,13 @@ export default function FinancePage() {
   }
 
   if (loading) return (<div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ color:'#6366f1' }}>Loading Finance…</div></div>);
-  if (loadError) return (<div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12 }}><div style={{ color:'#ef4444', fontSize:'0.95rem' }}>{loadError}</div><button onClick={() => { setLoading(true); init(); }} style={{ padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'#6366f1', color:'#fff', fontSize:'0.88rem', fontWeight:600, cursor:'pointer' }}>Retry</button></div>);
+  if (loadError) return (<div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12 }}><div style={{ color:'#ef4444', fontSize:'0.95rem' }}>{loadError}</div><button onClick={() => { setLoading(true); init(); }} style={{ padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'#6366f1', color:'var(--text)', fontSize:'0.88rem', fontWeight:600, cursor:'pointer' }}>Retry</button></div>);
 
   const totalSpent = expenses.filter(e => e.expense_date?.startsWith(thisMonth)).reduce((s, e) => s + parseFloat(e.amount || 0), 0);
   const totalSubs = subscriptions.reduce((s, sub) => s + parseFloat(sub.amount || 0), 0);
 
   return (
-    <div style={{ minHeight:'100vh', background:'var(--bg)', color:'#fff' }}>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', color:'var(--text)' }}>
       <NavbarClient />
       <div style={{ maxWidth:700, margin:'0 auto', padding:'6rem 1rem 6rem' }}>
 
@@ -125,7 +125,7 @@ export default function FinancePage() {
 
         <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1.5rem', background:'var(--surface)', borderRadius:10, padding:4 }}>
           {['expenses','budgets','subscriptions', ...(stockEnabled ? ['assets'] : [])].map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ flex:1, padding:'0.55rem', borderRadius:8, border:'none', background:tab===t?'#6366f1':'transparent', color:tab===t?'#fff':'#666', fontSize:'0.85rem', fontWeight:600, cursor:'pointer', textTransform:'capitalize' }}>{t}</button>
+            <button key={t} onClick={() => setTab(t)} style={{ flex:1, padding:'0.55rem', borderRadius:8, border:'none', background:tab===t?'#6366f1':'transparent', color:tab===t?'var(--text)':'#666', fontSize:'0.85rem', fontWeight:600, cursor:'pointer', textTransform:'capitalize' }}>{t}</button>
           ))}
         </div>
 
@@ -156,7 +156,7 @@ export default function FinancePage() {
             {expenses.length === 0 ? <div style={{ textAlign:'center', padding:'3rem', color:'#444' }}>No expenses yet.</div> : expenses.map(e => (
               <div key={e.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'0.9rem 1rem', marginBottom:'0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div>
-                  <div style={{ color:'#fff', fontSize:'0.9rem', fontWeight:500 }}>{e.description || e.category}</div>
+                  <div style={{ color:'var(--text)', fontSize:'0.9rem', fontWeight:500 }}>{e.description || e.category}</div>
                   <div style={{ color:'#555', fontSize:'0.78rem', marginTop:2 }}>{e.category} · {e.payment_method} · {e.expense_date}</div>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
@@ -197,7 +197,7 @@ export default function FinancePage() {
               return (
                 <div key={b.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1rem', marginBottom:'0.5rem' }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
-                    <span style={{ color:'#fff', fontWeight:500 }}>{b.category}</span>
+                    <span style={{ color:'var(--text)', fontWeight:500 }}>{b.category}</span>
                     <span style={{ color:col, fontSize:'0.85rem' }}>₹{spent.toLocaleString('en-IN')} / ₹{parseFloat(b.limit_amount).toLocaleString('en-IN')}</span>
                   </div>
                   <div style={{ background:'var(--bg)', borderRadius:4, height:6 }}>
@@ -239,7 +239,7 @@ export default function FinancePage() {
               return (
                 <div key={s.id} style={{ background:'var(--surface)', border:`1px solid ${urgent ? '#ef4444' : 'var(--border)'}`, borderRadius:10, padding:'0.9rem 1rem', marginBottom:'0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div>
-                    <div style={{ color:'#fff', fontWeight:500, fontSize:'0.9rem' }}>{s.name}</div>
+                    <div style={{ color:'var(--text)', fontWeight:500, fontSize:'0.9rem' }}>{s.name}</div>
                     <div style={{ color:'#555', fontSize:'0.78rem', marginTop:2 }}>
                       {s.cycle} · {s.category}
                       {daysLeft !== null && <span style={{ color: urgent ? '#ef4444' : '#666', marginLeft:8 }}>· due in {daysLeft}d</span>}
@@ -248,7 +248,7 @@ export default function FinancePage() {
                   <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
                     <div style={{ color:'#f59e0b', fontWeight:700 }}>₹{parseFloat(s.amount).toLocaleString('en-IN')}</div>
                     <div onClick={() => toggleSub(s.id, s.is_active)} style={{ width:36, height:20, borderRadius:10, background: s.is_active ? '#6366f1' : '#333', position:'relative', cursor:'pointer' }}>
-                      <div style={{ position:'absolute', top:2, left: s.is_active ? 18 : 2, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+                      <div style={{ position:'absolute', top:2, left: s.is_active ? 18 : 2, width:16, height:16, borderRadius:'50%', background:'var(--text)', transition:'left 0.2s' }} />
                     </div>
                   </div>
                 </div>

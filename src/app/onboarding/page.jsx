@@ -174,14 +174,14 @@ export default function OnboardingPage() {
 
   if (step === -1) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg, #09090b)', color: 'var(--text, #f4f4f5)', fontFamily: "'Inter',-apple-system,sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Inter',-apple-system,sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
         <ConsentScreen onConsent={(data) => { setConsentData(data); saveConsent(data); setStep(0); }} />
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg, #09090b)', color: 'var(--text, #f4f4f5)', fontFamily: "'Inter',-apple-system,sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0 60px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Inter',-apple-system,sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0 60px' }}>
 
       {/* Header */}
       <div style={{ width: '100%', maxWidth: '480px', padding: '32px 20px 0' }}>
@@ -189,18 +189,18 @@ export default function OnboardingPage() {
           <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>
             ◕‿◕
           </div>
-          <span style={{ fontWeight: '700', fontSize: '18px', color: 'var(--text, #f4f4f5)', letterSpacing: '-0.02em' }}>QuietKeep</span>
+          <span style={{ fontWeight: '700', fontSize: '18px', color: 'var(--text)', letterSpacing: '-0.02em' }}>QuietKeep</span>
         </div>
 
         {/* Progress bar */}
         <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
           {STEPS.map((s, i) => (
-            <div key={s.id} style={{ height: '4px', flex: 1, borderRadius: '2px', background: i <= step ? '#7c3aed' : 'rgba(255,255,255,0.1)', transition: 'background 0.3s' }} />
+            <div key={s.id} style={{ height: '4px', flex: 1, borderRadius: '2px', background: i <= step ? '#7c3aed' : 'var(--border)', transition: 'background 0.3s' }} />
           ))}
         </div>
-        <p style={{ fontSize: '12px', color: 'var(--text-subtle, #a1a1aa)', margin: '0 0 24px' }}>Step {step + 1} of {STEPS.length}</p>
+        <p style={{ fontSize: '12px', color: 'var(--text-subtle)', margin: '0 0 24px' }}>Step {step + 1} of {STEPS.length}</p>
 
-        <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text, #f4f4f5)', margin: '0 0 6px', letterSpacing: '-0.02em' }}>{currentStep.title}</h1>
+        <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.02em' }}>{currentStep.title}</h1>
         <p style={{ fontSize: '14px', color: 'var(--text-muted, #71717a)', margin: '0 0 24px' }}>{currentStep.subtitle}</p>
       </div>
 
@@ -211,7 +211,7 @@ export default function OnboardingPage() {
         {step === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-subtle, #a1a1aa)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-subtle)', display: 'block', marginBottom: '6px' }}>
                 Full Name <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
@@ -221,11 +221,11 @@ export default function OnboardingPage() {
                 onKeyDown={e => e.key === 'Enter' && handleNext()}
                 placeholder="e.g. Prashanth Rao"
                 autoFocus
-                style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', padding: '14px 16px', color: 'var(--text, #fff)', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px', color: 'var(--text)', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <div>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-subtle, #a1a1aa)', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-subtle)', display: 'block', marginBottom: '6px' }}>
                 Email Address <span style={{ fontSize: '12px', fontWeight: '400', opacity: 0.7 }}>(optional)</span>
               </label>
               <input
@@ -234,7 +234,7 @@ export default function OnboardingPage() {
                 onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleNext()}
                 placeholder="name@example.com"
-                style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', padding: '14px 16px', color: 'var(--text, #fff)', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px', color: 'var(--text)', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
           </div>

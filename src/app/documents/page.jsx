@@ -123,18 +123,22 @@ export default function Documents() {
     setAiLoading(p => ({ ...p, [doc.id]: true }));
     setAiResult(p => ({ ...p, [doc.id]: null }));
     try {
-      // auth from useAuth context
-            const { data: res, error: resErr } = await apiPost('/api/keep-assist', {
+      // The access token was never passed, so /api/keep-assist returned 401 on
+      // every call. safeFetch then yields data:null, `data.error` threw a
+      // TypeError, and the catch below reported a missing ANTHROPIC_API_KEY --
+      // a message that sent anyone debugging this to the wrong place entirely.
+      const { data: res, error: resErr } = await apiPost('/api/keep-assist', {
           content: `Document: ${doc.name}, Category: ${doc.category}${doc.expiry_date ? `, Expiry: ${doc.expiry_date}` : ''}`,
           intent_type: 'document',
           action: 'suggest',
-        });
-      const data = res;
-      if (data.error) throw new Error(data.error);
-      const result = Array.isArray(data.result) ? data.result : [data.result];
+        }, accessToken);
+      if (resErr) throw new Error(resErr.message || String(resErr));
+      if (!res) throw new Error('No response from the assistant.');
+      if (res.error) throw new Error(res.error);
+      const result = Array.isArray(res.result) ? res.result : [res.result];
       setAiResult(p => ({ ...p, [doc.id]: result }));
     } catch (e) {
-      setAiResult(p => ({ ...p, [doc.id]: ['AI analysis unavailable — check ANTHROPIC_API_KEY'] }));
+      setAiResult(p => ({ ...p, [doc.id]: [`AI analysis unavailable — ${e.message}`] }));
     }
     setAiLoading(p => ({ ...p, [doc.id]: false }));
   }

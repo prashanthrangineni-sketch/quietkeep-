@@ -388,7 +388,7 @@ export default function LoginPage() {
 
       const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
       GoogleAuth.initialize({
-        clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '854117079237-7n53t4i57l3slst108u7o1n9msmbs845.apps.googleusercontent.com',
+        clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '348287970575-7orksi7eeij4ibjc4ghv4f1q4rbn17f5.apps.googleusercontent.com',
         scopes: ['profile', 'email'],
         grantOfflineAccess: true,
       });

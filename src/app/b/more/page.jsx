@@ -139,7 +139,10 @@ export default function BizMorePage() {
           </div>
         </div>
 
-        {/* Menu sections */}
+        {/* Menu sections — grouped already, but they stacked in one column at
+            every width. .qk-grid-auto lets them reflow to 2 up at 900px and
+            3 up at 1280px, same as the personal More page. */}
+        <div className="qk-grid-auto" style={{ marginBottom: 16 }}>
         {MENU_SECTIONS.map(section => (
           <div key={section.title} style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
@@ -169,6 +172,7 @@ export default function BizMorePage() {
             </div>
           </div>
         ))}
+        </div>
 
         {/* Sign out */}
         <button onClick={handleSignOut}

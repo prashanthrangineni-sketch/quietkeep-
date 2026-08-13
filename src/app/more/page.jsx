@@ -42,42 +42,60 @@ export default function MorePage() {
     setShareMsg('WhatsApp opened with your brief link!');
   }
 
-  const menuRows = [
-    { icon: '📅', title: 'Calendar',        sub: 'Multi-calendar & panchang',            href: '/calendar' },
-    { icon: '📋', title: 'Daily Brief',     sub: 'AI-powered morning summary',            href: '/daily-brief' },
-    { icon: '🧘', title: 'Mood Log',        sub: 'Track your emotional health',           href: '/mood' },
-    { icon: '✈️', title: 'Trip Plans',      sub: 'AI travel itineraries & packing',       href: '/trips' },
-    { icon: '🔔', title: 'Reminders',       sub: 'All scheduled reminders',               href: '/reminders' },
-    { icon: '📇', title: 'Contacts',        sub: 'Sync phonebook — "call Ravi" works',    href: '/contacts' },
-    { icon: '🧠', title: 'Memories',        sub: 'Life timeline & AI insights',           href: '/memories' },
-    { icon: '📷', title: 'AI Camera',       sub: 'Capture with location, people & AI',   href: '/camera' }, // ← NEW
-    { icon: '🎤', title: 'Voice History',   sub: 'Past voice inputs',                     href: '/voice' },
-    { icon: '✦', title: 'Ask Aaria',        sub: 'Voice-assistant powered help',          href: '/ask-aaria' },
-    { icon: '🛡️', title: 'Trust Dashboard',  sub: 'Governance, patterns & control',        href: '/trust' }, // Phase 7
-    { icon: '🆘', title: 'SOS Log',         sub: 'Emergency event history',               href: '/sos' },
-    { icon: '🚗', title: 'Driving',         sub: 'Trip logs & fuel tracking',             href: '/driving' },
-    { icon: '🛣️', title: 'Drive Mode UI',   sub: 'Big-button driving screen',             href: '/drive' },
-    { icon: '📄', title: 'Documents',       sub: 'Store & track expiry',                  href: '/documents' },
-    { icon: '👨‍👩‍👧', title: 'Family',        sub: 'Shared family space & invites',         href: '/family' },
-    { icon: '👶', title: 'Kids',            sub: 'Kids profiles & content',               href: '/kids' },
-    { icon: '🏃', title: 'Health Log',      sub: 'Daily health streak tracker',           href: '/health' },
-    { icon: '🚨', title: 'Emergency',       sub: 'Contacts & SOS',                        href: '/emergency' },
-    { icon: '🔌', title: 'Connectors',      sub: 'App deep-links & integrations',         href: '/connectors' },
-    { icon: '📊', title: 'Activity Log',    sub: 'Your full action history',              href: '/audit' },
-    { icon: '💬', title: 'Send Message',    sub: 'Broadcast to contacts & groups',        href: '/messages' },
-    { icon: '💳', title: 'Bill Reminders',  sub: 'Tax, FASTag, electricity & EMIs',       href: '/bills' },
-    { icon: '🧭', title: 'Compass',         sub: 'Offline compass + GPS location',        href: '/compass' },
-    { icon: '📍', title: 'Geo Triggers',    sub: 'Location-based keep reminders',         href: '/geo' },
-    { icon: '📰', title: 'News Feed',       sub: 'Optional news & updates',               href: '/news' },
-    { icon: '🏠', title: 'Smart Home',      sub: 'IoT device control with voice',         href: '/smart-home' },
-    { icon: '🛡️', title: 'Warranty Wallet', sub: 'Track products, warranties & costs',   href: '/warranty' },
-    { icon: '📊', title: 'Lifecycle',       sub: 'Cost-per-day, replacement planner',     href: '/lifecycle' },
-    // FOUND ORPHANED 13 Aug 2026 — all four were built, deployed and working,
-    // but linked from nowhere, so no user could ever reach them.
-    { icon: '🗣️', title: 'Voice Settings',  sub: 'Language, speed, wake word',            href: '/settings/voice' },
-    { icon: '🏦', title: 'Import Statement',sub: 'Pull expenses from a bank statement',   href: '/finance/import' },
-    { icon: '📞', title: 'Caller Context',  sub: 'Who is calling, and your history',      href: '/caller-context' },
-    { icon: '🏢', title: 'QuietKeep Business', sub: 'Ledger, invoices, staff, GST',       href: '/business' },
+  // Grouped 13 Aug 2026. This was one flat list of 33 rows — a wall of text on a
+  // phone and a single stranded column on a laptop. The destinations are
+  // unchanged; only the arrangement is. Groups render as cards, and the cards
+  // reflow into 2 columns at 900px and 3 at 1280px via .qk-grid-auto.
+  const menuGroups = [
+    { label: 'Every day', rows: [
+      { icon: '📅', title: 'Calendar',        sub: 'Multi-calendar & panchang',            href: '/calendar' },
+      { icon: '📋', title: 'Daily Brief',     sub: 'AI-powered morning summary',           href: '/daily-brief' },
+      { icon: '🔔', title: 'Reminders',       sub: 'All scheduled reminders',              href: '/reminders' },
+      { icon: '🧠', title: 'Memories',        sub: 'Life timeline & AI insights',          href: '/memories' },
+      { icon: '📇', title: 'Contacts',        sub: 'Sync phonebook — "call Ravi" works',   href: '/contacts' },
+    ]},
+    { label: 'Voice & capture', rows: [
+      { icon: '✦',  title: 'Ask Aaria',       sub: 'Voice-assistant powered help',         href: '/ask-aaria' },
+      { icon: '🎤', title: 'Voice History',   sub: 'Past voice inputs',                    href: '/voice' },
+      { icon: '🗣️', title: 'Voice Settings',  sub: 'Language, speed, wake word',           href: '/settings/voice' },
+      { icon: '📷', title: 'AI Camera',       sub: 'Capture with location, people & AI',   href: '/camera' },
+    ]},
+    { label: 'Money', rows: [
+      { icon: '🏦', title: 'Import Statement',sub: 'Pull expenses from a bank statement',  href: '/finance/import' },
+      { icon: '💳', title: 'Bill Reminders',  sub: 'Tax, FASTag, electricity & EMIs',      href: '/bills' },
+      { icon: '📄', title: 'Documents',       sub: 'Store & track expiry',                 href: '/documents' },
+      { icon: '🛡️', title: 'Warranty Wallet', sub: 'Track products, warranties & costs',   href: '/warranty' },
+      { icon: '📊', title: 'Lifecycle',       sub: 'Cost-per-day, replacement planner',    href: '/lifecycle' },
+    ]},
+    { label: 'Home & family', rows: [
+      { icon: '👨‍👩‍👧', title: 'Family',         sub: 'Shared family space & invites',        href: '/family' },
+      { icon: '👶', title: 'Kids',            sub: 'Kids profiles & content',              href: '/kids' },
+      { icon: '🏃', title: 'Health Log',      sub: 'Daily health streak tracker',          href: '/health' },
+      { icon: '🧘', title: 'Mood Log',        sub: 'Track your emotional health',          href: '/mood' },
+      { icon: '🏠', title: 'Smart Home',      sub: 'IoT device control with voice',        href: '/smart-home' },
+    ]},
+    { label: 'Out and about', rows: [
+      { icon: '✈️', title: 'Trip Plans',      sub: 'AI travel itineraries & packing',      href: '/trips' },
+      { icon: '🚗', title: 'Driving',         sub: 'Trip logs & fuel tracking',            href: '/driving' },
+      { icon: '🛣️', title: 'Drive Mode UI',   sub: 'Big-button driving screen',            href: '/drive' },
+      { icon: '🧭', title: 'Compass',         sub: 'Offline compass + GPS location',       href: '/compass' },
+      { icon: '📍', title: 'Geo Triggers',    sub: 'Location-based keep reminders',        href: '/geo' },
+    ]},
+    { label: 'Safety', rows: [
+      { icon: '🚨', title: 'Emergency',       sub: 'Contacts & SOS',                       href: '/emergency' },
+      { icon: '🆘', title: 'SOS Log',         sub: 'Emergency event history',              href: '/sos' },
+      { icon: '📞', title: 'Caller Context',  sub: 'Who is calling, and your history',     href: '/caller-context' },
+    ]},
+    { label: 'Control', rows: [
+      { icon: '🛡️', title: 'Trust Dashboard', sub: 'Governance, patterns & control',       href: '/trust' },
+      { icon: '📊', title: 'Activity Log',    sub: 'Your full action history',             href: '/audit' },
+      { icon: '🔌', title: 'Connectors',      sub: 'App deep-links & integrations',        href: '/connectors' },
+      { icon: '💬', title: 'Send Message',    sub: 'Broadcast to contacts & groups',       href: '/messages' },
+      { icon: '📰', title: 'News Feed',       sub: 'Optional news & updates',              href: '/news' },
+    ]},
+    { label: 'Business', rows: [
+      { icon: '🏢', title: 'QuietKeep Business', sub: 'Ledger, invoices, staff, GST',      href: '/business' },
+    ]},
   ];
 
   const TIER_COLOR = { free: '#64748b', personal: '#6366f1', family: '#8b5cf6', pro: '#f59e0b' };
@@ -103,6 +121,9 @@ export default function MorePage() {
             </span>
           </div>
         </div>
+
+        {/* Promos — side by side once there is room for them */}
+        <div className="qk-promo-row">
 
         {/* Cart2Save Banner */}
         <div style={{ background: 'var(--primary-dim)', borderRadius: 16, padding: 20,
@@ -147,21 +168,34 @@ export default function MorePage() {
           )}
         </div>
 
+        </div>
+
         {/* All pages menu */}
         <div className="qk-section-label">All Pages</div>
-        <div className="qk-card" style={{ overflow: 'hidden', marginBottom: 20 }}>
-          {menuRows.map((row, i) => (
-            <a key={i} href={row.href} className="qk-list-item"
-              style={{ borderBottom: i < menuRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
-              <span style={{ fontSize: 20, marginRight: 14, minWidth: 28, textAlign: 'center' }}>
-                {row.icon}
-              </span>
-              <div style={{ flex: 1 }}>
-                <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 600 }}>{row.title}</div>
-                <div style={{ color: 'var(--text-subtle)', fontSize: 12, marginTop: 2 }}>{row.sub}</div>
+        <div className="qk-grid-auto" style={{ marginBottom: 20 }}>
+          {menuGroups.map(group => (
+            <div key={group.label} className="qk-card" style={{ overflow: 'hidden' }}>
+              <div style={{
+                padding: '12px 16px 10px', fontSize: 11, fontWeight: 700,
+                color: 'var(--text-subtle)', textTransform: 'uppercase',
+                letterSpacing: '0.08em', borderBottom: '1px solid var(--border)',
+              }}>
+                {group.label}
               </div>
-              <span style={{ color: 'var(--text-subtle)', fontSize: 16 }}>›</span>
-            </a>
+              {group.rows.map((row, i) => (
+                <a key={row.href} href={row.href} className="qk-list-item"
+                  style={{ borderBottom: i < group.rows.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  <span style={{ fontSize: 20, marginRight: 14, minWidth: 28, textAlign: 'center' }}>
+                    {row.icon}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 600 }}>{row.title}</div>
+                    <div style={{ color: 'var(--text-subtle)', fontSize: 12, marginTop: 2 }}>{row.sub}</div>
+                  </div>
+                  <span style={{ color: 'var(--text-subtle)', fontSize: 16 }}>›</span>
+                </a>
+              ))}
+            </div>
           ))}
         </div>
 

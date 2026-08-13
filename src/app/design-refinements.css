@@ -103,6 +103,28 @@
   }
 }
 
+/* Two promo cards that stack on a phone and sit side by side once there is
+   room. Without this they are two full-width blocks a laptop user has to
+   scroll past before reaching anything they came for. */
+.qk-promo-row > div {
+  margin-bottom: 14px;
+}
+
+@media (min-width: 900px) {
+  .qk-promo-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: start;
+    margin-bottom: 20px;
+  }
+
+  .qk-promo-row > div {
+    margin-bottom: 0;
+    height: 100%;
+  }
+}
+
 /* ── Motion ───────────────────────────────────────────────────────
    A short settle on first paint. The homepage feels alive partly because
    things arrive rather than appear. Respects reduced-motion. */

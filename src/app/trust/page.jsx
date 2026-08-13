@@ -101,7 +101,7 @@ export default function TrustDashboard() {
       {/* Header */}
       <div style={{
         padding: '16px 18px 12px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <button onClick={() => router.back()}
@@ -126,8 +126,8 @@ export default function TrustDashboard() {
         {/* Automation Status */}
         <div style={{
           padding: '14px 16px', marginBottom: 16,
-          background: isPaused ? 'rgba(239,68,68,0.07)' : autoEnabled ? 'rgba(16,185,129,0.07)' : 'rgba(255,255,255,0.03)',
-          border: `1px solid ${isPaused ? 'rgba(239,68,68,0.25)' : autoEnabled ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.08)'}`,
+          background: isPaused ? 'rgba(239,68,68,0.07)' : autoEnabled ? 'rgba(16,185,129,0.07)' : 'var(--surface)',
+          border: `1px solid ${isPaused ? 'rgba(239,68,68,0.25)' : autoEnabled ? 'rgba(16,185,129,0.25)' : 'var(--border)'}`,
           borderRadius: 12,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -160,7 +160,7 @@ export default function TrustDashboard() {
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#475569',
             textTransform: 'uppercase', marginBottom: 10 }}>🔒 Hard Limits</div>
           <div style={{
-            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)',
+            background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 12, overflow: 'hidden',
           }}>
             {[
@@ -174,7 +174,7 @@ export default function TrustDashboard() {
               <div key={i} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
                 padding: '11px 14px',
-                borderBottom: i < 5 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                borderBottom: i < 5 ? '1px solid var(--border)' : 'none',
               }}>
                 <div>
                   <div style={{ fontSize: 12, color: 'var(--text)' }}>{row.label}</div>
@@ -194,7 +194,7 @@ export default function TrustDashboard() {
             textTransform: 'uppercase', marginBottom: 10 }}>📊 Pattern Trust Scores</div>
           {patterns.length === 0 ? (
             <div style={{ padding: '20px', textAlign: 'center', color: '#475569', fontSize: 13,
-              background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
+              background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)' }}>
               No patterns learned yet. Keep using voice input to build your profile.
             </div>
           ) : patterns.map((p, i) => {
@@ -206,8 +206,8 @@ export default function TrustDashboard() {
             return (
               <div key={i} style={{
                 padding: '13px 14px', marginBottom: 8,
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.07)',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
                 borderRadius: 12,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
@@ -239,7 +239,7 @@ export default function TrustDashboard() {
                     disabled={resetting}
                     style={{
                       padding: '5px 10px', borderRadius: 8,
-                      background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'transparent', border: '1px solid var(--border)',
                       color: '#64748b', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit',
                       flexShrink: 0, marginLeft: 10,
                     }}>
@@ -248,7 +248,7 @@ export default function TrustDashboard() {
                 </div>
                 {/* Trust bar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                  <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--surface)', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: 3,
                       width: `${trustPct}%`,
@@ -272,14 +272,14 @@ export default function TrustDashboard() {
             textTransform: 'uppercase', marginBottom: 10 }}>📋 Recent Activity</div>
           {history.length === 0 ? (
             <div style={{ padding: '20px', textAlign: 'center', color: '#475569', fontSize: 13,
-              background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
+              background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)' }}>
               No automated activity yet
             </div>
           ) : history.map((h, i) => (
             <div key={i} style={{
               padding: '11px 13px', marginBottom: 7,
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)', borderRadius: 10,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>

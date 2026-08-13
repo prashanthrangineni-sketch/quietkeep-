@@ -219,7 +219,7 @@ export default function EmergencyPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-muted)', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
 
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #1a0a0a 0%, var(--bg) 100%)', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>
@@ -227,7 +227,7 @@ export default function EmergencyPage() {
           <span style={{ fontSize: '22px' }}>🆘</span>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Emergency Contacts</h1>
         </div>
-        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.45)' }}>
+        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
           Share your live location instantly in emergencies
         </p>
       </div>
@@ -241,7 +241,7 @@ export default function EmergencyPage() {
           padding: '20px',
           textAlign: 'center'
         }}>
-          <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+          <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
             Hold 3 seconds to trigger emergency
           </p>
 
@@ -291,7 +291,7 @@ export default function EmergencyPage() {
 
           {/* GPS status */}
           {gpsState === 'idle' && sosTrigger === false && (
-            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
               Or tap below to get location first
             </p>
           )}
@@ -307,7 +307,7 @@ export default function EmergencyPage() {
                 <span style={{ fontSize: '14px' }}>📍</span>
                 <span style={{ fontSize: '13px', color: '#4ade80', fontWeight: 600 }}>Location captured</span>
               </div>
-              <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+              <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
                 {location.lat.toFixed(5)}, {location.lng.toFixed(5)} · ±{location.acc}m accuracy
               </p>
               <a
@@ -332,7 +332,7 @@ export default function EmergencyPage() {
               onClick={getLocation}
               style={{
                 marginTop: '12px', padding: '9px 20px',
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                background: 'var(--surface)', border: '1px solid var(--border)',
                 borderRadius: '8px', color: 'rgba(255,255,255,0.7)', fontSize: '13px',
                 cursor: 'pointer'
               }}
@@ -345,8 +345,8 @@ export default function EmergencyPage() {
               onClick={getLocation}
               style={{
                 marginTop: '10px', padding: '7px 16px',
-                background: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: '8px', color: 'rgba(255,255,255,0.5)', fontSize: '12px',
+                background: 'transparent', border: '1px solid var(--border)',
+                borderRadius: '8px', color: 'var(--text-muted)', fontSize: '12px',
                 cursor: 'pointer'
               }}
             >
@@ -360,7 +360,7 @@ export default function EmergencyPage() {
         {/* Section: Primary */}
         {primaryContacts.length > 0 && (
           <div style={{ marginBottom: '4px' }}>
-            <p style={{ margin: '12px 0 8px', fontSize: '11px', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            <p style={{ margin: '12px 0 8px', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
               ★ Primary Contact
             </p>
             {primaryContacts.map(c => (
@@ -382,7 +382,7 @@ export default function EmergencyPage() {
         {/* Section: Others */}
         {otherContacts.length > 0 && (
           <div>
-            <p style={{ margin: '12px 0 8px', fontSize: '11px', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            <p style={{ margin: '12px 0 8px', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
               Other Contacts
             </p>
             {otherContacts.map(c => (
@@ -403,17 +403,17 @@ export default function EmergencyPage() {
         {!loading && contacts.length === 0 && (
           <div style={{
             textAlign: 'center', padding: '40px 20px',
-            background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)',
+            background: 'var(--surface)', border: '1px dashed var(--border)',
             borderRadius: '16px', marginTop: '16px'
           }}>
             <div style={{ fontSize: '40px', marginBottom: '12px' }}>👤</div>
-            <p style={{ margin: '0 0 6px', fontSize: '15px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>No emergency contacts yet</p>
-            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>Add trusted people who can help in emergencies</p>
+            <p style={{ margin: '0 0 6px', fontSize: '15px', color: 'var(--text)', fontWeight: 500 }}>No emergency contacts yet</p>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Add trusted people who can help in emergencies</p>
           </div>
         )}
 
         {loading && (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13px' }}>
             Loading contacts...
           </div>
         )}
@@ -425,7 +425,7 @@ export default function EmergencyPage() {
           onClick={openAdd}
           style={{
             width: '100%', padding: '14px',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)',
+            background: 'linear-gradient(135deg, var(--surface) 0%, var(--surface-hover) 100%)',
             border: '1px dashed rgba(255,255,255,0.2)',
             borderRadius: '12px', color: 'rgba(255,255,255,0.7)',
             fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit',
@@ -451,15 +451,15 @@ export default function EmergencyPage() {
             border: '1px solid var(--border)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#fff' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--text)' }}>
                 {editContact ? 'Edit Contact' : 'Add Emergency Contact'}
               </h3>
-              <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '20px', cursor: 'pointer', padding: '4px' }}>✕</button>
+              <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '20px', cursor: 'pointer', padding: '4px' }}>✕</button>
             </div>
 
             {/* Name */}
             <label style={{ display: 'block', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</span>
               <input
                 type="text"
                 value={form.name}
@@ -467,8 +467,8 @@ export default function EmergencyPage() {
                 placeholder="e.g. Ramesh Kumar"
                 style={{
                   display: 'block', width: '100%', marginTop: '6px', padding: '11px 12px',
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontSize: '14px', fontFamily: 'inherit',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: '10px', color: 'var(--text)', fontSize: '14px', fontFamily: 'inherit',
                   outline: 'none', boxSizing: 'border-box'
                 }}
               />
@@ -476,7 +476,7 @@ export default function EmergencyPage() {
 
             {/* Phone */}
             <label style={{ display: 'block', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone Number</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone Number</span>
               <input
                 type="tel"
                 value={form.phone}
@@ -484,8 +484,8 @@ export default function EmergencyPage() {
                 placeholder="+91 9876543210"
                 style={{
                   display: 'block', width: '100%', marginTop: '6px', padding: '11px 12px',
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontSize: '14px', fontFamily: 'inherit',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: '10px', color: 'var(--text)', fontSize: '14px', fontFamily: 'inherit',
                   outline: 'none', boxSizing: 'border-box'
                 }}
               />
@@ -493,7 +493,7 @@ export default function EmergencyPage() {
 
             {/* Relation */}
             <label style={{ display: 'block', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Relation</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Relation</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
                 {RELATIONS.map(r => (
                   <button
@@ -502,8 +502,8 @@ export default function EmergencyPage() {
                     onClick={() => setForm(f => ({ ...f, relation: r }))}
                     style={{
                       padding: '6px 12px', borderRadius: '20px', fontSize: '12px',
-                      background: form.relation === r ? 'rgba(255,80,80,0.2)' : 'rgba(255,255,255,0.05)',
-                      border: form.relation === r ? '1px solid rgba(255,80,80,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                      background: form.relation === r ? 'rgba(255,80,80,0.2)' : 'var(--surface)',
+                      border: form.relation === r ? '1px solid rgba(255,80,80,0.5)' : '1px solid var(--border)',
                       color: form.relation === r ? '#ff8080' : 'rgba(255,255,255,0.5)',
                       cursor: 'pointer', fontFamily: 'inherit'
                     }}
@@ -520,7 +520,7 @@ export default function EmergencyPage() {
                 onClick={() => setForm(f => ({ ...f, is_primary: !f.is_primary }))}
                 style={{
                   width: '42px', height: '24px', borderRadius: '12px',
-                  background: form.is_primary ? 'rgba(255,80,80,0.7)' : 'rgba(255,255,255,0.1)',
+                  background: form.is_primary ? 'rgba(255,80,80,0.7)' : 'var(--surface)',
                   position: 'relative', transition: 'background 0.2s', flexShrink: 0
                 }}
               >
@@ -532,7 +532,7 @@ export default function EmergencyPage() {
                   boxShadow: '0 1px 4px rgba(0,0,0,0.3)'
                 }} />
               </div>
-              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text)' }}>
                 ★ Mark as primary contact
               </span>
             </label>
@@ -563,7 +563,7 @@ export default function EmergencyPage() {
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         * { -webkit-tap-highlight-color: transparent; }
-        input::placeholder { color: rgba(255,255,255,0.25); }
+        input::placeholder { color: var(--text-muted); }
         input:focus { border-color: rgba(255,80,80,0.4) !important; box-shadow: 0 0 0 3px rgba(255,60,60,0.1); }
       `}</style>
     </div>
@@ -578,8 +578,8 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
     <div style={{
       background: isPrimary
         ? 'linear-gradient(135deg, rgba(220,30,30,0.12) 0%, rgba(180,20,20,0.06) 100%)'
-        : 'rgba(255,255,255,0.04)',
-      border: isPrimary ? '1px solid rgba(255,80,80,0.25)' : '1px solid rgba(255,255,255,0.08)',
+        : 'var(--surface)',
+      border: isPrimary ? '1px solid rgba(255,80,80,0.25)' : '1px solid var(--border)',
       borderRadius: '14px',
       padding: '14px',
       marginBottom: '10px'
@@ -589,7 +589,7 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <div style={{
             width: '40px', height: '40px', borderRadius: '50%',
-            background: isPrimary ? 'rgba(255,80,80,0.2)' : 'rgba(255,255,255,0.07)',
+            background: isPrimary ? 'rgba(255,80,80,0.2)' : 'var(--surface)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '18px', flexShrink: 0
           }}>
@@ -597,17 +597,17 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>{contact.name}</span>
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>{contact.name}</span>
               {isPrimary && <span style={{ fontSize: '10px', color: '#ff8080', background: 'rgba(255,80,80,0.15)', padding: '2px 6px', borderRadius: '10px', letterSpacing: '0.3px' }}>PRIMARY</span>}
             </div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginTop: '1px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '1px' }}>
               {contact.relation} · {contact.phone}
             </div>
           </div>
         </div>
         {/* Edit / Delete */}
         <div style={{ display: 'flex', gap: '4px' }}>
-          <button onClick={onEdit} style={{ background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: '8px', padding: '6px 10px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px' }}>
+          <button onClick={onEdit} style={{ background: 'var(--surface)', border: 'none', borderRadius: '8px', padding: '6px 10px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px' }}>
             ✏️
           </button>
           <button onClick={onDelete} style={{ background: 'rgba(255,60,60,0.08)', border: 'none', borderRadius: '8px', padding: '6px 10px', color: 'rgba(255,80,80,0.6)', cursor: 'pointer', fontSize: '12px' }}>
@@ -636,8 +636,8 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
             onClick={onSMS}
             style={{
               padding: '9px 14px',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               borderRadius: '10px', color: 'rgba(255,255,255,0.5)',
               fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit'
             }}
@@ -653,8 +653,8 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
           href={`tel:${contact.phone}`}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-            padding: '9px', background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            padding: '9px', background: 'var(--surface)',
+            border: '1px solid var(--border)',
             borderRadius: '10px', color: 'rgba(255,255,255,0.55)',
             fontSize: '12px', textDecoration: 'none', fontWeight: 500
           }}

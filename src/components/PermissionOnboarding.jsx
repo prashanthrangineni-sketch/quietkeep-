@@ -149,7 +149,7 @@ export default function PermissionOnboarding({ onComplete, onSkip }) {
         border: '1px solid var(--border)' }}>
 
         {/* Progress bar */}
-        <div style={{ height: 3, background: 'rgba(255,255,255,0.1)',
+        <div style={{ height: 3, background: 'var(--surface)',
           borderRadius: 2, marginBottom: 26, overflow: 'hidden' }}>
           <div style={{ height: '100%', background: 'var(--primary)', borderRadius: 2,
             width: `${pct}%`, transition: 'width 0.4s' }} />

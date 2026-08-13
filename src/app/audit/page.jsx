@@ -93,7 +93,7 @@ export default function AuditPage() {
       paddingBottom: 80,
     }}>
       {/* Header */}
-      <div style={{ padding: '16px 18px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ padding: '16px 18px 0', borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
           <button onClick={() => router.back()}
             style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20 }}>
@@ -134,9 +134,9 @@ export default function AuditPage() {
                   style={{
                     padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
                     fontFamily: 'inherit', fontSize: 11, fontWeight: filter === f ? 700 : 400,
-                    background: filter === f ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
+                    background: filter === f ? 'rgba(99,102,241,0.2)' : 'var(--surface)',
                     color: filter === f ? '#a5b4fc' : '#64748b',
-                    border: `1px solid ${filter === f ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.07)'}`,
+                    border: `1px solid ${filter === f ? 'rgba(99,102,241,0.4)' : 'var(--border)'}`,
                   }}>
                   {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
                 </button>
@@ -163,8 +163,8 @@ export default function AuditPage() {
               return (
                 <div key={i} style={{
                   padding: '12px 14px', marginBottom: 7,
-                  background: 'rgba(255,255,255,0.02)', borderRadius: 11,
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'var(--surface)', borderRadius: 11,
+                  border: '1px solid var(--border)',
                   borderLeft: `3px solid ${modeColor}40`,
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 }}>
@@ -312,7 +312,7 @@ export default function AuditPage() {
 
             <div style={{
               padding: '14px 16px', marginTop: 8,
-              background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)',
+              background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: 12,
             }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>

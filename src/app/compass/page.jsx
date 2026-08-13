@@ -77,7 +77,7 @@ export default function CompassPage() {
         {/* Compass rose */}
         <div style={{ position: 'relative', width: 220, height: 220, margin: '0 auto 32px' }}>
           {/* Outer ring */}
-          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }} />
+          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid var(--border)', background: 'var(--surface)' }} />
           {/* Cardinal labels */}
           {[['N',0],['E',90],['S',180],['W',270]].map(([d, deg]) => {
             const rad = (deg - 90) * Math.PI / 180;
@@ -89,7 +89,7 @@ export default function CompassPage() {
           <div ref={compassRef} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.2s ease-out' }}>
             <div style={{ position: 'relative', width: 4, height: 160 }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', background: '#ef4444', borderRadius: '2px 2px 0 0' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: '#475569', borderRadius: '0 0 2px 2px' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'var(--surface)', borderRadius: '0 0 2px 2px' }} />
             </div>
           </div>
           {/* Center dot */}
@@ -97,7 +97,7 @@ export default function CompassPage() {
         </div>
 
         {/* Heading readout */}
-        <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px', marginBottom: 20 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px', marginBottom: 20 }}>
           <div style={{ fontSize: 56, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)', lineHeight: 1 }}>
             {heading != null ? `${heading}°` : '—'}
           </div>
@@ -108,7 +108,7 @@ export default function CompassPage() {
         </div>
 
         {/* Location */}
-        <div style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 16px', marginBottom: 20, textAlign: 'left' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', marginBottom: 20, textAlign: 'left' }}>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>📍 Location</div>
           {locError ? (
             <div style={{ fontSize: 13, color: '#f87171' }}>{locError}</div>

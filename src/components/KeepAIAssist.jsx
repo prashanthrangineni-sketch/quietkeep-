@@ -53,7 +53,7 @@ export default function KeepAIAssist({ keepId, content, intentType, accessToken,
   }
 
   return (
-    <div style={{ marginTop: '10px', background: '#0d0d1a', border: '1px solid #6366f130', borderRadius: 10, padding: '12px', fontSize: '12px' }}>
+    <div style={{ marginTop: '10px', background: 'var(--bg)', border: '1px solid #6366f130', borderRadius: 10, padding: '12px', fontSize: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <span style={{ color: '#818cf8', fontWeight: 700 }}>✨ AI Assist</span>
         <button
@@ -71,7 +71,7 @@ export default function KeepAIAssist({ keepId, content, intentType, accessToken,
             disabled={loading}
             style={{
               padding: '8px 12px', borderRadius: 20, minHeight: '36px',
-              border: `1px solid ${action === a.id && result ? '#6366f1' : '#334155'}`,
+              border: `1px solid ${action === a.id && result ? '#6366f1' : 'var(--border)'}`,
               background: action === a.id && result ? '#6366f122' : 'transparent',
               color: action === a.id && result ? '#818cf8' : '#94a3b8',
               fontSize: '11px', cursor: loading ? 'not-allowed' : 'pointer',
@@ -111,7 +111,7 @@ export default function KeepAIAssist({ keepId, content, intentType, accessToken,
       )}
 
       {result && !loading && (
-        <div style={{ background: '#111827', borderRadius: 8, padding: '10px' }}>
+        <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px' }}>
           {Array.isArray(result) ? (
             <ul style={{ margin: 0, paddingLeft: '16px', color: '#cbd5e1', lineHeight: '1.7' }}>
               {result.map((item, i) => <li key={i} style={{ marginBottom: '4px', fontSize: '12px' }}>{item}</li>)}

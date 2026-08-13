@@ -120,8 +120,8 @@ export default function ChartsComponent() {
         <button
           onClick={() => setActiveTab('category')}
           style={{
-            backgroundColor: activeTab === 'category' ? '#6366f1' : '#1e1e2e',
-            border: '1px solid #334155',
+            backgroundColor: activeTab === 'category' ? '#6366f1' : 'var(--bg)',
+            border: '1px solid var(--border)',
             color: 'var(--text)',
             padding: '10px',
             borderRadius: '8px',
@@ -135,8 +135,8 @@ export default function ChartsComponent() {
         <button
           onClick={() => setActiveTab('budget')}
           style={{
-            backgroundColor: activeTab === 'budget' ? '#6366f1' : '#1e1e2e',
-            border: '1px solid #334155',
+            backgroundColor: activeTab === 'budget' ? '#6366f1' : 'var(--bg)',
+            border: '1px solid var(--border)',
             color: 'var(--text)',
             padding: '10px',
             borderRadius: '8px',
@@ -150,8 +150,8 @@ export default function ChartsComponent() {
         <button
           onClick={() => setActiveTab('trend')}
           style={{
-            backgroundColor: activeTab === 'trend' ? '#6366f1' : '#1e1e2e',
-            border: '1px solid #334155',
+            backgroundColor: activeTab === 'trend' ? '#6366f1' : 'var(--bg)',
+            border: '1px solid var(--border)',
             color: 'var(--text)',
             padding: '10px',
             borderRadius: '8px',
@@ -180,7 +180,7 @@ export default function ChartsComponent() {
                       <span style={{ color: 'var(--text)', fontWeight: '600' }}>{item.category}</span>
                       <span style={{ color: '#6366f1' }}>₹{item.amount.toLocaleString('en-IN')}</span>
                     </div>
-                    <div style={{ width: '100%', height: '24px', backgroundColor: '#1a1a2e', borderRadius: '6px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: '24px', backgroundColor: 'var(--bg)', borderRadius: '6px', overflow: 'hidden' }}>
                       <div
                         style={{
                           height: '100%',
@@ -203,7 +203,7 @@ export default function ChartsComponent() {
             <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 16px', color: 'var(--text)' }}>Budget Status</h3>
             <div style={{ display: 'grid', gap: '12px' }}>
               {budgetData.map((budget, idx) => (
-                <div key={idx} style={{ backgroundColor: '#1a1a2e', borderRadius: '8px', padding: '12px' }}>
+                <div key={idx} style={{ backgroundColor: 'var(--bg)', borderRadius: '8px', padding: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text)' }}>{budget.name}</div>
                     <div style={{ fontSize: '12px', color: budget.spent > budget.limit ? '#ef4444' : '#10b981' }}>
@@ -243,7 +243,7 @@ export default function ChartsComponent() {
                       <span style={{ color: 'var(--text)', fontWeight: '600' }}>{item.month}</span>
                       <span style={{ color: '#6366f1' }}>₹{item.amount.toLocaleString('en-IN')}</span>
                     </div>
-                    <div style={{ width: '100%', height: '24px', backgroundColor: '#1a1a2e', borderRadius: '6px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: '24px', backgroundColor: 'var(--bg)', borderRadius: '6px', overflow: 'hidden' }}>
                       <div
                         style={{
                           height: '100%',

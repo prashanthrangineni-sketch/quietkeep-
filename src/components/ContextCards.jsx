@@ -159,7 +159,7 @@ export default function ContextCards({ userId }) {
 
   return (
     <div style={{ marginBottom: '18px' }}>
-      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
         At a glance
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -174,7 +174,7 @@ export default function ContextCards({ userId }) {
             </div>
             {card.lines.map((line, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0 2px 24px' }}>
-                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px' }}>{line.text}</span>
+                <span style={{ fontSize: '12px', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px' }}>{line.text}</span>
                 <span style={{ fontSize: '11px', color: card.color, flexShrink: 0 }}>{line.sub}</span>
               </div>
             ))}

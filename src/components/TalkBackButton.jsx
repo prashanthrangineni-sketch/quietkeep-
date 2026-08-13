@@ -16,7 +16,7 @@ export default function TalkBackButton({ text, id, language = 'en', size = 'sm' 
       title={isActive ? 'Stop reading' : 'Read aloud'}
       style={{
         width: dim, height: dim, borderRadius: '50%', border: 'none',
-        background: isActive ? '#6366f1' : 'rgba(255,255,255,0.08)',
+        background: isActive ? '#6366f1' : 'var(--surface)',
         color: isActive ? '#fff' : 'rgba(255,255,255,0.5)',
         fontSize: size === 'sm' ? 12 : 14, cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',

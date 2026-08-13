@@ -222,8 +222,8 @@ export default function BizLoginPage() {
   }
 
   const inp = {
-    width: '100%', background: 'rgba(255,255,255,0.06)',
-    border: '1.5px solid rgba(255,255,255,0.1)',
+    width: '100%', background: 'var(--surface)',
+    border: '1.5px solid var(--border)',
     borderRadius: 12, padding: '14px 16px',
     color: 'var(--text)', fontSize: 15, outline: 'none',
     boxSizing: 'border-box', fontFamily: 'inherit',
@@ -298,14 +298,14 @@ export default function BizLoginPage() {
               QuietKeep <span style={{ color: G }}>Business</span>
             </span>
           </Link>
-          <Link href="/login" style={{ fontSize: 12, color: '#64748b', textDecoration: 'none', background: 'rgba(255,255,255,0.05)', padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
+          <Link href="/login" style={{ fontSize: 12, color: '#64748b', textDecoration: 'none', background: 'var(--surface)', padding: '5px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
             Personal →
           </Link>
         </div>
 
         {/* Welcome / Intro Step */}
         {step === 'welcome' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 24, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
               <SmileyOrb size={54} bg1={G} bg2={G2} />
             </div>
@@ -332,13 +332,13 @@ export default function BizLoginPage() {
               </button>
 
               <button onClick={handleGoogleSignIn} disabled={loading}
-                style={{ width: '100%', padding: '12px', background: '#ffffff', border: '1px solid rgba(255,255,255,0.1)', color: '#0f172a', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                style={{ width: '100%', padding: '12px', background: '#ffffff', border: '1px solid var(--border)', color: '#0f172a', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                 Continue with Google
               </button>
 
               <button onClick={() => setStep('email')}
-                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text)', borderRadius: 12, padding: '13px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 12, padding: '13px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Sign In with Email / Beta Code
               </button>
             </div>
@@ -351,7 +351,7 @@ export default function BizLoginPage() {
 
         {/* Phone Step (Primary) */}
         {step === 'phone' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
             <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '3px 12px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
               🏢 Business Mobile OTP
             </div>
@@ -364,7 +364,7 @@ export default function BizLoginPage() {
                 Mobile Number
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ background: 'rgba(255,255,255,0.08)', border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '14px 14px', fontSize: 15, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center' }}>
+                <div style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 12, padding: '14px 14px', fontSize: 15, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center' }}>
                   +91
                 </div>
                 <input
@@ -382,7 +382,7 @@ export default function BizLoginPage() {
               style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: loading || phone.trim().length < 10 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: loading || phone.trim().length < 10 ? 0.6 : 1 }}>
               {loading ? 'Sending SMS OTP…' : 'Send Business SMS OTP →'}
             </button>
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button onClick={() => setStep('welcome')} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
                 ← Back
               </button>
@@ -396,7 +396,7 @@ export default function BizLoginPage() {
 
         {/* Phone OTP Step */}
         {step === 'phone_otp' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 10 }}>💬</div>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>Enter SMS OTP</h1>
             <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 6px' }}>
@@ -416,8 +416,8 @@ export default function BizLoginPage() {
                   onKeyDown={e => handleSmsKey(i, e)}
                   style={{
                     width: 44, height: 54, textAlign: 'center',
-                    background: v ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)',
-                    border: `1.5px solid ${v ? G : 'rgba(255,255,255,0.12)'}`,
+                    background: v ? 'rgba(16,185,129,0.15)' : 'var(--surface)',
+                    border: `1.5px solid ${v ? G : 'var(--border)'}`,
                     borderRadius: 10, color: 'var(--text)', fontSize: 22,
                     fontWeight: 700, outline: 'none', fontFamily: 'inherit',
                   }}
@@ -443,7 +443,7 @@ export default function BizLoginPage() {
 
         {/* Sent state */}
         {step === 'sent' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '40px 28px', textAlign: 'center' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '40px 28px', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
             <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 10px' }}>Check your email</h2>
             <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>
@@ -459,7 +459,7 @@ export default function BizLoginPage() {
 
         {/* Email step */}
         {step === 'email' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
             <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '3px 12px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
               🏢 Business Workspace
             </div>
@@ -498,7 +498,7 @@ export default function BizLoginPage() {
 
         {/* Beta Password step */}
         {step === 'otp' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Beta Access Code</h1>
             <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 24px' }}>
               {email}
@@ -519,8 +519,8 @@ export default function BizLoginPage() {
                   onKeyDown={e => handleOtpKey(i, e)}
                   style={{
                     width: 36, height: 44, textAlign: 'center',
-                    background: 'rgba(255,255,255,0.08)',
-                    border: `1.5px solid ${v ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                    background: 'var(--surface)',
+                    border: `1.5px solid ${v ? 'rgba(16,185,129,0.5)' : 'var(--border)'}`,
                     borderRadius: 8, color: 'var(--text)', fontSize: 18,
                     fontWeight: 700, outline: 'none', fontFamily: 'inherit',
                   }}

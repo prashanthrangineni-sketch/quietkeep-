@@ -421,7 +421,7 @@ export default function InvoicesPage() {
                 Line Items
               </div>
               {items.map((item, idx) => (
-                <div key={idx} style={{ background:'rgba(255,255,255,0.03)',
+                <div key={idx} style={{ background:'var(--surface)',
                   border:'1px solid var(--border)', borderRadius:10,
                   padding:'10px 12px', marginBottom:8 }}>
                   <input value={item.name}
@@ -577,7 +577,7 @@ export default function InvoicesPage() {
               </div>
 
               {/* Totals */}
-              <div style={{ background:'rgba(255,255,255,0.03)', borderRadius:10, padding:'10px 12px' }}>
+              <div style={{ background:'var(--surface)', borderRadius:10, padding:'10px 12px' }}>
                 {[['Subtotal',selectedInv.subtotal],['CGST',selectedInv.cgst],['SGST',selectedInv.sgst]].map(([l,v]) => (
                   <div key={l} style={{ display:'flex', justifyContent:'space-between',
                     fontSize:12, color:'var(--text-muted)', marginBottom:4 }}>

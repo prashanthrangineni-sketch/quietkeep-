@@ -19,9 +19,9 @@ const ASSET_TYPES = [
   { value: 'other', label: '📦 Other', color: '#64748b' },
 ];
 
-const inp = { width: '100%', background: '#111', border: '1px solid #333', borderRadius: 8, color: '#fff', padding: '0.6rem 0.75rem', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
+const inp = { width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.6rem 0.75rem', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
 const btn1 = { padding: '0.6rem 1.1rem', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' };
-const btn0 = { ...btn1, background: 'transparent', border: '1px solid #333', color: '#aaa' };
+const btn0 = { ...btn1, background: 'transparent', border: '1px solid var(--border)', color: '#aaa' };
 
 export default function StockTracker({ supabase, userId }) {
   const [holdings, setHoldings] = useState([]);
@@ -137,17 +137,17 @@ export default function StockTracker({ supabase, userId }) {
   const totalGain = totalCurrent - totalInvested;
   const gainPct = totalInvested > 0 ? ((totalGain / totalInvested) * 100).toFixed(1) : null;
 
-  const cardStyle = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '14px 16px', marginBottom: 10 };
+  const cardStyle = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', marginBottom: 10 };
 
-  if (loading) return <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>Loading assets…</div>;
+  if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>Loading assets…</div>;
 
   return (
     <div>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>📊 Assets & Stocks</div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{holdings.length} holding{holdings.length !== 1 ? 's' : ''}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>📊 Assets & Stocks</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{holdings.length} holding{holdings.length !== 1 ? 's' : ''}</div>
         </div>
         <button onClick={() => { resetForm(); setShowAdd(!showAdd); }} style={btn1}>
           {showAdd ? 'Cancel' : '+ Add'}
@@ -164,7 +164,7 @@ export default function StockTracker({ supabase, userId }) {
           ].map(s => (
             <div key={s.label} style={{ ...cardStyle, marginBottom: 0, textAlign: 'center', padding: '10px 8px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{s.label}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -239,7 +239,7 @@ export default function StockTracker({ supabase, userId }) {
 
       {/* Holdings list */}
       {holdings.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '32px 20px', color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>
+        <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
           No assets tracked yet. Add stocks, property, debts and more.
         </div>
@@ -260,23 +260,23 @@ export default function StockTracker({ supabase, userId }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <span style={{ fontSize: 12, color: typeInfo.color, background: typeInfo.color + '18', padding: '2px 8px', borderRadius: 20 }}>{typeInfo.label}</span>
-                    {h.ticker && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>{h.ticker}</span>}
+                    {h.ticker && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{h.ticker}</span>}
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 4 }}>{h.name}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{h.name}</div>
 
                   <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                     {h.quantity && (
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-                        Qty: <span style={{ color: '#e2e8f0' }}>{h.quantity}</span>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        Qty: <span style={{ color: 'var(--text)' }}>{h.quantity}</span>
                       </div>
                     )}
                     {h.purchase_price && (
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-                        Avg: <span style={{ color: '#e2e8f0' }}>₹{Number(h.purchase_price).toLocaleString('en-IN')}</span>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        Avg: <span style={{ color: 'var(--text)' }}>₹{Number(h.purchase_price).toLocaleString('en-IN')}</span>
                       </div>
                     )}
                     {currentPrice && (
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                         LTP: <span style={{ color: '#60a5fa' }}>₹{currentPrice.toLocaleString('en-IN')}</span>
                         {priceData?.change_pct && (
                           <span style={{ color: priceData.change_pct >= 0 ? '#34d399' : '#ef4444', marginLeft: 4 }}>

@@ -214,7 +214,7 @@ export default function DriveModePage() {
 
   return (
     <div style={{
-      minHeight: '100dvh', background: '#000', color: '#fff',
+      minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text)',
       display: 'flex', flexDirection: 'column',
       fontFamily: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif',
       userSelect: 'none', paddingBottom: 'env(safe-area-inset-bottom)',

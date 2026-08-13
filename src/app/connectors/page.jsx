@@ -161,8 +161,8 @@ export default function ConnectorsPage() {
           {['All', ...CATEGORIES].map(cat => (
             <button key={cat} onClick={() => setCatFilter(cat)} style={{
               whiteSpace: 'nowrap', padding: '5px 14px', borderRadius: 20,
-              border: `1px solid ${catFilter === cat ? '#6366f1' : '#1e293b'}`,
-              background: catFilter === cat ? '#6366f122' : '#1e293b',
+              border: `1px solid ${catFilter === cat ? '#6366f1' : 'var(--border)'}`,
+              background: catFilter === cat ? '#6366f122' : 'var(--bg)',
               color: catFilter === cat ? '#818cf8' : '#64748b',
               fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
             }}>{cat}</button>
@@ -175,13 +175,13 @@ export default function ConnectorsPage() {
             const isOn = enabled[c.id] !== false;
             return (
               <div key={c.id} style={{
-                background: 'var(--bg)', border: `1px solid ${isOn ? c.color + '25' : '#1e293b'}`,
+                background: 'var(--bg)', border: `1px solid ${isOn ? c.color + '25' : 'var(--border)'}`,
                 borderRadius: 12, padding: '14px 16px',
                 display: 'flex', alignItems: 'center', gap: 14,
                 opacity: isOn ? 1 : 0.5,
               }}>
                 <div
-                  style={{ fontSize: 28, width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isOn ? c.color + '18' : '#1e293b', flexShrink: 0, cursor: 'pointer' }}
+                  style={{ fontSize: 28, width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isOn ? c.color + '18' : 'var(--bg)', flexShrink: 0, cursor: 'pointer' }}
                   onClick={() => openConnector(c.deep_link)}
                 >
                   {c.icon}

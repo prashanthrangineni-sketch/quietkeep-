@@ -272,7 +272,7 @@ export default function ChatThreadPage() {
                 onClick={loadOlder}
                 disabled={loadingMore}
                 style={{
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
                   borderRadius: 8, padding: '6px 14px', color: 'var(--text-muted)',
                   fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
                 }}
@@ -356,7 +356,7 @@ export default function ChatThreadPage() {
                 style={{
                   width: 40, height: 40, borderRadius: '50%',
                   border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: text.trim() ? G : 'rgba(255,255,255,0.06)',
+                  background: text.trim() ? G : 'var(--surface-hover)',
                   color: text.trim() ? '#fff' : '#475569',
                   fontSize: 16, cursor: text.trim() ? 'pointer' : 'default',
                   flexShrink: 0,

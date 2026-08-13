@@ -100,7 +100,7 @@ export default function SubscriptionComponent() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         Loading...
       </div>
     );
@@ -135,7 +135,7 @@ export default function SubscriptionComponent() {
             const isOverdue = daysUntilDue <= 0;
 
             return (
-              <div key={sub.id} style={{ backgroundColor: 'var(--surface)', border: isOverdue ? '1px solid #ef4444' : isDueSoon ? '1px solid #f59e0b' : '1px solid #1e293b', borderRadius: '12px', padding: '14px' }}>
+              <div key={sub.id} style={{ backgroundColor: 'var(--surface)', border: isOverdue ? '1px solid #ef4444' : isDueSoon ? '1px solid #f59e0b' : '1px solid var(--border)', borderRadius: '12px', padding: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)' }}>{sub.name}</div>
@@ -209,8 +209,8 @@ export default function SubscriptionComponent() {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             style={{
               width: '100%',
-              backgroundColor: '#1a1a2e',
-              border: '1px solid #334155',
+              backgroundColor: 'var(--bg)',
+              border: '1px solid var(--border)',
               color: 'var(--text)',
               padding: '10px 12px',
               borderRadius: '8px',
@@ -227,8 +227,8 @@ export default function SubscriptionComponent() {
             onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
             style={{
               width: '100%',
-              backgroundColor: '#1a1a2e',
-              border: '1px solid #334155',
+              backgroundColor: 'var(--bg)',
+              border: '1px solid var(--border)',
               color: 'var(--text)',
               padding: '10px 12px',
               borderRadius: '8px',
@@ -243,8 +243,8 @@ export default function SubscriptionComponent() {
             onChange={(e) => setFormData({ ...formData, cycle: e.target.value })}
             style={{
               width: '100%',
-              backgroundColor: '#1a1a2e',
-              border: '1px solid #334155',
+              backgroundColor: 'var(--bg)',
+              border: '1px solid var(--border)',
               color: 'var(--text)',
               padding: '10px 12px',
               borderRadius: '8px',
@@ -280,9 +280,9 @@ export default function SubscriptionComponent() {
               onClick={() => setShowForm(false)}
               style={{
                 flex: 1,
-                backgroundColor: '#1a1a2e',
+                backgroundColor: 'var(--bg)',
                 color: 'var(--text-muted)',
-                border: '1px solid #334155',
+                border: '1px solid var(--border)',
                 padding: '10px',
                 borderRadius: '8px',
                 fontSize: '13px',

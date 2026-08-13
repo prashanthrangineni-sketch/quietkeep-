@@ -247,7 +247,7 @@ export default function FinancePage() {
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
                     <div style={{ color:'#f59e0b', fontWeight:700 }}>₹{parseFloat(s.amount).toLocaleString('en-IN')}</div>
-                    <div onClick={() => toggleSub(s.id, s.is_active)} style={{ width:36, height:20, borderRadius:10, background: s.is_active ? '#6366f1' : '#333', position:'relative', cursor:'pointer' }}>
+                    <div onClick={() => toggleSub(s.id, s.is_active)} style={{ width:36, height:20, borderRadius:10, background: s.is_active ? '#6366f1' : 'var(--surface)', position:'relative', cursor:'pointer' }}>
                       <div style={{ position:'absolute', top:2, left: s.is_active ? 18 : 2, width:16, height:16, borderRadius:'50%', background:'var(--text)', transition:'left 0.2s' }} />
                     </div>
                   </div>

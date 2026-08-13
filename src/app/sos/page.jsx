@@ -61,10 +61,10 @@ export default function SOSPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-muted)', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
 
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #160a0a, var(--surface))', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>
+      <div style={{ background: 'linear-gradient(135deg, var(--red-dim), var(--surface))', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
           <span style={{ fontSize: '22px' }}>🆘</span>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>SOS History</h1>
@@ -74,20 +74,20 @@ export default function SOSPage() {
             </span>
           )}
         </div>
-        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
           {events.length} SOS event{events.length !== 1 ? 's' : ''} total
         </p>
       </div>
 
       <div style={{ padding: '16px' }}>
 
-        {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>Loading...</div>}
+        {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>}
 
         {!loading && events.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '56px 20px', background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '16px' }}>
+          <div style={{ textAlign: 'center', padding: '56px 20px', background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: '16px' }}>
             <div style={{ fontSize: '48px', marginBottom: '14px' }}>🛡️</div>
-            <p style={{ margin: '0 0 8px', fontSize: '15px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>No SOS events</p>
-            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>Stay safe. Your SOS history will appear here.</p>
+            <p style={{ margin: '0 0 8px', fontSize: '15px', color: 'var(--text)', fontWeight: 500 }}>No SOS events</p>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Stay safe. Your SOS history will appear here.</p>
           </div>
         )}
 
@@ -104,7 +104,7 @@ export default function SOSPage() {
         {/* Resolved */}
         {resolved.length > 0 && (
           <div>
-            <p style={{ margin: '0 0 10px', fontSize: '11px', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
               Resolved
             </p>
             {resolved.map(e => <SOSCard key={e.id} event={e} resolved />)}
@@ -123,8 +123,8 @@ function SOSCard({ event: e, onResolve, resolving, resolved }) {
 
   return (
     <div style={{
-      background: resolved ? 'rgba(255,255,255,0.03)' : 'rgba(255,60,60,0.08)',
-      border: `1px solid ${resolved ? 'rgba(255,255,255,0.08)' : 'rgba(255,80,80,0.3)'}`,
+      background: resolved ? 'var(--surface)' : 'rgba(255,60,60,0.08)',
+      border: `1px solid ${resolved ? 'var(--border)' : 'rgba(255,80,80,0.3)'}`,
       borderLeft: `3px solid ${resolved ? '#4ade80' : '#ff4040'}`,
       borderRadius: '14px', padding: '14px', marginBottom: '10px',
       opacity: resolved ? 0.7 : 1,
@@ -137,14 +137,14 @@ function SOSCard({ event: e, onResolve, resolving, resolved }) {
               {resolved ? '✅ Resolved' : '🆘 Active SOS'}
             </span>
           </div>
-          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             Triggered: {fmt(e.triggered_at)}
           </div>
           {e.resolved_at && (
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
               Resolved: {fmt(e.resolved_at)}
               {duration(e.triggered_at, e.resolved_at) && (
-                <span style={{ color: 'rgba(255,255,255,0.25)' }}> · {duration(e.triggered_at, e.resolved_at)}</span>
+                <span style={{ color: 'var(--text-muted)' }}> · {duration(e.triggered_at, e.resolved_at)}</span>
               )}
             </div>
           )}
@@ -163,19 +163,19 @@ function SOSCard({ event: e, onResolve, resolving, resolved }) {
       {/* Meta */}
       <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: mapsUrl || e.notes ? '10px' : '0' }}>
         {e.contacts_notified > 0 && (
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             📱 {e.contacts_notified} contact{e.contacts_notified > 1 ? 's' : ''} notified
           </span>
         )}
         {e.location_lat && (
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             📍 {parseFloat(e.location_lat).toFixed(4)}, {parseFloat(e.location_lng).toFixed(4)}
           </span>
         )}
       </div>
 
       {e.notes && (
-        <p style={{ margin: '0 0 10px', fontSize: '12px', color: 'rgba(255,255,255,0.45)', fontStyle: 'italic' }}>
+        <p style={{ margin: '0 0 10px', fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
           "{e.notes}"
         </p>
       )}

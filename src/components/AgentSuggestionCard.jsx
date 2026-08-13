@@ -72,7 +72,7 @@ export default function AgentSuggestionCard({ accessToken, lat, lng, onAction })
               {/* v3: confidence bar (unchanged from Phase 5) */}
               {(s.final_score ?? s.score) != null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, marginLeft: 20 }}>
-                  <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, height: 3, background: 'var(--surface)', borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 2, transition: 'width 0.3s' }} />
                   </div>
                   <span style={{ fontSize: 10, color: 'var(--text-subtle)', whiteSpace: 'nowrap' }}>
@@ -97,7 +97,7 @@ export default function AgentSuggestionCard({ accessToken, lat, lng, onAction })
               {/* v3: "Why this?" expandable panel */}
               {expanded.has(i) && (
                 <div style={{ marginTop: 6, marginLeft: 20, padding: '6px 8px',
-                  background: 'rgba(255,255,255,0.03)', borderRadius: 6, fontSize: 11,
+                  background: 'var(--surface)', borderRadius: 6, fontSize: 11,
                   color: 'var(--text-subtle)', lineHeight: 1.6 }}>
                   {/* Reason string */}
                   {s.reason && <div>{s.reason}</div>}

@@ -101,7 +101,7 @@ export default function MoodPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight:'100vh', background:'var(--bg)', color:'#f0f0f5', fontFamily:"'DM Sans', -apple-system, sans-serif", paddingBottom:'80px', paddingTop:'96px' }}>
+      <div style={{ minHeight:'100vh', background:'var(--bg)', color:'var(--text-muted)', fontFamily:"'DM Sans', -apple-system, sans-serif", paddingBottom:'80px', paddingTop:'96px' }}>
 
       {/* Header */}
       <div style={{ background:'linear-gradient(135deg,var(--bg),var(--bg))', borderBottom:'1px solid rgba(167,139,250,0.15)', padding:'20px 16px 16px' }}>
@@ -172,7 +172,7 @@ export default function MoodPage() {
           rows={2}
           style={{
             width:'100%', padding:'10px 12px', background:'var(--surface)',
-            border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px',
+            border:'1px solid var(--border)', borderRadius:'10px',
             color:'var(--text)', fontSize:'13px', fontFamily:'inherit', resize:'vertical',
             outline:'none', boxSizing:'border-box', marginBottom:'12px'
           }}
@@ -184,7 +184,7 @@ export default function MoodPage() {
           style={{
             width:'100%', padding:'12px',
             background: !selectedMood ? 'var(--surface)' : saved ? 'rgba(74,222,128,0.3)' : 'rgba(167,139,250,0.3)',
-            border: !selectedMood ? '1px solid rgba(255,255,255,0.1)' : saved ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(167,139,250,0.5)',
+            border: !selectedMood ? '1px solid var(--border)' : saved ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(167,139,250,0.5)',
             borderRadius:'10px', color: !selectedMood ? 'var(--text-subtle)' : 'var(--text)',
             fontSize:'14px', fontWeight:600, cursor: !selectedMood ? 'not-allowed' : 'pointer', fontFamily:'inherit'
           }}
@@ -202,7 +202,7 @@ export default function MoodPage() {
         {loading && <div style={{ textAlign:'center', padding:'30px', color:'var(--text-subtle)', fontSize:'13px' }}>Loading...</div>}
 
         {!loading && logs.length === 0 && (
-          <div style={{ textAlign:'center', padding:'40px 20px', background:'var(--surface)', border:'1px dashed rgba(255,255,255,0.1)', borderRadius:'16px' }}>
+          <div style={{ textAlign:'center', padding:'40px 20px', background:'var(--surface)', border:'1px dashed var(--border)', borderRadius:'16px' }}>
             <div style={{ fontSize:'36px', marginBottom:'10px' }}>🌱</div>
             <p style={{ margin:0, fontSize:'14px', color:'var(--text-muted)' }}>No mood logs yet. Start tracking today!</p>
           </div>
@@ -228,7 +228,7 @@ export default function MoodPage() {
                       <span style={{ fontSize:'13px', fontWeight:600, color:m.color }}>{m.label}</span>
                       <span style={{ fontSize:'11px', color:'var(--text-subtle)' }}>{new Date(log.logged_at).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })}</span>
                     </div>
-                    {log.note && <p style={{ margin:'3px 0 0', fontSize:'12px', color:'rgba(255,255,255,0.5)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{log.note}</p>}
+                    {log.note && <p style={{ margin:'3px 0 0', fontSize:'12px', color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{log.note}</p>}
                   </div>
                   <button
                     onClick={() => deleteLog(log.id)}
@@ -245,7 +245,7 @@ export default function MoodPage() {
       </div>
 
       <style>{`
-        textarea::placeholder, input::placeholder { color: rgba(255,255,255,0.25); }
+        textarea::placeholder, input::placeholder { color: var(--text-muted); }
         textarea:focus { border-color: rgba(167,139,250,0.4) !important; }
       `}</style>
     </div>

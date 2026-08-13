@@ -79,7 +79,7 @@ export default function KeepWidget({ compact = false }) {
   }
 
   return (
-    <div style={{ background: '#12121a', borderRadius: '16px', padding: '16px' }}>
+    <div style={{ background: 'var(--bg)', borderRadius: '16px', padding: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <span style={{ fontWeight: 700, fontSize: '16px' }}>📌 Keep</span>
         <button onClick={() => setShowInput(!showInput)}
@@ -102,12 +102,12 @@ export default function KeepWidget({ compact = false }) {
               onChange={e => setNewText(e.target.value)}
               placeholder="What do you want to keep in mind?"
               rows={2}
-              style={{ width: '100%', background: '#1e1e2e', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '10px', fontSize: '14px', resize: 'none', boxSizing: 'border-box', marginBottom: '8px' }}
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', padding: '10px', borderRadius: '10px', fontSize: '14px', resize: 'none', boxSizing: 'border-box', marginBottom: '8px' }}
             />
 
             {/* Type selector */}
             <select value={intentType} onChange={e => setIntentType(e.target.value)}
-              style={{ width: '100%', background: '#1e1e2e', border: '1px solid #333', color: '#fff', padding: '8px', borderRadius: '8px', fontSize: '13px', marginBottom: '8px', boxSizing: 'border-box' }}>
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px', borderRadius: '8px', fontSize: '13px', marginBottom: '8px', boxSizing: 'border-box' }}>
               <option value="note">📝 Note</option>
               <option value="reminder">⏰ Reminder</option>
               <option value="contact">📞 Contact</option>
@@ -132,14 +132,14 @@ export default function KeepWidget({ compact = false }) {
                     value={contactName}
                     onChange={e => setContactName(e.target.value)}
                     placeholder="Contact name (optional)"
-                    style={{ width: '100%', background: '#1e1e2e', border: '1px solid #6366f133', color: '#fff', padding: '8px 10px', borderRadius: '8px', fontSize: '13px', marginBottom: '6px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid #6366f133', color: 'var(--text)', padding: '8px 10px', borderRadius: '8px', fontSize: '13px', marginBottom: '6px', boxSizing: 'border-box' }}
                   />
                   <input
                     type="tel"
                     value={contactPhone}
                     onChange={e => setContactPhone(e.target.value)}
                     placeholder="Phone number (for call reminder)"
-                    style={{ width: '100%', background: '#1e1e2e', border: '1px solid #6366f133', color: '#fff', padding: '8px 10px', borderRadius: '8px', fontSize: '13px', marginBottom: '8px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid #6366f133', color: 'var(--text)', padding: '8px 10px', borderRadius: '8px', fontSize: '13px', marginBottom: '8px', boxSizing: 'border-box' }}
                   />
                 </motion.div>
               )}
@@ -155,7 +155,7 @@ export default function KeepWidget({ compact = false }) {
             </div>
 
             <button onClick={saveKeep} disabled={loading || !newText.trim()}
-              style={{ width: '100%', padding: '10px', background: newText.trim() ? '#6366f1' : '#333', border: 'none', color: '#fff', borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+              style={{ width: '100%', padding: '10px', background: newText.trim() ? '#6366f1' : 'var(--surface)', border: 'none', color: '#fff', borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
               {loading ? 'Saving...' : 'Save Keep'}
             </button>
           </motion.div>
@@ -176,11 +176,11 @@ export default function KeepWidget({ compact = false }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.18 }}
-              style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px', background: '#1a1a2e', borderRadius: '10px', marginBottom: '6px',
+              style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px', background: 'var(--bg)', borderRadius: '10px', marginBottom: '6px',
                 borderLeft: `3px solid ${k.color || '#6366f1'}` }}
             >
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '13px', color: '#eee', lineHeight: '1.4' }}>{k.content}</div>
+                <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.4' }}>{k.content}</div>
                 {k.contact_name && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>👤 {k.contact_name}</div>}
                 {k.contact_phone && (
                   <a href={`tel:${k.contact_phone}`} style={{ fontSize: '11px', color: '#6366f1', marginTop: '2px', display: 'block', textDecoration: 'none' }}>

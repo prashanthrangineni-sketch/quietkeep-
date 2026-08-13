@@ -33,7 +33,7 @@ function LocationShare({ userId }) {
   return (
     <div>
       {pos && saved && (
-        <div style={{ background: '#0d2d1a', border: '1px solid #22c55e33', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: '#22c55e' }}>
+        <div style={{ background: 'var(--bg)', border: '1px solid #22c55e33', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: '#22c55e' }}>
           ✓ Location shared — {pos.lat.toFixed(4)}, {pos.lng.toFixed(4)}
           <a href={`https://maps.google.com/?q=${pos.lat},${pos.lng}`} target="_blank" rel="noreferrer" style={{ color: '#22c55e', marginLeft: 8, fontSize: 11 }}>Open in Maps ↗</a>
         </div>
@@ -184,7 +184,7 @@ export default function FamilyPage() {
 
         {/* Pending invite accept banner */}
         {pendingToken && (
-          <div style={{ background: '#1c1400', border: '1px solid #f59e0b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+          <div style={{ background: 'var(--bg)', border: '1px solid #f59e0b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
             <div style={{ color: '#fbbf24', fontWeight: 700, fontSize: 15, marginBottom: 8 }}>You have a family invite!</div>
             <div style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 14 }}>Someone invited you to join their QuietKeep family space.</div>
             <button

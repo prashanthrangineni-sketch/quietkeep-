@@ -81,7 +81,7 @@ export default function VoicePage() {
   const capturedCount = sessions.filter(s => s.intent_captured).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-muted)', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
 
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, var(--primary-dim), var(--surface))', borderBottom: '1px solid rgba(139,92,246,0.2)', padding: '20px 16px 16px' }}>
@@ -94,7 +94,7 @@ export default function VoicePage() {
           <span style={{ fontSize: '22px' }}>🎙️</span>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.3px' }}>Voice History</h1>
         </div>
-        <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+        <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'var(--text-muted)' }}>
           {sessions.length} session{sessions.length !== 1 ? 's' : ''}
           {totalDuration > 0 ? ` · ${fmtDuration(totalDuration)} total` : ''}
         </p>
@@ -114,7 +114,7 @@ export default function VoicePage() {
             <div key={s.label} style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '10px', textAlign: 'center' }}>
               <div style={{ fontSize: '16px', marginBottom: '4px' }}>{s.icon}</div>
               <div style={{ fontSize: '15px', fontWeight: 700, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>{s.label}</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -122,19 +122,19 @@ export default function VoicePage() {
 
       {/* Sessions list */}
       <div style={{ padding: '0 16px' }}>
-        {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>Loading...</div>}
+        {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>}
 
         {!loading && sessions.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '56px 20px', background: 'var(--surface)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '16px' }}>
+          <div style={{ textAlign: 'center', padding: '56px 20px', background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: '16px' }}>
             <div style={{ fontSize: '48px', marginBottom: '14px' }}>🎙️</div>
-            <p style={{ margin: '0 0 8px', fontSize: '15px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>No voice sessions yet</p>
-            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>Use the microphone on the dashboard to capture voice keeps</p>
+            <p style={{ margin: '0 0 8px', fontSize: '15px', color: 'var(--text)', fontWeight: 500 }}>No voice sessions yet</p>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Use the microphone on the dashboard to capture voice keeps</p>
           </div>
         )}
 
         {Object.values(grouped).map((group, gi) => (
           <div key={gi} style={{ marginBottom: '20px' }}>
-            <p style={{ margin: '0 0 8px', fontSize: '11px', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            <p style={{ margin: '0 0 8px', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
               {group.label}
             </p>
             {group.items.map(s => {
@@ -164,7 +164,7 @@ export default function VoicePage() {
                           </span>
                         )}
                         {s.duration_seconds && (
-                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                             ⏱️ {fmtDuration(s.duration_seconds)}
                           </span>
                         )}
@@ -172,7 +172,7 @@ export default function VoicePage() {
 
                       {s.transcript ? (
                         <div>
-                          <p style={{ margin: '0 0 3px', fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: '1.4', overflow: isExpanded ? 'visible' : 'hidden', display: isExpanded ? 'block' : '-webkit-box', WebkitLineClamp: isExpanded ? 'unset' : 2, WebkitBoxOrient: 'vertical' }}>
+                          <p style={{ margin: '0 0 3px', fontSize: '13px', color: 'var(--text)', lineHeight: '1.4', overflow: isExpanded ? 'visible' : 'hidden', display: isExpanded ? 'block' : '-webkit-box', WebkitLineClamp: isExpanded ? 'unset' : 2, WebkitBoxOrient: 'vertical' }}>
                             "{s.transcript}"
                           </p>
                           {s.transcript.length > 80 && (
@@ -183,10 +183,10 @@ export default function VoicePage() {
                           )}
                         </div>
                       ) : (
-                        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>No transcript saved</p>
+                        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic' }}>No transcript saved</p>
                       )}
                     </div>
-                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0 }}>
                       {new Date(s.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>

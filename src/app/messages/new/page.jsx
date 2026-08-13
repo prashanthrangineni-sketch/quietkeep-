@@ -129,7 +129,7 @@ export default function NewMessagePage() {
             disabled={searching || !query.trim()}
             style={{
               padding: '0 18px', borderRadius: 10, border: 'none',
-              background: query.trim() ? G : 'rgba(255,255,255,0.06)',
+              background: query.trim() ? G : 'var(--surface-hover)',
               color: query.trim() ? '#fff' : '#475569',
               fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
               opacity: searching ? 0.7 : 1,

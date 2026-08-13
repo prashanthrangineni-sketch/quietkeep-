@@ -443,7 +443,7 @@ export default function BizLoginPage() {
 
         {/* Sent state */}
         {step === 'sent' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '40px 28px', textAlign: 'center' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '40px 28px', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
             <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 10px' }}>Check your email</h2>
             <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>

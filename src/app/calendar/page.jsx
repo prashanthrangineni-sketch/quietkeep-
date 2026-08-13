@@ -247,7 +247,7 @@ export default function CalendarPage() {
         <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '0.75rem', scrollbarWidth: 'none' }}>
           {CALENDAR_TYPES.map(c => (
             <button key={c.id} onClick={() => { setSelectedCal(c.id); setSelectedDate(null); setDayEvents([]); }}
-              style={{ flexShrink: 0, padding: '0.3rem 0.75rem', borderRadius: 20, border: 'none', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: selectedCal === c.id ? '#6366f1' : '#1a1a1a', color: selectedCal === c.id ? 'var(--text)' : '#666', whiteSpace: 'nowrap' }}>
+              style={{ flexShrink: 0, padding: '0.3rem 0.75rem', borderRadius: 20, border: 'none', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: selectedCal === c.id ? '#6366f1' : 'var(--bg)', color: selectedCal === c.id ? 'var(--text)' : '#666', whiteSpace: 'nowrap' }}>
               {c.emoji} {c.label}
             </button>
           ))}
@@ -257,7 +257,7 @@ export default function CalendarPage() {
         <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem' }}>
           {[['month','📆 Month'],['events','📋 My Events'],['holidays','🎉 Holidays']].map(([v, label]) => (
             <button key={v} onClick={() => setView(v)}
-              style={{ padding: '0.3rem 0.75rem', borderRadius: 8, border: 'none', background: view === v ? '#6366f1' : '#1a1a1a', color: view === v ? 'var(--text)' : '#666', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+              style={{ padding: '0.3rem 0.75rem', borderRadius: 8, border: 'none', background: view === v ? '#6366f1' : 'var(--bg)', color: view === v ? 'var(--text)' : '#666', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
               {label}
             </button>
           ))}

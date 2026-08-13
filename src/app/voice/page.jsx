@@ -81,7 +81,7 @@ export default function VoicePage() {
   const capturedCount = sessions.filter(s => s.intent_captured).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-muted)', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
 
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, var(--primary-dim), var(--surface))', borderBottom: '1px solid rgba(139,92,246,0.2)', padding: '20px 16px 16px' }}>
@@ -94,7 +94,7 @@ export default function VoicePage() {
           <span style={{ fontSize: '22px' }}>🎙️</span>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.3px' }}>Voice History</h1>
         </div>
-        <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+        <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'var(--text-muted)' }}>
           {sessions.length} session{sessions.length !== 1 ? 's' : ''}
           {totalDuration > 0 ? ` · ${fmtDuration(totalDuration)} total` : ''}
         </p>

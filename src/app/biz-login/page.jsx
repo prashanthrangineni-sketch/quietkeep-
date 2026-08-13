@@ -396,7 +396,7 @@ export default function BizLoginPage() {
 
         {/* Phone OTP Step */}
         {step === 'phone_otp' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 10 }}>💬</div>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>Enter SMS OTP</h1>
             <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 6px' }}>

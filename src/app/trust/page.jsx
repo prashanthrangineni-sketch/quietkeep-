@@ -94,7 +94,7 @@ export default function TrustDashboard() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: 'var(--bg)', color: '#e2e8f0',
+      minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       padding: '0 0 80px',
     }}>
@@ -177,7 +177,7 @@ export default function TrustDashboard() {
                 borderBottom: i < 5 ? '1px solid rgba(255,255,255,0.04)' : 'none',
               }}>
                 <div>
-                  <div style={{ fontSize: 12, color: '#e2e8f0' }}>{row.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text)' }}>{row.label}</div>
                   <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>{row.desc}</div>
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#a5b4fc', flexShrink: 0, marginLeft: 12 }}>
@@ -213,7 +213,7 @@ export default function TrustDashboard() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', textTransform: 'capitalize' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize' }}>
                         {p.intent_type}
                       </div>
                       <div style={{
@@ -282,7 +282,7 @@ export default function TrustDashboard() {
               border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
                   {h.decision === 'auto_trigger'   ? '⚡ Auto-triggered' :
                    h.decision === 'strong_suggest' ? '💡 Suggested' :
                    h.decision === 'governed_suggest'? '🛡️ Governed→Suggest' :

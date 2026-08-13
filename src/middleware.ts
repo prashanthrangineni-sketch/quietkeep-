@@ -11,19 +11,38 @@ import { NextResponse, type NextRequest } from 'next/server';
  * This middleware runs ONLY when the app is accessed via a web browser at
  * quietkeep.com (Vercel deployment).
  *
- * FIX: Enforce qk_app_mode cookie to prevent cross-context navigation.
- *   - Personal users (qk_app_mode=personal) are redirected away from /b/* routes.
- *   - Business users (qk_app_mode=business) are redirected away from /dashboard.
- *   - Routes with no cookie are passed through — client-side guards handle auth.
+ * WHAT THIS GUARD IS FOR
+ *   Keeping a Personal browsing session from wandering into Business screens
+ *   (and vice versa) by accident — e.g. a stale link in history.
  *
- * NOTE: This is a UX guard, not a security boundary. The real security is
- * workspace_id scoping in every API route and Supabase RLS. This prevents
- * accidental context confusion in the browser only.
+ * WHAT IT MUST NEVER DO (regression guard — this shipped and hurt)
+ *   Silently redirect a URL the user deliberately opened. Landing on the
+ *   Personal dashboard after clicking a Business link reads as "Business is
+ *   broken", not as "you are in Personal mode".
+ *
+ * This is a UX guard, not a security boundary. Real security is workspace_id
+ * scoping in every API route plus Supabase RLS.
  */
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
 
-  // Only enforce on the two context-sensitive route groups
+/**
+ * Business URLs that must ALWAYS resolve, whatever mode the browser is in.
+ * These are how you *become* a business user in the first place.
+ */
+const BUSINESS_ENTRY_POINTS = [
+  '/b/join',        // staff accepting an invite — often their first ever visit
+  '/b/onboarding',  // creating a workspace — blocked by the old guard, so
+                    // a personal-mode browser could never create a business
+];
+
+function isBusinessEntryPoint(pathname: string) {
+  return BUSINESS_ENTRY_POINTS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+
   const isPersonalRoute = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
   const isBusinessRoute = pathname.startsWith('/b/');
 
@@ -31,24 +50,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Always let people in through the front door.
+  if (isBusinessRoute && isBusinessEntryPoint(pathname)) {
+    return NextResponse.next();
+  }
+
   const appMode = request.cookies.get('qk_app_mode')?.value;
 
-  // No cookie → no enforcement (first visit, magic link redirect, etc.)
+  // No cookie → no enforcement (first visit, magic-link redirect, etc.)
   if (!appMode) {
     return NextResponse.next();
   }
 
+  // An explicit ?mode= switch is the user telling us which app they want.
+  const requestedMode = request.nextUrl.searchParams.get('mode');
+  if (requestedMode === 'business' || requestedMode === 'personal') {
+    const res = NextResponse.next();
+    res.cookies.set('qk_app_mode', requestedMode, { path: '/', sameSite: 'lax' });
+    return res;
+  }
+
   if (isBusinessRoute && appMode === 'personal') {
-    // Personal user trying to access /b/* — redirect to personal dashboard
+    // Send them to the Business door with their destination remembered —
+    // NOT to the Personal dashboard, which looks like the app is broken.
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = '/biz-login';
+    url.search = `?next=${encodeURIComponent(pathname + search)}`;
     return NextResponse.redirect(url);
   }
 
   if (isPersonalRoute && appMode === 'business') {
-    // Business user trying to access /dashboard — redirect to business dashboard
     const url = request.nextUrl.clone();
     url.pathname = '/b/dashboard';
+    url.search = '';
     return NextResponse.redirect(url);
   }
 

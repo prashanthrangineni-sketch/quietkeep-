@@ -71,7 +71,7 @@ export default function TripsPage() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
           loadTrips(user?.id);
-  }, [user]);
+  }, [user, authLoading]);
 
   async function loadTrips(uid) {
     setLoading(true);

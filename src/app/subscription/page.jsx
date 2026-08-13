@@ -70,7 +70,7 @@ export default function SubscriptionPage() {
               if (data?.plan_id) setCurrentPlan(data.plan_id.replace('_yearly', ''));
               setLoading(false);
             });
-  }, [user]);
+  }, [user, authLoading]);
 
   async function handleUpgrade(plan) {
     if (!user || !accessToken) return;

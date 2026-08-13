@@ -149,8 +149,8 @@ export default function MoodPage() {
               style={{
                 flex:1, marginRight: m.value > 1 ? '0' : '0',
                 padding:'10px 4px',
-                background: selectedMood === m.value ? `${m.color}22` : 'rgba(255,255,255,0.04)',
-                border: selectedMood === m.value ? `1.5px solid ${m.color}` : '1.5px solid rgba(255,255,255,0.08)',
+                background: selectedMood === m.value ? `${m.color}22` : 'var(--surface)',
+                border: selectedMood === m.value ? `1.5px solid ${m.color}` : '1.5px solid var(--border)',
                 borderRadius:'12px',
                 cursor:'pointer',
                 display:'flex', flexDirection:'column', alignItems:'center', gap:'4px',

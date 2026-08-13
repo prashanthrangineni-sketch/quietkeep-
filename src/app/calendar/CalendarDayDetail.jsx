@@ -75,7 +75,7 @@ export default function CalendarDayDetail({ date, calendarType, userId, onClose 
   const S = {
     overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:100, display:'flex', alignItems:'flex-end' },
     sheet: { width:'100%', background:'var(--bg-raised)', borderRadius:'20px 20px 0 0', padding:'20px 16px 32px', maxHeight:'80vh', overflowY:'auto' },
-    handle: { width:'40px', height:'4px', background:'#333', borderRadius:'2px', margin:'0 auto 16px' },
+    handle: { width:'40px', height:'4px', background:'var(--surface)', borderRadius:'2px', margin:'0 auto 16px' },
     dateHeader: { fontSize:'18px', fontWeight:800, marginBottom:'4px' },
     sub: { fontSize:'12px', color:'#888', marginBottom:'16px' },
     divider: { height:'1px', background:'var(--border)', margin:'12px 0' },

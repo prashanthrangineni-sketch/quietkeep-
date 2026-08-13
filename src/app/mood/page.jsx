@@ -46,7 +46,7 @@ export default function MoodPage() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     loadLogs(user?.id);
-  }, [user]);
+  }, [user, authLoading]);
 
   async function loadLogs(uid) {
     setLoading(true);

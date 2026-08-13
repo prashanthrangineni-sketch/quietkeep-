@@ -164,7 +164,7 @@ export default function StockTracker({ supabase, userId }) {
           ].map(s => (
             <div key={s.label} style={{ ...cardStyle, marginBottom: 0, textAlign: 'center', padding: '10px 8px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{s.label}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{s.label}</div>
             </div>
           ))}
         </div>

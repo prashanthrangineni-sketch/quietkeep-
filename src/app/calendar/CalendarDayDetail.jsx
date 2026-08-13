@@ -103,7 +103,7 @@ export default function CalendarDayDetail({ date, calendarType, userId, onClose 
             <div style={{ fontSize:'12px', color:'#6366f1', fontWeight:700, marginBottom:'8px', textTransform:'uppercase', letterSpacing:'0.05em' }}>
               {showTelugu ? '🌸 Telugu Panchangam' : '🌙 Hindi Vikram Samvat'}
             </div>
-            <div style={{ background:'#0f0f1a', borderRadius:'12px', padding:'4px 12px', marginBottom:'12px' }}>
+            <div style={{ background:'var(--surface)', borderRadius:'12px', padding:'4px 12px', marginBottom:'12px' }}>
               {[
                 { label: showTelugu ? 'Masam (Month)' : 'Maas', value: TELUGU_MONTHS[monthIndex] },
                 { label: 'Paksha', value: lunar.paksha },
@@ -125,7 +125,7 @@ export default function CalendarDayDetail({ date, calendarType, userId, onClose 
             <div style={{ fontSize:'12px', color:'#6366f1', fontWeight:700, marginBottom:'8px', textTransform:'uppercase' }}>
               ☪️ Islamic Hijri
             </div>
-            <div style={{ background:'#0f0f1a', borderRadius:'12px', padding:'4px 12px', marginBottom:'12px' }}>
+            <div style={{ background:'var(--surface)', borderRadius:'12px', padding:'4px 12px', marginBottom:'12px' }}>
               <div style={S.panchangRow}>
                 <span style={S.panchangLabel}>Hijri Day</span>
                 <span style={S.panchangValue}>{lunar.lunarDay}</span>

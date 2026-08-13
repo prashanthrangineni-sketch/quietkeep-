@@ -8,6 +8,7 @@
 // Section 47 — automating the arithmetic without owning the filing is the
 // safe, useful thing to do now.
 import { useState, useEffect, useCallback } from 'react';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { supabase } from '@/lib/supabase';

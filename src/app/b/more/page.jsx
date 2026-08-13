@@ -47,7 +47,7 @@ export default function BizMorePage() {
         .from('admin_users').select('user_id').eq('user_id', user.id).maybeSingle();
       setIsPlatformAdmin(!!admin);
     })();
-  }, [user]);
+  }, [user, authLoading]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();

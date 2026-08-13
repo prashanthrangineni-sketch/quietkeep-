@@ -93,13 +93,22 @@ export default function NavbarClient() {
       }}>
         {/* Brand row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: 50 }}>
+          {/* Aaria's face + wordmark — matches quietkeep.com. The app used to
+              show the wordmark alone, which made every internal screen look
+              like a plainer product than the homepage. */}
           <Link href="/dashboard" style={{
-            fontWeight: 800, fontSize: 18,
-            background: 'linear-gradient(135deg, var(--primary), #8b5cf6)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text', textDecoration: 'none', letterSpacing: '-0.5px',
+            display: 'flex', alignItems: 'center', gap: 9,
+            textDecoration: 'none', minWidth: 0,
           }}>
-            QuietKeep
+            <AariaMark size={28} />
+            <span style={{
+              fontWeight: 800, fontSize: 18,
+              background: 'linear-gradient(135deg, var(--primary), #8b5cf6)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text', letterSpacing: '-0.5px',
+            }}>
+              QuietKeep
+            </span>
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <NotificationBell />

@@ -140,7 +140,7 @@ export default function ProfilePage() {
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               placeholder="Your name"
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid #333', borderRadius: 8, color: '#fff', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: '#fff', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
 
@@ -154,7 +154,7 @@ export default function ProfilePage() {
             <select
               value={timezone}
               onChange={e => setTimezone(e.target.value)}
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid #333', borderRadius: 8, color: '#fff', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none' }}
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: '#fff', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none' }}
             >
               <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
               <option value="Asia/Dubai">Asia/Dubai (GST)</option>
@@ -166,7 +166,7 @@ export default function ProfilePage() {
           <button
             onClick={saveProfile}
             disabled={saving}
-            style={{ width: '100%', padding: '0.75rem', borderRadius: 8, border: 'none', background: saving ? '#333' : '#6366f1', color: '#fff', fontSize: '0.95rem', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}
+            style={{ width: '100%', padding: '0.75rem', borderRadius: 8, border: 'none', background: saving ? 'var(--border)' : '#6366f1', color: '#fff', fontSize: '0.95rem', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}
           >
             {saving ? 'Saving…' : saved || 'Save Profile'}
           </button>

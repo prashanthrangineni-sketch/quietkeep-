@@ -203,7 +203,7 @@ export default function ChartsComponent() {
             <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 16px', color: 'var(--text)' }}>Budget Status</h3>
             <div style={{ display: 'grid', gap: '12px' }}>
               {budgetData.map((budget, idx) => (
-                <div key={idx} style={{ backgroundColor: '#1a1a2e', borderRadius: '8px', padding: '12px' }}>
+                <div key={idx} style={{ backgroundColor: 'var(--bg)', borderRadius: '8px', padding: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text)' }}>{budget.name}</div>
                     <div style={{ fontSize: '12px', color: budget.spent > budget.limit ? '#ef4444' : '#10b981' }}>

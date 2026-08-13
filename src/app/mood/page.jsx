@@ -218,7 +218,7 @@ export default function MoodPage() {
               return (
                 <div key={log.id} style={{
                   display:'flex', alignItems:'center', gap:'12px',
-                  background:'var(--surface)', border:'1px solid rgba(255,255,255,0.07)',
+                  background:'var(--surface)', border:'1px solid var(--border)',
                   borderLeft:`3px solid ${m.color}`, borderRadius:'10px', padding:'11px 12px',
                   marginBottom:'8px'
                 }}>

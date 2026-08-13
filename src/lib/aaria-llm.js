@@ -221,6 +221,12 @@ export async function aariaUnderstandLLM(text, opts = {}) {
         // ~12s round trip is Sarvam generating this JSON). Everything the app
         // actually acts on fits comfortably in 300.
         max_tokens: 300,
+        // Streaming does not make the model faster. It makes US faster: a
+        // non-streamed request cannot be read until the server has finished,
+        // so we also pay for whatever the model emits AFTER the closing brace
+        // -- trailing prose, a markdown fence, padding toward max_tokens. With
+        // the stream we stop at the brace and cancel the rest.
+        stream: !STREAM_DISABLED,
         messages: [{ role: 'user', content: prompt }],
       }),
       signal: ctrl.signal,
@@ -232,8 +238,9 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       return null;
     }
 
-    const data = await res.json();
-    const raw = data?.choices?.[0]?.message?.content?.trim() || '';
+    const raw = (!STREAM_DISABLED && res.body)
+      ? await readUntilJsonComplete(res.body, ctrl)
+      : ((await res.json())?.choices?.[0]?.message?.content?.trim() || '');
     const jsonText = raw.replace(/```json|```/g, '').trim();
 
     let parsed;

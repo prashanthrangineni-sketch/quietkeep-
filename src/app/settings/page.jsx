@@ -437,7 +437,7 @@ export default function SettingsPage() {
           <Select label="I am a…" value={persona} onChange={setPersona} options={PERSONAS} />
           <div>
             <label style={{ color: '#c4b5fd', fontSize: '0.82rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>Account Email / Phone</label>
-            <div style={{ color: 'var(--text-subtle)', fontSize: '0.9rem', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10 }}>{user?.email || user?.phone || 'QuietKeep Account'}</div>
+            <div style={{ color: 'var(--text-subtle)', fontSize: '0.9rem', padding: '0.75rem 1rem', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10 }}>{user?.email || user?.phone || 'QuietKeep Account'}</div>
           </div>
         </Section>
 

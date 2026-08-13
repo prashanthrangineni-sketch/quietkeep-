@@ -446,7 +446,7 @@ export default function EmergencyPage() {
           onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}
           >
           <div style={{
-            background: '#141420', borderRadius: '20px 20px 0 0',
+            background: 'var(--surface)', borderRadius: '20px 20px 0 0',
             padding: '20px 20px 36px', width: '100%', maxWidth: '480px', margin: '0 auto',
             border: '1px solid var(--border)'
           }}>

@@ -101,7 +101,7 @@ export default function MoodPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight:'100vh', background:'var(--bg)', color:'#f0f0f5', fontFamily:"'DM Sans', -apple-system, sans-serif", paddingBottom:'80px', paddingTop:'96px' }}>
+      <div style={{ minHeight:'100vh', background:'var(--bg)', color:'var(--text-muted)', fontFamily:"'DM Sans', -apple-system, sans-serif", paddingBottom:'80px', paddingTop:'96px' }}>
 
       {/* Header */}
       <div style={{ background:'linear-gradient(135deg,var(--bg),var(--bg))', borderBottom:'1px solid rgba(167,139,250,0.15)', padding:'20px 16px 16px' }}>

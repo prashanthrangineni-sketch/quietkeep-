@@ -123,6 +123,18 @@ export default function OnboardingPage() {
         throw profileErr;
       }
 
+      // `profiles` has no email column, so keep the address the user typed on
+      // the auth record. Stored as metadata rather than auth email so it does
+      // not fire an email-change confirmation the user never asked for.
+      const typedEmail = email.trim();
+      if (typedEmail && typedEmail !== user.email) {
+        try {
+          await supabase.auth.updateUser({ data: { contact_email: typedEmail } });
+        } catch (e) {
+          console.error('[onboarding] could not store contact email', e);
+        }
+      }
+
       // Consent is normally saved the moment it is given (see saveConsent),
       // so by here it is usually already stored. Re-assert it anyway in case
       // that first write failed while the user was offline.

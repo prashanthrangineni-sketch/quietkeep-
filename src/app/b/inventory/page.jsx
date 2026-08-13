@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';

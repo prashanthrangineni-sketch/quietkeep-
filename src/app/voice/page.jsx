@@ -141,7 +141,7 @@ export default function VoicePage() {
               const isExpanded = expanded === s.id;
               return (
                 <div key={s.id} style={{
-                  background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
                   borderLeft: `3px solid ${s.intent_captured ? '#4ade80' : '#a78bfa'}`,
                   borderRadius: '12px', padding: '12px 14px', marginBottom: '8px',
                 }}>

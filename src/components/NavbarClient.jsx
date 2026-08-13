@@ -9,14 +9,16 @@ import NotificationBell from '@/components/NotificationBell';
 import AariaMark from '@/components/AariaMark';
 
 const NAV_LINKS = [
-  { href: '/dashboard', icon: 'home',      label: 'Home',     tKey: 'home' },
-  { href: '/reminders', icon: 'reminders', label: 'Remind',   tKey: 'reminders' },
-  { href: '/calendar',  icon: 'calendar',  label: 'Calendar', tKey: 'calendar' },
-  { href: '/daily-brief',icon: 'brief',    label: 'Brief',    tKey: 'brief' },
-  { href: '/finance',   icon: 'finance',   label: 'Finance',  tKey: 'finance' },
-  { href: '/documents', icon: 'documents', label: 'Docs',     tKey: 'documents' },
-  { href: '/health',    icon: 'health',    label: 'Health',   tKey: 'health' },
-  { href: '/family',    icon: 'family',    label: 'Family',   tKey: 'family' },
+  // `icon` is a rendered element, not a string, so the JSX below can stay
+  // exactly as it was when these were emoji.
+  { href: '/dashboard', icon: <QkIcon name="home" size={20} />,      label: 'Home',     tKey: 'home' },
+  { href: '/reminders', icon: <QkIcon name="reminders" size={20} />, label: 'Remind',   tKey: 'reminders' },
+  { href: '/calendar',  icon: <QkIcon name="calendar" size={20} />,  label: 'Calendar', tKey: 'calendar' },
+  { href: '/daily-brief',icon: <QkIcon name="brief" size={20} />,    label: 'Brief',    tKey: 'brief' },
+  { href: '/finance',   icon: <QkIcon name="finance" size={20} />,   label: 'Finance',  tKey: 'finance' },
+  { href: '/documents', icon: <QkIcon name="documents" size={20} />, label: 'Docs',     tKey: 'documents' },
+  { href: '/health',    icon: <QkIcon name="health" size={20} />,    label: 'Health',   tKey: 'health' },
+  { href: '/family',    icon: <QkIcon name="family" size={20} />,    label: 'Family',   tKey: 'family' },
   // BUG FOUND 13 Aug 2026: /memories borrowed the 'mood' key and /warranty
   // borrowed 'documents', so the top nav literally showed "Mood Log" twice and
   // "Documents" twice. The keys now exist in all nine languages.

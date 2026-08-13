@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import NavbarClient from '@/components/NavbarClient';
 import { safeFetch } from '@/lib/safeFetch';
 
-const inp = { width:'100%', background:'#111', border:'1px solid #333', borderRadius:8, color:'#fff', padding:'0.6rem 0.75rem', fontSize:'0.88rem', outline:'none', boxSizing:'border-box' };
+const inp = { width:'100%', background:'var(--bg)', border:'1px solid #333', borderRadius:8, color:'#fff', padding:'0.6rem 0.75rem', fontSize:'0.88rem', outline:'none', boxSizing:'border-box' };
 const btn1 = { padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'#6366f1', color:'#fff', fontSize:'0.88rem', fontWeight:600, cursor:'pointer' };
 
 function today() { return new Date().toISOString().split('T')[0]; }

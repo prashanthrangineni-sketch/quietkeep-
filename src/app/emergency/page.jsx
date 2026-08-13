@@ -382,7 +382,7 @@ export default function EmergencyPage() {
         {/* Section: Others */}
         {otherContacts.length > 0 && (
           <div>
-            <p style={{ margin: '12px 0 8px', fontSize: '11px', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            <p style={{ margin: '12px 0 8px', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
               Other Contacts
             </p>
             {otherContacts.map(c => (

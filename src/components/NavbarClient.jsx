@@ -9,14 +9,14 @@ import NotificationBell from '@/components/NotificationBell';
 import AariaMark from '@/components/AariaMark';
 
 const NAV_LINKS = [
-  { href: '/dashboard', icon: '🏠', label: 'Home',     tKey: 'home' },
-  { href: '/reminders', icon: '⏰', label: 'Remind',   tKey: 'reminders' },
-  { href: '/calendar',  icon: '📅', label: 'Calendar', tKey: 'calendar' },
-  { href: '/daily-brief',icon: '☀️',label: 'Brief',    tKey: 'brief' },
-  { href: '/finance',   icon: '💰', label: 'Finance',  tKey: 'finance' },
-  { href: '/documents', icon: '📄', label: 'Docs',     tKey: 'documents' },
-  { href: '/health',    icon: '❤️', label: 'Health',   tKey: 'health' },
-  { href: '/family',    icon: '👨‍👩‍👧', label: 'Family',  tKey: 'family' },
+  { href: '/dashboard', icon: 'home',      label: 'Home',     tKey: 'home' },
+  { href: '/reminders', icon: 'reminders', label: 'Remind',   tKey: 'reminders' },
+  { href: '/calendar',  icon: 'calendar',  label: 'Calendar', tKey: 'calendar' },
+  { href: '/daily-brief',icon: 'brief',    label: 'Brief',    tKey: 'brief' },
+  { href: '/finance',   icon: 'finance',   label: 'Finance',  tKey: 'finance' },
+  { href: '/documents', icon: 'documents', label: 'Docs',     tKey: 'documents' },
+  { href: '/health',    icon: 'health',    label: 'Health',   tKey: 'health' },
+  { href: '/family',    icon: 'family',    label: 'Family',   tKey: 'family' },
   // BUG FOUND 13 Aug 2026: /memories borrowed the 'mood' key and /warranty
   // borrowed 'documents', so the top nav literally showed "Mood Log" twice and
   // "Documents" twice. The keys now exist in all nine languages.

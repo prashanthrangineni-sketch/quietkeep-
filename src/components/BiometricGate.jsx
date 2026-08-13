@@ -84,12 +84,12 @@ export default function BiometricGate({ children }) {
     return (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'var(--background, #0f172a)',
+        background: 'var(--background, var(--bg))',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexDirection: 'column', gap: 16,
       }}>
         <div style={{ fontSize: 48 }}>👆</div>
-        <p style={{ color: 'var(--foreground, #f8fafc)', fontSize: 18, fontWeight: 600 }}>
+        <p style={{ color: 'var(--foreground, var(--text))', fontSize: 18, fontWeight: 600 }}>
           QuietKeep is Locked
         </p>
         <p style={{ color: 'var(--muted, #64748b)', fontSize: 13, textAlign: 'center', maxWidth: 260 }}>

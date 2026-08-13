@@ -110,7 +110,7 @@ export default function HealthPage() {
   if (gateStatus === 'ERROR')  return (<div style={{ minHeight:'100vh', background:'var(--bg)' }}><NavbarClient /><FeatureErrorUI onRetry={() => window.location.reload()} /></div>);
 
   return (
-    <div style={{ minHeight:'100vh', background:'var(--bg)', color:'#fff', paddingTop:'96px', paddingBottom:'80px' }}>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', color:'var(--text)', paddingTop:'96px', paddingBottom:'80px' }}>
       <NavbarClient />
       <div style={{ maxWidth:640, margin:'0 auto', padding:'1.5rem 1rem 5rem' }}>
 

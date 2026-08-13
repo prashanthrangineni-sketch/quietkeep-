@@ -451,15 +451,15 @@ export default function EmergencyPage() {
             border: '1px solid var(--border)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#fff' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--text)' }}>
                 {editContact ? 'Edit Contact' : 'Add Emergency Contact'}
               </h3>
-              <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '20px', cursor: 'pointer', padding: '4px' }}>✕</button>
+              <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '20px', cursor: 'pointer', padding: '4px' }}>✕</button>
             </div>
 
             {/* Name */}
             <label style={{ display: 'block', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</span>
               <input
                 type="text"
                 value={form.name}
@@ -467,8 +467,8 @@ export default function EmergencyPage() {
                 placeholder="e.g. Ramesh Kumar"
                 style={{
                   display: 'block', width: '100%', marginTop: '6px', padding: '11px 12px',
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontSize: '14px', fontFamily: 'inherit',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: '10px', color: 'var(--text)', fontSize: '14px', fontFamily: 'inherit',
                   outline: 'none', boxSizing: 'border-box'
                 }}
               />
@@ -476,7 +476,7 @@ export default function EmergencyPage() {
 
             {/* Phone */}
             <label style={{ display: 'block', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone Number</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone Number</span>
               <input
                 type="tel"
                 value={form.phone}
@@ -484,8 +484,8 @@ export default function EmergencyPage() {
                 placeholder="+91 9876543210"
                 style={{
                   display: 'block', width: '100%', marginTop: '6px', padding: '11px 12px',
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontSize: '14px', fontFamily: 'inherit',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: '10px', color: 'var(--text)', fontSize: '14px', fontFamily: 'inherit',
                   outline: 'none', boxSizing: 'border-box'
                 }}
               />
@@ -493,7 +493,7 @@ export default function EmergencyPage() {
 
             {/* Relation */}
             <label style={{ display: 'block', marginBottom: '14px' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Relation</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Relation</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
                 {RELATIONS.map(r => (
                   <button
@@ -502,8 +502,8 @@ export default function EmergencyPage() {
                     onClick={() => setForm(f => ({ ...f, relation: r }))}
                     style={{
                       padding: '6px 12px', borderRadius: '20px', fontSize: '12px',
-                      background: form.relation === r ? 'rgba(255,80,80,0.2)' : 'rgba(255,255,255,0.05)',
-                      border: form.relation === r ? '1px solid rgba(255,80,80,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                      background: form.relation === r ? 'rgba(255,80,80,0.2)' : 'var(--surface)',
+                      border: form.relation === r ? '1px solid rgba(255,80,80,0.5)' : '1px solid var(--border)',
                       color: form.relation === r ? '#ff8080' : 'rgba(255,255,255,0.5)',
                       cursor: 'pointer', fontFamily: 'inherit'
                     }}

@@ -104,7 +104,7 @@ export default function SOSPage() {
         {/* Resolved */}
         {resolved.length > 0 && (
           <div>
-            <p style={{ margin: '0 0 10px', fontSize: '11px', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
               Resolved
             </p>
             {resolved.map(e => <SOSCard key={e.id} event={e} resolved />)}

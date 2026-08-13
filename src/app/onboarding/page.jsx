@@ -90,14 +90,10 @@ export default function OnboardingPage() {
         throw profileErr;
       }
 
-      if (consentData) {
-        await supabase.from('user_consent').upsert({
-          user_id: user.id,
-          ...consentData,
-          consent_version: 'v1.0',
-          consented_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' }).catch(() => {});
-      }
+      // Consent is normally saved the moment it is given (see saveConsent),
+      // so by here it is usually already stored. Re-assert it anyway in case
+      // that first write failed while the user was offline.
+      await saveConsent(consentData);
 
       if (referralCode.trim()) {
         try { safeFetch('/api/referral').catch(()=>{}); } catch {}

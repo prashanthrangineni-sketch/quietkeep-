@@ -367,6 +367,25 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
+      const isNativeApp = typeof window !== 'undefined'
+        && (window as any).Capacitor
+        && typeof (window as any).Capacitor.isNativePlatform === 'function'
+        && (window as any).Capacitor.isNativePlatform();
+
+      // Web / PWA: use Supabase OAuth redirect (the native plugin does not exist
+      // in a browser — calling it was the cause of the silent failure).
+      if (!isNativeApp) {
+        const { error: oauthErr } = await getClient().auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: `${window.location.origin}/auth/callback?next=${POST_AUTH_PATH}` },
+        });
+        if (oauthErr) {
+          setError(oauthErr.message || 'Google sign-in is not available right now.');
+          setLoading(false);
+        }
+        return; // browser navigates to Google
+      }
+
       const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
       GoogleAuth.initialize({
         clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '854117079237-7n53t4i57l3slst108u7o1n9msmbs845.apps.googleusercontent.com',

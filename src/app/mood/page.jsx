@@ -172,7 +172,7 @@ export default function MoodPage() {
           rows={2}
           style={{
             width:'100%', padding:'10px 12px', background:'var(--surface)',
-            border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px',
+            border:'1px solid var(--border)', borderRadius:'10px',
             color:'var(--text)', fontSize:'13px', fontFamily:'inherit', resize:'vertical',
             outline:'none', boxSizing:'border-box', marginBottom:'12px'
           }}
@@ -184,7 +184,7 @@ export default function MoodPage() {
           style={{
             width:'100%', padding:'12px',
             background: !selectedMood ? 'var(--surface)' : saved ? 'rgba(74,222,128,0.3)' : 'rgba(167,139,250,0.3)',
-            border: !selectedMood ? '1px solid rgba(255,255,255,0.1)' : saved ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(167,139,250,0.5)',
+            border: !selectedMood ? '1px solid var(--border)' : saved ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(167,139,250,0.5)',
             borderRadius:'10px', color: !selectedMood ? 'var(--text-subtle)' : 'var(--text)',
             fontSize:'14px', fontWeight:600, cursor: !selectedMood ? 'not-allowed' : 'pointer', fontFamily:'inherit'
           }}

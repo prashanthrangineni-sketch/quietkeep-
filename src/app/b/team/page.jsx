@@ -112,6 +112,12 @@ export default function TeamPage() {
     setShowForm(true);
   }
 
+  async function copyInvite() {
+    try { await navigator.clipboard.writeText(inviteUrl); setMsg('Invite link copied ✓'); }
+    catch { setMsg('Copy failed — select the link and copy it manually.'); }
+    setTimeout(() => setMsg(''), 3000);
+  }
+
   async function saveMember() {
     if (!form.name.trim() || !workspace) return;
     setSaving(true); setMsg('');

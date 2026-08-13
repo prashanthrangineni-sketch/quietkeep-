@@ -174,7 +174,7 @@ export default function TrustDashboard() {
               <div key={i} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
                 padding: '11px 14px',
-                borderBottom: i < 5 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                borderBottom: i < 5 ? '1px solid var(--border)' : 'none',
               }}>
                 <div>
                   <div style={{ fontSize: 12, color: 'var(--text)' }}>{row.label}</div>

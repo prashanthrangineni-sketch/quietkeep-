@@ -153,14 +153,37 @@ public class VoiceService extends Service {
 
         String action = intent.getAction();
 
-        if ("START".equals(action)) {
+        if ("START".equals(action) || "START_HOTWORD".equals(action)) {
             authToken    = intent.getStringExtra("auth_token");
             serverUrl    = intent.getStringExtra("server_url");
-            alwaysOnMode = intent.getBooleanExtra("always_on", false);
-            Log.d(TAG, "VoiceService alwaysOnMode=" + alwaysOnMode);
-            sessionId    = intent.getStringExtra("session_id");
             mode         = intent.getStringExtra("mode");
             workspaceId  = intent.getStringExtra("workspace_id");
+            sessionId    = intent.getStringExtra("session_id");
+
+            SharedPreferences prefs = getSharedPreferences("qk_auth", MODE_PRIVATE);
+            if (authToken == null || authToken.isEmpty()) {
+                authToken = prefs.getString("auth_token", null);
+            } else {
+                prefs.edit().putString("auth_token", authToken).apply();
+            }
+            if (serverUrl == null || serverUrl.isEmpty()) {
+                serverUrl = prefs.getString("server_url", "https://quietkeep.com");
+            } else {
+                prefs.edit().putString("server_url", serverUrl).apply();
+            }
+            if (mode == null || mode.isEmpty()) {
+                mode = prefs.getString("mode", "personal");
+            } else {
+                prefs.edit().putString("mode", mode).apply();
+            }
+
+            if ("START_HOTWORD".equals(action)) {
+                alwaysOnMode = true;
+            } else {
+                alwaysOnMode = intent.getBooleanExtra("always_on", false);
+            }
+
+            Log.d(TAG, "VoiceService alwaysOnMode=" + alwaysOnMode);
             String lc    = intent.getStringExtra("language_code");
             languageCode = (lc != null && !lc.isEmpty()) ? lc : "en-IN";
             Log.d(TAG, "VoiceService STT lang: " + languageCode);
@@ -183,8 +206,8 @@ public class VoiceService extends Service {
             Log.d(TAG, "VoiceService.startForeground called ✓");
             startCapture();
 
-        } else if ("STOP".equals(action)) {
-            Log.d(TAG, "VoiceService STOP");
+        } else if ("STOP".equals(action) || "STOP_HOTWORD".equals(action)) {
+            Log.d(TAG, "VoiceService STOP / STOP_HOTWORD");
             stopCapture();
             stopForeground(true);
             stopSelf();

@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextResponse }   from 'next/server'
 import { createClient }   from '@supabase/supabase-js'
-import { parseIntent }    from '@/lib/intent-parser'
+import { parseIntent, stripWakePhrase }    from '@/lib/intent-parser'
 import { aariaAssist }   from '@/lib/aaria-act' // SOT P1: Aaria action brain for utterances regex can't parse
 import {
   computeReminderAt,
@@ -87,7 +87,8 @@ export async function POST(request) {
     return NextResponse.json({ error: 'transcript is required' }, { status: 400 })
   }
 
-  const text = transcript.trim()
+  const rawText = transcript.trim()
+  const text    = stripWakePhrase(rawText) || rawText
 
   // FIX: Idempotency check — prevent duplicate keeps from double-tap or loop re-entry.
   // Auto-generate a key if none supplied: SHA-256 of (userId + text + 60s window).
@@ -325,6 +326,7 @@ export async function POST(request) {
   }
 
   let reminderNudgeId = null
+  let reminderRow     = null
   if (reminderAt && keep.id) {
     reminderNudgeId = await scheduleReminderNudge(supabase, {
       userId:     user.id,
@@ -333,6 +335,24 @@ export async function POST(request) {
       content:    text,
       domainType: workspace_id ? 'business' : 'personal',
     })
+
+    try {
+      const { data: rem } = await supabase
+        .from('reminders')
+        .insert({
+          user_id:       user.id,
+          keep_id:       keep.id,
+          reminder_text: text,
+          scheduled_for: reminderAt.toISOString(),
+          is_active:     true,
+          space_type:    workspace_id ? 'business' : 'personal',
+        })
+        .select('*')
+        .maybeSingle()
+      reminderRow = rem
+    } catch (remErr) {
+      console.error('[capture] reminders table insert failed:', remErr)
+    }
   }
 
   // audit_log columns are (action, service, details, intent_id) — NOT
@@ -525,6 +545,7 @@ export async function POST(request) {
     tts_response,
     reminder_at:       keep.reminder_at,
     reminder_nudge_id: reminderNudgeId,
+    reminder:          reminderRow,
     contact_matched:   matchedContact
       ? { name: matchedContact.name, phone: matchedContact.phone }
       : null,

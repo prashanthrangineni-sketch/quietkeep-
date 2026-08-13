@@ -298,8 +298,16 @@ export function computeSimilarityKey(text) {
     .slice(0, 60);
 }
 
+export function stripWakePhrase(text) {
+  if (!text) return '';
+  return text
+    .replace(/^(?:hi|hey|hello|ok|okay)?\s*(?:aaria|arya|aria|aariya|ariaa)\s*(?:can\s+you\s+please|please|can\s+you)?\s*/i, '')
+    .trim();
+}
+
 export function parseIntent(text) {
-  const trimmed  = (text || '').trim();
+  const rawText  = (text || '').trim();
+  const trimmed  = stripWakePhrase(rawText) || rawText;
   const lower    = trimmed.toLowerCase();
   const entities = extractEntities(trimmed);
   const { type: intentType, conf } = classifyIntent(lower);

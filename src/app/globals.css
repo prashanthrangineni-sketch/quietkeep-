@@ -133,6 +133,21 @@ input[type="datetime-local"],input[type="date"],input[type="time"]{color-scheme:
 }
 .qk-container{max-width:480px;margin:0 auto;padding:20px 16px}
 
+/* RESPONSIVE WIDTH — added 13 Aug 2026.
+   QuietKeep is built as a phone app and the web build reuses the same shell.
+   Every signed-in screen was locked to a 480px column with NO media queries
+   anywhere in this stylesheet, so on a laptop the product sat in a thin strip
+   inside a mostly empty page — while quietkeep.com beside it used the full
+   width. Phones are unchanged; larger screens simply get room to breathe.
+   This is the width fix only. Turning that room into real two-column layouts
+   is a per-screen design job, not a stylesheet change. */
+@media (min-width: 768px) {
+  .qk-container{max-width:680px;padding:28px 24px}
+}
+@media (min-width: 1200px) {
+  .qk-container{max-width:880px;padding:32px 24px}
+}
+
 .qk-section-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-subtle);margin-bottom:10px}
 
 /* Stat cards */

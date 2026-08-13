@@ -67,7 +67,7 @@ export default function GeoPage() {
       }
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
-  }, [user]);
+  }, [user, authLoading]);
 
   async function loadGeoKeeps(uid) {
     // Phase 4 FIX: fetch BOTH confirmed geo keeps AND keeps with a location_name

@@ -270,7 +270,7 @@ export default function BizOnboardingPage() {
             {editMode && (
               <button onClick={() => router.replace('/b/dashboard')}
                 style={{ width: '100%', padding: '10px', borderRadius: 10, background: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.08)', color: '#64748b',
+                  border: '1px solid var(--border)', color: '#64748b',
                   fontFamily: 'inherit', cursor: 'pointer', fontSize: 13 }}>
                 Cancel — back to Dashboard
               </button>

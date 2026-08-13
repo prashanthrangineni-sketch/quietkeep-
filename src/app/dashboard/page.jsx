@@ -207,7 +207,7 @@ function EditKeepModal({ intent, onSave, onClose }) {
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
           <button onClick={save} disabled={saving || !content.trim()} style={{
             flex: 1, padding: '12px', borderRadius: 10, border: 'none',
-            background: content.trim() ? 'linear-gradient(135deg,#6366f1,#818cf8)' : 'rgba(255,255,255,0.06)',
+            background: content.trim() ? 'linear-gradient(135deg,#6366f1,#818cf8)' : 'var(--surface)',
             color: content.trim() ? '#fff' : '#475569', fontSize: 14, fontWeight: 700,
             cursor: content.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
           }}>
@@ -956,7 +956,7 @@ export default function Dashboard() {
                 {Object.entries(whyPanel.signals).map(([k, v]) => (
                   <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', width: 80, flexShrink: 0, textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</div>
-                    <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                    <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'var(--surface)', overflow: 'hidden' }}>
                       <div style={{ height: '100%', borderRadius: 2, width: `${Math.round((v ?? 0) * 100)}%`, background: 'rgba(99,102,241,0.7)' }} />
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--text-subtle)', width: 30, textAlign: 'right' }}>{Math.round((v ?? 0) * 100)}%</div>
@@ -979,7 +979,7 @@ export default function Dashboard() {
             {autoHistory.length === 0 ? (
               <div style={{ fontSize: 13, color: 'var(--text-subtle)', textAlign: 'center', padding: '20px 0' }}>No automated actions yet</div>
             ) : autoHistory.map((entry, i) => (
-              <div key={i} style={{ padding: '11px 13px', marginBottom: 8, background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div key={i} style={{ padding: '11px 13px', marginBottom: 8, background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--surface)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{entry.decision === 'auto_trigger' ? '⚡ Auto-triggered' : '💡 Suggested'}{' '}{entry.inputs?.intentType || entry.inputs?.label || ''}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-subtle)' }}>{entry.created_at ? new Date(entry.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : ''}</div>

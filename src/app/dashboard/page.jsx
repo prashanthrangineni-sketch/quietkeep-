@@ -162,7 +162,7 @@ function EditKeepModal({ intent, onSave, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 0 0' }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: 'var(--bg)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px 20px 0 0', padding: '24px 20px 40px', width: '100%', maxWidth: 540, animation: 'qk-sheet-in 0.25s ease' }}>
+      <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', padding: '24px 20px 40px', width: '100%', maxWidth: 540, animation: 'qk-sheet-in 0.25s ease' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>✏️ Edit Keep</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
@@ -172,7 +172,7 @@ function EditKeepModal({ intent, onSave, onClose }) {
             <button key={v} onClick={() => setIntentType(v)} style={{
               padding: '4px 12px', borderRadius: 20, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
               background: intentType === v ? 'rgba(99,102,241,0.2)' : 'transparent',
-              border: `1px solid ${intentType === v ? '#6366f1' : 'rgba(255,255,255,0.1)'}`,
+              border: `1px solid ${intentType === v ? '#6366f1' : 'var(--border)'}`,
               color: intentType === v ? '#a5b4fc' : '#64748b',
             }}>{l}</button>
           ))}
@@ -181,7 +181,7 @@ function EditKeepModal({ intent, onSave, onClose }) {
           value={content}
           onChange={e => setContent(e.target.value)}
           rows={4}
-          style={{ width: '100%', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: 'var(--text)', padding: '12px 14px', fontSize: 14, fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.6 }}
+          style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', padding: '12px 14px', fontSize: 14, fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.6 }}
           placeholder="What's on your mind?"
           autoFocus
         />
@@ -189,14 +189,14 @@ function EditKeepModal({ intent, onSave, onClose }) {
           <div style={{ marginTop: 10 }}>
             <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⏰ Reminder date & time</label>
             <input type="datetime-local" value={reminderAt} onChange={e => setReminderAt(e.target.value)}
-              style={{ width: '100%', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: 'var(--text)', padding: '10px 14px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+              style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', padding: '10px 14px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
             {reminderAt && <button onClick={() => setReminderAt('')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer', marginTop: 4 }}>× Remove reminder</button>}
           </div>
         )}
         <div style={{ marginTop: 10 }}>
           <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📍 Location Trigger</label>
           <input type="text" value={locationName} onChange={e => setLocationName(e.target.value)} placeholder="e.g. Office, Home, Supermarket"
-            style={{ width: '100%', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: 'var(--text)', padding: '10px 14px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+            style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', padding: '10px 14px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
           {locationName.trim() && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}>
               <input type="checkbox" checked={enableGeo} onChange={e => setEnableGeo(e.target.checked)} style={{ cursor: 'pointer' }} />

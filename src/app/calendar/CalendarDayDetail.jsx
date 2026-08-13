@@ -82,7 +82,7 @@ export default function CalendarDayDetail({ date, calendarType, userId, onClose 
     panchangRow: { display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border)' },
     panchangLabel: { fontSize:'12px', color:'#888' },
     panchangValue: { fontSize:'12px', color:'#c4b5fd', fontWeight:600, textAlign:'right', maxWidth:'60%' },
-    eventItem: { display:'flex', alignItems:'flex-start', gap:'10px', padding:'10px', background:'#1a1a2e', borderRadius:'10px', marginBottom:'8px' },
+    eventItem: { display:'flex', alignItems:'flex-start', gap:'10px', padding:'10px', background:'var(--surface)', borderRadius:'10px', marginBottom:'8px' },
     noEvents: { textAlign:'center', color:'#555', fontSize:'13px', padding:'16px 0' },
     closeBtn: { position:'absolute', top:'16px', right:'16px', background:'var(--border)', border:'none', color:'#888', width:'32px', height:'32px', borderRadius:'50%', cursor:'pointer', fontSize:'16px', display:'flex', alignItems:'center', justifyContent:'center' },
   };

@@ -293,29 +293,29 @@ export default function DrivingPage() {
               Drive Tools
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <a href="/drive" style={{ backgroundColor: isDriving ? '#6366f1' : '#1a1a2e',
-                color: '#f1f5f9', border: '1px solid #334155', padding: '12px',
+              <a href="/drive" style={{ backgroundColor: isDriving ? '#6366f1' : 'var(--bg)',
+                color: '#f1f5f9', border: '1px solid var(--border)', padding: '12px',
                 borderRadius: '8px', fontSize: '13px', fontWeight: '600',
                 textDecoration: 'none', display: 'block', textAlign: 'center' }}>
                 🛣️ Drive Mode UI
               </a>
               <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer"
-                style={{ backgroundColor: isDriving ? '#6366f1' : '#1a1a2e',
-                color: '#f1f5f9', border: '1px solid #334155', padding: '12px',
+                style={{ backgroundColor: isDriving ? '#6366f1' : 'var(--bg)',
+                color: '#f1f5f9', border: '1px solid var(--border)', padding: '12px',
                 borderRadius: '8px', fontSize: '13px', fontWeight: '600',
                 textDecoration: 'none', display: 'block', textAlign: 'center' }}>
                 📍 Maps
               </a>
-              <a href="tel:" style={{ backgroundColor: isDriving ? '#6366f1' : '#1a1a2e',
-                color: '#f1f5f9', border: '1px solid #334155', padding: '12px',
+              <a href="tel:" style={{ backgroundColor: isDriving ? '#6366f1' : 'var(--bg)',
+                color: '#f1f5f9', border: '1px solid var(--border)', padding: '12px',
                 borderRadius: '8px', fontSize: '13px', fontWeight: '600',
                 textDecoration: 'none', display: 'block', textAlign: 'center' }}>
                 📞 Dialer
               </a>
               <a href={`https://wa.me/?text=${encodeURIComponent("I'm driving — will reply later. 🚗")}`}
                 target="_blank" rel="noopener noreferrer"
-                style={{ backgroundColor: isDriving ? '#6366f1' : '#1a1a2e',
-                color: '#f1f5f9', border: '1px solid #334155', padding: '12px',
+                style={{ backgroundColor: isDriving ? '#6366f1' : 'var(--bg)',
+                color: '#f1f5f9', border: '1px solid var(--border)', padding: '12px',
                 borderRadius: '8px', fontSize: '13px', fontWeight: '600',
                 textDecoration: 'none', display: 'block', textAlign: 'center' }}>
                 💬 WhatsApp
@@ -324,8 +324,8 @@ export default function DrivingPage() {
           </div>
 
           <button onClick={() => router.push('/dashboard')} style={{
-            width: '100%', backgroundColor: '#1a1a2e', color: '#94a3b8',
-            border: '1px solid #334155', padding: '12px', borderRadius: '8px',
+            width: '100%', backgroundColor: 'var(--bg)', color: '#94a3b8',
+            border: '1px solid var(--border)', padding: '12px', borderRadius: '8px',
             cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
             ← Back to Dashboard
           </button>

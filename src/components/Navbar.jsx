@@ -13,7 +13,7 @@ export default function Navbar() {
       top: 0,
       zIndex: 1000,
       backgroundColor: 'var(--bg)',
-      borderBottom: '1px solid #1e1e2e',
+      borderBottom: '1px solid var(--border)',
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
     }}>

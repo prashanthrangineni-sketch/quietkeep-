@@ -283,7 +283,7 @@ export default function BizLoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'linear-gradient(135deg,#0a1628 0%,#0d2a1e 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: "'Inter',-apple-system,sans-serif", position: 'relative', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100dvh', background: 'linear-gradient(135deg,var(--bg) 0%,#0d2a1e 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: "'Inter',-apple-system,sans-serif", position: 'relative', overflow: 'hidden' }}>
       {/* Aurora Glow */}
       <div style={{ position: 'absolute', top: -200, right: -200, width: 600, height: 600, background: 'radial-gradient(circle,rgba(16,185,129,0.12) 0%,transparent 70%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: -200, left: -200, width: 600, height: 600, background: 'radial-gradient(circle,rgba(5,150,105,0.1) 0%,transparent 70%)', pointerEvents: 'none' }} />

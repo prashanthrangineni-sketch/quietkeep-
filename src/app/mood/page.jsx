@@ -171,7 +171,7 @@ export default function MoodPage() {
           placeholder="Add a note (optional)..."
           rows={2}
           style={{
-            width:'100%', padding:'10px 12px', background:'rgba(255,255,255,0.06)',
+            width:'100%', padding:'10px 12px', background:'var(--surface)',
             border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px',
             color:'#fff', fontSize:'13px', fontFamily:'inherit', resize:'vertical',
             outline:'none', boxSizing:'border-box', marginBottom:'12px'

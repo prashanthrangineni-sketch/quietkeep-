@@ -110,7 +110,7 @@ export default function BillsPage() {
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:14 }}>
               {BILL_TYPES.map(t=>(
                 <button key={t.value} onClick={()=>setForm(f=>({...f,bill_type:t.value,recurrence:t.recurrence||f.recurrence,due_day:t.dueDay||f.due_day}))}
-                  style={{ padding:'8px 4px', borderRadius:8, border:`1px solid ${form.bill_type===t.value?t.color:'rgba(255,255,255,0.08)'}`, background:form.bill_type===t.value?t.color+'22':'transparent', color:form.bill_type===t.value?t.color:'var(--text-muted)', fontSize:10, cursor:'pointer', fontFamily:'inherit', textAlign:'center' }}>
+                  style={{ padding:'8px 4px', borderRadius:8, border:`1px solid ${form.bill_type===t.value?t.color:'var(--surface)'}`, background:form.bill_type===t.value?t.color+'22':'transparent', color:form.bill_type===t.value?t.color:'var(--text-muted)', fontSize:10, cursor:'pointer', fontFamily:'inherit', textAlign:'center' }}>
                   <div style={{ fontSize:18 }}>{t.emoji}</div><div style={{ fontWeight:600 }}>{t.label}</div>
                 </button>
               ))}
@@ -147,7 +147,7 @@ export default function BillsPage() {
             const days=daysUntilDue(bill);
             const urgent=days!==null&&days<=3, soon=days!==null&&days<=7;
             return (
-              <div key={bill.id} style={{ background:'var(--surface)', border:`1px solid ${urgent?'rgba(239,68,68,0.3)':soon?'rgba(245,158,11,0.25)':'rgba(255,255,255,0.08)'}`, borderRadius:12, padding:'14px 16px', marginBottom:8, display:'flex', alignItems:'center', gap:12 }}>
+              <div key={bill.id} style={{ background:'var(--surface)', border:`1px solid ${urgent?'rgba(239,68,68,0.3)':soon?'rgba(245,158,11,0.25)':'var(--surface)'}`, borderRadius:12, padding:'14px 16px', marginBottom:8, display:'flex', alignItems:'center', gap:12 }}>
                 <div style={{ fontSize:28 }}>{t.emoji}</div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>{bill.title}</div>

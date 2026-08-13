@@ -6,6 +6,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { supabase as _supabaseSingleton } from '@/lib/supabase';
+import { routeAfterBusinessLogin } from '@/lib/biz-after-login';
 
 const BETA_OTP_LEN = 8;
 const SMS_OTP_LEN = 6;
@@ -14,6 +15,19 @@ const G2 = '#059669';
 
 function getClient() {
   return _supabaseSingleton;
+}
+
+/**
+ * The destination middleware asked for, if any. Without this an invite link
+ * (/b/join?token=...) is lost the moment the invitee is bounced to sign in.
+ */
+function pendingNext() {
+  if (typeof window === 'undefined') return '/b/dashboard';
+  const n = new URLSearchParams(window.location.search).get('next');
+  if (!n) return '/b/dashboard';
+  let v = n;
+  try { v = decodeURIComponent(n); } catch { /* use as-is */ }
+  return (v.startsWith('/') && !v.startsWith('//')) ? v : '/b/dashboard';
 }
 
 function setBusinessMode() {

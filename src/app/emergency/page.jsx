@@ -520,7 +520,7 @@ export default function EmergencyPage() {
                 onClick={() => setForm(f => ({ ...f, is_primary: !f.is_primary }))}
                 style={{
                   width: '42px', height: '24px', borderRadius: '12px',
-                  background: form.is_primary ? 'rgba(255,80,80,0.7)' : 'rgba(255,255,255,0.1)',
+                  background: form.is_primary ? 'rgba(255,80,80,0.7)' : 'var(--surface)',
                   position: 'relative', transition: 'background 0.2s', flexShrink: 0
                 }}
               >
@@ -532,7 +532,7 @@ export default function EmergencyPage() {
                   boxShadow: '0 1px 4px rgba(0,0,0,0.3)'
                 }} />
               </div>
-              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text)' }}>
                 ★ Mark as primary contact
               </span>
             </label>

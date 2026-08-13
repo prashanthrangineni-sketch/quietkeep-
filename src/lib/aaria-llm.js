@@ -27,7 +27,11 @@
 // its existing regex behaviour if anything goes wrong.
 
 const SARVAM_CHAT_URL = 'https://api.sarvam.ai/v1/chat/completions';
-const MODEL = 'sarvam-m';
+// 13 Aug 2026: Sarvam returned
+//   "Model 'sarvam-m' has been deprecated. Please use one of the available
+//    models instead: sarvam-105b, sarvam-105b-conversations."
+// Overridable without a redeploy via SARVAM_CHAT_MODEL.
+const MODEL = process.env.SARVAM_CHAT_MODEL || 'sarvam-105b';
 const TIMEOUT_MS = 7000;
 
 const LANG_NAMES = {

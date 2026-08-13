@@ -138,7 +138,14 @@ export async function POST(request) {
     const ROMAN_INDIC = /\b(se|ko|ka|ki|ke|liye|diye|diya|aaye|aaya|mile|mila|rupaye|rupay|rupees|hazaar|hajaar|sau|lakh|kal|aaj|parso|subah|shaam|raat|baje|yaad|dilana|karna|chahiye|nahi|gurthu|repu|nenu|meeru|cheyyi|kavali|ivvu|vachindi|ravali)\b/i
   let llmAssist = null
 
-  if (regexWeak || langBase !== 'en') {
+  const needsBrain =
+      regexWeak ||
+      langBase !== 'en' ||
+      MONEY_TYPES.has(parsed.type) ||
+      ROMAN_INDIC.test(text) ||
+      ((parsed.type === 'reminder' || parsed.type === 'task') && !reminderAt)
+
+    if (needsBrain) {
     llmAssist = await aariaUnderstandLLM(text, {
       language,
       nowISO: new Date().toISOString(),

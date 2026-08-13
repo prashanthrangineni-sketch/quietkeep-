@@ -7,6 +7,7 @@ import { farewellOnLogout, resetGreetGuard } from '@/components/VoiceTalkback';
 import { useTranslations } from 'next-intl';
 import NotificationBell from '@/components/NotificationBell';
 import AariaMark from '@/components/AariaMark';
+import QkIcon from '@/components/QkIcon';
 
 const NAV_LINKS = [
   // `icon` is a rendered element, not a string, so the JSX below can stay

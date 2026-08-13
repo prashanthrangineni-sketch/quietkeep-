@@ -71,7 +71,7 @@ export default function KeepAIAssist({ keepId, content, intentType, accessToken,
             disabled={loading}
             style={{
               padding: '8px 12px', borderRadius: 20, minHeight: '36px',
-              border: `1px solid ${action === a.id && result ? '#6366f1' : '#334155'}`,
+              border: `1px solid ${action === a.id && result ? '#6366f1' : 'var(--border)'}`,
               background: action === a.id && result ? '#6366f122' : 'transparent',
               color: action === a.id && result ? '#818cf8' : '#94a3b8',
               fontSize: '11px', cursor: loading ? 'not-allowed' : 'pointer',

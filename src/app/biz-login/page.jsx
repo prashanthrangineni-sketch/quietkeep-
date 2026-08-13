@@ -498,7 +498,7 @@ export default function BizLoginPage() {
 
         {/* Beta Password step */}
         {step === 'otp' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Beta Access Code</h1>
             <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 24px' }}>
               {email}

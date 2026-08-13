@@ -307,7 +307,7 @@ export default function EmergencyPage() {
                 <span style={{ fontSize: '14px' }}>📍</span>
                 <span style={{ fontSize: '13px', color: '#4ade80', fontWeight: 600 }}>Location captured</span>
               </div>
-              <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+              <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
                 {location.lat.toFixed(5)}, {location.lng.toFixed(5)} · ±{location.acc}m accuracy
               </p>
               <a

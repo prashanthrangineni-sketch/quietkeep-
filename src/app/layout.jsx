@@ -115,7 +115,7 @@ export default async function RootLayout({ children }) {
           ])
         }} />
         <script dangerouslySetInnerHTML={{
-          __html: `(function(){try{var t=localStorage.getItem('qk_theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`
+          __html: `(function(){try{if(!localStorage.getItem('qk_theme_reset_v2')){localStorage.setItem('qk_theme','light');localStorage.setItem('qk_theme_reset_v2','1');}var t=localStorage.getItem('qk_theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`
         }} />
         <script dangerouslySetInnerHTML={{
           __html: `(function(){

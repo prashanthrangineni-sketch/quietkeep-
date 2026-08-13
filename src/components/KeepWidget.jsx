@@ -102,12 +102,12 @@ export default function KeepWidget({ compact = false }) {
               onChange={e => setNewText(e.target.value)}
               placeholder="What do you want to keep in mind?"
               rows={2}
-              style={{ width: '100%', background: '#1e1e2e', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '10px', fontSize: '14px', resize: 'none', boxSizing: 'border-box', marginBottom: '8px' }}
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', padding: '10px', borderRadius: '10px', fontSize: '14px', resize: 'none', boxSizing: 'border-box', marginBottom: '8px' }}
             />
 
             {/* Type selector */}
             <select value={intentType} onChange={e => setIntentType(e.target.value)}
-              style={{ width: '100%', background: '#1e1e2e', border: '1px solid #333', color: '#fff', padding: '8px', borderRadius: '8px', fontSize: '13px', marginBottom: '8px', boxSizing: 'border-box' }}>
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px', borderRadius: '8px', fontSize: '13px', marginBottom: '8px', boxSizing: 'border-box' }}>
               <option value="note">📝 Note</option>
               <option value="reminder">⏰ Reminder</option>
               <option value="contact">📞 Contact</option>

@@ -200,7 +200,12 @@ export default function TeamPage() {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t));
   }
 
-  const filtered = members.filter(m => filter === 'all' || m.status === filter);
+  // A newly added member is 'invited' until they sign in once. Treating that as
+  // a separate bucket would make them disappear from the default view the
+  // moment the owner saved them, which is worse than the bug being fixed.
+  const filtered = members.filter(m =>
+    filter === 'all' ||
+    (filter === 'active' ? (m.status === 'active' || m.status === 'invited') : m.status === filter));
 
   const inp = {
     width:'100%', background:'var(--surface)', border:'1px solid var(--border)',

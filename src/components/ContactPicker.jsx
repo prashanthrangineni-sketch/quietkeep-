@@ -101,14 +101,14 @@ export default function ContactPicker({ supabase, userId, onSelect, onClose, mul
             return (
               <div key={c.id} onClick={() => toggle(c)} style={{
                 display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px',
-                borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer',
+                borderBottom: '1px solid var(--border)', cursor: 'pointer',
                 background: isSelected ? 'rgba(99,102,241,0.08)' : 'transparent',
               }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', background: isSelected ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                <div style={{ width: 38, height: 38, borderRadius: '50%', background: isSelected ? 'rgba(99,102,241,0.3)' : 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
                   {isSelected ? '✓' : (c.avatar_emoji || '👤')}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }}>{c.name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>{c.name}</div>
                   <div style={{ fontSize: 12, color: '#64748b' }}>{c.phone}{c.relation ? ` · ${c.relation}` : ''}</div>
                 </div>
               </div>

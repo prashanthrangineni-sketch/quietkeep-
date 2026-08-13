@@ -138,7 +138,7 @@ export default function HealthPage() {
         </div>
 
         {/* Today's log */}
-        <div style={{ background:'var(--surface)', border:'1px solid #2a2a2a', borderRadius:12, padding:'1.2rem', marginBottom:'1.5rem' }}>
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'1.2rem', marginBottom:'1.5rem' }}>
           <h3 style={{ fontSize:'0.9rem', fontWeight:700, marginBottom:'1rem', color:'#aaa' }}>Today — {fmtDate(today())}</h3>
           
           <div style={{ marginBottom:'1rem' }}>

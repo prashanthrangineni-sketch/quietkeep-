@@ -131,7 +131,7 @@ export default function SharePage({ params }) {
               <div style={{ marginBottom: 20 }}>
                 <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Renewals This Week</div>
                 {content.subs.map((s, i) => (
-                  <div key={i} style={{ background: '#0f172a', borderRadius: 8, padding: '10px 14px', marginBottom: 8, color: '#cbd5e1', fontSize: 14 }}>
+                  <div key={i} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', marginBottom: 8, color: 'var(--text-muted)', fontSize: 14 }}>
                     {s.name} — {s.currency} {s.amount} · due {s.next_due}
                   </div>
                 ))}

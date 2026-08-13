@@ -179,7 +179,7 @@ export default function BizLoginPage() {
     const sb = getClient();
     const { error: err } = await sb.auth.signInWithOtp({
       email: emailAddr,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/b/dashboard` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(pendingNext())}` },
     });
     setLoading(false);
     if (err) { setError(err.message || 'Failed to send link.'); return; }

@@ -881,7 +881,7 @@ export default function Dashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                 {followUpData.contacts.map((c) => (
                   <button key={c.id} onClick={() => { if (c.phone) window.location.href = `tel:${c.phone}`; setFollowUpData(null); }}
-                    style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: 'var(--text)', fontSize: 13, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'inherit' }}>
+                    style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 13, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'inherit' }}>
                     <span>{c.name}{c.relation ? ` (${c.relation})` : ''}</span>
                     <span style={{ color: '#22c55e', fontWeight: 600 }}>{c.phone || 'no phone'}</span>
                   </button>

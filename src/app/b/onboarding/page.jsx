@@ -139,13 +139,13 @@ export default function BizOnboardingPage() {
   const inp = {
     width: '100%', background: 'rgba(255,255,255,0.06)',
     border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: 12,
-    padding: '12px 16px', color: '#f1f5f9', fontSize: 14,
+    padding: '12px 16px', color: 'var(--text)', fontSize: 14,
     outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
   };
 
   return (
     <div style={{
-      minHeight: '100dvh', background: 'var(--bg)', color: '#f1f5f9',
+      minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text)',
       fontFamily: "'Inter',-apple-system,sans-serif",
       paddingTop: editMode ? 56 : 0, paddingBottom: 40,
     }}>
@@ -156,7 +156,7 @@ export default function BizOnboardingPage() {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontSize: 38, marginBottom: 8 }}>{editMode ? '⚙️' : '🏢'}</div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>
             {editMode ? 'Workspace Settings' : 'Set Up Your Business'}
           </h1>
           <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>
@@ -177,7 +177,7 @@ export default function BizOnboardingPage() {
                   style={{ padding: '12px', borderRadius: 12, textAlign: 'left', cursor: 'pointer',
                     border: `1.5px solid ${bizType === bt.value ? G : 'rgba(255,255,255,0.1)'}`,
                     background: bizType === bt.value ? `${G}18` : 'rgba(255,255,255,0.03)',
-                    color: '#f1f5f9', fontFamily: 'inherit' }}>
+                    color: 'var(--text)', fontFamily: 'inherit' }}>
                   <div style={{ fontSize: 22, marginBottom: 4 }}>{bt.emoji}</div>
                   <div style={{ fontSize: 12, fontWeight: 700 }}>{bt.label}</div>
                   <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{bt.desc}</div>
@@ -209,7 +209,7 @@ export default function BizOnboardingPage() {
                       style={{ padding: '7px 6px', borderRadius: 8, fontSize: 11, cursor: 'pointer',
                         border: `1px solid ${bizType === bt.value ? G : 'rgba(255,255,255,0.1)'}`,
                         background: bizType === bt.value ? `${G}18` : 'rgba(255,255,255,0.03)',
-                        color: '#f1f5f9', fontFamily: 'inherit' }}>
+                        color: 'var(--text)', fontFamily: 'inherit' }}>
                       {bt.emoji} {bt.label.split('/')[0].trim()}
                     </button>
                   ))}

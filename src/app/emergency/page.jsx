@@ -241,7 +241,7 @@ export default function EmergencyPage() {
           padding: '20px',
           textAlign: 'center'
         }}>
-          <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+          <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
             Hold 3 seconds to trigger emergency
           </p>
 

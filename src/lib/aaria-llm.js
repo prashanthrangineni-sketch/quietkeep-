@@ -31,7 +31,13 @@ const SARVAM_CHAT_URL = 'https://api.sarvam.ai/v1/chat/completions';
 //   "Model 'sarvam-m' has been deprecated. Please use one of the available
 //    models instead: sarvam-105b, sarvam-105b-conversations."
 // Overridable without a redeploy via SARVAM_CHAT_MODEL.
-const MODEL = process.env.SARVAM_CHAT_MODEL || 'sarvam-105b';
+// Measured on production 13 Aug 2026 with the Hindi benchmark utterance:
+//   sarvam-105b-conversations  200, 4.2s, clean JSON, correct reminder + Hindi reply
+//   sarvam-105b (reasoning)    200, 4.9s, finish_reason "length", content null —
+//                              it spends the whole budget on reasoning_content.
+// So: the conversational variant is the brain. Do not switch back without
+// re-running /api/debug/aaria-llm.
+const MODEL = process.env.SARVAM_CHAT_MODEL || 'sarvam-105b-conversations';
 const TIMEOUT_MS = 7000;
 
 const LANG_NAMES = {

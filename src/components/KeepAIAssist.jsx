@@ -111,7 +111,7 @@ export default function KeepAIAssist({ keepId, content, intentType, accessToken,
       )}
 
       {result && !loading && (
-        <div style={{ background: '#111827', borderRadius: 8, padding: '10px' }}>
+        <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px' }}>
           {Array.isArray(result) ? (
             <ul style={{ margin: 0, paddingLeft: '16px', color: '#cbd5e1', lineHeight: '1.7' }}>
               {result.map((item, i) => <li key={i} style={{ marginBottom: '4px', fontSize: '12px' }}>{item}</li>)}

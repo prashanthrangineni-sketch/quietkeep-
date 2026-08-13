@@ -123,8 +123,8 @@ function SOSCard({ event: e, onResolve, resolving, resolved }) {
 
   return (
     <div style={{
-      background: resolved ? 'rgba(255,255,255,0.03)' : 'rgba(255,60,60,0.08)',
-      border: `1px solid ${resolved ? 'rgba(255,255,255,0.08)' : 'rgba(255,80,80,0.3)'}`,
+      background: resolved ? 'var(--surface)' : 'rgba(255,60,60,0.08)',
+      border: `1px solid ${resolved ? 'var(--border)' : 'rgba(255,80,80,0.3)'}`,
       borderLeft: `3px solid ${resolved ? '#4ade80' : '#ff4040'}`,
       borderRadius: '14px', padding: '14px', marginBottom: '10px',
       opacity: resolved ? 0.7 : 1,
@@ -137,14 +137,14 @@ function SOSCard({ event: e, onResolve, resolving, resolved }) {
               {resolved ? '✅ Resolved' : '🆘 Active SOS'}
             </span>
           </div>
-          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             Triggered: {fmt(e.triggered_at)}
           </div>
           {e.resolved_at && (
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
               Resolved: {fmt(e.resolved_at)}
               {duration(e.triggered_at, e.resolved_at) && (
-                <span style={{ color: 'rgba(255,255,255,0.25)' }}> · {duration(e.triggered_at, e.resolved_at)}</span>
+                <span style={{ color: 'var(--text-muted)' }}> · {duration(e.triggered_at, e.resolved_at)}</span>
               )}
             </div>
           )}

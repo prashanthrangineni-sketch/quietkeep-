@@ -169,7 +169,8 @@ export async function POST(request) {
     // the regex's is meaningless — the regex reports 0.95 on the exact sentence
     // it gets backwards. The outer gate (>= 0.55) is the real guard, and if
     // Sarvam is down llmAssist is null and the regex result stands untouched.
-    if (true) {
+    const brainWins = llmAssist.confidence >= 0.55
+    if (brainWins) {
       parsed = {
         ...parsed,
         type: mappedType,

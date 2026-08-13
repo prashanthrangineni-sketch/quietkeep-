@@ -202,7 +202,7 @@ export default function MoodPage() {
         {loading && <div style={{ textAlign:'center', padding:'30px', color:'var(--text-subtle)', fontSize:'13px' }}>Loading...</div>}
 
         {!loading && logs.length === 0 && (
-          <div style={{ textAlign:'center', padding:'40px 20px', background:'var(--surface)', border:'1px dashed rgba(255,255,255,0.1)', borderRadius:'16px' }}>
+          <div style={{ textAlign:'center', padding:'40px 20px', background:'var(--surface)', border:'1px dashed var(--border)', borderRadius:'16px' }}>
             <div style={{ fontSize:'36px', marginBottom:'10px' }}>🌱</div>
             <p style={{ margin:0, fontSize:'14px', color:'var(--text-muted)' }}>No mood logs yet. Start tracking today!</p>
           </div>

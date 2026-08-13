@@ -13,6 +13,7 @@
 // Also the first real business screen on the Aurora kit (SOT P5), so it doubles
 // as the adoption reference for the rest of /b/*.
 import { useState, useEffect, useCallback } from 'react';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { supabase } from '@/lib/supabase';

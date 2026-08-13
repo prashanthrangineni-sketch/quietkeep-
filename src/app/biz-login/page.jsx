@@ -251,7 +251,7 @@ export default function BizLoginPage() {
       if (!isNativeApp) {
         const { error: oauthErr } = await getClient().auth.signInWithOAuth({
           provider: 'google',
-          options: { redirectTo: `${window.location.origin}/auth/callback?next=/b/dashboard` },
+          options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(pendingNext())}` },
         });
         if (oauthErr) {
           setError(oauthErr.message || 'Google sign-in is not available right now.');

@@ -356,7 +356,7 @@ export default function SettingsPage() {
   );
 
   const Section = ({ title, children }) => (
-    <div style={{ background: 'var(--surface)', border: '1px solid #2a2a2a', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem' }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem' }}>
       <h3 style={{ color: 'var(--text)', fontSize: '0.95rem', fontWeight: 600, marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>{title}</h3>
       {children}
     </div>

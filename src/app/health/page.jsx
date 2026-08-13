@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import NavbarClient from '@/components/NavbarClient';
 import { safeFetch } from '@/lib/safeFetch';
 
-const inp = { width:'100%', background:'var(--bg)', border:'1px solid #333', borderRadius:8, color:'#fff', padding:'0.6rem 0.75rem', fontSize:'0.88rem', outline:'none', boxSizing:'border-box' };
+const inp = { width:'100%', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:8, color:'#fff', padding:'0.6rem 0.75rem', fontSize:'0.88rem', outline:'none', boxSizing:'border-box' };
 const btn1 = { padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'#6366f1', color:'#fff', fontSize:'0.88rem', fontWeight:600, cursor:'pointer' };
 
 function today() { return new Date().toISOString().split('T')[0]; }
@@ -145,7 +145,7 @@ export default function HealthPage() {
             <label style={{ color:'#666', fontSize:'0.78rem', display:'block', marginBottom:6 }}>💧 Water intake — {water} glasses</label>
             <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
               {[0,1,2,3,4,5,6,7,8].map(n => (
-                <button key={n} onClick={() => setWater(n)} style={{ width:36, height:36, borderRadius:8, border:`1px solid ${water>=n&&n>0 ? '#06b6d4' : '#333'}`, background: water>=n&&n>0 ? '#06b6d415' : 'transparent', color: water>=n&&n>0 ? '#06b6d4' : '#555', fontSize:'0.8rem', cursor:'pointer', fontWeight:600 }}>{n||'0'}</button>
+                <button key={n} onClick={() => setWater(n)} style={{ width:36, height:36, borderRadius:8, border:`1px solid ${water>=n&&n>0 ? '#06b6d4' : 'var(--border)'}`, background: water>=n&&n>0 ? '#06b6d415' : 'transparent', color: water>=n&&n>0 ? '#06b6d4' : '#555', fontSize:'0.8rem', cursor:'pointer', fontWeight:600 }}>{n||'0'}</button>
               ))}
             </div>
           </div>

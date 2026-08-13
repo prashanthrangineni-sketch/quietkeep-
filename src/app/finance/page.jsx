@@ -113,11 +113,11 @@ export default function FinancePage() {
       <div style={{ maxWidth:700, margin:'0 auto', padding:'6rem 1rem 6rem' }}>
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'0.75rem', marginBottom:'1.5rem' }}>
-          <div style={{ background:'var(--surface)', border:'1px solid #2a2a2a', borderRadius:12, padding:'1.2rem' }}>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'1.2rem' }}>
             <div style={{ color:'#666', fontSize:'0.78rem', marginBottom:4 }}>Spent This Month</div>
             <div style={{ color:'#ef4444', fontSize:'1.6rem', fontWeight:700 }}>₹{totalSpent.toLocaleString('en-IN')}</div>
           </div>
-          <div style={{ background:'var(--surface)', border:'1px solid #2a2a2a', borderRadius:12, padding:'1.2rem' }}>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'1.2rem' }}>
             <div style={{ color:'#666', fontSize:'0.78rem', marginBottom:4 }}>Monthly Subscriptions</div>
             <div style={{ color:'#f59e0b', fontSize:'1.6rem', fontWeight:700 }}>₹{totalSubs.toLocaleString('en-IN')}</div>
           </div>

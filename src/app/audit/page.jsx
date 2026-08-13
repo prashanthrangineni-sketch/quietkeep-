@@ -88,7 +88,7 @@ export default function AuditPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: 'var(--bg)', color: '#e2e8f0',
+      minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       paddingBottom: 80,
     }}>
@@ -170,7 +170,7 @@ export default function AuditPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
                           {log.decision}
                         </span>
                         <span style={{
@@ -290,7 +290,7 @@ export default function AuditPage() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{ fontSize: 22, flexShrink: 0 }}>{item.icon}</div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', marginBottom: 4 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
                       {item.title}
                     </div>
                     <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5, marginBottom: 12 }}>
@@ -315,7 +315,7 @@ export default function AuditPage() {
               background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)',
               borderRadius: 12,
             }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
                 📜 Consent-based learning
               </div>
               <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.7 }}>

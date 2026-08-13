@@ -145,7 +145,7 @@ export default function BizOnboardingPage() {
 
   return (
     <div style={{
-      minHeight: '100dvh', background: '#0a1628', color: '#f1f5f9',
+      minHeight: '100dvh', background: 'var(--bg)', color: '#f1f5f9',
       fontFamily: "'Inter',-apple-system,sans-serif",
       paddingTop: editMode ? 56 : 0, paddingBottom: 40,
     }}>

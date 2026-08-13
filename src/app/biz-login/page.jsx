@@ -294,7 +294,7 @@ export default function BizLoginPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
             <SmileyOrb size={32} bg1={G} bg2={G2} />
-            <span style={{ fontWeight: 800, fontSize: 16, color: '#e2e8f0' }}>
+            <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--text)' }}>
               QuietKeep <span style={{ color: G }}>Business</span>
             </span>
           </Link>
@@ -338,7 +338,7 @@ export default function BizLoginPage() {
               </button>
 
               <button onClick={() => setStep('email')}
-                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', borderRadius: 12, padding: '13px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text)', borderRadius: 12, padding: '13px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Sign In with Email / Beta Code
               </button>
             </div>

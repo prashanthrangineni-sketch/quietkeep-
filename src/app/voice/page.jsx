@@ -114,7 +114,7 @@ export default function VoicePage() {
             <div key={s.label} style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '10px', textAlign: 'center' }}>
               <div style={{ fontSize: '16px', marginBottom: '4px' }}>{s.icon}</div>
               <div style={{ fontSize: '15px', fontWeight: 700, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>{s.label}</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -122,19 +122,19 @@ export default function VoicePage() {
 
       {/* Sessions list */}
       <div style={{ padding: '0 16px' }}>
-        {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>Loading...</div>}
+        {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>}
 
         {!loading && sessions.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '56px 20px', background: 'var(--surface)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '16px' }}>
+          <div style={{ textAlign: 'center', padding: '56px 20px', background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: '16px' }}>
             <div style={{ fontSize: '48px', marginBottom: '14px' }}>🎙️</div>
-            <p style={{ margin: '0 0 8px', fontSize: '15px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>No voice sessions yet</p>
-            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>Use the microphone on the dashboard to capture voice keeps</p>
+            <p style={{ margin: '0 0 8px', fontSize: '15px', color: 'var(--text)', fontWeight: 500 }}>No voice sessions yet</p>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Use the microphone on the dashboard to capture voice keeps</p>
           </div>
         )}
 
         {Object.values(grouped).map((group, gi) => (
           <div key={gi} style={{ marginBottom: '20px' }}>
-            <p style={{ margin: '0 0 8px', fontSize: '11px', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            <p style={{ margin: '0 0 8px', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
               {group.label}
             </p>
             {group.items.map(s => {

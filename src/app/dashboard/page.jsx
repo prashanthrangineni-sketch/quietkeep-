@@ -1225,7 +1225,7 @@ export default function Dashboard() {
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       <button onClick={() => { updateState(pred.id, 'closed'); handleFeedback(pred.id, 'acted'); }} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)', color: '#a78bfa', cursor: 'pointer', fontFamily: 'inherit' }}>✓ Yes</button>
-                      <button onClick={() => { updateState(pred.id, 'closed'); handleFeedback(pred.id, 'dismissed'); }} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
+                      <button onClick={() => { updateState(pred.id, 'closed'); handleFeedback(pred.id, 'dismissed'); }} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, background: 'transparent', border: '1px solid var(--border)', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>
                     </div>
                   </div>
                 ))}

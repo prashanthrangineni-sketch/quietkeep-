@@ -159,7 +159,7 @@ export default function BizOnboardingPage() {
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>
             {editMode ? 'Workspace Settings' : 'Set Up Your Business'}
           </h1>
-          <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-subtle)', margin: 0 }}>
             {editMode ? 'Update your business details' : 'Get started with QuietKeep Business'}
           </p>
         </div>
@@ -167,7 +167,7 @@ export default function BizOnboardingPage() {
         {/* Step 0: Type selection (new workspaces only) */}
         {step === 0 && !editMode && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8',
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-subtle)',
               textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
               Type of Business
             </div>
@@ -180,7 +180,7 @@ export default function BizOnboardingPage() {
                     color: 'var(--text)', fontFamily: 'inherit' }}>
                   <div style={{ fontSize: 22, marginBottom: 4 }}>{bt.emoji}</div>
                   <div style={{ fontSize: 12, fontWeight: 700 }}>{bt.label}</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{bt.desc}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-subtle)', marginTop: 2 }}>{bt.desc}</div>
                 </button>
               ))}
             </div>
@@ -199,7 +199,7 @@ export default function BizOnboardingPage() {
             {/* In edit mode, show compact type-picker at top */}
             {editMode && (
               <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8',
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-subtle)',
                   textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
                   Business Type
                 </div>
@@ -223,7 +223,7 @@ export default function BizOnboardingPage() {
               { label: 'Business Phone',  value: phone, set: setPhone, ph: '+91 98765 43210', type: 'tel' },
             ].map(f => (
               <div key={f.label}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8',
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-subtle)',
                   display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {f.label}
                 </label>
@@ -250,7 +250,7 @@ export default function BizOnboardingPage() {
               {!editMode && (
                 <button onClick={() => setStep(0)}
                   style={{ padding: '12px 18px', borderRadius: 12, background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.15)', color: '#94a3b8',
+                    border: '1px solid rgba(255,255,255,0.15)', color: 'var(--text-subtle)',
                     fontFamily: 'inherit', cursor: 'pointer', fontSize: 14 }}>
                   ← Back
                 </button>

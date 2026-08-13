@@ -74,8 +74,6 @@ Reply with ONLY a JSON object, no explanation, no markdown fence:
   "intent": one of ${JSON.stringify(INTENTS)},
   "confidence": number 0-1,
   "language_detected": BCP-47 code of the language the USER spoke, e.g. "te-IN",
-  "clean_text": the utterance written clearly in the user's own language, wake words removed,
-  "title": short label in the user's language, max 60 chars,
   "entities": {
     "person": string or null,
     "datetime_iso": absolute ISO 8601 datetime if a time is stated or implied, else null,

@@ -68,7 +68,7 @@ export default function WarrantyPage() {
     if (!user) { router.replace('/login'); return; }
           checkPremium(user?.id);
           loadProducts(accessToken);
-  }, [user]);
+  }, [user, authLoading]);
 
   async function checkPremium(uid) {
     const { data } = await supabase.from('profiles').select('subscription_tier').eq('user_id', uid).single();

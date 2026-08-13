@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { apiGet } from '@/lib/safeFetch';
 import { useAuth } from '@/lib/context/auth';
 import { useState, useEffect, useCallback } from 'react';

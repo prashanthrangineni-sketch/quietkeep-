@@ -96,7 +96,7 @@ export default function ProfilePage() {
   const initials = (fullName || user?.email || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#fff', paddingTop: '96px', paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', paddingTop: '96px', paddingBottom: '80px' }}>
       <NavbarClient />
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '2rem 1rem 4rem' }}>
 
@@ -105,7 +105,7 @@ export default function ProfilePage() {
           <div style={{
             width: 80, height: 80, borderRadius: '50%', background: '#6366f1',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.8rem', fontWeight: 700, color: '#fff', marginBottom: '1rem',
+            fontSize: '1.8rem', fontWeight: 700, color: 'var(--text)', marginBottom: '1rem',
           }}>
             {initials}
           </div>
@@ -132,7 +132,7 @@ export default function ProfilePage() {
 
         {/* Edit form */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <h3 style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Edit Profile</h3>
+          <h3 style={{ color: 'var(--text)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Edit Profile</h3>
 
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ color: '#aaa', fontSize: '0.82rem', display: 'block', marginBottom: 6 }}>Full Name</label>
@@ -140,7 +140,7 @@ export default function ProfilePage() {
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               placeholder="Your name"
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: '#fff', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
 
@@ -154,7 +154,7 @@ export default function ProfilePage() {
             <select
               value={timezone}
               onChange={e => setTimezone(e.target.value)}
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: '#fff', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none' }}
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none' }}
             >
               <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
               <option value="Asia/Dubai">Asia/Dubai (GST)</option>
@@ -166,7 +166,7 @@ export default function ProfilePage() {
           <button
             onClick={saveProfile}
             disabled={saving}
-            style={{ width: '100%', padding: '0.75rem', borderRadius: 8, border: 'none', background: saving ? 'var(--border)' : '#6366f1', color: '#fff', fontSize: '0.95rem', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}
+            style={{ width: '100%', padding: '0.75rem', borderRadius: 8, border: 'none', background: saving ? 'var(--border)' : '#6366f1', color: 'var(--text)', fontSize: '0.95rem', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}
           >
             {saving ? 'Saving…' : saved || 'Save Profile'}
           </button>
@@ -174,14 +174,14 @@ export default function ProfilePage() {
 
         {/* Account info */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <h3 style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Account</h3>
+          <h3 style={{ color: 'var(--text)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Account</h3>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}>
             <span style={{ color: '#aaa', fontSize: '0.88rem' }}>Plan</span>
             <span style={{ color: tierInfo.color, fontSize: '0.88rem', fontWeight: 600 }}>{tierInfo.label}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}>
             <span style={{ color: '#aaa', fontSize: '0.88rem' }}>Member since</span>
-            <span style={{ color: '#fff', fontSize: '0.88rem' }}>{new Date(user?.created_at).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</span>
+            <span style={{ color: 'var(--text)', fontSize: '0.88rem' }}>{new Date(user?.created_at).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0' }}>
             <span style={{ color: '#aaa', fontSize: '0.88rem' }}>Onboarding</span>

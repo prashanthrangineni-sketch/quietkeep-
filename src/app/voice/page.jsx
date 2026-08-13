@@ -88,7 +88,7 @@ export default function VoicePage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
           <button
             onClick={() => window.history.back()}
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 24, cursor: 'pointer', padding: '0 4px', lineHeight: 1, fontFamily: 'inherit' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 24, cursor: 'pointer', padding: '0 4px', lineHeight: 1, fontFamily: 'inherit' }}
             aria-label="Go back"
           >←</button>
           <span style={{ fontSize: '22px' }}>🎙️</span>

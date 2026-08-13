@@ -54,7 +54,7 @@ export default function CalendarPage() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     setLoading(false);
-  }, [user]);
+  }, [user, authLoading]);
 
   // Load dot indicators for the whole month
   useEffect(() => {

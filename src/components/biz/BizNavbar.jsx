@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import AariaMark from '@/components/AariaMark';
 
 const BIZ_BOTTOM_TABS = [
   { href: '/b/dashboard', icon: '📊', label: 'Dashboard' },

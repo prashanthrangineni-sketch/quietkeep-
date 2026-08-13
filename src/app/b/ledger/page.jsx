@@ -51,7 +51,7 @@ export default function LedgerPage() {
                 .catch(() => {}); // permissions fail → canDo returns true (allow-all fallback)
             }
     })();
-  }, [user]);
+  }, [user, authLoading]);
 
   const loadEntries = useCallback(async (wsId) => {
     setLoading(true);

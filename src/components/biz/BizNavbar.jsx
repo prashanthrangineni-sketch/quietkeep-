@@ -9,30 +9,32 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AariaMark from '@/components/AariaMark';
 
+// `icon` is a rendered element, not a string, so the JSX below is unchanged.
 const BIZ_BOTTOM_TABS = [
-  { href: '/b/dashboard', icon: '📊', label: 'Dashboard' },
-  { href: '/b/ledger',    icon: '📒', label: 'Ledger' },
-  { href: '/b/attendance',icon: '👥', label: 'Attend' },
-  { href: '/b/invoices',  icon: '🧾', label: 'Invoice' },
-  { href: '/b/more',      icon: '☰',  label: 'More' },
+  { href: '/b/dashboard', icon: <QkIcon name="dashboard" size={22} />,  label: 'Dashboard' },
+  { href: '/b/ledger',    icon: <QkIcon name="ledger" size={22} />,     label: 'Ledger' },
+  { href: '/b/attendance',icon: <QkIcon name="attendance" size={22} />, label: 'Attend' },
+  { href: '/b/invoices',  icon: <QkIcon name="invoice" size={22} />,    label: 'Invoice' },
+  { href: '/b/more',      icon: <QkIcon name="more" size={22} />,       label: 'More' },
 ];
 
 const BIZ_NAV_LINKS = [
-  { href: '/b/dashboard',   icon: '📊', label: 'Dashboard' },
-  { href: '/b/ledger',      icon: '📒', label: 'Ledger' },
-  { href: '/b/scan',        icon: '📷', label: 'Scan & Pay' },
-  { href: '/b/team',        icon: '👨‍💼', label: 'Team' },
-  { href: '/b/team/invite', icon: '✉️', label: 'Invite' },
-  { href: '/b/attendance',  icon: '👥', label: 'Attendance' },
-  { href: '/b/payroll',     icon: '💳', label: 'Payroll' },
-  { href: '/b/invoices',    icon: '🧾', label: 'Invoices' },
-  { href: '/b/inventory',   icon: '📦', label: 'Inventory' },
-  { href: '/b/compliance',  icon: '⚖️', label: 'Compliance' },
-  { href: '/b/reports/gstr-3b', icon: '📑', label: 'GSTR-3B' },
-  { href: '/b/customers',   icon: '🤝', label: 'Customers' },
-  { href: '/b/collections', icon: '💸', label: 'Collections' },
-  { href: '/b/tasks',       icon: '✅', label: 'Tasks' },
-  { href: '/b/geo',         icon: '🗺️', label: 'Field' },
+  { href: '/b/dashboard',   icon: <QkIcon name="dashboard" size={20} />,  label: 'Dashboard' },
+  { href: '/b/ledger',      icon: <QkIcon name="ledger" size={20} />,     label: 'Ledger' },
+  { href: '/b/scan',        icon: <QkIcon name="scan" size={20} />,       label: 'Scan & Pay' },
+  { href: '/b/team',        icon: <QkIcon name="team" size={20} />,       label: 'Team' },
+  { href: '/b/team/invite', icon: <QkIcon name="invite" size={20} />,     label: 'Invite' },
+  { href: '/b/attendance',  icon: <QkIcon name="attendance" size={20} />, label: 'Attendance' },
+  { href: '/b/payroll',     icon: <QkIcon name="payroll" size={20} />,    label: 'Payroll' },
+  { href: '/b/invoices',    icon: <QkIcon name="invoice" size={20} />,    label: 'Invoices' },
+  { href: '/b/inventory',   icon: <QkIcon name="inventory" size={20} />,  label: 'Inventory' },
+  { href: '/b/compliance',  icon: <QkIcon name="compliance" size={20} />, label: 'Compliance' },
+  { href: '/b/reports',     icon: <QkIcon name="reports" size={20} />,    label: 'Reports' },
+  { href: '/b/customers',   icon: <QkIcon name="customers" size={20} />,  label: 'Customers' },
+  { href: '/b/collections', icon: <QkIcon name="collections" size={20} />,label: 'Collections' },
+  { href: '/b/tasks',       icon: <QkIcon name="tasks" size={20} />,      label: 'Tasks' },
+  { href: '/b/geo',         icon: <QkIcon name="geo" size={20} />,        label: 'Field' },
+  { href: '/b/chat',        icon: <QkIcon name="chat" size={20} />,       label: 'Team Chat' },
 ];
 
 export default function BizNavbar() {

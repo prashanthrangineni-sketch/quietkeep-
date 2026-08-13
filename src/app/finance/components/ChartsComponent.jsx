@@ -243,7 +243,7 @@ export default function ChartsComponent() {
                       <span style={{ color: 'var(--text)', fontWeight: '600' }}>{item.month}</span>
                       <span style={{ color: '#6366f1' }}>₹{item.amount.toLocaleString('en-IN')}</span>
                     </div>
-                    <div style={{ width: '100%', height: '24px', backgroundColor: '#1a1a2e', borderRadius: '6px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: '24px', backgroundColor: 'var(--bg)', borderRadius: '6px', overflow: 'hidden' }}>
                       <div
                         style={{
                           height: '100%',

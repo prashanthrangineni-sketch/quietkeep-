@@ -57,8 +57,8 @@ const FONT_SIZES = [
 
 // SPRINT 2 ADDITION: Theme options
 const THEMES = [
-  { value: 'dark', label: '🌑 Dark (default)' },
-  { value: 'light', label: '☀️ Light' },
+  { value: 'light', label: '☀️ Light (default)' },
+  { value: 'dark', label: '🌑 Dark' },
   { value: 'amoled', label: '⚫ AMOLED (pure black)' },
 ];
 

@@ -577,7 +577,7 @@ export default function InvoicesPage() {
               </div>
 
               {/* Totals */}
-              <div style={{ background:'rgba(255,255,255,0.03)', borderRadius:10, padding:'10px 12px' }}>
+              <div style={{ background:'var(--surface)', borderRadius:10, padding:'10px 12px' }}>
                 {[['Subtotal',selectedInv.subtotal],['CGST',selectedInv.cgst],['SGST',selectedInv.sgst]].map(([l,v]) => (
                   <div key={l} style={{ display:'flex', justifyContent:'space-between',
                     fontSize:12, color:'var(--text-muted)', marginBottom:4 }}>

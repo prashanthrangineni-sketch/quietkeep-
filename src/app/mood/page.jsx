@@ -104,7 +104,7 @@ export default function MoodPage() {
       <div style={{ minHeight:'100vh', background:'var(--bg)', color:'#f0f0f5', fontFamily:"'DM Sans', -apple-system, sans-serif", paddingBottom:'80px', paddingTop:'96px' }}>
 
       {/* Header */}
-      <div style={{ background:'linear-gradient(135deg,var(--bg),#0a0d16)', borderBottom:'1px solid rgba(167,139,250,0.15)', padding:'20px 16px 16px' }}>
+      <div style={{ background:'linear-gradient(135deg,var(--bg),var(--bg))', borderBottom:'1px solid rgba(167,139,250,0.15)', padding:'20px 16px 16px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'4px' }}>
           <span style={{ fontSize:'22px' }}>🌊</span>
           <h1 style={{ margin:0, fontSize:'20px', fontWeight:700, color:'#fff', letterSpacing:'-0.3px' }}>Mood Log</h1>

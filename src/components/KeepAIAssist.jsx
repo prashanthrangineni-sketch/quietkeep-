@@ -53,7 +53,7 @@ export default function KeepAIAssist({ keepId, content, intentType, accessToken,
   }
 
   return (
-    <div style={{ marginTop: '10px', background: '#0d0d1a', border: '1px solid #6366f130', borderRadius: 10, padding: '12px', fontSize: '12px' }}>
+    <div style={{ marginTop: '10px', background: 'var(--bg)', border: '1px solid #6366f130', borderRadius: 10, padding: '12px', fontSize: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <span style={{ color: '#818cf8', fontWeight: 700 }}>✨ AI Assist</span>
         <button

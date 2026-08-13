@@ -84,11 +84,11 @@ export default function VoicePage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px' }}>
 
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, var(--bg), var(--surface))', borderBottom: '1px solid rgba(139,92,246,0.2)', padding: '20px 16px 16px' }}>
+      <div style={{ background: 'linear-gradient(135deg, var(--primary-dim), var(--surface))', borderBottom: '1px solid rgba(139,92,246,0.2)', padding: '20px 16px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
           <button
             onClick={() => window.history.back()}
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 24, cursor: 'pointer', padding: '0 4px', lineHeight: 1, fontFamily: 'inherit' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 24, cursor: 'pointer', padding: '0 4px', lineHeight: 1, fontFamily: 'inherit' }}
             aria-label="Go back"
           >←</button>
           <span style={{ fontSize: '22px' }}>🎙️</span>

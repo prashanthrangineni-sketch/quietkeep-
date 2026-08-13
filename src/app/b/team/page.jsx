@@ -133,11 +133,28 @@ export default function TeamPage() {
       emergency_contact: form.emergency_contact.trim()||null,
       status: form.status,
     };
-    await fetch('/api/business/team', {
+    const res = await fetch('/api/business/team', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify(editMember ? { ...p, id: editMember.id } : p),
     });
+    const out = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      // This used to be fire-and-forget: a rejected save still said "added".
+      setMsg(out.error ? `Could not save: ${out.error}` : 'Could not save this member.');
+      setSaving(false);
+      setTimeout(() => setMsg(''), 6000);
+      return;
+    }
+
+    // Adding a member creates a record, not a login. Surface the invite link so
+    // the owner can actually send it -- without this the person stays a row in
+    // a table and can never sign in to see their own shift or payslip.
+    if (!editMember && out.invite_url) {
+      setInviteUrl(out.invite_url);
+      setInviteName(p.name);
+    }
     setMsg(editMember ? 'Member updated ✓' : 'Member added ✓');
     setSaving(false); setShowForm(false);
     loadMembers(workspace.id);

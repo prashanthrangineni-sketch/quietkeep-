@@ -93,7 +93,7 @@ export default function CompassPage() {
             </div>
           </div>
           {/* Center dot */}
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 12, height: 12, borderRadius: '50%', background: '#e2e8f0', border: '2px solid #0d1117' }} />
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 12, height: 12, borderRadius: '50%', background: '#e2e8f0', border: '2px solid var(--border)' }} />
         </div>
 
         {/* Heading readout */}

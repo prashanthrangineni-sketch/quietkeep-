@@ -20,17 +20,17 @@ const NAV_LINKS = [
   // BUG FOUND 13 Aug 2026: /memories borrowed the 'mood' key and /warranty
   // borrowed 'documents', so the top nav literally showed "Mood Log" twice and
   // "Documents" twice. The keys now exist in all nine languages.
-  { href: '/memories',  icon: '🧠', label: 'Life',     tKey: 'memories' },
-  { href: '/mood',      icon: '🧘', label: 'Mood',     tKey: 'mood' },
-  { href: '/warranty',  icon: '🛡️', label: 'Warranty', tKey: 'warranty' },
+  { href: '/memories',  icon: 'memories', label: 'Life',     tKey: 'memories' },
+  { href: '/mood',      icon: 'mood',     label: 'Mood',     tKey: 'mood' },
+  { href: '/warranty',  icon: 'warranty', label: 'Warranty', tKey: 'warranty' },
 ];
 
 const BOTTOM_TABS = [
-  { href: '/dashboard',  icon: '🏠', label: 'Home',   tKey: 'home' },
-  { href: '/daily-brief',icon: '☀️', label: 'Brief',  tKey: 'brief' },
-  { href: '/calendar',   icon: '📅', label: 'Cal',    tKey: 'calendar' },
-  { href: '/reminders',  icon: '⏰', label: 'Remind', tKey: 'reminders' },
-  { href: '/more',       icon: '☰',  label: 'More',   tKey: 'more' },
+  { href: '/dashboard',  icon: 'home',      label: 'Home',   tKey: 'home' },
+  { href: '/daily-brief',icon: 'brief',     label: 'Brief',  tKey: 'brief' },
+  { href: '/calendar',   icon: 'calendar',  label: 'Cal',    tKey: 'calendar' },
+  { href: '/reminders',  icon: 'reminders', label: 'Remind', tKey: 'reminders' },
+  { href: '/more',       icon: 'more',      label: 'More',   tKey: 'more' },
 ];
 
 export default function NavbarClient() {

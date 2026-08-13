@@ -207,7 +207,7 @@ Return ONLY valid JSON matching this structure exactly:
   const budgetSpent  = expenses.reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
 
   const inp = {
-    width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)',
+    width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)',
     borderRadius:10, padding:'10px 12px', color:'#f1f5f9', fontSize:14,
     outline:'none', boxSizing:'border-box', fontFamily:'inherit',
   };
@@ -359,7 +359,7 @@ Return ONLY valid JSON matching this structure exactly:
                     <button key={s} onClick={() => setForm(p=>({...p,status:s}))}
                       style={{ padding:'5px 12px', borderRadius:20, fontSize:12,
                         background: form.status===s ? STATUS_META[s].bg : 'transparent',
-                        border:`1px solid ${form.status===s ? STATUS_META[s].color : 'rgba(255,255,255,0.1)'}`,
+                        border:`1px solid ${form.status===s ? STATUS_META[s].color : 'var(--border)'}`,
                         color: form.status===s ? STATUS_META[s].color : 'rgba(255,255,255,0.4)',
                         cursor:'pointer', fontFamily:'inherit', textTransform:'capitalize' }}>
                       {STATUS_META[s].label}

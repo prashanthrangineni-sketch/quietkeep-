@@ -163,19 +163,19 @@ function SOSCard({ event: e, onResolve, resolving, resolved }) {
       {/* Meta */}
       <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: mapsUrl || e.notes ? '10px' : '0' }}>
         {e.contacts_notified > 0 && (
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             📱 {e.contacts_notified} contact{e.contacts_notified > 1 ? 's' : ''} notified
           </span>
         )}
         {e.location_lat && (
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             📍 {parseFloat(e.location_lat).toFixed(4)}, {parseFloat(e.location_lng).toFixed(4)}
           </span>
         )}
       </div>
 
       {e.notes && (
-        <p style={{ margin: '0 0 10px', fontSize: '12px', color: 'rgba(255,255,255,0.45)', fontStyle: 'italic' }}>
+        <p style={{ margin: '0 0 10px', fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
           "{e.notes}"
         </p>
       )}

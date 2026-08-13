@@ -184,7 +184,7 @@ export default function FamilyPage() {
 
         {/* Pending invite accept banner */}
         {pendingToken && (
-          <div style={{ background: '#1c1400', border: '1px solid #f59e0b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+          <div style={{ background: 'var(--bg)', border: '1px solid #f59e0b', borderRadius: 12, padding: 20, marginBottom: 16 }}>
             <div style={{ color: '#fbbf24', fontWeight: 700, fontSize: 15, marginBottom: 8 }}>You have a family invite!</div>
             <div style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 14 }}>Someone invited you to join their QuietKeep family space.</div>
             <button

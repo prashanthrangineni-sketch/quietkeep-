@@ -109,18 +109,18 @@ export default function MoodPage() {
           <span style={{ fontSize:'22px' }}>🌊</span>
           <h1 style={{ margin:0, fontSize:'20px', fontWeight:700, color:'#fff', letterSpacing:'-0.3px' }}>Mood Log</h1>
         </div>
-        <p style={{ margin:0, fontSize:'13px', color:'rgba(255,255,255,0.4)' }}>Track how you feel, every day</p>
+        <p style={{ margin:0, fontSize:'13px', color:'var(--text-muted)' }}>Track how you feel, every day</p>
       </div>
 
       {/* 7-day summary strip */}
       {avg && (
         <div style={{ margin:'16px 16px 0', background:'rgba(167,139,250,0.08)', border:'1px solid rgba(167,139,250,0.2)', borderRadius:'12px', padding:'12px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
-            <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'4px' }}>7-day average</div>
+            <div style={{ fontSize:'11px', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'4px' }}>7-day average</div>
             <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
               <span style={{ fontSize:'24px' }}>{moodMeta(Math.round(parseFloat(avg))).emoji}</span>
               <span style={{ fontSize:'22px', fontWeight:700, color:moodMeta(Math.round(parseFloat(avg))).color }}>{avg}</span>
-              <span style={{ fontSize:'13px', color:'rgba(255,255,255,0.4)' }}>/ 5</span>
+              <span style={{ fontSize:'13px', color:'var(--text-muted)' }}>/ 5</span>
             </div>
           </div>
           <div style={{ display:'flex', gap:'4px', alignItems:'flex-end', height:'40px' }}>
@@ -159,7 +159,7 @@ export default function MoodPage() {
               }}
             >
               <span style={{ fontSize:'22px' }}>{m.emoji}</span>
-              <span style={{ fontSize:'10px', color: selectedMood === m.value ? m.color : 'rgba(255,255,255,0.4)', fontFamily:'inherit' }}>{m.label}</span>
+              <span style={{ fontSize:'10px', color: selectedMood === m.value ? m.color : 'var(--text-muted)', fontFamily:'inherit' }}>{m.label}</span>
             </button>
           ))}
         </div>
@@ -204,7 +204,7 @@ export default function MoodPage() {
         {!loading && logs.length === 0 && (
           <div style={{ textAlign:'center', padding:'40px 20px', background:'var(--surface)', border:'1px dashed rgba(255,255,255,0.1)', borderRadius:'16px' }}>
             <div style={{ fontSize:'36px', marginBottom:'10px' }}>🌱</div>
-            <p style={{ margin:0, fontSize:'14px', color:'rgba(255,255,255,0.4)' }}>No mood logs yet. Start tracking today!</p>
+            <p style={{ margin:0, fontSize:'14px', color:'var(--text-muted)' }}>No mood logs yet. Start tracking today!</p>
           </div>
         )}
 

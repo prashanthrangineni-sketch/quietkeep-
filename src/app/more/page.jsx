@@ -104,6 +104,9 @@ export default function MorePage() {
           </div>
         </div>
 
+        {/* Promos — side by side once there is room for them */}
+        <div className="qk-promo-row">
+
         {/* Cart2Save Banner */}
         <div style={{ background: 'var(--primary-dim)', borderRadius: 16, padding: 20,
           marginBottom: 14, border: '1px solid var(--primary-glow)' }}>

@@ -1019,7 +1019,7 @@ export default function Dashboard() {
           </div>
           <div style={{display:'flex', gap:8}}>
             <button onClick={async () => { try { await requestBatteryOptimizationExemption(); } catch {} setShowBatteryPrompt(false); localStorage.setItem('qk_battery_exempt_prompted','1'); }} style={{flex:1, padding:'11px 16px', background:'linear-gradient(135deg,#7c3aed,#6d28d9)', border:'none', borderRadius:10, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Disable Now</button>
-            <button onClick={() => setShowBatteryPrompt(false)} style={{padding:'11px 14px', background:'var(--surface)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, color:'#64748b', fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Later</button>
+            <button onClick={() => setShowBatteryPrompt(false)} style={{padding:'11px 14px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, color:'#64748b', fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Later</button>
           </div>
         </div>
       )}

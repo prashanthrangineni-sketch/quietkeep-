@@ -19,9 +19,9 @@ const ASSET_TYPES = [
   { value: 'other', label: '📦 Other', color: '#64748b' },
 ];
 
-const inp = { width: '100%', background: '#111', border: '1px solid #333', borderRadius: 8, color: '#fff', padding: '0.6rem 0.75rem', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
+const inp = { width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.6rem 0.75rem', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
 const btn1 = { padding: '0.6rem 1.1rem', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' };
-const btn0 = { ...btn1, background: 'transparent', border: '1px solid #333', color: '#aaa' };
+const btn0 = { ...btn1, background: 'transparent', border: '1px solid var(--border)', color: '#aaa' };
 
 export default function StockTracker({ supabase, userId }) {
   const [holdings, setHoldings] = useState([]);

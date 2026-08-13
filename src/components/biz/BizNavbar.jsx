@@ -50,6 +50,14 @@ export default function BizNavbar() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return;
       setUser(session.user);
+
+      // 0) Claim any staff row the employer created for this phone or email but
+      //    never linked to a login. biz-login does this too, but the OAuth and
+      //    magic-link paths return through /auth/callback and skip it, and
+      //    anyone already signed in when this shipped never passed through
+      //    either. Idempotent: it only ever touches rows with user_id IS NULL.
+      await claimMembership(session.access_token);
+
       // 1) Try ownership.
       let { data: ws } = await supabase
         .from('business_workspaces')

@@ -1,0 +1,133 @@
+/* ================================================================
+   QuietKeep — design refinements
+   Loaded AFTER globals.css. Additive only.
+
+   WHY THIS FILE EXISTS
+   The marketing homepage and the signed-in app looked like two different
+   products. The homepage has a large confident headline, real whitespace and
+   soft elevated cards; the app had small tight text, flat boxes, and a 480px
+   column stranded in the middle of a laptop screen.
+
+   Every rule here overrides an existing shared class. Nothing is removed, and
+   any single rule can be deleted without side effects — which is why this is a
+   separate file rather than edits inside a 21KB globals.css.
+   ================================================================ */
+
+/* ── Type scale ───────────────────────────────────────────────────
+   The homepage headline is large with tight negative tracking. App page
+   titles were roughly half that size and had none. */
+.qk-h1 {
+  font-size: clamp(26px, 4.2vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.022em;
+  line-height: 1.12;
+  color: var(--text);
+}
+
+.qk-h2 {
+  font-size: clamp(18px, 2.6vw, 21px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+/* The line under a page title. It was the same size and weight as body copy,
+   so page headers read as one undifferentiated block. */
+.qk-subtitle,
+.qk-h1 + p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* ── Cards ────────────────────────────────────────────────────────
+   Softer and more elevated — closer to the homepage's chat card. */
+.qk-card {
+  border-radius: 18px;
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 8px 24px -8px rgba(16, 24, 40, 0.1);
+}
+
+[data-theme='dark'] .qk-card,
+[data-theme='amoled'] .qk-card {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 8px 24px -8px rgba(0, 0, 0, 0.45);
+}
+
+/* ── List rows ────────────────────────────────────────────────────
+   Taller targets and a calmer hover, so a long menu reads as a list of
+   choices rather than a wall of text. */
+.qk-list-item {
+  padding: 15px 16px;
+  transition: background 0.15s ease;
+}
+
+.qk-list-item:hover {
+  background: var(--surface-hover);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────
+   The homepage's "Start free" button is tall and confident. */
+.qk-btn {
+  padding: 12px 22px;
+  border-radius: 12px;
+  letter-spacing: -0.01em;
+}
+
+/* ── Desktop ──────────────────────────────────────────────────────
+   The app was pinned to a phone-width column at every viewport. globals.css
+   now widens .qk-container; these rules use that room.
+
+   Opt-in via .qk-grid-auto so a page chooses to reflow — nothing changes
+   layout unless it asks to. */
+@media (min-width: 900px) {
+  .qk-grid-auto {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: start;
+  }
+
+  .qk-page-header {
+    margin-bottom: 28px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .qk-grid-auto {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ── Motion ───────────────────────────────────────────────────────
+   A short settle on first paint. The homepage feels alive partly because
+   things arrive rather than appear. Respects reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .qk-rise {
+    animation: qk-rise 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes qk-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* ── Focus ────────────────────────────────────────────────────────
+   Keyboard focus was invisible on several screens — an accessibility
+   defect, not a nicety. */
+:where(a, button, [role='button'], input, select, textarea):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 8px;
+}

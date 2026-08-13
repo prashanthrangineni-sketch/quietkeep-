@@ -608,7 +608,7 @@ export default function Dashboard() {
     const unsubRealtime = startRealtimeLoop(supabase, user.id, (nudge) => {
       if (typeof window !== 'undefined') {
         const toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#1e1e2e;border:1px solid rgba(99,102,241,0.4);color:#e2e8f0;padding:10px 20px;border-radius:99px;font-size:13px;z-index:9999;font-family:inherit;';
+        toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid rgba(99,102,241,0.4);color:#e2e8f0;padding:10px 20px;border-radius:99px;font-size:13px;z-index:9999;font-family:inherit;';
         toast.textContent = `🔔 ${nudge.title || 'New nudge'}`;
         document.body.appendChild(toast);
         setTimeout(() => { try { toast.remove(); } catch {} }, 4000);
@@ -874,7 +874,7 @@ export default function Dashboard() {
 
       {followUpData && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#1e1e2e', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 16, padding: 24, maxWidth: 380, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 16, padding: 24, maxWidth: 380, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
             <p style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', marginBottom: 10 }}>🤔 One more thing</p>
             <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 20, lineHeight: 1.6 }}>{followUpData.follow_up}</p>
             {followUpData.action_hint === 'disambiguate_contact' && followUpData.contacts?.length > 0 && (

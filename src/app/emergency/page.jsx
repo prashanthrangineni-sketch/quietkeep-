@@ -403,17 +403,17 @@ export default function EmergencyPage() {
         {!loading && contacts.length === 0 && (
           <div style={{
             textAlign: 'center', padding: '40px 20px',
-            background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)',
+            background: 'var(--surface)', border: '1px dashed var(--border)',
             borderRadius: '16px', marginTop: '16px'
           }}>
             <div style={{ fontSize: '40px', marginBottom: '12px' }}>👤</div>
-            <p style={{ margin: '0 0 6px', fontSize: '15px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>No emergency contacts yet</p>
-            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>Add trusted people who can help in emergencies</p>
+            <p style={{ margin: '0 0 6px', fontSize: '15px', color: 'var(--text)', fontWeight: 500 }}>No emergency contacts yet</p>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Add trusted people who can help in emergencies</p>
           </div>
         )}
 
         {loading && (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13px' }}>
             Loading contacts...
           </div>
         )}
@@ -425,7 +425,7 @@ export default function EmergencyPage() {
           onClick={openAdd}
           style={{
             width: '100%', padding: '14px',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)',
+            background: 'linear-gradient(135deg, var(--surface) 0%, var(--surface-hover) 100%)',
             border: '1px dashed rgba(255,255,255,0.2)',
             borderRadius: '12px', color: 'rgba(255,255,255,0.7)',
             fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit',

@@ -129,7 +129,7 @@ export default function HealthPage() {
         {/* 7-day stats */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'0.75rem', marginBottom:'1.5rem' }}>
           {[['💧', 'Avg Water', avgWater + ' glasses'], ['😴', 'Avg Sleep', avgSleep + ' hrs'], ['🏃', 'Avg Exercise', avgExercise + ' min']].map(([e,l,v]) => (
-            <div key={l} style={{ background:'#1a1a1a', border:'1px solid #222', borderRadius:10, padding:'0.75rem', textAlign:'center' }}>
+            <div key={l} style={{ background:'var(--surface)', border:'1px solid #222', borderRadius:10, padding:'0.75rem', textAlign:'center' }}>
               <div style={{ fontSize:'1.3rem', marginBottom:4 }}>{e}</div>
               <div style={{ fontSize:'0.7rem', color:'#555', marginBottom:2 }}>{l}</div>
               <div style={{ fontSize:'0.95rem', fontWeight:700 }}>{v}</div>
@@ -138,7 +138,7 @@ export default function HealthPage() {
         </div>
 
         {/* Today's log */}
-        <div style={{ background:'#1a1a1a', border:'1px solid #2a2a2a', borderRadius:12, padding:'1.2rem', marginBottom:'1.5rem' }}>
+        <div style={{ background:'var(--surface)', border:'1px solid #2a2a2a', borderRadius:12, padding:'1.2rem', marginBottom:'1.5rem' }}>
           <h3 style={{ fontSize:'0.9rem', fontWeight:700, marginBottom:'1rem', color:'#aaa' }}>Today — {fmtDate(today())}</h3>
           
           <div style={{ marginBottom:'1rem' }}>
@@ -187,7 +187,7 @@ export default function HealthPage() {
             <h3 style={{ fontSize:'0.85rem', fontWeight:700, color:'#555', marginBottom:'0.75rem' }}>Last 7 Days</h3>
             <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
               {logs.map(log => (
-                <div key={log.id} style={{ background:'#1a1a1a', border:'1px solid #222', borderRadius:10, padding:'0.7rem 1rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div key={log.id} style={{ background:'var(--surface)', border:'1px solid #222', borderRadius:10, padding:'0.7rem 1rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div style={{ fontSize:'0.8rem', color:'#aaa' }}>{fmtDate(log.log_date)}</div>
                   <div style={{ display:'flex', gap:'1rem', fontSize:'0.78rem', color:'#666' }}>
                     <span>💧{log.water_glasses||0}</span>

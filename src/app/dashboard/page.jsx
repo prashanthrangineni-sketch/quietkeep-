@@ -1009,7 +1009,7 @@ export default function Dashboard() {
       )}
 
       {showBatteryPrompt && (
-        <div style={{ position:'fixed', bottom:80, left:12, right:12, zIndex:9998, background:'linear-gradient(135deg,#1e1b4b,#1e293b)', border:'1px solid rgba(139,92,246,0.5)', borderRadius:16, padding:'16px 18px', boxShadow:'0 8px 32px rgba(0,0,0,0.5)', display:'flex', flexDirection:'column', gap:12 }}>
+        <div style={{ position:'fixed', bottom:80, left:12, right:12, zIndex:9998, background:'linear-gradient(135deg,#1e1b4b,var(--surface))', border:'1px solid rgba(139,92,246,0.5)', borderRadius:16, padding:'16px 18px', boxShadow:'0 8px 32px rgba(0,0,0,0.5)', display:'flex', flexDirection:'column', gap:12 }}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10}}>
             <div style={{flex:1}}>
               <p style={{margin:0, fontSize:14, fontWeight:700, color:'#e2e8f0', lineHeight:1.4}}>⚡ Prevent App Freezing</p>

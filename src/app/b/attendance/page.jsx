@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 // src/app/b/attendance/page.jsx — Attendance with geo check-in
 

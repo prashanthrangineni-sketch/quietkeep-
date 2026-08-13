@@ -46,8 +46,8 @@ export default function ContextShareCard({ type, payload }) {
   if (!payload) return null;
 
   const card = {
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: 12, padding: '10px 12px',
     borderLeft: `3px solid ${(BADGE[type] || BADGE.keep).color}`,
   };

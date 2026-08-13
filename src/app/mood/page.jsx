@@ -228,7 +228,7 @@ export default function MoodPage() {
                       <span style={{ fontSize:'13px', fontWeight:600, color:m.color }}>{m.label}</span>
                       <span style={{ fontSize:'11px', color:'var(--text-subtle)' }}>{new Date(log.logged_at).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })}</span>
                     </div>
-                    {log.note && <p style={{ margin:'3px 0 0', fontSize:'12px', color:'rgba(255,255,255,0.5)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{log.note}</p>}
+                    {log.note && <p style={{ margin:'3px 0 0', fontSize:'12px', color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{log.note}</p>}
                   </div>
                   <button
                     onClick={() => deleteLog(log.id)}

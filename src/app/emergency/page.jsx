@@ -653,8 +653,8 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
           href={`tel:${contact.phone}`}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-            padding: '9px', background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            padding: '9px', background: 'var(--surface)',
+            border: '1px solid var(--border)',
             borderRadius: '10px', color: 'rgba(255,255,255,0.55)',
             fontSize: '12px', textDecoration: 'none', fontWeight: 500
           }}

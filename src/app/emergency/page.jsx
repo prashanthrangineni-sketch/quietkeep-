@@ -37,7 +37,7 @@ export default function EmergencyPage() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
             loadContacts(user?.id);
-  }, [user]);
+  }, [user, authLoading]);
 
   async function loadContacts(uid) {
     setLoading(true);

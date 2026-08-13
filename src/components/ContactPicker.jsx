@@ -68,10 +68,10 @@ export default function ContactPicker({ supabase, userId, onSelect, onClose, mul
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end' }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: '#161b27', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px 20px 0 0', padding: '20px 16px 40px', width: '100%', maxHeight: '80dvh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '20px 20px 0 0', padding: '20px 16px 40px', width: '100%', maxHeight: '80dvh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>{title}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-muted)' }}>{title}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#475569', fontSize: 22, cursor: 'pointer' }}>×</button>
         </div>
 
@@ -79,7 +79,7 @@ export default function ContactPicker({ supabase, userId, onSelect, onClose, mul
           placeholder="Search name or phone…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e2e8f0', padding: '10px 14px', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 10, fontFamily: 'inherit' }}
+          style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)', padding: '10px 14px', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 10, fontFamily: 'inherit' }}
         />
 
         {phonebookSupported && (

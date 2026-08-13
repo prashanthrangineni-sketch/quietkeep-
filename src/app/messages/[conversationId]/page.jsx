@@ -272,7 +272,7 @@ export default function ChatThreadPage() {
                 onClick={loadOlder}
                 disabled={loadingMore}
                 style={{
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
                   borderRadius: 8, padding: '6px 14px', color: 'var(--text-muted)',
                   fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
                 }}

@@ -259,7 +259,7 @@ export default function RemindersPage() {
               <div key={r.id} className="qk-card" style={{
                 padding: '13px 14px',
                 opacity: r.is_active ? 1 : 0.55,
-                borderLeft: `3px solid ${overdue ? '#ef4444' : soon ? '#f59e0b' : r.is_active ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+                borderLeft: `3px solid ${overdue ? '#ef4444' : soon ? '#f59e0b' : r.is_active ? '#f59e0b' : 'var(--border)'}`,
                 background: overdue ? 'rgba(239,68,68,0.06)' : undefined,
                 animation: 'qk-fade-in 0.2s ease forwards',
               }}>

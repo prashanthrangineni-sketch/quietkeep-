@@ -222,8 +222,8 @@ export default function BizLoginPage() {
   }
 
   const inp = {
-    width: '100%', background: 'rgba(255,255,255,0.06)',
-    border: '1.5px solid rgba(255,255,255,0.1)',
+    width: '100%', background: 'var(--surface)',
+    border: '1.5px solid var(--border)',
     borderRadius: 12, padding: '14px 16px',
     color: 'var(--text)', fontSize: 15, outline: 'none',
     boxSizing: 'border-box', fontFamily: 'inherit',

@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { LanguageProvider } from '@/lib/context/language';
 import { AuthProvider } from '@/lib/context/auth';
 import './globals.css';
+import './design-refinements.css';
 
 // Use local font for both APK and Vercel builds.
 // Local font: zero network call during static export (APK build).

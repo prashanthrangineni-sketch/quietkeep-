@@ -147,7 +147,7 @@ export default function ConnectorsPage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#f1f5f9', fontFamily: 'system-ui,sans-serif', paddingBottom: 80, paddingTop: '96px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'system-ui,sans-serif', paddingBottom: 80, paddingTop: '96px' }}>
       <NavbarClient />
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px' }}>
 
@@ -187,7 +187,7 @@ export default function ConnectorsPage() {
                   {c.icon}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: isOn ? '#f1f5f9' : '#64748b' }}>{c.name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: isOn ? 'var(--text)' : '#64748b' }}>{c.name}</div>
                   <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>{c.desc}</div>
                   <div style={{ fontSize: 10, color: c.color, marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{c.category}</div>
                 </div>

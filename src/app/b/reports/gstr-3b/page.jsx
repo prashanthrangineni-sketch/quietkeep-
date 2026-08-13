@@ -65,8 +65,7 @@ export default function GSTR3BPage() {
     if (authLoading) return;
     if (!user) { router.replace('/biz-login'); return; }
     (async () => {
-      const { data: ws } = await supabase.from('business_workspaces')
-        .select('id,name').eq('owner_user_id', user.id).maybeSingle();
+      const ws = await resolveWorkspace(supabase, user.id, 'id,name');
       if (!ws) { router.replace('/b/onboarding'); return; }
       setWorkspace(ws);
       load(period);

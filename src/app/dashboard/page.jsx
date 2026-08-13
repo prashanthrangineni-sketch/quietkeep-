@@ -608,7 +608,7 @@ export default function Dashboard() {
     const unsubRealtime = startRealtimeLoop(supabase, user.id, (nudge) => {
       if (typeof window !== 'undefined') {
         const toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid rgba(99,102,241,0.4);color:#e2e8f0;padding:10px 20px;border-radius:99px;font-size:13px;z-index:9999;font-family:inherit;';
+        toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid rgba(99,102,241,0.4);color:var(--text);padding:10px 20px;border-radius:99px;font-size:13px;z-index:9999;font-family:inherit;';
         toast.textContent = `🔔 ${nudge.title || 'New nudge'}`;
         document.body.appendChild(toast);
         setTimeout(() => { try { toast.remove(); } catch {} }, 4000);
@@ -875,13 +875,13 @@ export default function Dashboard() {
       {followUpData && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 16, padding: 24, maxWidth: 380, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', marginBottom: 10 }}>🤔 One more thing</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 10 }}>🤔 One more thing</p>
             <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 20, lineHeight: 1.6 }}>{followUpData.follow_up}</p>
             {followUpData.action_hint === 'disambiguate_contact' && followUpData.contacts?.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                 {followUpData.contacts.map((c) => (
                   <button key={c.id} onClick={() => { if (c.phone) window.location.href = `tel:${c.phone}`; setFollowUpData(null); }}
-                    style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e2e8f0', fontSize: 13, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'inherit' }}>
+                    style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: 'var(--text)', fontSize: 13, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'inherit' }}>
                     <span>{c.name}{c.relation ? ` (${c.relation})` : ''}</span>
                     <span style={{ color: '#22c55e', fontWeight: 600 }}>{c.phone || 'no phone'}</span>
                   </button>
@@ -998,7 +998,7 @@ export default function Dashboard() {
             <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
               {pendingAutoExec.intent_type === 'contact' ? '📞 Auto-Calling' : pendingAutoExec.intent_type === 'navigation' || pendingAutoExec.intent_type === 'trip' ? '🗺️ Opening Maps' : pendingAutoExec.intent_type === 'purchase' ? '🛒 Opening Shop' : '⚡ Executing'}
             </div>
-            <div style={{ fontSize: 15, color: '#e2e8f0', fontWeight: 600, marginBottom: 6, wordBreak: 'break-word' }}>{pendingAutoExec.contact_name || pendingAutoExec.content?.slice(0, 60)}</div>
+            <div style={{ fontSize: 15, color: 'var(--text)', fontWeight: 600, marginBottom: 6, wordBreak: 'break-word' }}>{pendingAutoExec.contact_name || pendingAutoExec.content?.slice(0, 60)}</div>
             {pendingAutoExec.contact_phone && <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>{pendingAutoExec.contact_phone}</div>}
             <div style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px', background: `conic-gradient(#22c55e ${(pendingAutoExec.countdown / 3) * 100}%, rgba(34,197,94,0.12) 0%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#22c55e' }}>{pendingAutoExec.countdown}</div>
@@ -1012,7 +1012,7 @@ export default function Dashboard() {
         <div style={{ position:'fixed', bottom:80, left:12, right:12, zIndex:9998, background:'linear-gradient(135deg,var(--primary-dim),var(--surface))', border:'1px solid rgba(139,92,246,0.5)', borderRadius:16, padding:'16px 18px', boxShadow:'0 8px 32px rgba(0,0,0,0.5)', display:'flex', flexDirection:'column', gap:12 }}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10}}>
             <div style={{flex:1}}>
-              <p style={{margin:0, fontSize:14, fontWeight:700, color:'#e2e8f0', lineHeight:1.4}}>⚡ Prevent App Freezing</p>
+              <p style={{margin:0, fontSize:14, fontWeight:700, color:'var(--text)', lineHeight:1.4}}>⚡ Prevent App Freezing</p>
               <p style={{margin:'6px 0 0', fontSize:12, color:'#94a3b8', lineHeight:1.5}}>To ensure QuietKeep works reliably, disable battery optimization for this app.</p>
             </div>
             <button onClick={() => { setShowBatteryPrompt(false); localStorage.setItem('qk_battery_exempt_prompted','1'); }} style={{background:'none',border:'none',color:'#64748b',fontSize:20,cursor:'pointer',lineHeight:1,padding:'0 2px',flexShrink:0}} aria-label="Dismiss">×</button>

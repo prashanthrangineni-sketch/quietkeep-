@@ -1138,7 +1138,7 @@ export default function Dashboard() {
                   <div key={cat} style={{ marginBottom: 6 }}>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{cat}</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {cmds.map(cmd => <button key={cmd} onClick={() => { setContent(cmd); setShowVoiceHelp(false); textareaRef.current?.focus(); }} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 99, cursor: 'pointer', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontFamily: 'inherit' }}>{cmd}</button>)}
+                      {cmds.map(cmd => <button key={cmd} onClick={() => { setContent(cmd); setShowVoiceHelp(false); textareaRef.current?.focus(); }} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 99, cursor: 'pointer', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontFamily: 'inherit' }}>{cmd}</button>)}
                     </div>
                   </div>
                 ))}

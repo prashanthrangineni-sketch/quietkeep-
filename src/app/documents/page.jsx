@@ -255,7 +255,7 @@ function DocCard({ doc, days, isExpired, isSoon, cat, onDelete, onAnalyze, aiLoa
       <div style={{ display:'flex', alignItems:'flex-start', gap:'12px' }}>
         <div style={{ fontSize:'22px', width:'28px', flexShrink:0 }}>{cat?.emoji || '📄'}</div>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:'13px', fontWeight:'600', color:'#e2e8f0', marginBottom:'2px' }}>{doc.name}</div>
+          <div style={{ fontSize:'13px', fontWeight:'600', color:'var(--text)', marginBottom:'2px' }}>{doc.name}</div>
           <div style={{ display:'flex', gap:'8px', alignItems:'center', flexWrap:'wrap' }}>
             <span style={{ fontSize:'10px', color: catColor, background: catColor+'18', padding:'2px 8px', borderRadius:20, fontWeight:600 }}>{doc.category}</span>
             {doc.expiry_date && <span style={{ fontSize:'11px', color: isExpired ? '#ef4444' : isSoon ? '#f59e0b' : '#10b981', fontWeight:'600' }}>

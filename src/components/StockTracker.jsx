@@ -260,23 +260,23 @@ export default function StockTracker({ supabase, userId }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <span style={{ fontSize: 12, color: typeInfo.color, background: typeInfo.color + '18', padding: '2px 8px', borderRadius: 20 }}>{typeInfo.label}</span>
-                    {h.ticker && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>{h.ticker}</span>}
+                    {h.ticker && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{h.ticker}</span>}
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 4 }}>{h.name}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{h.name}</div>
 
                   <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                     {h.quantity && (
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-                        Qty: <span style={{ color: '#e2e8f0' }}>{h.quantity}</span>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        Qty: <span style={{ color: 'var(--text)' }}>{h.quantity}</span>
                       </div>
                     )}
                     {h.purchase_price && (
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-                        Avg: <span style={{ color: '#e2e8f0' }}>₹{Number(h.purchase_price).toLocaleString('en-IN')}</span>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        Avg: <span style={{ color: 'var(--text)' }}>₹{Number(h.purchase_price).toLocaleString('en-IN')}</span>
                       </div>
                     )}
                     {currentPrice && (
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                         LTP: <span style={{ color: '#60a5fa' }}>₹{currentPrice.toLocaleString('en-IN')}</span>
                         {priceData?.change_pct && (
                           <span style={{ color: priceData.change_pct >= 0 ? '#34d399' : '#ef4444', marginLeft: 4 }}>

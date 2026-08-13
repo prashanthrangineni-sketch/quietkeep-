@@ -65,7 +65,7 @@ export default function DriveModePage() {
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
       if (callTimerRef.current) clearInterval(callTimerRef.current);
     };
-  }, [user]);
+  }, [user, authLoading]);
 
   function readNextKeep() {
     const k = keepsRef.current;

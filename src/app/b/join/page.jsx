@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 export default function JoinPage() {
   const [status, setStatus] = useState('working'); // working | login | done | error
   const [msg, setMsg] = useState('Joining your workspace…');
+  const [signInHref, setSignInHref] = useState('/biz-login');
 
   useEffect(() => {
     (async () => {
@@ -15,8 +16,13 @@ export default function JoinPage() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        // The common case: a new employee who has never used QuietKeep. The
+        // Sign in button used to point at a bare /biz-login, so the token was
+        // gone by the time they got back and they had to hunt down the
+        // original WhatsApp message. Carry it through the detour instead.
+        setSignInHref('/biz-login?next=' + encodeURIComponent(`/b/join?token=${token}`));
         setStatus('login');
-        setMsg('Please sign in first, then open your invite link again.');
+        setMsg('Sign in to accept this invite — we’ll bring you straight back.');
         return;
       }
 

@@ -154,7 +154,7 @@ export default function FinancePage() {
               </div>
             )}
             {expenses.length === 0 ? <div style={{ textAlign:'center', padding:'3rem', color:'#444' }}>No expenses yet.</div> : expenses.map(e => (
-              <div key={e.id} style={{ background:'var(--surface)', border:'1px solid #222', borderRadius:10, padding:'0.9rem 1rem', marginBottom:'0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div key={e.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'0.9rem 1rem', marginBottom:'0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div>
                   <div style={{ color:'#fff', fontSize:'0.9rem', fontWeight:500 }}>{e.description || e.category}</div>
                   <div style={{ color:'#555', fontSize:'0.78rem', marginTop:2 }}>{e.category} · {e.payment_method} · {e.expense_date}</div>
@@ -195,7 +195,7 @@ export default function FinancePage() {
               const pct = Math.min(100, Math.round((spent / b.limit_amount) * 100));
               const col = pct >= b.alert_threshold ? '#ef4444' : pct >= 60 ? '#f59e0b' : '#22c55e';
               return (
-                <div key={b.id} style={{ background:'var(--surface)', border:'1px solid #222', borderRadius:10, padding:'1rem', marginBottom:'0.5rem' }}>
+                <div key={b.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1rem', marginBottom:'0.5rem' }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
                     <span style={{ color:'#fff', fontWeight:500 }}>{b.category}</span>
                     <span style={{ color:col, fontSize:'0.85rem' }}>₹{spent.toLocaleString('en-IN')} / ₹{parseFloat(b.limit_amount).toLocaleString('en-IN')}</span>
@@ -237,7 +237,7 @@ export default function FinancePage() {
               const daysLeft = s.next_due ? Math.ceil((new Date(s.next_due) - new Date()) / 86400000) : null;
               const urgent = daysLeft !== null && daysLeft <= 3;
               return (
-                <div key={s.id} style={{ background:'var(--surface)', border:`1px solid ${urgent ? '#ef4444' : '#222'}`, borderRadius:10, padding:'0.9rem 1rem', marginBottom:'0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div key={s.id} style={{ background:'var(--surface)', border:`1px solid ${urgent ? '#ef4444' : 'var(--border)'}`, borderRadius:10, padding:'0.9rem 1rem', marginBottom:'0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div>
                     <div style={{ color:'#fff', fontWeight:500, fontSize:'0.9rem' }}>{s.name}</div>
                     <div style={{ color:'#555', fontSize:'0.78rem', marginTop:2 }}>

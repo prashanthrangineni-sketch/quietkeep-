@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import AariaMark from '@/components/AariaMark';
+import QkIcon from '@/components/QkIcon';
 
 // `icon` is a rendered element, not a string, so the JSX below is unchanged.
 const BIZ_BOTTOM_TABS = [

@@ -93,7 +93,7 @@ export default function AuditPage() {
       paddingBottom: 80,
     }}>
       {/* Header */}
-      <div style={{ padding: '16px 18px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ padding: '16px 18px 0', borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
           <button onClick={() => router.back()}
             style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20 }}>

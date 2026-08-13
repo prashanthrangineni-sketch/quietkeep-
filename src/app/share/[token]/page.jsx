@@ -60,14 +60,14 @@ export default function SharePage({ params }) {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui,sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui,sans-serif' }}>
       <div style={{ color: '#64748b', fontSize: 15 }}>Loading shared content...</div>
     </div>
   );
 
   if (error) return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui,sans-serif', padding: 24 }}>
-      <div style={{ background: '#1e293b', borderRadius: 14, padding: 32, maxWidth: 400, width: '100%', border: '1px solid #334155', textAlign: 'center' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui,sans-serif', padding: 24 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: 32, maxWidth: 400, width: '100%', border: '1px solid var(--border)', textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
         <div style={{ color: '#f87171', fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Link unavailable</div>
         <div style={{ color: '#64748b', fontSize: 14 }}>{error}</div>
@@ -79,14 +79,14 @@ export default function SharePage({ params }) {
   const dateStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', padding: '32px 16px', fontFamily: 'system-ui,sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '32px 16px', fontFamily: 'system-ui,sans-serif' }}>
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
 
         {/* KEEP VIEW */}
         {content?.type === 'keep' && (
-          <div style={{ background: '#1e293b', borderRadius: 14, padding: 24, border: '1px solid #334155' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 14, padding: 24, border: '1px solid var(--border)' }}>
             <span style={{ display: 'inline-block', background: '#6366f1', color: '#fff', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, marginBottom: 20 }}>Shared Keep</span>
-            <div style={{ color: '#f1f5f9', fontSize: 17, lineHeight: 1.65, marginBottom: 16 }}>{content.keep.content}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 17, lineHeight: 1.65, marginBottom: 16 }}>{content.keep.content}</div>
             {content.keep.reminder_at && (
               <div style={{ color: '#f59e0b', fontSize: 13, marginBottom: 8 }}>
                 Reminder: {new Date(content.keep.reminder_at).toLocaleString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -99,16 +99,16 @@ export default function SharePage({ params }) {
 
         {/* DAILY BRIEF VIEW */}
         {content?.type === 'daily_brief' && (
-          <div style={{ background: '#1e293b', borderRadius: 14, padding: 24, border: '1px solid #334155' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 14, padding: 24, border: '1px solid var(--border)' }}>
             <span style={{ display: 'inline-block', background: '#0ea5e9', color: '#fff', borderRadius: 6, padding: '4px 12px', fontSize: 12, fontWeight: 700, marginBottom: 16 }}>Daily Brief</span>
-            <div style={{ color: '#f1f5f9', fontSize: 19, fontWeight: 700, marginBottom: 4 }}>{content.name ? `${content.name}'s Brief` : 'Daily Brief'}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 19, fontWeight: 700, marginBottom: 4 }}>{content.name ? `${content.name}'s Brief` : 'Daily Brief'}</div>
             <div style={{ color: '#64748b', fontSize: 13, marginBottom: 20 }}>{dateStr}</div>
 
             {content.keeps?.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>On Brief</div>
                 {content.keeps.map((k, i) => (
-                  <div key={i} style={{ background: '#0f172a', borderRadius: 8, padding: '10px 14px', marginBottom: 8, color: '#cbd5e1', fontSize: 14 }}>{k.content}</div>
+                  <div key={i} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', marginBottom: 8, color: 'var(--text-muted)', fontSize: 14 }}>{k.content}</div>
                 ))}
               </div>
             )}
@@ -117,7 +117,7 @@ export default function SharePage({ params }) {
               <div style={{ marginBottom: 20 }}>
                 <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Reminders This Week</div>
                 {content.reminders.map((r, i) => (
-                  <div key={i} style={{ background: '#0f172a', borderRadius: 8, padding: '10px 14px', marginBottom: 8 }}>
+                  <div key={i} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', marginBottom: 8 }}>
                     <div style={{ color: '#cbd5e1', fontSize: 14 }}>{r.content}</div>
                     <div style={{ color: '#f59e0b', fontSize: 12, marginTop: 4 }}>
                       {new Date(r.reminder_at).toLocaleString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}

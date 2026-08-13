@@ -176,7 +176,7 @@ export default function BizOnboardingPage() {
                 <button key={bt.value} onClick={() => setBizType(bt.value)}
                   style={{ padding: '12px', borderRadius: 12, textAlign: 'left', cursor: 'pointer',
                     border: `1.5px solid ${bizType === bt.value ? G : 'var(--border)'}`,
-                    background: bizType === bt.value ? `${G}18` : 'rgba(255,255,255,0.03)',
+                    background: bizType === bt.value ? `${G}18` : 'var(--surface)',
                     color: 'var(--text)', fontFamily: 'inherit' }}>
                   <div style={{ fontSize: 22, marginBottom: 4 }}>{bt.emoji}</div>
                   <div style={{ fontSize: 12, fontWeight: 700 }}>{bt.label}</div>
@@ -208,7 +208,7 @@ export default function BizOnboardingPage() {
                     <button key={bt.value} onClick={() => setBizType(bt.value)}
                       style={{ padding: '7px 6px', borderRadius: 8, fontSize: 11, cursor: 'pointer',
                         border: `1px solid ${bizType === bt.value ? G : 'var(--border)'}`,
-                        background: bizType === bt.value ? `${G}18` : 'rgba(255,255,255,0.03)',
+                        background: bizType === bt.value ? `${G}18` : 'var(--surface)',
                         color: 'var(--text)', fontFamily: 'inherit' }}>
                       {bt.emoji} {bt.label.split('/')[0].trim()}
                     </button>

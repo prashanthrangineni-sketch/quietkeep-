@@ -43,7 +43,7 @@ export default function BillsPage() {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const inp = { width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid var(--border)', borderRadius:10, color:'var(--text)', padding:'11px 14px', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
+  const inp = { width:'100%', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, color:'var(--text)', padding:'11px 14px', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
 
   useEffect(() => {
     if (authLoading) return;

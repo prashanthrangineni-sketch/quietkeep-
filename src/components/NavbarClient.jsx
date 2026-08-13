@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { farewellOnLogout, resetGreetGuard } from '@/components/VoiceTalkback';
 import { useTranslations } from 'next-intl';
 import NotificationBell from '@/components/NotificationBell';
+import AariaMark from '@/components/AariaMark';
 
 const NAV_LINKS = [
   { href: '/dashboard', icon: '🏠', label: 'Home',     tKey: 'home' },

@@ -195,7 +195,7 @@ export default function MoodPage() {
 
       {/* History */}
       <div style={{ padding:'0 16px' }}>
-        <p style={{ margin:'0 0 12px', fontSize:'11px', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.8px' }}>
+        <p style={{ margin:'0 0 12px', fontSize:'11px', color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.8px' }}>
           History
         </p>
 
@@ -210,7 +210,7 @@ export default function MoodPage() {
 
         {Object.values(grouped).map((group, gi) => (
           <div key={gi} style={{ marginBottom:'20px' }}>
-            <p style={{ margin:'0 0 8px', fontSize:'11px', color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.5px' }}>
+            <p style={{ margin:'0 0 8px', fontSize:'11px', color:'var(--text-subtle)', textTransform:'uppercase', letterSpacing:'0.5px' }}>
               {group.label}
             </p>
             {group.items.map(log => {

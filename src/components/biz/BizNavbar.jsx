@@ -45,12 +45,70 @@ export default function BizNavbar() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return;
       setUser(session.user);
-      const { data: ws } = await supabase
+      // 1) Try ownership.
+      let { data: ws } = await supabase
         .from('business_workspaces')
         .select('id, name, business_type')
         .eq('owner_user_id', session.user.id)
         .maybeSingle();
+
+      // 2) BUG FOUND 13 Aug 2026: this only ever looked up workspaces the user
+      //    OWNS. A staff member who joined by invite is in business_members but
+      //    owns nothing, so every Business screen showed "My Business" with no
+      //    workspace at all. Fall back to membership.
+      if (!ws) {
+        const { data: membership } = await supabase
+          .from('business_members')
+          .select('workspace_id')
+          .eq('user_id', session.user.id)
+          .eq('status', 'active')
+          .maybeSingle();
+        if (membership?.workspace_id) {
+          const { data: memberWs } = await supabase
+            .from('business_workspaces')
+            .select('id, name, business_type')
+            .eq('id', membership.workspace_id)
+            .maybeSingle();
+          ws = memberWs || null;
+        }
+      }
+
       setWorkspace(ws);
+
+      // 3) Self-heal: every workspace created before 13 Aug 2026 was created
+      //    with ZERO members, so the owner was missing from their own Team,
+      //    Attendance and Payroll. Signup now adds them; this repairs the
+      //    existing ones the first time the owner opens the app.
+      if (ws?.id) {
+        const { data: mine } = await supabase
+          .from('business_members')
+          .select('id')
+          .eq('workspace_id', ws.id)
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (!mine) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+          await supabase.from('business_members').insert({
+            workspace_id: ws.id,
+            user_id: session.user.id,
+            name:
+              (prof?.full_name || '').trim() ||
+              (session.user.user_metadata?.full_name || '').trim() ||
+              ws.name ||
+              'Owner',
+            phone: (session.user.phone || '').replace(/^\+?91/, '') || null,
+            email: session.user.email || null,
+            role: 'owner',
+            access_role: 'owner',
+            status: 'active',
+            date_of_joining: new Date().toISOString().slice(0, 10),
+          });
+        }
+      }
     });
   }, []);
 

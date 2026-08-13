@@ -231,7 +231,7 @@ export default function CalendarPage() {
   const hasData = !!selCal?.dbType;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#fff', paddingTop: '96px', paddingBottom: '80px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', paddingTop: '96px', paddingBottom: '80px' }}>
       <NavbarClient />
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '1rem 0.75rem 4rem' }}>
 
@@ -247,7 +247,7 @@ export default function CalendarPage() {
         <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '0.75rem', scrollbarWidth: 'none' }}>
           {CALENDAR_TYPES.map(c => (
             <button key={c.id} onClick={() => { setSelectedCal(c.id); setSelectedDate(null); setDayEvents([]); }}
-              style={{ flexShrink: 0, padding: '0.3rem 0.75rem', borderRadius: 20, border: 'none', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: selectedCal === c.id ? '#6366f1' : '#1a1a1a', color: selectedCal === c.id ? '#fff' : '#666', whiteSpace: 'nowrap' }}>
+              style={{ flexShrink: 0, padding: '0.3rem 0.75rem', borderRadius: 20, border: 'none', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: selectedCal === c.id ? '#6366f1' : '#1a1a1a', color: selectedCal === c.id ? 'var(--text)' : '#666', whiteSpace: 'nowrap' }}>
               {c.emoji} {c.label}
             </button>
           ))}
@@ -257,7 +257,7 @@ export default function CalendarPage() {
         <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem' }}>
           {[['month','📆 Month'],['events','📋 My Events'],['holidays','🎉 Holidays']].map(([v, label]) => (
             <button key={v} onClick={() => setView(v)}
-              style={{ padding: '0.3rem 0.75rem', borderRadius: 8, border: 'none', background: view === v ? '#6366f1' : '#1a1a1a', color: view === v ? '#fff' : '#666', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+              style={{ padding: '0.3rem 0.75rem', borderRadius: 8, border: 'none', background: view === v ? '#6366f1' : '#1a1a1a', color: view === v ? 'var(--text)' : '#666', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
               {label}
             </button>
           ))}
@@ -296,7 +296,7 @@ export default function CalendarPage() {
                   return (
                     <div key={i} onClick={() => handleDayClick(dateISO)}
                       style={{ background: isSelected ? '#6366f1' : isToday ? 'var(--primary-dim)' : 'var(--surface)', borderRadius: 8, padding: '0.4rem 0.2rem', textAlign: 'center', cursor: 'pointer', border: isToday && !isSelected ? '1px solid #6366f144' : '1px solid transparent', minHeight: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: isToday ? 700 : 400, color: isSelected ? '#fff' : isToday ? 'var(--primary)' : 'var(--text)' }}>{day}</span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: isToday ? 700 : 400, color: isSelected ? 'var(--text)' : isToday ? 'var(--primary)' : 'var(--text)' }}>{day}</span>
                       <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
                         {hasHoliday && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />}
                         {hasPersonal && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />}
@@ -325,7 +325,7 @@ export default function CalendarPage() {
                   <div style={{ color: '#444', fontSize: '0.85rem' }}>{hasData ? 'No events for this date.' : 'No data available for this calendar type.'}</div>
                 ) : dayEvents.map((e, i) => (
                   <div key={e.id || i} style={{ background: 'var(--bg)', borderRadius: 8, padding: '0.7rem 0.9rem', marginBottom: '0.5rem', borderLeft: `3px solid ${e.is_personal_event ? '#f59e0b' : '#6366f1'}` }}>
-                    <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.88rem' }}>
+                    <div style={{ color: 'var(--text)', fontWeight: 600, fontSize: '0.88rem' }}>
                       {e.event_name || `${e.tithi}${e.nakshatra ? ` · ${e.nakshatra}` : ''}`}
                     </div>
                     <div style={{ color: '#555', fontSize: '0.75rem', marginTop: 3, display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -408,7 +408,7 @@ export default function CalendarPage() {
                           {[...holidays].sort((a,b) => a.event_date.localeCompare(b.event_date)).map((e, i) => (
                             <div key={i} style={{ background: e.event_type === 'national_holiday' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${e.event_type === 'national_holiday' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`, borderRadius: 10, padding: '0.8rem 1rem', marginBottom: '0.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div>
-                                <div style={{ color: '#fff', fontSize: '0.88rem', fontWeight: 500 }}>{e.event_name}</div>
+                                <div style={{ color: 'var(--text)', fontSize: '0.88rem', fontWeight: 500 }}>{e.event_name}</div>
                                 <div style={{ color: '#666', fontSize: '0.72rem', marginTop: 2 }}>{e.event_type === 'national_holiday' ? '🏛️ National Holiday' : '🎊 Festival'}</div>
                               </div>
                               <div style={{ color: '#888', fontSize: '0.78rem', flexShrink: 0 }}>{e.event_date?.slice(5)}</div>
@@ -438,7 +438,7 @@ export default function CalendarPage() {
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '0.75rem 1rem 7rem', background: 'linear-gradient(transparent, var(--bg) 30%)', paddingTop: '1.5rem' }}>
           {eventMsg && <div style={{ textAlign:'center', color:'#86efac', fontSize:'0.82rem', marginBottom:'0.5rem' }}>{eventMsg}</div>}
           <button onClick={() => { setEventForm({ ...EMPTY_EVENT_FORM, event_date: selectedDate || new Date().toISOString().split('T')[0], calendar_type: selectedCal }); setShowAddModal(true); }}
-            style={{ width: '100%', maxWidth: 760, display: 'block', margin: '0 auto', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 12, padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer' }}>
+            style={{ width: '100%', maxWidth: 760, display: 'block', margin: '0 auto', background: '#6366f1', color: 'var(--text)', border: 'none', borderRadius: 12, padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer' }}>
             + Add Event / Reminder
           </button>
         </div>

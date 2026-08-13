@@ -605,6 +605,31 @@ export async function POST(request) {
     keep:              responseKeep,
     intent:            responseKeep,
     tts_response,
+      // What the brain understood — the UI uses `missing` to ask the next
+      // question out loud instead of silently saving a half-understood keep.
+      assistant: llmAssist
+        ? {
+            engine: 'sarvam',
+            intent: llmAssist.intent ?? null,
+            confidence: llmAssist.confidence ?? null,
+            language: llmAssist.language_detected || language || null,
+            clean_text: llmAssist.clean_text || null,
+            title: llmAssist.title || null,
+            missing: Array.isArray(llmAssist.missing) ? llmAssist.missing : [],
+            entities: llmAssist.entities || {},
+            reply: llmAssist.reply || null,
+          }
+        : {
+            engine: 'regex',
+            intent: parsed?.type ?? null,
+            confidence: parsed?.confidence ?? null,
+            language: language || null,
+            clean_text: null,
+            title: null,
+            missing: [],
+            entities: parsed?.entities || {},
+            reply: null,
+          },
     time_ambiguous:    timeAmbiguous,
     quick_time_options: timeAmbiguous ? ['9:00 AM', '12:00 PM', '5:00 PM', '8:00 PM'] : null,
     needs_reminder_prompt: needsReminderPrompt,

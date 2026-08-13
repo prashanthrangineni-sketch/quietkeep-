@@ -139,7 +139,11 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       body: JSON.stringify({
         model: MODEL,
         temperature: 0.2,
-        max_tokens: 700,
+        // Generation time scales with tokens produced, and this is the single
+        // biggest component of voice latency (measured 13 Aug 2026: ~9s of a
+        // ~12s round trip is Sarvam generating this JSON). Everything the app
+        // actually acts on fits comfortably in 300.
+        max_tokens: 300,
         messages: [{ role: 'user', content: prompt }],
       }),
       signal: ctrl.signal,

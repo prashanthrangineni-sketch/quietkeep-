@@ -78,13 +78,13 @@ export default function CalendarDayDetail({ date, calendarType, userId, onClose 
     handle: { width:'40px', height:'4px', background:'#333', borderRadius:'2px', margin:'0 auto 16px' },
     dateHeader: { fontSize:'18px', fontWeight:800, marginBottom:'4px' },
     sub: { fontSize:'12px', color:'#888', marginBottom:'16px' },
-    divider: { height:'1px', background:'#1e1e2e', margin:'12px 0' },
-    panchangRow: { display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #1e1e2e' },
+    divider: { height:'1px', background:'var(--border)', margin:'12px 0' },
+    panchangRow: { display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border)' },
     panchangLabel: { fontSize:'12px', color:'#888' },
     panchangValue: { fontSize:'12px', color:'#c4b5fd', fontWeight:600, textAlign:'right', maxWidth:'60%' },
     eventItem: { display:'flex', alignItems:'flex-start', gap:'10px', padding:'10px', background:'#1a1a2e', borderRadius:'10px', marginBottom:'8px' },
     noEvents: { textAlign:'center', color:'#555', fontSize:'13px', padding:'16px 0' },
-    closeBtn: { position:'absolute', top:'16px', right:'16px', background:'#1e1e2e', border:'none', color:'#888', width:'32px', height:'32px', borderRadius:'50%', cursor:'pointer', fontSize:'16px', display:'flex', alignItems:'center', justifyContent:'center' },
+    closeBtn: { position:'absolute', top:'16px', right:'16px', background:'var(--border)', border:'none', color:'#888', width:'32px', height:'32px', borderRadius:'50%', cursor:'pointer', fontSize:'16px', display:'flex', alignItems:'center', justifyContent:'center' },
   };
 
   return (

@@ -163,8 +163,8 @@ export default function AuditPage() {
               return (
                 <div key={i} style={{
                   padding: '12px 14px', marginBottom: 7,
-                  background: 'rgba(255,255,255,0.02)', borderRadius: 11,
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'var(--surface)', borderRadius: 11,
+                  border: '1px solid var(--border)',
                   borderLeft: `3px solid ${modeColor}40`,
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 }}>

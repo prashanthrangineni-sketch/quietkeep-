@@ -3,12 +3,27 @@
  * DashboardHero — top zone of the dashboard.
  * Shows: greeting, today's top reminder, voice capture area.
  * Extracted from dashboard/page.jsx to reduce main file complexity.
+ *
+ * Name source of truth: profiles.full_name (same as the More page).
+ * The userName prop is only a fallback and is ignored when it looks like a
+ * phone number or an email fragment (phone-OTP accounts have
+ * "<mobile>@quietkeep.com" emails, which produced "Good morning, 9194...").
  */
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+
+function isUsableName(n) {
+  if (!n) return false;
+  const t = String(n).trim();
+  if (!t) return false;
+  if (/^[\d\s+()-]+$/.test(t)) return false;   // phone-number-ish
+  if (t.includes('@')) return false;            // email fragment
+  return true;
+}
 
 function getGreeting(name) {
   const h = new Date().getHours();
-  const n = name ? `, ${name.split(' ')[0]}` : '';
+  const n = name ? `, ${name.trim().split(' ')[0]}` : '';
   if (h >= 5 && h < 12) return `Good morning${n}`;
   if (h >= 12 && h < 17) return `Good afternoon${n}`;
   if (h >= 17 && h < 21) return `Good evening${n}`;
@@ -16,13 +31,46 @@ function getGreeting(name) {
 }
 
 export default function DashboardHero({ userName, topReminder, onReminderTap }) {
+  const [profileName, setProfileName] = useState('');
   const [greeting, setGreeting] = useState('');
 
+  // Fetch the real display name from profiles (the same table Settings writes
+  // and the More page reads), and refresh whenever the profile is updated.
   useEffect(() => {
-    setGreeting(getGreeting(userName));
-    const interval = setInterval(() => setGreeting(getGreeting(userName)), 60000);
+    let cancelled = false;
+
+    async function loadName() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (!cancelled && prof && isUsableName(prof.full_name)) {
+          setProfileName(prof.full_name.trim());
+        }
+      } catch { /* keep fallback */ }
+    }
+
+    loadName();
+    const onProfileUpdated = () => loadName();
+    window.addEventListener('qk_profile_updated', onProfileUpdated);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('qk_profile_updated', onProfileUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    const display = isUsableName(profileName)
+      ? profileName
+      : (isUsableName(userName) ? userName : '');
+    setGreeting(getGreeting(display));
+    const interval = setInterval(() => setGreeting(getGreeting(display)), 60000);
     return () => clearInterval(interval);
-  }, [userName]);
+  }, [userName, profileName]);
 
   return (
     <div style={{ marginBottom: 16 }}>

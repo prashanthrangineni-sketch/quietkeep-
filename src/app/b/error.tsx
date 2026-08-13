@@ -45,7 +45,7 @@ export default function BizError({
         </button>
         <Link
           href="/b/dashboard"
-          style={{ padding: '12px 24px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.12)', color: '#94a3b8', fontSize: 14, fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}
+          style={{ padding: '12px 24px', borderRadius: 10, border: '1px solid var(--border)', color: '#94a3b8', fontSize: 14, fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}
         >
           Back to business dashboard
         </Link>

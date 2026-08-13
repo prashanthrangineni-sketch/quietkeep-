@@ -279,7 +279,10 @@ export default function BizLoginPage() {
           return;
         }
         setBusinessMode();
-        window.location.href = '/b/dashboard';
+        {
+          const { data: { session } } = await getClient().auth.getSession();
+          window.location.href = await routeAfterBusinessLogin(getClient(), session);
+        }
       } else {
         setError('Could not retrieve Google ID token.');
       }

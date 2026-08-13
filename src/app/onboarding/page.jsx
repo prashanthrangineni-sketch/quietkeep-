@@ -347,7 +347,7 @@ export default function OnboardingPage() {
           <button
             onClick={handleNext}
             disabled={saving}
-            style={{ width: '100%', background: saving ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #7c3aed, #6366f1)', color: '#fff', border: 'none', borderRadius: '12px', padding: '16px', fontSize: '15px', fontWeight: '700', cursor: saving ? 'not-allowed' : 'pointer', minHeight: '52px', WebkitTapHighlightColor: 'transparent', boxShadow: '0 4px 12px rgba(124,58,237,0.3)' }}
+            style={{ width: '100%', background: saving ? 'var(--surface)' : 'linear-gradient(135deg, #7c3aed, #6366f1)', color: '#fff', border: 'none', borderRadius: '12px', padding: '16px', fontSize: '15px', fontWeight: '700', cursor: saving ? 'not-allowed' : 'pointer', minHeight: '52px', WebkitTapHighlightColor: 'transparent', boxShadow: '0 4px 12px rgba(124,58,237,0.3)' }}
           >
             {saving ? 'Setting up your space…' : step < STEPS.length - 1 ? 'Continue →' : "Let's go →"}
           </button>
@@ -355,7 +355,7 @@ export default function OnboardingPage() {
           {step === 4 && !saving && (
             <button
               onClick={skipKeep}
-              style={{ width: '100%', background: 'transparent', color: 'var(--text-subtle, #a1a1aa)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '14px', fontSize: '14px', cursor: 'pointer', minHeight: '48px' }}
+              style={{ width: '100%', background: 'transparent', color: 'var(--text-subtle)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', fontSize: '14px', cursor: 'pointer', minHeight: '48px' }}
             >
               Skip for now
             </button>
@@ -364,7 +364,7 @@ export default function OnboardingPage() {
           {step > 0 && !saving && (
             <button
               onClick={() => setStep(s => s - 1)}
-              style={{ width: '100%', background: 'transparent', color: 'var(--text-subtle, #a1a1aa)', border: 'none', padding: '10px', fontSize: '13px', cursor: 'pointer' }}
+              style={{ width: '100%', background: 'transparent', color: 'var(--text-subtle)', border: 'none', padding: '10px', fontSize: '13px', cursor: 'pointer' }}
             >
               ← Back
             </button>

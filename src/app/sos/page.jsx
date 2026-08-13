@@ -61,10 +61,10 @@ export default function SOSPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-muted)', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
 
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #160a0a, var(--surface))', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>
+      <div style={{ background: 'linear-gradient(135deg, var(--red-dim), var(--surface))', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
           <span style={{ fontSize: '22px' }}>🆘</span>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>SOS History</h1>
@@ -74,20 +74,20 @@ export default function SOSPage() {
             </span>
           )}
         </div>
-        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
           {events.length} SOS event{events.length !== 1 ? 's' : ''} total
         </p>
       </div>
 
       <div style={{ padding: '16px' }}>
 
-        {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>Loading...</div>}
+        {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13px' }}>Loading...</div>}
 
         {!loading && events.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '56px 20px', background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '16px' }}>
+          <div style={{ textAlign: 'center', padding: '56px 20px', background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: '16px' }}>
             <div style={{ fontSize: '48px', marginBottom: '14px' }}>🛡️</div>
-            <p style={{ margin: '0 0 8px', fontSize: '15px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>No SOS events</p>
-            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>Stay safe. Your SOS history will appear here.</p>
+            <p style={{ margin: '0 0 8px', fontSize: '15px', color: 'var(--text)', fontWeight: 500 }}>No SOS events</p>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>Stay safe. Your SOS history will appear here.</p>
           </div>
         )}
 

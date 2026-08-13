@@ -87,7 +87,7 @@ export default function SuggestionChips({ supabase, userId, onChipTap }) {
             height: '32px',
             width: '120px',
             borderRadius: '9999px',
-            background: 'var(--surface, rgba(255,255,255,0.06))',
+            background: 'var(--surface)',
             flexShrink: 0,
             animation: 'qk-chip-pulse 1.5s ease-in-out infinite',
           }} />

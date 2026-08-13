@@ -298,14 +298,14 @@ export default function BizLoginPage() {
               QuietKeep <span style={{ color: G }}>Business</span>
             </span>
           </Link>
-          <Link href="/login" style={{ fontSize: 12, color: '#64748b', textDecoration: 'none', background: 'rgba(255,255,255,0.05)', padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
+          <Link href="/login" style={{ fontSize: 12, color: '#64748b', textDecoration: 'none', background: 'var(--surface)', padding: '5px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
             Personal →
           </Link>
         </div>
 
         {/* Welcome / Intro Step */}
         {step === 'welcome' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 24, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
               <SmileyOrb size={54} bg1={G} bg2={G2} />
             </div>

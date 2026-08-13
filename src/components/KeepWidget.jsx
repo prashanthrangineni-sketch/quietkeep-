@@ -79,7 +79,7 @@ export default function KeepWidget({ compact = false }) {
   }
 
   return (
-    <div style={{ background: '#12121a', borderRadius: '16px', padding: '16px' }}>
+    <div style={{ background: 'var(--bg)', borderRadius: '16px', padding: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <span style={{ fontWeight: 700, fontSize: '16px' }}>📌 Keep</span>
         <button onClick={() => setShowInput(!showInput)}

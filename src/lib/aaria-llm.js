@@ -104,6 +104,84 @@ OTHER RULES:
 - If the user is asking a question rather than storing something, intent = "query".`;
 }
 
+// Escape hatch: if Sarvam ever changes its SSE shape, set SARVAM_STREAM=0 and
+// the original single-shot request comes back with no redeploy.
+const STREAM_DISABLED = process.env.SARVAM_STREAM === '0';
+
+/**
+ * Read an OpenAI-style SSE completion, stopping the moment the JSON object the
+ * model is writing is closed.
+ *
+ * Why not just await res.json(): a buffered response is only readable once the
+ * generation has fully stopped, so we wait for every token the model chooses to
+ * emit after the answer -- a markdown fence, an apology, filler toward
+ * max_tokens. None of that is ever parsed; all of it is time the user spends
+ * listening to silence. Here we count braces (ignoring any inside strings) and
+ * abort as soon as depth returns to zero.
+ *
+ * Falls through to whatever it has accumulated if the stream ends first, so a
+ * malformed or non-SSE body degrades to the same behaviour as before.
+ */
+async function readUntilJsonComplete(body, ctrl) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let sse = '';        // unparsed SSE buffer
+  let out = '';        // model content so far
+  let depth = 0, inString = false, escaped = false, started = false;
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      sse += decoder.decode(value, { stream: true });
+
+      let nl;
+      while ((nl = sse.indexOf('\n')) !== -1) {
+        const line = sse.slice(0, nl).trim();
+        sse = sse.slice(nl + 1);
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === '[DONE]') continue;
+
+        let piece = '';
+        try { piece = JSON.parse(payload)?.choices?.[0]?.delta?.content || ''; }
+        catch { continue; }
+        if (!piece) continue;
+        const base = out.length;
+        out += piece;
+
+        for (let i = 0; i < piece.length; i++) {
+          const ch = piece[i];
+          if (inString) {
+            if (escaped) escaped = false;
+            else if (ch === '\\') escaped = true;
+            else if (ch === '"') inString = false;
+            continue;
+          }
+          if (ch === '"') { inString = true; continue; }
+          if (ch === '{') { depth++; started = true; continue; }
+          if (ch === '}') {
+            depth--;
+            if (started && depth === 0) {
+              try { ctrl.abort(); } catch { /* already done */ }
+              // Cut exactly at the brace. The closing token often arrives in
+              // the same chunk as a trailing fence or a stray sentence; keeping
+              // those would push the caller onto its regex fallback path for no
+              // reason.
+              return out.slice(0, base + i + 1).trim();
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // An abort here is ours, fired on the closing brace above.
+  } finally {
+    try { reader.releaseLock(); } catch { /* noop */ }
+  }
+  return out.trim();
+}
+
 /**
  * Understand an utterance; produce a spoken reply in the user's language.
  * Returns null on any failure so callers fall back safely.

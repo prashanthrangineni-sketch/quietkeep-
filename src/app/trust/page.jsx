@@ -272,14 +272,14 @@ export default function TrustDashboard() {
             textTransform: 'uppercase', marginBottom: 10 }}>📋 Recent Activity</div>
           {history.length === 0 ? (
             <div style={{ padding: '20px', textAlign: 'center', color: '#475569', fontSize: 13,
-              background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
+              background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)' }}>
               No automated activity yet
             </div>
           ) : history.map((h, i) => (
             <div key={i} style={{
               padding: '11px 13px', marginBottom: 7,
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)', borderRadius: 10,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>

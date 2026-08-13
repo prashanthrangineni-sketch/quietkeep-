@@ -155,7 +155,7 @@ export default function KeepWidget({ compact = false }) {
             </div>
 
             <button onClick={saveKeep} disabled={loading || !newText.trim()}
-              style={{ width: '100%', padding: '10px', background: newText.trim() ? '#6366f1' : '#333', border: 'none', color: '#fff', borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+              style={{ width: '100%', padding: '10px', background: newText.trim() ? '#6366f1' : 'var(--surface)', border: 'none', color: '#fff', borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
               {loading ? 'Saving...' : 'Save Keep'}
             </button>
           </motion.div>

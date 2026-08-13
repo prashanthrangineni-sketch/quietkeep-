@@ -54,7 +54,7 @@ export default function JoinPage() {
         <h1 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px' }}>QuietKeep Business</h1>
         <p style={{ color: '#475569', fontSize: 15, lineHeight: 1.6, margin: 0 }}>{msg}</p>
         {status === 'login' && (
-          <Link href="/biz-login" style={btn}>Sign in</Link>
+          <Link href={signInHref} style={btn}>Sign in</Link>
         )}
         {status === 'error' && (
           <Link href="/b/dashboard" style={btn}>Go to dashboard</Link>

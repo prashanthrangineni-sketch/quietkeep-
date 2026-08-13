@@ -56,14 +56,12 @@ export default function TeamPage() {
     if (authLoading) return;
     if (!user) { router.replace('/biz-login'); return; }
     initPage();
-  }, [user]);
+  }, [user, authLoading]);
 
   async function initPage() {
     setLoadError('');
     try {
-      const { data: ws } = await supabase
-        .from('business_workspaces').select('id,name')
-        .eq('owner_user_id', user?.id).maybeSingle();
+      const ws = await resolveWorkspace(supabase, user?.id, 'id,name');
       if (ws) { setWorkspace(ws); await loadMembers(ws.id); loadTasks(ws.id); } else { setLoading(false); }
     } catch { setLoadError('Could not load data. Check your connection.'); setLoading(false); }
   }

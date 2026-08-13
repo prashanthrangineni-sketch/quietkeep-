@@ -459,7 +459,7 @@ export default function BizLoginPage() {
 
         {/* Email step */}
         {step === 'email' && (
-          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
             <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '3px 12px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
               🏢 Business Workspace
             </div>

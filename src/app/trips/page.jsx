@@ -492,7 +492,7 @@ Return ONLY valid JSON matching this structure exactly:
                     </div>
                   )}
                   {(aiPlan.days||[]).map(day => (
-                    <div key={day.day} style={{ background:'rgba(255,255,255,0.03)',
+                    <div key={day.day} style={{ background:'var(--surface)',
                       border:'1px solid var(--border)', borderRadius:12,
                       padding:'12px 14px', marginBottom:8 }}>
                       <div style={{ fontSize:13, fontWeight:800, color:'var(--primary)', marginBottom:8 }}>

@@ -421,7 +421,7 @@ export default function InvoicesPage() {
                 Line Items
               </div>
               {items.map((item, idx) => (
-                <div key={idx} style={{ background:'rgba(255,255,255,0.03)',
+                <div key={idx} style={{ background:'var(--surface)',
                   border:'1px solid var(--border)', borderRadius:10,
                   padding:'10px 12px', marginBottom:8 }}>
                   <input value={item.name}

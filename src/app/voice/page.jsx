@@ -164,7 +164,7 @@ export default function VoicePage() {
                           </span>
                         )}
                         {s.duration_seconds && (
-                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                             ⏱️ {fmtDuration(s.duration_seconds)}
                           </span>
                         )}
@@ -172,7 +172,7 @@ export default function VoicePage() {
 
                       {s.transcript ? (
                         <div>
-                          <p style={{ margin: '0 0 3px', fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: '1.4', overflow: isExpanded ? 'visible' : 'hidden', display: isExpanded ? 'block' : '-webkit-box', WebkitLineClamp: isExpanded ? 'unset' : 2, WebkitBoxOrient: 'vertical' }}>
+                          <p style={{ margin: '0 0 3px', fontSize: '13px', color: 'var(--text)', lineHeight: '1.4', overflow: isExpanded ? 'visible' : 'hidden', display: isExpanded ? 'block' : '-webkit-box', WebkitLineClamp: isExpanded ? 'unset' : 2, WebkitBoxOrient: 'vertical' }}>
                             "{s.transcript}"
                           </p>
                           {s.transcript.length > 80 && (
@@ -183,10 +183,10 @@ export default function VoicePage() {
                           )}
                         </div>
                       ) : (
-                        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>No transcript saved</p>
+                        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic' }}>No transcript saved</p>
                       )}
                     </div>
-                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'right', flexShrink: 0 }}>
                       {new Date(s.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>

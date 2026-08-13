@@ -260,7 +260,46 @@ export default function TeamPage() {
         {msg && (
           <div style={{ background:`${G}15`, border:`1px solid ${G}40`,
             borderRadius:8, padding:'8px 12px', fontSize:13, color:G, marginBottom:12 }}>
-            ✓ {msg}
+            {msg}
+          </div>
+        )}
+
+        {/* Adding someone creates a record, not a login. This is the link that
+            turns the record into a person who can actually sign in. */}
+        {inviteUrl && (
+          <div style={{ background:'var(--surface)', border:`1px solid ${G}40`,
+            borderRadius:12, padding:'14px 16px', marginBottom:12 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:4 }}>
+              Send {inviteName || 'them'} this link to finish
+            </div>
+            <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:10, lineHeight:1.5 }}>
+              They are saved, but they cannot sign in or see their own shifts and
+              payslips until they open this and sign in once.
+            </div>
+            <div style={{
+              fontSize:11, fontFamily:'monospace', wordBreak:'break-all',
+              background:'var(--bg)', border:'1px solid var(--border)',
+              borderRadius:8, padding:'8px 10px', color:'var(--text-muted)', marginBottom:10,
+            }}>{inviteUrl}</div>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <button onClick={copyInvite}
+                style={{ padding:'8px 14px', borderRadius:9, border:'none', background:G,
+                  color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                Copy link
+              </button>
+              <a href={`https://wa.me/?text=${encodeURIComponent(`Join our QuietKeep Business workspace: ${inviteUrl}`)}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{ padding:'8px 14px', borderRadius:9, border:`1px solid ${G}`, color:G,
+                  fontSize:13, fontWeight:600, textDecoration:'none', fontFamily:'inherit' }}>
+                Send on WhatsApp
+              </a>
+              <button onClick={() => setInviteUrl('')}
+                style={{ padding:'8px 14px', borderRadius:9, border:'1px solid var(--border)',
+                  background:'transparent', color:'var(--text-muted)', fontSize:13,
+                  cursor:'pointer', fontFamily:'inherit' }}>
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 

@@ -157,7 +157,10 @@ export async function POST(request) {
   if (llmAssist && llmAssist.confidence >= 0.55) {
     // Map the brain's vocabulary onto the intent types this app executes.
     const INTENT_MAP = {
-      income: 'ledger_credit',   // money received — was previously mis-filed as an expense
+      // Personal keeps have never used 'ledger_credit' (checked live: keeps has
+      // note/task/reminder/contact/purchase/expense/compliance/invoice/document/
+      // call/meeting only), so keep money-in as the plain, readable 'income'.
+      ledger_credit: 'income',   // money received — was previously mis-filed as an expense
       query: 'note',
     }
     const mappedType = INTENT_MAP[llmAssist.intent] || llmAssist.intent

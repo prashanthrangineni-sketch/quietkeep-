@@ -220,7 +220,7 @@ export default function DriveModePage() {
       userSelect: 'none', paddingBottom: 'env(safe-area-inset-bottom)',
     }}>
       {/* Header */}
-      <div style={{ background: 'var(--bg)', borderBottom: '1px solid #1a1a2e', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 18 }}>🛣️</span>
           <span style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>Drive Mode</span>

@@ -151,7 +151,7 @@ export default function BudgetComponent() {
                 </div>
 
                 {/* Progress Bar */}
-                <div style={{ width: '100%', height: '8px', backgroundColor: '#1a1a2e', borderRadius: '4px', marginBottom: '8px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg)', borderRadius: '4px', marginBottom: '8px', overflow: 'hidden' }}>
                   <div
                     style={{
                       height: '100%',

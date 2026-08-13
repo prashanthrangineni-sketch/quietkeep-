@@ -125,7 +125,7 @@ export default function VoicePage() {
         {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>Loading...</div>}
 
         {!loading && sessions.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '56px 20px', background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '16px' }}>
+          <div style={{ textAlign: 'center', padding: '56px 20px', background: 'var(--surface)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '16px' }}>
             <div style={{ fontSize: '48px', marginBottom: '14px' }}>🎙️</div>
             <p style={{ margin: '0 0 8px', fontSize: '15px', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>No voice sessions yet</p>
             <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>Use the microphone on the dashboard to capture voice keeps</p>

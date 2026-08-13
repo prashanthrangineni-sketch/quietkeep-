@@ -8,8 +8,8 @@ import { supabase } from '@/lib/supabase';
 import NavbarClient from '@/components/NavbarClient';
 import { safeFetch } from '@/lib/safeFetch';
 
-const inp = { width:'100%', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:8, color:'#fff', padding:'0.6rem 0.75rem', fontSize:'0.88rem', outline:'none', boxSizing:'border-box' };
-const btn1 = { padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'#6366f1', color:'#fff', fontSize:'0.88rem', fontWeight:600, cursor:'pointer' };
+const inp = { width:'100%', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', padding:'0.6rem 0.75rem', fontSize:'0.88rem', outline:'none', boxSizing:'border-box' };
+const btn1 = { padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'#6366f1', color:'var(--text)', fontSize:'0.88rem', fontWeight:600, cursor:'pointer' };
 
 function today() { return new Date().toISOString().split('T')[0]; }
 function weekAgo() { const d = new Date(); d.setDate(d.getDate()-6); return d.toISOString().split('T')[0]; }

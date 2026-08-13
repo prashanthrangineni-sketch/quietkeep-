@@ -245,7 +245,7 @@ export default function MoodPage() {
       </div>
 
       <style>{`
-        textarea::placeholder, input::placeholder { color: rgba(255,255,255,0.25); }
+        textarea::placeholder, input::placeholder { color: var(--text-muted); }
         textarea:focus { border-color: rgba(167,139,250,0.4) !important; }
       `}</style>
     </div>

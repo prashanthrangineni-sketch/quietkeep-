@@ -578,8 +578,8 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
     <div style={{
       background: isPrimary
         ? 'linear-gradient(135deg, rgba(220,30,30,0.12) 0%, rgba(180,20,20,0.06) 100%)'
-        : 'rgba(255,255,255,0.04)',
-      border: isPrimary ? '1px solid rgba(255,80,80,0.25)' : '1px solid rgba(255,255,255,0.08)',
+        : 'var(--surface)',
+      border: isPrimary ? '1px solid rgba(255,80,80,0.25)' : '1px solid var(--border)',
       borderRadius: '14px',
       padding: '14px',
       marginBottom: '10px'
@@ -589,7 +589,7 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <div style={{
             width: '40px', height: '40px', borderRadius: '50%',
-            background: isPrimary ? 'rgba(255,80,80,0.2)' : 'rgba(255,255,255,0.07)',
+            background: isPrimary ? 'rgba(255,80,80,0.2)' : 'var(--surface)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '18px', flexShrink: 0
           }}>
@@ -597,17 +597,17 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>{contact.name}</span>
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>{contact.name}</span>
               {isPrimary && <span style={{ fontSize: '10px', color: '#ff8080', background: 'rgba(255,80,80,0.15)', padding: '2px 6px', borderRadius: '10px', letterSpacing: '0.3px' }}>PRIMARY</span>}
             </div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginTop: '1px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '1px' }}>
               {contact.relation} · {contact.phone}
             </div>
           </div>
         </div>
         {/* Edit / Delete */}
         <div style={{ display: 'flex', gap: '4px' }}>
-          <button onClick={onEdit} style={{ background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: '8px', padding: '6px 10px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px' }}>
+          <button onClick={onEdit} style={{ background: 'var(--surface)', border: 'none', borderRadius: '8px', padding: '6px 10px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px' }}>
             ✏️
           </button>
           <button onClick={onDelete} style={{ background: 'rgba(255,60,60,0.08)', border: 'none', borderRadius: '8px', padding: '6px 10px', color: 'rgba(255,80,80,0.6)', cursor: 'pointer', fontSize: '12px' }}>

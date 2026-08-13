@@ -106,7 +106,7 @@ export default function NavbarClient() {
               background: 'var(--primary-dim)',
               borderRadius: 999, padding: '3px 10px', textDecoration: 'none',
             }}>
-              ⭐ Pro
+              {tier === 'pro' ? '⭐ Pro' : 'Upgrade ⭐'}
             </Link>
             <button onClick={handleSignOut} style={{
               background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.25)',

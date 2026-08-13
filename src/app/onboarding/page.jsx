@@ -250,14 +250,14 @@ export default function OnboardingPage() {
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '16px', borderRadius: '12px', cursor: 'pointer',
-                  border: `1px solid ${language === lang.value ? '#7c3aed' : 'rgba(255,255,255,0.1)'}`,
-                  background: language === lang.value ? 'rgba(124, 58, 237, 0.15)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${language === lang.value ? '#7c3aed' : 'var(--border)'}`,
+                  background: language === lang.value ? 'rgba(124, 58, 237, 0.15)' : 'var(--surface)',
                   textAlign: 'left', WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '15px', fontWeight: '600', color: language === lang.value ? '#a855f7' : 'var(--text, #fff)' }}>{lang.label}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-subtle, #a1a1aa)', marginTop: '2px' }}>{lang.desc}</div>
+                  <div style={{ fontSize: '15px', fontWeight: '600', color: language === lang.value ? '#a855f7' : 'var(--text)' }}>{lang.label}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-subtle)', marginTop: '2px' }}>{lang.desc}</div>
                 </div>
                 {language === lang.value && <span style={{ color: '#a855f7', fontSize: '18px', fontWeight: 'bold' }}>✓</span>}
               </button>

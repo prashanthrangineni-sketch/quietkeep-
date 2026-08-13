@@ -165,7 +165,11 @@ export default function MorePage() {
         <div className="qk-card" style={{ overflow: 'hidden', marginBottom: 24 }}>
           {[
             { href: '/profile',      icon: '👤', title: 'Profile',             sub: 'Name, avatar, preferences' },
-            { href: '/admin',        icon: '🔐', title: 'Admin Dashboard',      sub: 'Metrics, users, feature flags' },
+            // Internal platform panel — not a customer feature. It was linked
+            // from every user's More menu; now only for flagged staff.
+            ...(isPlatformAdmin
+              ? [{ href: '/admin', icon: '🔐', title: 'Admin Dashboard', sub: 'Metrics, users, feature flags' }]
+              : []),
             { href: '/pricing',      icon: '💎', title: 'Pricing & Plans',      sub: 'Free · Premium ₹99 · Family ₹199' },
             { href: '/settings',     icon: '⚙️', title: 'Settings',             sub: 'Notifications, voice, calendar' },
             { href: '/subscription', icon: '⭐', title: 'Upgrade to Premium',   sub: 'Unlimited + WhatsApp OCR + AI advice' },

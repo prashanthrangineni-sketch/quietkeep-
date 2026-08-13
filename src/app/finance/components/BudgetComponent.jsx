@@ -121,7 +121,7 @@ export default function BudgetComponent() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0f', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         Loading...
       </div>
     );

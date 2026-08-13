@@ -274,7 +274,7 @@ export default function KidsPage() {
 
         {/* Active kid — content section */}
         {activeKid && (
-          <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid var(--surface)', borderRadius:16, padding:20, marginBottom:24 }}>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--surface)', borderRadius:16, padding:20, marginBottom:24 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
               <div style={{ fontSize:15, fontWeight:700, color:'var(--text)' }}>📁 {activeKid.name}'s Files</div>
               <button onClick={() => { setShowUpload(!showUpload); setUFile(null); setUTitle(''); setUDesc(''); setUType('school'); }}

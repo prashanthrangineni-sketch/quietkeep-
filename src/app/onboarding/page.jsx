@@ -322,15 +322,15 @@ export default function OnboardingPage() {
               onChange={e => setFirstKeep(e.target.value)}
               placeholder="e.g. Call dad on Sunday, or Buy milk tomorrow..."
               rows={3}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', padding: '14px 16px', color: 'var(--text, #fff)', fontSize: '15px', outline: 'none', boxSizing: 'border-box', resize: 'none', lineHeight: '1.5' }}
+              style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px', color: 'var(--text)', fontSize: '15px', outline: 'none', boxSizing: 'border-box', resize: 'none', lineHeight: '1.5' }}
             />
             <div style={{ marginTop: '14px' }}>
-              <label style={{ fontSize: '12px', color: 'var(--text-subtle, #a1a1aa)', display: 'block', marginBottom: '6px' }}>Got a referral code? (optional)</label>
+              <label style={{ fontSize: '12px', color: 'var(--text-subtle)', display: 'block', marginBottom: '6px' }}>Got a referral code? (optional)</label>
               <input
                 value={referralCode}
                 onChange={e => setReferralCode(e.target.value.toUpperCase())}
                 placeholder="e.g. PRASHANTH1234"
-                style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '12px 14px', color: 'var(--text, #fff)', fontSize: '14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace', letterSpacing: '0.06em' }}
+                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', color: 'var(--text)', fontSize: '14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace', letterSpacing: '0.06em' }}
               />
             </div>
           </>

@@ -134,9 +134,9 @@ export default function AuditPage() {
                   style={{
                     padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
                     fontFamily: 'inherit', fontSize: 11, fontWeight: filter === f ? 700 : 400,
-                    background: filter === f ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
+                    background: filter === f ? 'rgba(99,102,241,0.2)' : 'var(--surface)',
                     color: filter === f ? '#a5b4fc' : '#64748b',
-                    border: `1px solid ${filter === f ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.07)'}`,
+                    border: `1px solid ${filter === f ? 'rgba(99,102,241,0.4)' : 'var(--border)'}`,
                   }}>
                   {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
                 </button>

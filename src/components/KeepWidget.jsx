@@ -132,14 +132,14 @@ export default function KeepWidget({ compact = false }) {
                     value={contactName}
                     onChange={e => setContactName(e.target.value)}
                     placeholder="Contact name (optional)"
-                    style={{ width: '100%', background: '#1e1e2e', border: '1px solid #6366f133', color: '#fff', padding: '8px 10px', borderRadius: '8px', fontSize: '13px', marginBottom: '6px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid #6366f133', color: 'var(--text)', padding: '8px 10px', borderRadius: '8px', fontSize: '13px', marginBottom: '6px', boxSizing: 'border-box' }}
                   />
                   <input
                     type="tel"
                     value={contactPhone}
                     onChange={e => setContactPhone(e.target.value)}
                     placeholder="Phone number (for call reminder)"
-                    style={{ width: '100%', background: '#1e1e2e', border: '1px solid #6366f133', color: '#fff', padding: '8px 10px', borderRadius: '8px', fontSize: '13px', marginBottom: '8px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid #6366f133', color: 'var(--text)', padding: '8px 10px', borderRadius: '8px', fontSize: '13px', marginBottom: '8px', boxSizing: 'border-box' }}
                   />
                 </motion.div>
               )}

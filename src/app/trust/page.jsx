@@ -194,7 +194,7 @@ export default function TrustDashboard() {
             textTransform: 'uppercase', marginBottom: 10 }}>📊 Pattern Trust Scores</div>
           {patterns.length === 0 ? (
             <div style={{ padding: '20px', textAlign: 'center', color: '#475569', fontSize: 13,
-              background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
+              background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)' }}>
               No patterns learned yet. Keep using voice input to build your profile.
             </div>
           ) : patterns.map((p, i) => {
@@ -206,8 +206,8 @@ export default function TrustDashboard() {
             return (
               <div key={i} style={{
                 padding: '13px 14px', marginBottom: 8,
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.07)',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
                 borderRadius: 12,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>

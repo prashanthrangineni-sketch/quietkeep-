@@ -233,6 +233,24 @@ export default function BizLoginPage() {
     setLoading(true);
     setError('');
     try {
+      const isNativeApp = typeof window !== 'undefined'
+        && window.Capacitor
+        && typeof window.Capacitor.isNativePlatform === 'function'
+        && window.Capacitor.isNativePlatform();
+
+      // Web / PWA: the native plugin does not exist in a browser — use Supabase OAuth.
+      if (!isNativeApp) {
+        const { error: oauthErr } = await getClient().auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: `${window.location.origin}/auth/callback?next=/b/dashboard` },
+        });
+        if (oauthErr) {
+          setError(oauthErr.message || 'Google sign-in is not available right now.');
+          setLoading(false);
+        }
+        return; // browser navigates to Google
+      }
+
       const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
       GoogleAuth.initialize({
         clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '854117079237-7n53t4i57l3slst108u7o1n9msmbs845.apps.googleusercontent.com',

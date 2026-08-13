@@ -185,7 +185,7 @@ export default function MoodPage() {
             width:'100%', padding:'12px',
             background: !selectedMood ? 'var(--surface)' : saved ? 'rgba(74,222,128,0.3)' : 'rgba(167,139,250,0.3)',
             border: !selectedMood ? '1px solid rgba(255,255,255,0.1)' : saved ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(167,139,250,0.5)',
-            borderRadius:'10px', color: !selectedMood ? 'rgba(255,255,255,0.3)' : '#fff',
+            borderRadius:'10px', color: !selectedMood ? 'var(--text-subtle)' : '#fff',
             fontSize:'14px', fontWeight:600, cursor: !selectedMood ? 'not-allowed' : 'pointer', fontFamily:'inherit'
           }}
         >
@@ -199,7 +199,7 @@ export default function MoodPage() {
           History
         </p>
 
-        {loading && <div style={{ textAlign:'center', padding:'30px', color:'rgba(255,255,255,0.3)', fontSize:'13px' }}>Loading...</div>}
+        {loading && <div style={{ textAlign:'center', padding:'30px', color:'var(--text-subtle)', fontSize:'13px' }}>Loading...</div>}
 
         {!loading && logs.length === 0 && (
           <div style={{ textAlign:'center', padding:'40px 20px', background:'var(--surface)', border:'1px dashed rgba(255,255,255,0.1)', borderRadius:'16px' }}>
@@ -226,7 +226,7 @@ export default function MoodPage() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                       <span style={{ fontSize:'13px', fontWeight:600, color:m.color }}>{m.label}</span>
-                      <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.3)' }}>{new Date(log.logged_at).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })}</span>
+                      <span style={{ fontSize:'11px', color:'var(--text-subtle)' }}>{new Date(log.logged_at).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })}</span>
                     </div>
                     {log.note && <p style={{ margin:'3px 0 0', fontSize:'12px', color:'rgba(255,255,255,0.5)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{log.note}</p>}
                   </div>

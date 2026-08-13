@@ -90,11 +90,37 @@ export default function BizOnboardingPage() {
         setTimeout(() => router.replace('/b/dashboard'), 1200);
       } else {
         // INSERT new workspace
-        const { error: e } = await supabase.from('business_workspaces').insert({
+        const { data: ws, error: e } = await supabase.from('business_workspaces').insert({
           owner_user_id: user.id, name: bizName.trim(), business_type: bizType,
           gstin: gstin.trim() || null, phone: phone.trim() || null,
-        });
+        }).select('id').single();
         if (e) throw e;
+
+        // BUG FOUND 13 Aug 2026: a brand-new workspace was created with ZERO
+        // members, so the person who just signed up was not on their own team.
+        // Team, Attendance and Payroll all showed "No staff added" to the owner,
+        // and payroll could never include them. Add the owner as member #1.
+        if (ws?.id) {
+          const ownerName =
+            (user.user_metadata?.full_name || '').trim() ||
+            bizName.trim() ||
+            'Owner';
+          const ownerPhone =
+            (phone.trim() || user.phone || '').replace(/^\+?91/, '') || null;
+          const { error: memberErr } = await supabase.from('business_members').insert({
+            workspace_id: ws.id,
+            user_id: user.id,
+            name: ownerName,
+            phone: ownerPhone,
+            email: user.email || null,
+            role: 'owner',
+            access_role: 'owner',
+            status: 'active',
+            date_of_joining: new Date().toISOString().slice(0, 10),
+          });
+          // Never block signup on this — the workspace itself is created.
+          if (memberErr) console.error('[b/onboarding] owner member insert failed', memberErr);
+        }
         await supabase.from('profiles').upsert({
           user_id: user.id, workspace_type: 'business', business_type: bizType,
           business_name: bizName.trim(), business_gstin: gstin.trim() || null,

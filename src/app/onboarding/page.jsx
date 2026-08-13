@@ -59,6 +59,32 @@ export default function OnboardingPage() {
     if (user?.email && !user.email.endsWith('@quietkeep.com')) setEmail(user.email);
   }, [user, authLoading, router]);
 
+  /**
+   * Save consent the moment it is given.
+   *
+   * It used to be written only after ALL five onboarding steps completed, so
+   * anyone who gave consent and then closed the app had their answer thrown
+   * away — while the screen told them "Your Data, Your Choice". Under the DPDP
+   * Act the record of consent is the point.
+   *
+   * Never throws: onboarding must not be blocked by this.
+   */
+  async function saveConsent(data) {
+    if (!user || !data) return;
+    try {
+      const { error: consentErr } = await supabase.from('user_consent').upsert({
+        user_id: user.id,
+        ...data,
+        consent_version: 'v1.0',
+        consented_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+      if (consentErr) console.error('[onboarding] consent save failed', consentErr);
+    } catch (e) {
+      console.error('[onboarding] consent save threw', e);
+    }
+  }
+
   async function handleNext() {
     setError('');
     if (step === 0 && !name.trim()) { setError('Full name is required.'); return; }

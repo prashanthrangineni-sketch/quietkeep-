@@ -33,6 +33,25 @@ const ACT_TIMEOUT_MS = 4000;
 // Below this we don't trust the interpretation enough to act on it.
 const MIN_CONFIDENCE = 0.55;
 
+// MEASURED IN PRODUCTION, 13 Aug 2026
+// -----------------------------------
+// Aaria's /api/voice/understand answers
+//     {"intent":"unknown","entities":{},"confidence":0.0,"engine_used":"deterministic"}
+// in ~3.5s — even for "remind me to call Gautam tomorrow". Its own /api/health
+// reports pipecat_available:false, so there is no language model behind it yet;
+// it is a keyword matcher. Because intent is always "unknown" it never clears
+// MIN_CONFIDENCE, so /api/voice/act is never reached and nothing is ever acted
+// on. Net effect: 3.5s (up to 7.5s with the act call) of latency added to EVERY
+// voice capture in exchange for no behaviour whatsoever.
+//
+// Understanding now happens in src/lib/aaria-llm.js (Sarvam), which answers
+// correctly in ~4s. So this path is off by default.
+//
+// Turn it back on with AARIA_REMOTE_NLU=1 the day Aaria's understanding
+// endpoint gains a real model — no code change needed. Re-measure with
+// /api/debug/aaria-llm before flipping it.
+const REMOTE_NLU_ENABLED = process.env.AARIA_REMOTE_NLU === '1';
+
 async function postJSON(path, body, timeoutMs) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);

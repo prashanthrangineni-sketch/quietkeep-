@@ -119,7 +119,61 @@ export async function POST(request) {
   }
 
   let parsed = parseIntent(text)
-  const reminderAt = computeReminderAt(parsed.entities)
+  let reminderAt = computeReminderAt(parsed.entities)
+
+  // ── Understanding brain (multilingual) ────────────────────────────────────
+  // The regex parser is English-first: anything it cannot match becomes a
+  // generic 'note' and nothing happens. Run the LLM whenever the regex result
+  // is weak OR the user did not speak English, then upgrade the parse.
+  // Entirely fail-safe: if the brain is unavailable we keep the regex result.
+  const langBase = String(language || 'en').split('-')[0]
+  const regexWeak = parsed.type === 'unknown' || parsed.type === 'note' || (parsed.confidence ?? 0) < 0.7
+  let llmAssist = null
+
+  if (regexWeak || langBase !== 'en') {
+    llmAssist = await aariaUnderstandLLM(text, {
+      language,
+      nowISO: new Date().toISOString(),
+      timezone: 'Asia/Kolkata',
+      workspaceMode: workspace_id ? 'business' : 'personal',
+    }).catch(() => null)
+  }
+
+  if (llmAssist && llmAssist.confidence >= 0.55) {
+    // Map the brain's vocabulary onto the intent types this app executes.
+    const INTENT_MAP = {
+      income: 'ledger_credit',   // money received — was previously mis-filed as an expense
+      query: 'note',
+    }
+    const mappedType = INTENT_MAP[llmAssist.intent] || llmAssist.intent
+
+    // Only upgrade when the brain is at least as sure as the regex.
+    if (llmAssist.confidence >= (parsed.confidence ?? 0) || regexWeak) {
+      parsed = {
+        ...parsed,
+        type: mappedType,
+        confidence: llmAssist.confidence,
+        entities: {
+          ...(parsed.entities || {}),
+          names: llmAssist.entities.person
+            ? [llmAssist.entities.person]
+            : (parsed.entities?.names || []),
+          amount: llmAssist.entities.amount ?? parsed.entities?.amount ?? null,
+          direction: llmAssist.entities.direction ?? null,
+          item: llmAssist.entities.item ?? null,
+        },
+      }
+    }
+
+    // Absolute time from the brain wins — it resolves "రేపు ఉదయం" / "कल सुबह"
+    // that computeReminderAt() cannot see.
+    if (llmAssist.entities.datetimeISO) {
+      const dt = new Date(llmAssist.entities.datetimeISO)
+      if (!isNaN(dt.getTime()) && dt.getTime() > Date.now() - 60000) {
+        reminderAt = dt
+      }
+    }
+  }
 
   let matchedContact = null
   let allContacts    = []

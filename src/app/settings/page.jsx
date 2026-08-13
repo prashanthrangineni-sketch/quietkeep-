@@ -431,7 +431,7 @@ export default function SettingsPage() {
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               placeholder="Enter your name"
-              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 10, color: 'var(--text)', padding: '0.75rem 1rem', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+              style={{ width: '100%', background: 'var(--surface)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 10, color: 'var(--text)', padding: '0.75rem 1rem', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
             />
           </div>
           <Select label="I am a…" value={persona} onChange={setPersona} options={PERSONAS} />

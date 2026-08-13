@@ -32,7 +32,7 @@ export async function GET(req) {
 
   // 1. Raw call — show exactly what Sarvam says.
   const body = {
-    model: 'sarvam-m',
+    model: process.env.SARVAM_CHAT_MODEL || 'sarvam-105b',
     temperature: 0.2,
     max_tokens: 200,
     messages: [{ role: 'user', content: 'Reply with only the word OK.' }],

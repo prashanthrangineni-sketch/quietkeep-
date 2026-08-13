@@ -172,6 +172,7 @@ export default function BizMorePage() {
             </div>
           </div>
         ))}
+        </div>
 
         {/* Sign out */}
         <button onClick={handleSignOut}

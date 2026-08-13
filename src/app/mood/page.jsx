@@ -107,7 +107,7 @@ export default function MoodPage() {
       <div style={{ background:'linear-gradient(135deg,var(--bg),var(--bg))', borderBottom:'1px solid rgba(167,139,250,0.15)', padding:'20px 16px 16px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'4px' }}>
           <span style={{ fontSize:'22px' }}>🌊</span>
-          <h1 style={{ margin:0, fontSize:'20px', fontWeight:700, color:'#fff', letterSpacing:'-0.3px' }}>Mood Log</h1>
+          <h1 style={{ margin:0, fontSize:'20px', fontWeight:700, color:'var(--text)', letterSpacing:'-0.3px' }}>Mood Log</h1>
         </div>
         <p style={{ margin:0, fontSize:'13px', color:'var(--text-muted)' }}>Track how you feel, every day</p>
       </div>
@@ -173,7 +173,7 @@ export default function MoodPage() {
           style={{
             width:'100%', padding:'10px 12px', background:'var(--surface)',
             border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px',
-            color:'#fff', fontSize:'13px', fontFamily:'inherit', resize:'vertical',
+            color:'var(--text)', fontSize:'13px', fontFamily:'inherit', resize:'vertical',
             outline:'none', boxSizing:'border-box', marginBottom:'12px'
           }}
         />
@@ -185,7 +185,7 @@ export default function MoodPage() {
             width:'100%', padding:'12px',
             background: !selectedMood ? 'var(--surface)' : saved ? 'rgba(74,222,128,0.3)' : 'rgba(167,139,250,0.3)',
             border: !selectedMood ? '1px solid rgba(255,255,255,0.1)' : saved ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(167,139,250,0.5)',
-            borderRadius:'10px', color: !selectedMood ? 'var(--text-subtle)' : '#fff',
+            borderRadius:'10px', color: !selectedMood ? 'var(--text-subtle)' : 'var(--text)',
             fontSize:'14px', fontWeight:600, cursor: !selectedMood ? 'not-allowed' : 'pointer', fontFamily:'inherit'
           }}
         >

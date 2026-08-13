@@ -263,16 +263,13 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       entities: {
         person: ents.person ?? null,
         datetimeISO: ents.datetime_iso ?? null,
-        datetimeIsExplicit: !!ents.datetime_is_explicit,
         amount: typeof ents.amount === 'number' ? ents.amount : null,
-        currency: ents.currency ?? null,
         direction: ents.direction ?? null,
         item: ents.item ?? null,
-        location: ents.location ?? null,
       },
       missing: Array.isArray(parsed.missing) ? parsed.missing : [],
       reply: typeof parsed.reply === 'string' && parsed.reply.trim() ? parsed.reply.trim() : null,
-      engine: 'sarvam-m',
+      engine: MODEL,
     };
   } catch (err) {
     if (err?.name !== 'AbortError') {

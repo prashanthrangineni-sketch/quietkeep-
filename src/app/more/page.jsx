@@ -150,21 +150,34 @@ export default function MorePage() {
           )}
         </div>
 
+        </div>
+
         {/* All pages menu */}
         <div className="qk-section-label">All Pages</div>
-        <div className="qk-card" style={{ overflow: 'hidden', marginBottom: 20 }}>
-          {menuRows.map((row, i) => (
-            <a key={i} href={row.href} className="qk-list-item"
-              style={{ borderBottom: i < menuRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
-              <span style={{ fontSize: 20, marginRight: 14, minWidth: 28, textAlign: 'center' }}>
-                {row.icon}
-              </span>
-              <div style={{ flex: 1 }}>
-                <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 600 }}>{row.title}</div>
-                <div style={{ color: 'var(--text-subtle)', fontSize: 12, marginTop: 2 }}>{row.sub}</div>
+        <div className="qk-grid-auto" style={{ marginBottom: 20 }}>
+          {menuGroups.map(group => (
+            <div key={group.label} className="qk-card" style={{ overflow: 'hidden' }}>
+              <div style={{
+                padding: '12px 16px 10px', fontSize: 11, fontWeight: 700,
+                color: 'var(--text-subtle)', textTransform: 'uppercase',
+                letterSpacing: '0.08em', borderBottom: '1px solid var(--border)',
+              }}>
+                {group.label}
               </div>
-              <span style={{ color: 'var(--text-subtle)', fontSize: 16 }}>›</span>
-            </a>
+              {group.rows.map((row, i) => (
+                <a key={row.href} href={row.href} className="qk-list-item"
+                  style={{ borderBottom: i < group.rows.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  <span style={{ fontSize: 20, marginRight: 14, minWidth: 28, textAlign: 'center' }}>
+                    {row.icon}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 600 }}>{row.title}</div>
+                    <div style={{ color: 'var(--text-subtle)', fontSize: 12, marginTop: 2 }}>{row.sub}</div>
+                  </div>
+                  <span style={{ color: 'var(--text-subtle)', fontSize: 16 }}>›</span>
+                </a>
+              ))}
+            </div>
           ))}
         </div>
 

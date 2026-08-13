@@ -137,17 +137,17 @@ export default function StockTracker({ supabase, userId }) {
   const totalGain = totalCurrent - totalInvested;
   const gainPct = totalInvested > 0 ? ((totalGain / totalInvested) * 100).toFixed(1) : null;
 
-  const cardStyle = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '14px 16px', marginBottom: 10 };
+  const cardStyle = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', marginBottom: 10 };
 
-  if (loading) return <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>Loading assets…</div>;
+  if (loading) return <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>Loading assets…</div>;
 
   return (
     <div>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>📊 Assets & Stocks</div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{holdings.length} holding{holdings.length !== 1 ? 's' : ''}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>📊 Assets & Stocks</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{holdings.length} holding{holdings.length !== 1 ? 's' : ''}</div>
         </div>
         <button onClick={() => { resetForm(); setShowAdd(!showAdd); }} style={btn1}>
           {showAdd ? 'Cancel' : '+ Add'}

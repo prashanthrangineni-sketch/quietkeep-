@@ -42,17 +42,31 @@ export default function MorePage() {
     setShareMsg('WhatsApp opened with your brief link!');
   }
 
-  const menuRows = [
-    { icon: '📅', title: 'Calendar',        sub: 'Multi-calendar & panchang',            href: '/calendar' },
-    { icon: '📋', title: 'Daily Brief',     sub: 'AI-powered morning summary',            href: '/daily-brief' },
-    { icon: '🧘', title: 'Mood Log',        sub: 'Track your emotional health',           href: '/mood' },
-    { icon: '✈️', title: 'Trip Plans',      sub: 'AI travel itineraries & packing',       href: '/trips' },
-    { icon: '🔔', title: 'Reminders',       sub: 'All scheduled reminders',               href: '/reminders' },
-    { icon: '📇', title: 'Contacts',        sub: 'Sync phonebook — "call Ravi" works',    href: '/contacts' },
-    { icon: '🧠', title: 'Memories',        sub: 'Life timeline & AI insights',           href: '/memories' },
-    { icon: '📷', title: 'AI Camera',       sub: 'Capture with location, people & AI',   href: '/camera' }, // ← NEW
-    { icon: '🎤', title: 'Voice History',   sub: 'Past voice inputs',                     href: '/voice' },
-    { icon: '✦', title: 'Ask Aaria',        sub: 'Voice-assistant powered help',          href: '/ask-aaria' },
+  // Grouped 13 Aug 2026. This was one flat list of 33 rows — a wall of text on a
+  // phone and a single stranded column on a laptop. The destinations are
+  // unchanged; only the arrangement is. Groups render as cards, and the cards
+  // reflow into 2 columns at 900px and 3 at 1280px via .qk-grid-auto.
+  const menuGroups = [
+    { label: 'Every day', rows: [
+      { icon: '📅', title: 'Calendar',        sub: 'Multi-calendar & panchang',            href: '/calendar' },
+      { icon: '📋', title: 'Daily Brief',     sub: 'AI-powered morning summary',           href: '/daily-brief' },
+      { icon: '🔔', title: 'Reminders',       sub: 'All scheduled reminders',              href: '/reminders' },
+      { icon: '🧠', title: 'Memories',        sub: 'Life timeline & AI insights',          href: '/memories' },
+      { icon: '📇', title: 'Contacts',        sub: 'Sync phonebook — "call Ravi" works',   href: '/contacts' },
+    ]},
+    { label: 'Voice & capture', rows: [
+      { icon: '✦',  title: 'Ask Aaria',       sub: 'Voice-assistant powered help',         href: '/ask-aaria' },
+      { icon: '🎤', title: 'Voice History',   sub: 'Past voice inputs',                    href: '/voice' },
+      { icon: '🗣️', title: 'Voice Settings',  sub: 'Language, speed, wake word',           href: '/settings/voice' },
+      { icon: '📷', title: 'AI Camera',       sub: 'Capture with location, people & AI',   href: '/camera' },
+    ]},
+    { label: 'Money', rows: [
+      { icon: '🏦', title: 'Import Statement',sub: 'Pull expenses from a bank statement',  href: '/finance/import' },
+      { icon: '💳', title: 'Bill Reminders',  sub: 'Tax, FASTag, electricity & EMIs',      href: '/bills' },
+      { icon: '📄', title: 'Documents',       sub: 'Store & track expiry',                 href: '/documents' },
+      { icon: '🛡️', title: 'Warranty Wallet', sub: 'Track products, warranties & costs',   href: '/warranty' },
+      { icon: '📊', title: 'Lifecycle',       sub: 'Cost-per-day, replacement planner',    href: '/lifecycle' },
+    ]},
     { icon: '🛡️', title: 'Trust Dashboard',  sub: 'Governance, patterns & control',        href: '/trust' }, // Phase 7
     { icon: '🆘', title: 'SOS Log',         sub: 'Emergency event history',               href: '/sos' },
     { icon: '🚗', title: 'Driving',         sub: 'Trip logs & fuel tracking',             href: '/driving' },

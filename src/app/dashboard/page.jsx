@@ -395,8 +395,18 @@ export default function Dashboard() {
     const hasNativeVoice = !!(window?.Capacitor?.Plugins?.VoicePlugin);
     setVoiceSupported(hasBrowserSpeech || hasNativeVoice);
     if (user?.id) {
-      supabase.from('profiles').select('subscription_tier, is_beta').eq('user_id', user.id).maybeSingle()
-        .then(({ data }) => { if (data) { setUserTier(data.subscription_tier || 'free'); setUserIsBeta(data.is_beta || false); } })
+      supabase.from('profiles').select('full_name, onboarding_done, subscription_tier, is_beta').eq('user_id', user.id).maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setUserTier(data.subscription_tier || 'free');
+            setUserIsBeta(data.is_beta || false);
+            if (!data.full_name || !data.onboarding_done) {
+              router.replace('/onboarding');
+            }
+          } else {
+            router.replace('/onboarding');
+          }
+        })
         .catch(() => {});
     }
   }, [user]);

@@ -121,7 +121,19 @@ export default function LoginPage() {
       });
 
       setPersonalMode();
-      window.location.href = POST_AUTH_PATH;
+
+      const userId = data.session?.user?.id;
+      const { data: profile } = userId ? await getClient()
+        .from('profiles')
+        .select('full_name, onboarding_done')
+        .eq('user_id', userId)
+        .maybeSingle() : { data: null };
+
+      if (!profile || !profile.full_name || !profile.onboarding_done) {
+        window.location.href = '/onboarding';
+      } else {
+        window.location.href = POST_AUTH_PATH;
+      }
     } catch (err: any) {
       setLoading(false);
       setError(err?.message || 'Verification failed. Try again.');

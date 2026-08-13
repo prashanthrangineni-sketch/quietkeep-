@@ -1,5 +1,6 @@
 'use client';
 import { apiGet } from '@/lib/safeFetch';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 /**
  * src/app/b/chat/page.jsx

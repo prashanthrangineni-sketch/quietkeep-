@@ -183,7 +183,7 @@ export default function MoodPage() {
           disabled={!selectedMood || saving}
           style={{
             width:'100%', padding:'12px',
-            background: !selectedMood ? 'rgba(255,255,255,0.05)' : saved ? 'rgba(74,222,128,0.3)' : 'rgba(167,139,250,0.3)',
+            background: !selectedMood ? 'var(--surface)' : saved ? 'rgba(74,222,128,0.3)' : 'rgba(167,139,250,0.3)',
             border: !selectedMood ? '1px solid rgba(255,255,255,0.1)' : saved ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(167,139,250,0.5)',
             borderRadius:'10px', color: !selectedMood ? 'rgba(255,255,255,0.3)' : '#fff',
             fontSize:'14px', fontWeight:600, cursor: !selectedMood ? 'not-allowed' : 'pointer', fontFamily:'inherit'

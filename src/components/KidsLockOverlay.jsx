@@ -88,7 +88,7 @@ export function PinSetupModal({ onSave, onCancel }) {
           ))}
         </div>
 
-        <button onClick={onCancel} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+        <button onClick={onCancel} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
           Cancel (Kids Mode won't be locked)
         </button>
       </div>

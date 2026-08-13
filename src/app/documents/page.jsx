@@ -277,7 +277,7 @@ function DocCard({ doc, days, isExpired, isSoon, cat, onDelete, onAnalyze, aiLoa
                 <div style={{ background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:8, padding:'10px 12px' }}>
                   <div style={{ fontSize:'11px', color:'#a5b4fc', fontWeight:700, marginBottom:6 }}>AI INSIGHTS</div>
                   {aiResult.map((r, i) => (
-                    <div key={i} style={{ fontSize:'12px', color:'#cbd5e1', marginBottom:4, paddingLeft:8, borderLeft:'2px solid rgba(99,102,241,0.4)' }}>
+                    <div key={i} style={{ fontSize:'12px', color:'var(--text-muted)', marginBottom:4, paddingLeft:8, borderLeft:'2px solid rgba(99,102,241,0.4)' }}>
                       {typeof r === 'string' ? r : JSON.stringify(r)}
                     </div>
                   ))}

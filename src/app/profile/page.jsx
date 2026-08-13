@@ -140,13 +140,13 @@ export default function ProfilePage() {
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               placeholder="Your name"
-              style={{ width: '100%', background: '#111', border: '1px solid #333', borderRadius: 8, color: '#fff', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid #333', borderRadius: 8, color: '#fff', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
 
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ color: '#aaa', fontSize: '0.82rem', display: 'block', marginBottom: 6 }}>Email</label>
-            <div style={{ color: '#555', fontSize: '0.88rem', padding: '0.65rem 0.8rem', background: '#111', border: '1px solid var(--border)', borderRadius: 8 }}>{user?.email}</div>
+            <div style={{ color: '#555', fontSize: '0.88rem', padding: '0.65rem 0.8rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}>{user?.email}</div>
           </div>
 
           <div style={{ marginBottom: '1.2rem' }}>
@@ -154,7 +154,7 @@ export default function ProfilePage() {
             <select
               value={timezone}
               onChange={e => setTimezone(e.target.value)}
-              style={{ width: '100%', background: '#111', border: '1px solid #333', borderRadius: 8, color: '#fff', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none' }}
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid #333', borderRadius: 8, color: '#fff', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none' }}
             >
               <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
               <option value="Asia/Dubai">Asia/Dubai (GST)</option>

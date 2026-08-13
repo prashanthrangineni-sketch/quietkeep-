@@ -363,7 +363,7 @@ export default function SettingsPage() {
   );
 
   const Toggle = ({ label, desc, value, onChange }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid #222' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
       <div>
         <div style={{ color: 'var(--text)', fontSize: '0.9rem' }}>{label}</div>
         {desc && <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: 2 }}>{desc}</div>}

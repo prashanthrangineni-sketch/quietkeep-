@@ -101,7 +101,7 @@ export default function TrustDashboard() {
       {/* Header */}
       <div style={{
         padding: '16px 18px 12px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <button onClick={() => router.back()}

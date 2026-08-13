@@ -176,11 +176,11 @@ export default function KeepWidget({ compact = false }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.18 }}
-              style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px', background: '#1a1a2e', borderRadius: '10px', marginBottom: '6px',
+              style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px', background: 'var(--bg)', borderRadius: '10px', marginBottom: '6px',
                 borderLeft: `3px solid ${k.color || '#6366f1'}` }}
             >
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '13px', color: '#eee', lineHeight: '1.4' }}>{k.content}</div>
+                <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.4' }}>{k.content}</div>
                 {k.contact_name && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>👤 {k.contact_name}</div>}
                 {k.contact_phone && (
                   <a href={`tel:${k.contact_phone}`} style={{ fontSize: '11px', color: '#6366f1', marginTop: '2px', display: 'block', textDecoration: 'none' }}>

@@ -979,7 +979,7 @@ export default function Dashboard() {
             {autoHistory.length === 0 ? (
               <div style={{ fontSize: 13, color: 'var(--text-subtle)', textAlign: 'center', padding: '20px 0' }}>No automated actions yet</div>
             ) : autoHistory.map((entry, i) => (
-              <div key={i} style={{ padding: '11px 13px', marginBottom: 8, background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--surface)' }}>
+              <div key={i} style={{ padding: '11px 13px', marginBottom: 8, background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--surface)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{entry.decision === 'auto_trigger' ? '⚡ Auto-triggered' : '💡 Suggested'}{' '}{entry.inputs?.intentType || entry.inputs?.label || ''}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-subtle)' }}>{entry.created_at ? new Date(entry.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : ''}</div>

@@ -382,7 +382,7 @@ export default function BizLoginPage() {
               style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: loading || phone.trim().length < 10 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: loading || phone.trim().length < 10 ? 0.6 : 1 }}>
               {loading ? 'Sending SMS OTP…' : 'Send Business SMS OTP →'}
             </button>
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button onClick={() => setStep('welcome')} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
                 ← Back
               </button>

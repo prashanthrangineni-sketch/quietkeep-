@@ -416,8 +416,8 @@ export default function BizLoginPage() {
                   onKeyDown={e => handleSmsKey(i, e)}
                   style={{
                     width: 44, height: 54, textAlign: 'center',
-                    background: v ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)',
-                    border: `1.5px solid ${v ? G : 'rgba(255,255,255,0.12)'}`,
+                    background: v ? 'rgba(16,185,129,0.15)' : 'var(--surface)',
+                    border: `1.5px solid ${v ? G : 'var(--border)'}`,
                     borderRadius: 10, color: 'var(--text)', fontSize: 22,
                     fontWeight: 700, outline: 'none', fontFamily: 'inherit',
                   }}

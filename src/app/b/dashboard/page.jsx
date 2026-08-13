@@ -46,9 +46,11 @@ export default function BizDashboardPage() {
   }, [user, authLoading, router]);
 
   const loadWorkspace = useCallback(async (uid) => {
-    const { data: ws } = await supabase
-      .from('business_workspaces').select('*')
-      .eq('owner_user_id', uid).maybeSingle();
+    // Owner OR member. This is where a staff member lands after signing in, so
+    // an owner-only lookup here did not just show a blank page -- the redirect
+    // below sent them to /b/onboarding, which hands them their own empty
+    // workspace and quietly orphans them from their employer's.
+    const ws = await resolveWorkspace(supabase, uid, '*');
     if (!ws) { router.replace('/b/onboarding'); return; }
     setWorkspace(ws);
     await loadStats(ws.id);

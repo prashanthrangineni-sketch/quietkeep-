@@ -383,7 +383,7 @@ export default function CameraPage() {
                         background: 'rgba(0,0,0,0.7)', borderRadius: 8, padding: '4px 10px',
                         display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div className="qk-spinner" style={{ width: 14, height: 14 }} />
-                        <span style={{ fontSize: 11, color: 'var(--text)' }}>AI analysing…</span>
+                        <span style={{ fontSize: 11, color: '#fff' }}>AI analysing…</span>
                       </div>
                     )}
                   </div>

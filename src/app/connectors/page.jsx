@@ -141,13 +141,13 @@ export default function ConnectorsPage() {
   const filtered = catFilter === 'All' ? CONNECTORS : CONNECTORS.filter(c => c.category === catFilter);
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#6366f1' }}>Loading connectors…</div>
     </div>
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0d1117', color: '#f1f5f9', fontFamily: 'system-ui,sans-serif', paddingBottom: 80, paddingTop: '96px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#f1f5f9', fontFamily: 'system-ui,sans-serif', paddingBottom: 80, paddingTop: '96px' }}>
       <NavbarClient />
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px' }}>
 
@@ -175,7 +175,7 @@ export default function ConnectorsPage() {
             const isOn = enabled[c.id] !== false;
             return (
               <div key={c.id} style={{
-                background: '#0d1117', border: `1px solid ${isOn ? c.color + '25' : '#1e293b'}`,
+                background: 'var(--bg)', border: `1px solid ${isOn ? c.color + '25' : '#1e293b'}`,
                 borderRadius: 12, padding: '14px 16px',
                 display: 'flex', alignItems: 'center', gap: 14,
                 opacity: isOn ? 1 : 0.5,

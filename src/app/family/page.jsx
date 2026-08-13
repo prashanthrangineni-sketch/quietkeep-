@@ -33,7 +33,7 @@ function LocationShare({ userId }) {
   return (
     <div>
       {pos && saved && (
-        <div style={{ background: '#0d2d1a', border: '1px solid #22c55e33', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: '#22c55e' }}>
+        <div style={{ background: 'var(--bg)', border: '1px solid #22c55e33', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 13, color: '#22c55e' }}>
           ✓ Location shared — {pos.lat.toFixed(4)}, {pos.lng.toFixed(4)}
           <a href={`https://maps.google.com/?q=${pos.lat},${pos.lng}`} target="_blank" rel="noreferrer" style={{ color: '#22c55e', marginLeft: 8, fontSize: 11 }}>Open in Maps ↗</a>
         </div>

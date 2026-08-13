@@ -83,7 +83,7 @@ export default function TrustDashboard() {
 
   if (authLoading || loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0a0f1e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: '#6366f1', fontSize: 13, fontWeight: 600 }}>Loading trust data…</div>
       </div>
     );
@@ -94,7 +94,7 @@ export default function TrustDashboard() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0a0f1e', color: '#e2e8f0',
+      minHeight: '100vh', background: 'var(--bg)', color: '#e2e8f0',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       padding: '0 0 80px',
     }}>

@@ -43,7 +43,7 @@ export default function BillsPage() {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const inp = { width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, color:'var(--text)', padding:'11px 14px', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
+  const inp = { width:'100%', background:'rgba(255,255,255,0.05)', border:'1px solid var(--border)', borderRadius:10, color:'var(--text)', padding:'11px 14px', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
 
   useEffect(() => {
     if (authLoading) return;
@@ -105,7 +105,7 @@ export default function BillsPage() {
         )}
 
         {showAdd&&(
-          <div style={{ background:'var(--surface)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:14, padding:16, marginBottom:20 }}>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:16, marginBottom:20 }}>
             <div style={{ fontWeight:700, fontSize:14, color:'var(--text)', marginBottom:14 }}>New Bill</div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:14 }}>
               {BILL_TYPES.map(t=>(

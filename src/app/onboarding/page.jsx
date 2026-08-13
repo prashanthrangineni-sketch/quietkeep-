@@ -102,9 +102,16 @@ export default function OnboardingPage() {
         .upsert({
           user_id: user.id,
           full_name: name.trim(),
-          email: email.trim() || (user.email && !user.email.endsWith('@quietkeep.com') ? user.email : null),
-          language: language,
-          preferred_language: language,
+          // PHANTOM COLUMNS — removed 13 Aug 2026.
+          // This upsert wrote `email`, `language` and `preferred_language`.
+          // None of those columns exist on `profiles` (it has `full_name`,
+          // `language_preference`, `selected_calendar`, `persona_type`,
+          // `onboarding_done`, ...). PostgREST rejects the whole statement when
+          // any column is unknown, so the profile save failed EVERY time, the
+          // surrounding try/catch turned it into "Something went wrong. Please
+          // try again.", and the user never reached the dashboard.
+          // The repo's own Phantom-column CI check was failing on exactly this.
+          language_preference: language,
           selected_calendar: calendar,
           persona_type: persona,
           onboarding_done: true,

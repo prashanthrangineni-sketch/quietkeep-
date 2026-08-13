@@ -265,9 +265,9 @@ export default function BudgetComponent() {
               onClick={() => setShowForm(false)}
               style={{
                 flex: 1,
-                backgroundColor: '#1a1a2e',
+                backgroundColor: 'var(--bg)',
                 color: 'var(--text-muted)',
-                border: '1px solid #334155',
+                border: '1px solid var(--border)',
                 padding: '10px',
                 borderRadius: '8px',
                 fontSize: '13px',

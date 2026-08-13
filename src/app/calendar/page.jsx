@@ -241,7 +241,7 @@ export default function CalendarPage() {
             <span style={{ fontSize: '1.2rem' }}>📅</span>
             <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>Calendar</span>
           </div>
-          <a href="/dashboard" style={{ background: 'var(--surface)', border: '1px solid #2a2a2a', borderRadius: 8, color: 'var(--text-muted)', padding: '0.4rem 0.75rem', textDecoration: 'none', fontSize: '0.82rem' }}>← Back</a>
+          <a href="/dashboard" style={{ background: 'var(--surface)', border: '1px solid var(--surface)', borderRadius: 8, color: 'var(--text-muted)', padding: '0.4rem 0.75rem', textDecoration: 'none', fontSize: '0.82rem' }}>← Back</a>
         </div>
         {/* Calendar type pills */}
         <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '0.75rem', scrollbarWidth: 'none' }}>
@@ -273,11 +273,11 @@ export default function CalendarPage() {
         {view === 'month' && (
           <>
             {/* Month navigation */}
-            <div style={{ background: 'var(--surface)', border: '1px solid #2a2a2a', borderRadius: 12, padding: '0.75rem', marginBottom: '0.75rem' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--surface)', borderRadius: 12, padding: '0.75rem', marginBottom: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
-                <button onClick={prevMonth} style={{ background: '#2a2a2a', border: 'none', color: 'var(--text-muted)', borderRadius: 6, padding: '0.3rem 0.6rem', cursor: 'pointer', fontSize: '1rem' }}>←</button>
+                <button onClick={prevMonth} style={{ background: 'var(--surface)', border: 'none', color: 'var(--text-muted)', borderRadius: 6, padding: '0.3rem 0.6rem', cursor: 'pointer', fontSize: '1rem' }}>←</button>
                 <span style={{ fontWeight: 700, fontSize: '1rem' }}>{MONTHS[month]} {year}</span>
-                <button onClick={nextMonth} style={{ background: '#2a2a2a', border: 'none', color: 'var(--text-muted)', borderRadius: 6, padding: '0.3rem 0.6rem', cursor: 'pointer', fontSize: '1rem' }}>→</button>
+                <button onClick={nextMonth} style={{ background: 'var(--surface)', border: 'none', color: 'var(--text-muted)', borderRadius: 6, padding: '0.3rem 0.6rem', cursor: 'pointer', fontSize: '1rem' }}>→</button>
               </div>
 
               {/* Day headers */}
@@ -315,7 +315,7 @@ export default function CalendarPage() {
 
             {/* Day detail */}
             {selectedDate && (
-              <div style={{ background: 'var(--surface)', border: '1px solid #2a2a2a', borderRadius: 12, padding: '1rem' }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--surface)', borderRadius: 12, padding: '1rem' }}>
                 <div style={{ color: '#6366f1', fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.75rem' }}>
                   {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                 </div>

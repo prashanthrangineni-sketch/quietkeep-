@@ -126,8 +126,8 @@ export default function TrustDashboard() {
         {/* Automation Status */}
         <div style={{
           padding: '14px 16px', marginBottom: 16,
-          background: isPaused ? 'rgba(239,68,68,0.07)' : autoEnabled ? 'rgba(16,185,129,0.07)' : 'rgba(255,255,255,0.03)',
-          border: `1px solid ${isPaused ? 'rgba(239,68,68,0.25)' : autoEnabled ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.08)'}`,
+          background: isPaused ? 'rgba(239,68,68,0.07)' : autoEnabled ? 'rgba(16,185,129,0.07)' : 'var(--surface)',
+          border: `1px solid ${isPaused ? 'rgba(239,68,68,0.25)' : autoEnabled ? 'rgba(16,185,129,0.25)' : 'var(--border)'}`,
           borderRadius: 12,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

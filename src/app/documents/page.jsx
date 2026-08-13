@@ -178,7 +178,7 @@ export default function Documents() {
           </button>
           {/* Add Form */}
           {showForm && (
-            <div style={{ backgroundColor:'#0f0f1a', border:'1px solid #1e293b', borderRadius:'14px', padding:'20px', marginTop:'20px' }}>
+            <div style={{ backgroundColor:'var(--bg)', border:'1px solid #1e293b', borderRadius:'14px', padding:'20px', marginTop:'20px' }}>
               <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#f1f5f9', margin:'0 0 14px' }}>Add Document</h3>
 
               {/* Category picker */}
@@ -251,7 +251,7 @@ function DocCard({ doc, days, isExpired, isSoon, cat, onDelete, onAnalyze, aiLoa
   const borderColor = isExpired ? 'rgba(239,68,68,0.35)' : isSoon ? 'rgba(245,158,11,0.25)' : '#1e1e2e';
   const catColor = cat?.color || '#64748b';
   return (
-    <div style={{ backgroundColor:'#0f0f1a', border:`1px solid ${borderColor}`, borderRadius:'12px', padding:'14px', cursor:'pointer' }} onClick={() => setExpanded(!expanded)}>
+    <div style={{ backgroundColor:'var(--bg)', border:`1px solid ${borderColor}`, borderRadius:'12px', padding:'14px', cursor:'pointer' }} onClick={() => setExpanded(!expanded)}>
       <div style={{ display:'flex', alignItems:'flex-start', gap:'12px' }}>
         <div style={{ fontSize:'22px', width:'28px', flexShrink:0 }}>{cat?.emoji || '📄'}</div>
         <div style={{ flex:1, minWidth:0 }}>

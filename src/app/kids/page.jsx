@@ -7,7 +7,7 @@ import NavbarClient from '@/components/NavbarClient';
 import KidsLockOverlay, { PinSetupModal, setKidsLock, isKidsLocked, getStoredPin } from '@/components/KidsLockOverlay';
 
 const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-const inp = { width:'100%', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:8, color:'#fff', padding:'0.6rem 0.75rem', fontSize:'0.88rem', outline:'none', boxSizing:'border-box' };
+const inp = { width:'100%', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', padding:'0.6rem 0.75rem', fontSize:'0.88rem', outline:'none', boxSizing:'border-box' };
 const btn1 = { padding:'0.6rem 1.2rem', borderRadius:8, border:'none', background:'#6366f1', color:'#fff', fontSize:'0.88rem', fontWeight:600, cursor:'pointer' };
 const btn0 = { ...btn1, background:'transparent', border:'1px solid var(--border)', color:'var(--text-muted)' };
 const AE = { '3-5':'🧒', '6-8':'👦', '9-12':'🧑', '13+':'👨‍🎓' };

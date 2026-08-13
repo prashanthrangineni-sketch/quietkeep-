@@ -44,11 +44,18 @@ export default function Documents() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     (async () => {
-            const { data } = await supabase.from('documents').select('*').eq('user_id', user?.id).order('created_at', { ascending: false });
-            setDocuments(data || []);
-            setLoading(false);
+      // The error used to be discarded, so a failed read was indistinguishable
+      // from "you have no documents" -- silent, and wrong.
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+      if (error) setErr(error.message);
+      setDocuments(data || []);
+      setLoading(false);
     })();
-  }, [user]);
+  }, [user, authLoading]);
 
   const getDaysUntilExpiry = (expiryDate) => {
     if (!expiryDate) return null;

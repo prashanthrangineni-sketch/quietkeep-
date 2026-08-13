@@ -12,6 +12,7 @@ export default function MorePage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState(null);
   const [shareMsg, setShareMsg] = useState('');
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;

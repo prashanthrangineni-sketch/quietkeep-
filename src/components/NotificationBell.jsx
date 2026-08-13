@@ -165,7 +165,7 @@ export default function NotificationBell() {
                   onClick={() => url && (window.location.href = url)}
                   style={{
                     padding: '12px 16px',
-                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    borderBottom: '1px solid var(--border)',
                     cursor: url ? 'pointer' : 'default',
                     background: item.seen_at ? 'transparent' : 'rgba(99,102,241,0.07)',
                   }}
@@ -173,7 +173,7 @@ export default function NotificationBell() {
                   <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                     <div style={{ flex: 1 }}>
                       <div style={{
-                        fontSize: 13, color: '#e2e8f0', lineHeight: 1.5,
+                        fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5,
                         // Strip markdown bold markers for display
                         whiteSpace: 'pre-wrap',
                       }}>

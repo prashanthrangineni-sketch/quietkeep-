@@ -435,7 +435,7 @@ export default function CalendarPage() {
         )}
 
         {/* Add Event Button */}
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '0.75rem 1rem 7rem', background: 'linear-gradient(transparent, #0f0f0f 30%)', paddingTop: '1.5rem' }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '0.75rem 1rem 7rem', background: 'linear-gradient(transparent, var(--bg) 30%)', paddingTop: '1.5rem' }}>
           {eventMsg && <div style={{ textAlign:'center', color:'#86efac', fontSize:'0.82rem', marginBottom:'0.5rem' }}>{eventMsg}</div>}
           <button onClick={() => { setEventForm({ ...EMPTY_EVENT_FORM, event_date: selectedDate || new Date().toISOString().split('T')[0], calendar_type: selectedCal }); setShowAddModal(true); }}
             style={{ width: '100%', maxWidth: 760, display: 'block', margin: '0 auto', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 12, padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer' }}>

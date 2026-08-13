@@ -932,7 +932,7 @@ export default function Dashboard() {
 
       {whyPanel && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1050, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 20px' }} onClick={() => setWhyPanel(null)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#0f172a', border: '1px solid rgba(99,102,241,0.35)', borderRadius: 18, padding: '22px 20px', maxWidth: 380, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg)', border: '1px solid rgba(99,102,241,0.35)', borderRadius: 18, padding: '22px 20px', maxWidth: 380, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#a5b4fc' }}>🔍 Why this suggestion?</div>
               <button onClick={() => setWhyPanel(null)} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 16 }}>✕</button>
@@ -971,7 +971,7 @@ export default function Dashboard() {
 
       {showReviewPanel && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1050, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 20px' }} onClick={() => setShowReviewPanel(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#0f172a', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 18, padding: '20px', maxWidth: 380, width: '100%', maxHeight: '70vh', overflowY: 'auto' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 18, padding: '20px', maxWidth: 380, width: '100%', maxHeight: '70vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#a5b4fc' }}>📋 Last auto actions</div>
               <button onClick={() => setShowReviewPanel(false)} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 16 }}>✕</button>
@@ -994,14 +994,14 @@ export default function Dashboard() {
 
       {pendingAutoExec && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#0f172a', border: '1.5px solid rgba(34,197,94,0.5)', borderRadius: 18, padding: '28px 24px', maxWidth: 340, width: '100%', textAlign: 'center', boxShadow: '0 8px 48px rgba(34,197,94,0.15)' }}>
+          <div style={{ background: 'var(--bg)', border: '1.5px solid rgba(34,197,94,0.5)', borderRadius: 18, padding: '28px 24px', maxWidth: 340, width: '100%', textAlign: 'center', boxShadow: '0 8px 48px rgba(34,197,94,0.15)' }}>
             <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
               {pendingAutoExec.intent_type === 'contact' ? '📞 Auto-Calling' : pendingAutoExec.intent_type === 'navigation' || pendingAutoExec.intent_type === 'trip' ? '🗺️ Opening Maps' : pendingAutoExec.intent_type === 'purchase' ? '🛒 Opening Shop' : '⚡ Executing'}
             </div>
             <div style={{ fontSize: 15, color: '#e2e8f0', fontWeight: 600, marginBottom: 6, wordBreak: 'break-word' }}>{pendingAutoExec.contact_name || pendingAutoExec.content?.slice(0, 60)}</div>
             {pendingAutoExec.contact_phone && <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>{pendingAutoExec.contact_phone}</div>}
             <div style={{ width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px', background: `conic-gradient(#22c55e ${(pendingAutoExec.countdown / 3) * 100}%, rgba(34,197,94,0.12) 0%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#22c55e' }}>{pendingAutoExec.countdown}</div>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#22c55e' }}>{pendingAutoExec.countdown}</div>
             </div>
             <button onClick={cancelAutoExec} style={{ width: '100%', padding: '12px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>✕ Cancel</button>
           </div>

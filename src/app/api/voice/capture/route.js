@@ -118,7 +118,7 @@ export async function POST(request) {
     }, { status: 200 });
   }
 
-  const parsed = parseIntent(text)
+  let parsed = parseIntent(text)
   const reminderAt = computeReminderAt(parsed.entities)
 
   let matchedContact = null

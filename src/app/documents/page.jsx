@@ -173,7 +173,7 @@ export default function Documents() {
 
           {filtered.length === 0 && <div style={{ textAlign:'center', padding:'3rem', color:'#475569' }}><div style={{ fontSize:'2.5rem', marginBottom:'8px' }}>📂</div><div>No documents in this category</div></div>}
 
-          <button onClick={() => setShowForm(!showForm)} style={{ width:'100%', backgroundColor:'#6366f1', color:'#fff', border:'none', padding:'12px', borderRadius:'10px', fontSize:'14px', fontWeight:'600', cursor:'pointer' }}>
+          <button onClick={() => setShowForm(!showForm)} style={{ width:'100%', backgroundColor:'#6366f1', color:'var(--text)', border:'none', padding:'12px', borderRadius:'10px', fontSize:'14px', fontWeight:'600', cursor:'pointer' }}>
             {showForm ? 'Cancel' : '+ Add Document'}
           </button>
           {/* Add Form */}
@@ -230,7 +230,7 @@ export default function Documents() {
               {err && <div style={{ color:'#ef4444', fontSize:'12px', marginBottom:'10px' }}>{err}</div>}
 
               <div style={{ display:'flex', gap:'8px' }}>
-                <button onClick={handleAddDocument} disabled={saving || uploading} style={{ flex:1, backgroundColor:'#6366f1', color:'#fff', border:'none', padding:'10px', borderRadius:'8px', fontSize:'13px', fontWeight:'600', cursor:'pointer', opacity: saving||uploading ? 0.6 : 1 }}>
+                <button onClick={handleAddDocument} disabled={saving || uploading} style={{ flex:1, backgroundColor:'#6366f1', color:'var(--text)', border:'none', padding:'10px', borderRadius:'8px', fontSize:'13px', fontWeight:'600', cursor:'pointer', opacity: saving||uploading ? 0.6 : 1 }}>
                   {saving ? 'Saving…' : '💾 Save Document'}
                 </button>
                 <button onClick={() => { setShowForm(false); setFile(null); setErr(''); }} style={{ flex:1, backgroundColor:'var(--surface)', color:'#94a3b8', border:'1px solid var(--border)', padding:'10px', borderRadius:'8px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>

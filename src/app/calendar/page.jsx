@@ -296,7 +296,7 @@ export default function CalendarPage() {
                   return (
                     <div key={i} onClick={() => handleDayClick(dateISO)}
                       style={{ background: isSelected ? '#6366f1' : isToday ? 'var(--primary-dim)' : 'var(--surface)', borderRadius: 8, padding: '0.4rem 0.2rem', textAlign: 'center', cursor: 'pointer', border: isToday && !isSelected ? '1px solid #6366f144' : '1px solid transparent', minHeight: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: isToday ? 700 : 400, color: isSelected ? '#fff' : isToday ? '#6366f1' : '#ccc' }}>{day}</span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: isToday ? 700 : 400, color: isSelected ? '#fff' : isToday ? 'var(--primary)' : 'var(--text)' }}>{day}</span>
                       <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
                         {hasHoliday && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />}
                         {hasPersonal && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />}

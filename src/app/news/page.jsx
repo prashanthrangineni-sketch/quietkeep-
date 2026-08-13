@@ -68,7 +68,7 @@ export default function NewsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {items.map((item, i) => (
               <a key={i} href={item.link || '#'} target="_blank" rel="noopener noreferrer"
-                style={{ background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 16px', textDecoration: 'none', display: 'block' }}>
+                style={{ background: 'var(--surface)', border: '1px solid var(--surface)', borderRadius: 12, padding: '14px 16px', textDecoration: 'none', display: 'block' }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.45, marginBottom: 6 }}>{item.title}</div>
                 <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--text-subtle)' }}>
                   {item.source && <span style={{ color: '#6366f1' }}>{item.source}</span>}

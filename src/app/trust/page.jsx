@@ -239,7 +239,7 @@ export default function TrustDashboard() {
                     disabled={resetting}
                     style={{
                       padding: '5px 10px', borderRadius: 8,
-                      background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'transparent', border: '1px solid var(--border)',
                       color: '#64748b', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit',
                       flexShrink: 0, marginLeft: 10,
                     }}>
@@ -248,7 +248,7 @@ export default function TrustDashboard() {
                 </div>
                 {/* Trust bar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                  <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--surface)', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: 3,
                       width: `${trustPct}%`,

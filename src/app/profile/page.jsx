@@ -123,7 +123,7 @@ export default function ProfilePage() {
             { label: 'Expenses', value: stats.expenses },
             { label: 'Documents', value: stats.docs },
           ].map(s => (
-            <div key={s.label} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '1rem', textAlign: 'center' }}>
+            <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid #2a2a2a', borderRadius: 10, padding: '1rem', textAlign: 'center' }}>
               <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#6366f1' }}>{s.value}</div>
               <div style={{ color: '#666', fontSize: '0.78rem', marginTop: 2 }}>{s.label}</div>
             </div>
@@ -131,7 +131,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Edit form */}
-        <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid #2a2a2a', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem' }}>
           <h3 style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.2rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Edit Profile</h3>
 
           <div style={{ marginBottom: '1rem' }}>
@@ -173,7 +173,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Account info */}
-        <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid #2a2a2a', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem' }}>
           <h3 style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Account</h3>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid #222' }}>
             <span style={{ color: '#aaa', fontSize: '0.88rem' }}>Plan</span>

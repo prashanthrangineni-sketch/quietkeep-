@@ -4,6 +4,7 @@
 // Green brand, business-specific nav items, workspace switcher
 
 import { useState, useEffect } from 'react';
+import { claimMembership } from '@/lib/biz-after-login';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';

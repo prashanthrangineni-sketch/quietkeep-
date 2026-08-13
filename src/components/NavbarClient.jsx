@@ -33,6 +33,7 @@ export default function NavbarClient() {
   const pathname = usePathname();
   const router   = useRouter();
   const [user, setUser] = useState(null);
+  const [tier, setTier] = useState(null);
   // next-intl: t() reads from messages/{locale}.json at runtime
   // Falls back gracefully — if key missing, returns the key string
   const t = useTranslations('nav');

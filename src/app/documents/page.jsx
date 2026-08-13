@@ -21,7 +21,7 @@ const CATEGORIES = [
 ];
 
 const fmt = n => n >= 1048576 ? (n/1048576).toFixed(1)+'MB' : n >= 1024 ? (n/1024).toFixed(0)+'KB' : n+'B';
-const inp = { width:'100%', backgroundColor:'#1a1a2e', border:'1px solid #334155', color:'#f1f5f9', padding:'10px 12px', borderRadius:'8px', fontSize:'13px', boxSizing:'border-box', outline:'none' };
+const inp = { width:'100%', backgroundColor:'var(--surface)', border:'1px solid #334155', color:'#f1f5f9', padding:'10px 12px', borderRadius:'8px', fontSize:'13px', boxSizing:'border-box', outline:'none' };
 
 export default function Documents() {
   const { user, accessToken, loading: authLoading } = useAuth();
@@ -233,7 +233,7 @@ export default function Documents() {
                 <button onClick={handleAddDocument} disabled={saving || uploading} style={{ flex:1, backgroundColor:'#6366f1', color:'#fff', border:'none', padding:'10px', borderRadius:'8px', fontSize:'13px', fontWeight:'600', cursor:'pointer', opacity: saving||uploading ? 0.6 : 1 }}>
                   {saving ? 'Saving…' : '💾 Save Document'}
                 </button>
-                <button onClick={() => { setShowForm(false); setFile(null); setErr(''); }} style={{ flex:1, backgroundColor:'#1a1a2e', color:'#94a3b8', border:'1px solid #334155', padding:'10px', borderRadius:'8px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+                <button onClick={() => { setShowForm(false); setFile(null); setErr(''); }} style={{ flex:1, backgroundColor:'var(--surface)', color:'#94a3b8', border:'1px solid #334155', padding:'10px', borderRadius:'8px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
                   Cancel
                 </button>
               </div>

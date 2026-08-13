@@ -156,7 +156,7 @@ export default function OnboardingPage() {
   if (step === -1) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg, #09090b)', color: 'var(--text, #f4f4f5)', fontFamily: "'Inter',-apple-system,sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
-        <ConsentScreen onConsent={(data) => { setConsentData(data); setStep(0); }} />
+        <ConsentScreen onConsent={(data) => { setConsentData(data); saveConsent(data); setStep(0); }} />
       </div>
     );
   }

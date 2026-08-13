@@ -120,7 +120,7 @@ export default function DailyBriefPage() {
 
   const Item = ({ text, meta, metaColor = '#475569', leftBorder }) => (
     <div style={{
-      background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '10px 14px', marginBottom: 8,
+      background: 'var(--surface)', borderRadius: 8, padding: '10px 14px', marginBottom: 8,
       borderLeft: leftBorder ? `3px solid ${leftBorder}` : undefined,
     }}>
       <div style={{ color: '#cbd5e1', fontSize: 14, lineHeight: 1.5 }}>{text}</div>

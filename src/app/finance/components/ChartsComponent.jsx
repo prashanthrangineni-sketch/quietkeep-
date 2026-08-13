@@ -150,8 +150,8 @@ export default function ChartsComponent() {
         <button
           onClick={() => setActiveTab('trend')}
           style={{
-            backgroundColor: activeTab === 'trend' ? '#6366f1' : '#1e1e2e',
-            border: '1px solid #334155',
+            backgroundColor: activeTab === 'trend' ? '#6366f1' : 'var(--bg)',
+            border: '1px solid var(--border)',
             color: 'var(--text)',
             padding: '10px',
             borderRadius: '8px',

@@ -137,7 +137,7 @@ export default function BizOnboardingPage() {
   }
 
   const inp = {
-    width: '100%', background: 'rgba(255,255,255,0.06)',
+    width: '100%', background: 'var(--surface)',
     border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: 12,
     padding: '12px 16px', color: 'var(--text)', fontSize: 14,
     outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
@@ -259,7 +259,7 @@ export default function BizOnboardingPage() {
                 style={{ flex: 1, padding: '14px', borderRadius: 12, border: 'none',
                   background: bizName.trim()
                     ? `linear-gradient(135deg,${G},#059669)`
-                    : 'rgba(255,255,255,0.06)',
+                    : 'var(--surface)',
                   color: bizName.trim() ? '#fff' : '#475569',
                   fontSize: 15, fontWeight: 700,
                   cursor: bizName.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>

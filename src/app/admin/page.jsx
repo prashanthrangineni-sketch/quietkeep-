@@ -29,7 +29,7 @@ export default function AdminPage() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
           checkAdmin(accessToken);
-  }, [user]);
+  }, [user, authLoading]);
 
   async function checkAdmin(token) {
     try {

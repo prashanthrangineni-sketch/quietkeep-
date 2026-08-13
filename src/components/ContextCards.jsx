@@ -159,7 +159,7 @@ export default function ContextCards({ userId }) {
 
   return (
     <div style={{ marginBottom: '18px' }}>
-      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
         At a glance
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

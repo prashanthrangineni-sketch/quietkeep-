@@ -49,7 +49,7 @@ export default function NewsPage() {
           {CATEGORIES.map(c => (
             <button key={c} onClick={() => setCat(c)} style={{
               padding: '6px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
-              border: `1px solid ${cat === c ? '#6366f1' : 'rgba(255,255,255,0.08)'}`,
+              border: `1px solid ${cat === c ? '#6366f1' : 'var(--surface)'}`,
               background: cat === c ? 'rgba(99,102,241,0.15)' : 'transparent',
               color: cat === c ? '#a5b4fc' : '#64748b', fontWeight: cat === c ? 700 : 400,
             }}>{c}</button>

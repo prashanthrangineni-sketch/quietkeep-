@@ -216,18 +216,18 @@ export default function KidsPage() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
               <div>
                 <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Name *</div>
-                <input style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'var(--text)', padding:'10px 12px', fontSize:14, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+                <input style={{ width:'100%', background:'var(--surface)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'var(--text)', padding:'10px 12px', fontSize:14, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
                   placeholder="Child's name" value={name} onChange={e => setName(e.target.value)} />
               </div>
               <div>
                 <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>Date of Birth</div>
-                <input type="date" style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'var(--text)', padding:'10px 12px', fontSize:14, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+                <input type="date" style={{ width:'100%', background:'var(--surface)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'var(--text)', padding:'10px 12px', fontSize:14, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
                   value={dob} onChange={e => setDob(e.target.value)} />
               </div>
             </div>
             <div style={{ marginBottom:12 }}>
               <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:8, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>School / Notes</div>
-              <input style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'var(--text)', padding:'10px 12px', fontSize:14, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
+              <input style={{ width:'100%', background:'var(--surface)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'var(--text)', padding:'10px 12px', fontSize:14, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}
                 placeholder="School name, grade, notes…" value={school} onChange={e => setSchool(e.target.value)} />
             </div>
             {err && <div style={{ color:'#f87171', fontSize:12, marginBottom:8 }}>⚠️ {err}</div>}
@@ -294,7 +294,7 @@ export default function KidsPage() {
                     </button>
                   ))}
                 </div>
-                <input style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, color:'var(--text)', padding:'9px 12px', fontSize:13, outline:'none', boxSizing:'border-box', marginBottom:8, fontFamily:'inherit' }}
+                <input style={{ width:'100%', background:'var(--surface)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, color:'var(--text)', padding:'9px 12px', fontSize:13, outline:'none', boxSizing:'border-box', marginBottom:8, fontFamily:'inherit' }}
                   placeholder="Title (e.g. Report Card Term 1)" value={uTitle} onChange={e => setUTitle(e.target.value)} />
                 <input type="file" accept="image/*,application/pdf,.doc,.docx"
                   onChange={e => setUFile(e.target.files?.[0] || null)}

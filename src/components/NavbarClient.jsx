@@ -48,6 +48,15 @@ export default function NavbarClient() {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!user) { setTier(null); return; }
+    let cancelled = false;
+    supabase.from('profiles').select('subscription_tier').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setTier(data?.subscription_tier || 'free'); })
+      .catch(() => { if (!cancelled) setTier('free'); });
+    return () => { cancelled = true; };
+  }, [user]);
+
   async function handleSignOut() {
     resetGreetGuard(); // allow greeting after next login
     farewellOnLogout(user);

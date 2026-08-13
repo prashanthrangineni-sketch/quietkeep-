@@ -86,21 +86,16 @@ export default function MorePage() {
       { icon: '🆘', title: 'SOS Log',         sub: 'Emergency event history',              href: '/sos' },
       { icon: '📞', title: 'Caller Context',  sub: 'Who is calling, and your history',     href: '/caller-context' },
     ]},
-    { icon: '📊', title: 'Activity Log',    sub: 'Your full action history',              href: '/audit' },
-    { icon: '💬', title: 'Send Message',    sub: 'Broadcast to contacts & groups',        href: '/messages' },
-    { icon: '💳', title: 'Bill Reminders',  sub: 'Tax, FASTag, electricity & EMIs',       href: '/bills' },
-    { icon: '🧭', title: 'Compass',         sub: 'Offline compass + GPS location',        href: '/compass' },
-    { icon: '📍', title: 'Geo Triggers',    sub: 'Location-based keep reminders',         href: '/geo' },
-    { icon: '📰', title: 'News Feed',       sub: 'Optional news & updates',               href: '/news' },
-    { icon: '🏠', title: 'Smart Home',      sub: 'IoT device control with voice',         href: '/smart-home' },
-    { icon: '🛡️', title: 'Warranty Wallet', sub: 'Track products, warranties & costs',   href: '/warranty' },
-    { icon: '📊', title: 'Lifecycle',       sub: 'Cost-per-day, replacement planner',     href: '/lifecycle' },
-    // FOUND ORPHANED 13 Aug 2026 — all four were built, deployed and working,
-    // but linked from nowhere, so no user could ever reach them.
-    { icon: '🗣️', title: 'Voice Settings',  sub: 'Language, speed, wake word',            href: '/settings/voice' },
-    { icon: '🏦', title: 'Import Statement',sub: 'Pull expenses from a bank statement',   href: '/finance/import' },
-    { icon: '📞', title: 'Caller Context',  sub: 'Who is calling, and your history',      href: '/caller-context' },
-    { icon: '🏢', title: 'QuietKeep Business', sub: 'Ledger, invoices, staff, GST',       href: '/business' },
+    { label: 'Control', rows: [
+      { icon: '🛡️', title: 'Trust Dashboard', sub: 'Governance, patterns & control',       href: '/trust' },
+      { icon: '📊', title: 'Activity Log',    sub: 'Your full action history',             href: '/audit' },
+      { icon: '🔌', title: 'Connectors',      sub: 'App deep-links & integrations',        href: '/connectors' },
+      { icon: '💬', title: 'Send Message',    sub: 'Broadcast to contacts & groups',       href: '/messages' },
+      { icon: '📰', title: 'News Feed',       sub: 'Optional news & updates',              href: '/news' },
+    ]},
+    { label: 'Business', rows: [
+      { icon: '🏢', title: 'QuietKeep Business', sub: 'Ledger, invoices, staff, GST',      href: '/business' },
+    ]},
   ];
 
   const TIER_COLOR = { free: '#64748b', personal: '#6366f1', family: '#8b5cf6', pro: '#f59e0b' };

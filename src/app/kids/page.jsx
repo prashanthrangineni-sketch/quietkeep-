@@ -196,7 +196,7 @@ export default function KidsPage() {
           <div style={{ display:'flex', gap:8 }}>
             {softLockEnabled && (
               <button onClick={kidsMode ? disableKidsMode : enableKidsMode}
-                style={{ padding:'7px 12px', borderRadius:10, border:`1px solid ${kidsMode ? '#10b981' : 'rgba(255,255,255,0.1)'}`, background: kidsMode ? 'rgba(16,185,129,0.1)' : 'transparent', color: kidsMode ? '#10b981' : '#64748b', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                style={{ padding:'7px 12px', borderRadius:10, border:`1px solid ${kidsMode ? '#10b981' : 'var(--border)'}`, background: kidsMode ? 'rgba(16,185,129,0.1)' : 'transparent', color: kidsMode ? '#10b981' : '#64748b', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                 {kidsMode ? '🔓 Exit' : '🔒 Lock'}
               </button>
             )}
@@ -262,7 +262,7 @@ export default function KidsPage() {
                   {kid.school && <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>📚 {kid.school}</div>}
                   <div style={{ display:'flex', gap:6, marginTop:10 }}>
                     <button onClick={e => { e.stopPropagation(); startEdit(kid); }}
-                      style={{ flex:1, padding:'5px 0', borderRadius:8, border:`1px solid rgba(255,255,255,0.1)`, background:'transparent', color:'var(--text-muted)', fontSize:11, cursor:'pointer' }}>✏️ Edit</button>
+                      style={{ flex:1, padding:'5px 0', borderRadius:8, border:`1px solid var(--border)`, background:'transparent', color:'var(--text-muted)', fontSize:11, cursor:'pointer' }}>✏️ Edit</button>
                     <button onClick={e => { e.stopPropagation(); deleteKid(kid.id); }}
                       style={{ padding:'5px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.25)', background:'transparent', color:'#ef4444', fontSize:11, cursor:'pointer' }}>✕</button>
                   </div>
@@ -289,12 +289,12 @@ export default function KidsPage() {
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
                   {CONTENT_TYPES.map(ct => (
                     <button key={ct.value} onClick={() => setUType(ct.value)}
-                      style={{ padding:'5px 10px', borderRadius:20, border:`1px solid ${uType===ct.value ? ct.color : 'rgba(255,255,255,0.1)'}`, background: uType===ct.value ? ct.color+'22' : 'transparent', color: uType===ct.value ? ct.color : '#64748b', fontSize:11, cursor:'pointer' }}>
+                      style={{ padding:'5px 10px', borderRadius:20, border:`1px solid ${uType===ct.value ? ct.color : 'var(--border)'}`, background: uType===ct.value ? ct.color+'22' : 'transparent', color: uType===ct.value ? ct.color : '#64748b', fontSize:11, cursor:'pointer' }}>
                       {ct.label}
                     </button>
                   ))}
                 </div>
-                <input style={{ width:'100%', background:'var(--surface)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, color:'var(--text)', padding:'9px 12px', fontSize:13, outline:'none', boxSizing:'border-box', marginBottom:8, fontFamily:'inherit' }}
+                <input style={{ width:'100%', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', padding:'9px 12px', fontSize:13, outline:'none', boxSizing:'border-box', marginBottom:8, fontFamily:'inherit' }}
                   placeholder="Title (e.g. Report Card Term 1)" value={uTitle} onChange={e => setUTitle(e.target.value)} />
                 <input type="file" accept="image/*,application/pdf,.doc,.docx"
                   onChange={e => setUFile(e.target.files?.[0] || null)}

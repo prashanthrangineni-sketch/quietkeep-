@@ -519,8 +519,8 @@ export default function BizLoginPage() {
                   onKeyDown={e => handleOtpKey(i, e)}
                   style={{
                     width: 36, height: 44, textAlign: 'center',
-                    background: 'rgba(255,255,255,0.08)',
-                    border: `1.5px solid ${v ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                    background: 'var(--surface)',
+                    border: `1.5px solid ${v ? 'rgba(16,185,129,0.5)' : 'var(--border)'}`,
                     borderRadius: 8, color: 'var(--text)', fontSize: 18,
                     fontWeight: 700, outline: 'none', fontFamily: 'inherit',
                   }}

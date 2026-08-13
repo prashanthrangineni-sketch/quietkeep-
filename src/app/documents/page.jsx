@@ -21,7 +21,7 @@ const CATEGORIES = [
 ];
 
 const fmt = n => n >= 1048576 ? (n/1048576).toFixed(1)+'MB' : n >= 1024 ? (n/1024).toFixed(0)+'KB' : n+'B';
-const inp = { width:'100%', backgroundColor:'var(--surface)', border:'1px solid var(--border)', color:'#f1f5f9', padding:'10px 12px', borderRadius:'8px', fontSize:'13px', boxSizing:'border-box', outline:'none' };
+const inp = { width:'100%', backgroundColor:'var(--surface)', border:'1px solid var(--border)', color:'var(--text)', padding:'10px 12px', borderRadius:'8px', fontSize:'13px', boxSizing:'border-box', outline:'none' };
 
 export default function Documents() {
   const { user, accessToken, loading: authLoading } = useAuth();
@@ -132,7 +132,7 @@ export default function Documents() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight:'100vh', backgroundColor:'var(--bg)', color:'#f1f5f9', padding:'96px 16px 80px' }}>
+      <div style={{ minHeight:'100vh', backgroundColor:'var(--bg)', color:'var(--text)', padding:'96px 16px 80px' }}>
         <div style={{ maxWidth:'660px', margin:'0 auto' }}>
 
           {/* Header */}
@@ -179,12 +179,12 @@ export default function Documents() {
           {/* Add Form */}
           {showForm && (
             <div style={{ backgroundColor:'var(--bg)', border:'1px solid var(--surface)', borderRadius:'14px', padding:'20px', marginTop:'20px' }}>
-              <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#f1f5f9', margin:'0 0 14px' }}>Add Document</h3>
+              <h3 style={{ fontSize:'15px', fontWeight:'700', color:'var(--text)', margin:'0 0 14px' }}>Add Document</h3>
 
               {/* Category picker */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(90px,1fr))', gap:'8px', marginBottom:'14px' }}>
                 {CATEGORIES.map(cat => (
-                  <button key={cat.name} onClick={() => setFormData({ ...formData, category: cat.name })} style={{ backgroundColor: formData.category===cat.name ? cat.color : '#1e1e2e', border:`1px solid ${formData.category===cat.name ? cat.color : 'var(--border)'}`, color:'#f1f5f9', padding:'8px 4px', borderRadius:'8px', cursor:'pointer', fontSize:'11px', fontWeight:'600' }}>
+                  <button key={cat.name} onClick={() => setFormData({ ...formData, category: cat.name })} style={{ backgroundColor: formData.category===cat.name ? cat.color : '#1e1e2e', border:`1px solid ${formData.category===cat.name ? cat.color : 'var(--border)'}`, color:'var(--text)', padding:'8px 4px', borderRadius:'8px', cursor:'pointer', fontSize:'11px', fontWeight:'600' }}>
                     {cat.emoji} {cat.name}
                   </button>
                 ))}

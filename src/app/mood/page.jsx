@@ -233,7 +233,7 @@ export default function MoodPage() {
                   <button
                     onClick={() => deleteLog(log.id)}
                     disabled={deleting === log.id}
-                    style={{ background:'none', border:'none', color:'rgba(255,255,255,0.2)', cursor:'pointer', fontSize:'14px', padding:'4px' }}
+                    style={{ background:'none', border:'none', color:'var(--text-subtle)', cursor:'pointer', fontSize:'14px', padding:'4px' }}
                   >
                     {deleting === log.id ? '...' : '✕'}
                   </button>

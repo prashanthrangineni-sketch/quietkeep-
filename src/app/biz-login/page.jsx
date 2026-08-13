@@ -224,7 +224,10 @@ export default function BizLoginPage() {
     }
     setLoading(false);
     setBusinessMode();
-    window.location.href = '/b/dashboard';
+    {
+      const { data: { session } } = await getClient().auth.getSession();
+      window.location.href = await routeAfterBusinessLogin(getClient(), session);
+    }
   }
 
   const inp = {

@@ -312,7 +312,7 @@ export default function AuditPage() {
 
             <div style={{
               padding: '14px 16px', marginTop: 8,
-              background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)',
+              background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: 12,
             }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>

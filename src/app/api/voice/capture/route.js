@@ -137,6 +137,8 @@ export async function POST(request) {
     const MONEY_TYPES = new Set(['expense', 'income', 'purchase', 'sale', 'invoice', 'ledger_credit', 'ledger_debit'])
     const ROMAN_INDIC = /\b(se|ko|ka|ki|ke|liye|diye|diya|aaye|aaya|mile|mila|rupaye|rupay|rupees|hazaar|hajaar|sau|lakh|kal|aaj|parso|subah|shaam|raat|baje|yaad|dilana|karna|chahiye|nahi|gurthu|repu|nenu|meeru|cheyyi|kavali|ivvu|vachindi|ravali)\b/i
   let llmAssist = null
+  let llmStartedAt = 0
+  const routeStartedAt = Date.now()
 
   const needsBrain =
       regexWeak ||

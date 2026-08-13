@@ -172,7 +172,7 @@ export default function HealthPage() {
         </div>
 
         {/* AI Insight */}
-        <div style={{ background:'#0d0d1a', border:'1px solid #6366f130', borderRadius:12, padding:'1rem', marginBottom:'1.5rem' }}>
+        <div style={{ background:'var(--surface)', border:'1px solid #6366f130', borderRadius:12, padding:'1rem', marginBottom:'1.5rem' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.6rem' }}>
             <span style={{ color:'#818cf8', fontSize:'0.85rem', fontWeight:700 }}>✨ AI Weekly Insight</span>
             <button onClick={getAIInsight} disabled={loadingInsight} style={{ ...btn1, fontSize:'0.75rem', padding:'0.35rem 0.75rem', opacity: loadingInsight ? 0.6 : 1 }}>{loadingInsight ? 'Thinking…' : 'Get Insight'}</button>

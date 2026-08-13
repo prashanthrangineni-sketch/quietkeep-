@@ -178,7 +178,7 @@ export default function Documents() {
           </button>
           {/* Add Form */}
           {showForm && (
-            <div style={{ backgroundColor:'var(--bg)', border:'1px solid #1e293b', borderRadius:'14px', padding:'20px', marginTop:'20px' }}>
+            <div style={{ backgroundColor:'var(--bg)', border:'1px solid var(--surface)', borderRadius:'14px', padding:'20px', marginTop:'20px' }}>
               <h3 style={{ fontSize:'15px', fontWeight:'700', color:'#f1f5f9', margin:'0 0 14px' }}>Add Document</h3>
 
               {/* Category picker */}
@@ -220,7 +220,7 @@ export default function Documents() {
 
               {uploading && (
                 <div style={{ marginBottom:'10px' }}>
-                  <div style={{ background:'#1e293b', borderRadius:20, height:5, overflow:'hidden' }}>
+                  <div style={{ background:'var(--surface)', borderRadius:20, height:5, overflow:'hidden' }}>
                     <div style={{ background:'#6366f1', height:'100%', width:`${uploadPct}%`, transition:'width 0.3s' }} />
                   </div>
                   <div style={{ color:'#6366f1', fontSize:'11px', marginTop:4 }}>Uploading {uploadPct}%…</div>

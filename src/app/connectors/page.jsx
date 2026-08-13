@@ -99,7 +99,7 @@ export default function ConnectorsPage() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     loadConnectors(user?.id);
-  }, [user]);
+  }, [user, authLoading]);
 
   async function loadConnectors(uid) {
     const { data } = await supabase

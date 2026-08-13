@@ -630,6 +630,13 @@ export async function POST(request) {
     keep:              responseKeep,
     intent:            responseKeep,
     tts_response,
+      // Where the time actually goes. understanding_ms is the Sarvam call;
+      // total_ms is everything. A large gap between them is OUR pipeline,
+      // not the model — measure before optimising.
+      timings: {
+        understanding_ms: llmStartedAt ? Date.now() - llmStartedAt : 0,
+        total_ms: Date.now() - routeStartedAt,
+      },
       // What the brain understood — the UI uses `missing` to ask the next
       // question out loud instead of silently saving a half-understood keep.
       assistant: llmAssist

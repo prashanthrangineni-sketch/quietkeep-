@@ -298,15 +298,15 @@ export default function OnboardingPage() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: '14px',
                   padding: '14px 16px', borderRadius: '12px', cursor: 'pointer',
-                  border: `1px solid ${calendar === cal.value ? '#7c3aed' : 'rgba(255,255,255,0.1)'}`,
-                  background: calendar === cal.value ? 'rgba(124, 58, 237, 0.15)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${calendar === cal.value ? '#7c3aed' : 'var(--border)'}`,
+                  background: calendar === cal.value ? 'rgba(124, 58, 237, 0.15)' : 'var(--surface)',
                   textAlign: 'left', minHeight: '60px', WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 <span style={{ fontSize: '22px' }}>{cal.emoji}</span>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: calendar === cal.value ? '#a855f7' : 'var(--text, #fff)' }}>{cal.label}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-subtle, #a1a1aa)', marginTop: '2px' }}>{cal.desc}</div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: calendar === cal.value ? '#a855f7' : 'var(--text)' }}>{cal.label}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-subtle)', marginTop: '2px' }}>{cal.desc}</div>
                 </div>
                 {calendar === cal.value && <span style={{ marginLeft: 'auto', color: '#a855f7', fontSize: '18px' }}>✓</span>}
               </button>

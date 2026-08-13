@@ -214,7 +214,7 @@ function EditKeepModal({ intent, onSave, onClose }) {
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
           {saveError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 8, padding: '6px 10px', background: 'rgba(239,68,68,0.1)', borderRadius: 6 }}>⚠️ {saveError}</div>}
-          <button onClick={onClose} style={{ padding: '12px 20px', borderRadius: 10, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Cancel</button>
+          <button onClick={onClose} style={{ padding: '12px 20px', borderRadius: 10, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Cancel</button>
         </div>
       </div>
 

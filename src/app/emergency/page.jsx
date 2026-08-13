@@ -636,8 +636,8 @@ function ContactCard({ contact, location, sentTo, onEdit, onDelete, onWhatsApp, 
             onClick={onSMS}
             style={{
               padding: '9px 14px',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               borderRadius: '10px', color: 'rgba(255,255,255,0.5)',
               fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit'
             }}

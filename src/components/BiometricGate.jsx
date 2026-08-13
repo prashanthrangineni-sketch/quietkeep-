@@ -68,7 +68,7 @@ export default function BiometricGate({ children }) {
     return (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'var(--background, #0f172a)',
+        background: 'var(--background, var(--bg))',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <div style={{ textAlign: 'center', color: 'var(--muted, #64748b)' }}>

@@ -97,7 +97,7 @@ export default function AgentSuggestionCard({ accessToken, lat, lng, onAction })
               {/* v3: "Why this?" expandable panel */}
               {expanded.has(i) && (
                 <div style={{ marginTop: 6, marginLeft: 20, padding: '6px 8px',
-                  background: 'rgba(255,255,255,0.03)', borderRadius: 6, fontSize: 11,
+                  background: 'var(--surface)', borderRadius: 6, fontSize: 11,
                   color: 'var(--text-subtle)', lineHeight: 1.6 }}>
                   {/* Reason string */}
                   {s.reason && <div>{s.reason}</div>}

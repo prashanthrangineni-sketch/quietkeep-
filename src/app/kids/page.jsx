@@ -255,7 +255,7 @@ export default function KidsPage() {
               const bg = KID_BG[idx % KID_BG.length];
               return (
                 <div key={kid.id} onClick={() => setActiveKid(isActive ? null : kid)}
-                  style={{ background: isActive ? bg : 'rgba(255,255,255,0.04)', border:`2px solid ${isActive ? col : 'var(--surface)'}`, borderRadius:16, padding:16, cursor:'pointer', transition:'all 0.15s' }}>
+                  style={{ background: isActive ? bg : 'var(--surface)', border:`2px solid ${isActive ? col : 'var(--surface)'}`, borderRadius:16, padding:16, cursor:'pointer', transition:'all 0.15s' }}>
                   <div style={{ fontSize:36, marginBottom:8 }}>{AE[ag] || '🧒'}</div>
                   <div style={{ fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:2 }}>{kid.name}</div>
                   {age !== null && <div style={{ fontSize:11, color: col, fontWeight:600 }}>{age} yrs · {ag}</div>}

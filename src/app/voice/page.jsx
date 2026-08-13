@@ -92,7 +92,7 @@ export default function VoicePage() {
             aria-label="Go back"
           >←</button>
           <span style={{ fontSize: '22px' }}>🎙️</span>
-          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Voice History</h1>
+          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.3px' }}>Voice History</h1>
         </div>
         <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
           {sessions.length} session{sessions.length !== 1 ? 's' : ''}

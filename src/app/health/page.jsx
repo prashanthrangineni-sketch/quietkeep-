@@ -139,7 +139,7 @@ export default function HealthPage() {
 
         {/* Today's log */}
         <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'1.2rem', marginBottom:'1.5rem' }}>
-          <h3 style={{ fontSize:'0.9rem', fontWeight:700, marginBottom:'1rem', color:'#aaa' }}>Today — {fmtDate(today())}</h3>
+          <h3 style={{ fontSize:'0.9rem', fontWeight:700, marginBottom:'1rem', color:'var(--text-muted)' }}>Today — {fmtDate(today())}</h3>
           
           <div style={{ marginBottom:'1rem' }}>
             <label style={{ color:'#666', fontSize:'0.78rem', display:'block', marginBottom:6 }}>💧 Water intake — {water} glasses</label>
@@ -188,7 +188,7 @@ export default function HealthPage() {
             <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
               {logs.map(log => (
                 <div key={log.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'0.7rem 1rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div style={{ fontSize:'0.8rem', color:'#aaa' }}>{fmtDate(log.log_date)}</div>
+                  <div style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>{fmtDate(log.log_date)}</div>
                   <div style={{ display:'flex', gap:'1rem', fontSize:'0.78rem', color:'#666' }}>
                     <span>💧{log.water_glasses||0}</span>
                     <span>😴{log.sleep_hours||0}h</span>

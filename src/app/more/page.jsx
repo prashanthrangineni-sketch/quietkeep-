@@ -25,6 +25,10 @@ export default function MorePage() {
         .select('full_name,subscription_tier,persona_type')
         .eq('user_id', user.id).single();
       setProfile(data);
+
+      const { data: admin } = await supabase.from('admin_users')
+        .select('user_id').eq('user_id', user.id).maybeSingle();
+      setIsPlatformAdmin(!!admin);
     }
   }
 

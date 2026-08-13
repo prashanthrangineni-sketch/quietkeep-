@@ -356,7 +356,7 @@ export default function ChatThreadPage() {
                 style={{
                   width: 40, height: 40, borderRadius: '50%',
                   border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: text.trim() ? G : 'rgba(255,255,255,0.06)',
+                  background: text.trim() ? G : 'var(--surface-hover)',
                   color: text.trim() ? '#fff' : '#475569',
                   fontSize: 16, cursor: text.trim() ? 'pointer' : 'default',
                   flexShrink: 0,

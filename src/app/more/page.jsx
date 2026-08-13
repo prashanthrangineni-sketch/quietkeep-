@@ -67,6 +67,12 @@ export default function MorePage() {
     { icon: '🏠', title: 'Smart Home',      sub: 'IoT device control with voice',         href: '/smart-home' },
     { icon: '🛡️', title: 'Warranty Wallet', sub: 'Track products, warranties & costs',   href: '/warranty' },
     { icon: '📊', title: 'Lifecycle',       sub: 'Cost-per-day, replacement planner',     href: '/lifecycle' },
+    // FOUND ORPHANED 13 Aug 2026 — all four were built, deployed and working,
+    // but linked from nowhere, so no user could ever reach them.
+    { icon: '🗣️', title: 'Voice Settings',  sub: 'Language, speed, wake word',            href: '/settings/voice' },
+    { icon: '🏦', title: 'Import Statement',sub: 'Pull expenses from a bank statement',   href: '/finance/import' },
+    { icon: '📞', title: 'Caller Context',  sub: 'Who is calling, and your history',      href: '/caller-context' },
+    { icon: '🏢', title: 'QuietKeep Business', sub: 'Ledger, invoices, staff, GST',       href: '/business' },
   ];
 
   const TIER_COLOR = { free: '#64748b', personal: '#6366f1', family: '#8b5cf6', pro: '#f59e0b' };

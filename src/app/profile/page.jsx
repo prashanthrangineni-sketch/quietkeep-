@@ -146,7 +146,7 @@ export default function ProfilePage() {
 
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ color: '#aaa', fontSize: '0.82rem', display: 'block', marginBottom: 6 }}>Email</label>
-            <div style={{ color: '#555', fontSize: '0.88rem', padding: '0.65rem 0.8rem', background: '#111', border: '1px solid #222', borderRadius: 8 }}>{user?.email}</div>
+            <div style={{ color: '#555', fontSize: '0.88rem', padding: '0.65rem 0.8rem', background: '#111', border: '1px solid var(--border)', borderRadius: 8 }}>{user?.email}</div>
           </div>
 
           <div style={{ marginBottom: '1.2rem' }}>
@@ -175,11 +175,11 @@ export default function ProfilePage() {
         {/* Account info */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem' }}>
           <h3 style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Account</h3>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid #222' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}>
             <span style={{ color: '#aaa', fontSize: '0.88rem' }}>Plan</span>
             <span style={{ color: tierInfo.color, fontSize: '0.88rem', fontWeight: 600 }}>{tierInfo.label}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid #222' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}>
             <span style={{ color: '#aaa', fontSize: '0.88rem' }}>Member since</span>
             <span style={{ color: '#fff', fontSize: '0.88rem' }}>{new Date(user?.created_at).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</span>
           </div>

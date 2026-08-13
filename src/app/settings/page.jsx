@@ -336,6 +336,14 @@ export default function SettingsPage() {
       details: { voice_language: voiceLanguage, persona, brief_time: briefTime, theme },
     });
 
+    try {
+      if (fullName) {
+        localStorage.setItem('qk_user_name', fullName);
+        window.dispatchEvent(new CustomEvent('qk_profile_updated', { detail: { full_name: fullName } }));
+        supabase.auth.updateUser({ data: { full_name: fullName } }).catch(() => {});
+      }
+    } catch {}
+
     setSaving(false);
     setSaved('✓ Saved');
     setTimeout(() => setSaved(''), 2500);
@@ -399,24 +407,37 @@ export default function SettingsPage() {
       <NavbarClient />
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '2rem 1rem 4rem' }}>
 
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.4rem' }}>Settings</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>Manage your preferences, language, and notifications.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: '2rem' }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22, color: '#ffffff', fontWeight: 700,
+            boxShadow: '0 4px 20px rgba(124, 58, 237, 0.35)', flexShrink: 0,
+          }}>
+            ◕‿◕
+          </div>
+          <div>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', margin: 0, letterSpacing: '-0.02em' }}>Settings & Profile</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: '2px 0 0' }}>Manage your account, voice preferences, and quiet keeping.</p>
+          </div>
+        </div>
 
         {/* Profile */}
-        <Section title="Profile">
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ color: 'var(--text-muted)', fontSize: '0.82rem', display: 'block', marginBottom: 6 }}>Your Name</label>
+        <Section title="Profile Information">
+          <div style={{ marginBottom: '1.2rem' }}>
+            <label style={{ color: '#c4b5fd', fontSize: '0.82rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>Full Name</label>
             <input
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               placeholder="Enter your name"
-              style={{ width: '100%', background: 'var(--input-bg, var(--bg-raised))', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.6rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 10, color: 'var(--text)', padding: '0.75rem 1rem', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
             />
           </div>
           <Select label="I am a…" value={persona} onChange={setPersona} options={PERSONAS} />
           <div>
-            <label style={{ color: 'var(--text-muted)', fontSize: '0.82rem', display: 'block', marginBottom: 6 }}>Email</label>
-            <div style={{ color: 'var(--text-subtle)', fontSize: '0.88rem', padding: '0.6rem 0.8rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}>{user?.email}</div>
+            <label style={{ color: '#c4b5fd', fontSize: '0.82rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>Account Email / Phone</label>
+            <div style={{ color: 'var(--text-subtle)', fontSize: '0.9rem', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10 }}>{user?.email || user?.phone || 'QuietKeep Account'}</div>
           </div>
         </Section>
 

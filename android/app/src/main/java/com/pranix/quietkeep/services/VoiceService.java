@@ -320,13 +320,6 @@ public class VoiceService extends Service {
                             Log.d(TAG, "Skip wake detect — battery low");
                             continue;
                         }
-                        if (screenOff) {
-                            skipChunkCounter++;
-                            if (skipChunkCounter % 2 == 0) {
-                                Log.d(TAG, "Skip wake detect — screen off (adaptive)");
-                                continue;
-                            }
-                        }
                         boolean wakeDetected = wakeWordEngine.detectWakeWord(chunk);
                         if (wakeDetected) {
                             Log.d(TAG, "WakeWordEngine: LOTUS DETECTED — dispatching event");

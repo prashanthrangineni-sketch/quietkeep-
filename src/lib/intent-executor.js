@@ -306,11 +306,23 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
     return `Keep saved. ${name || 'Contact'} is in your contacts. Tap the call button to dial now.`;
   }
 
-  if (parsed.type === 'reminder' && reminderAt) {
-    const dt      = new Date(reminderAt);
-    const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-    const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
-    return `Reminder set for ${dateStr} at ${timeStr}.`;
+  if (parsed.type === 'reminder') {
+    const hasSpecificTime = parsed.entities?.times?.length > 0;
+    const taskContent     = (parsed.subject || '').replace(/^remind\s+(?:me\s+)?(?:to\s+)?/i, '').trim();
+
+    if (reminderAt) {
+      const dt      = new Date(reminderAt);
+      const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+      const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+
+      if (hasSpecificTime) {
+        return `Got it — I'll remind you to ${taskContent || 'do this'} ${dateStr} at ${timeStr}.`;
+      } else {
+        return `Got it — I'll remind you to ${taskContent || 'do this'} ${dateStr}. What time should I set it for?`;
+      }
+    } else {
+      return `I saved that as a note, but I didn't catch a time — want me to set a reminder?`;
+    }
   }
 
   if (parsed.type === 'task' && reminderAt) {

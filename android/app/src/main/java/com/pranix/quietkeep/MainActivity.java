@@ -1,9 +1,12 @@
 package com.pranix.quietkeep;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.util.Log;
 import android.view.View;
 import android.webkit.PermissionRequest;
@@ -51,6 +54,19 @@ public class MainActivity extends BridgeActivity {
 
         // v6: Eagerly initialise TTS engine so it is ready by first speak call
         TTSManager.getInstance(this);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                try {
+                    Intent bIntent = new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    bIntent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(bIntent);
+                } catch (Exception e) {
+                    Log.w(TAG, "Battery exemption prompt failed: " + e.getMessage());
+                }
+            }
+        }
 
         // Apply WebView bridge after super.onCreate() so getBridge() is available.
         applyWebViewBridge();

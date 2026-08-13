@@ -539,10 +539,17 @@ export async function POST(request) {
     }).catch(() => null)
   }
 
+  const hasSpecificTime = parsed.entities?.times?.length > 0;
+  const timeAmbiguous   = parsed.type === 'reminder' && reminderAt && !hasSpecificTime;
+  const needsReminderPrompt = (parsed.type === 'note' || parsed.type === 'task') && !reminderAt && /remind|remember|later/i.test(text);
+
   return NextResponse.json({
     keep:              responseKeep,
     intent:            responseKeep,
     tts_response,
+    time_ambiguous:    timeAmbiguous,
+    quick_time_options: timeAmbiguous ? ['9:00 AM', '12:00 PM', '5:00 PM', '8:00 PM'] : null,
+    needs_reminder_prompt: needsReminderPrompt,
     reminder_at:       keep.reminder_at,
     reminder_nudge_id: reminderNudgeId,
     reminder:          reminderRow,

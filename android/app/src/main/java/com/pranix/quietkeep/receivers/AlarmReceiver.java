@@ -51,6 +51,15 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         createNotificationChannel(context, isAlarmType);
         showNotification(context, reminderId, reminderText, isAlarmType);
+
+        // Speak the reminder out loud via native TTS
+        try {
+            Intent ttsIntent = new Intent(context, com.pranix.quietkeep.services.ReminderTTSService.class);
+            ttsIntent.putExtra("text_to_speak", reminderText);
+            context.startService(ttsIntent);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to start ReminderTTSService: " + e.getMessage());
+        }
     }
 
     private void createNotificationChannel(Context context, boolean isAlarmType) {

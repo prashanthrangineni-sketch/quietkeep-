@@ -187,6 +187,11 @@
             android:enabled="true"
             android:exported="false" />
 
+        <!-- ReminderTTSService: Speaks fired reminders out loud -->
+        <service
+            android:name=".services.ReminderTTSService"
+            android:exported="false" />
+
         <!-- GeofenceBroadcastReceiver: Track A7 location keep geofence transition receiver -->
         <receiver
             android:name=".receivers.GeofenceBroadcastReceiver"

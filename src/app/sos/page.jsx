@@ -64,7 +64,7 @@ export default function SOSPage() {
       <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
 
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #160a0a, #100a14)', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>
+      <div style={{ background: 'linear-gradient(135deg, #160a0a, var(--surface))', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
           <span style={{ fontSize: '22px' }}>🆘</span>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>SOS History</h1>

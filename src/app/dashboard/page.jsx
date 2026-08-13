@@ -901,7 +901,7 @@ export default function Dashboard() {
 
       {clarificationData && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1001, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#1a1a2e', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 16, padding: 24, maxWidth: 360, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 16, padding: 24, maxWidth: 360, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <span style={{ fontSize: 22 }}>🧠</span>
               <div>

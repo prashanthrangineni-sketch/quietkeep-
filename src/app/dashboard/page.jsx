@@ -1198,7 +1198,7 @@ export default function Dashboard() {
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.15)' }}>Ctrl+Enter to save</span>
+              <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>Ctrl+Enter to save</span>
               <button onClick={handleSave} disabled={saving || !content.trim()} className="qk-btn qk-btn-primary">{saving ? 'Saving…' : '+ Keep this'}</button>
             </div>
           </div>

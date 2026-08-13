@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 // src/app/b/compliance/page.jsx — GST, IT, licences, renewals compliance tracker
 

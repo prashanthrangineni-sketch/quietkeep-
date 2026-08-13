@@ -291,7 +291,7 @@ export default function EmergencyPage() {
 
           {/* GPS status */}
           {gpsState === 'idle' && sosTrigger === false && (
-            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
               Or tap below to get location first
             </p>
           )}

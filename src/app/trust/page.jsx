@@ -160,7 +160,7 @@ export default function TrustDashboard() {
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#475569',
             textTransform: 'uppercase', marginBottom: 10 }}>🔒 Hard Limits</div>
           <div style={{
-            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)',
+            background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 12, overflow: 'hidden',
           }}>
             {[

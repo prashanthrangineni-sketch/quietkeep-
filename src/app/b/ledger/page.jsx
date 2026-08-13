@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 import { apiPost, apiGet } from '@/lib/safeFetch';
 // src/app/b/ledger/page.jsx — Voice-first business ledger with edit + delete

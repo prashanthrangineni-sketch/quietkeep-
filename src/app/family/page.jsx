@@ -39,7 +39,7 @@ function LocationShare({ userId }) {
         </div>
       )}
       {err && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 8 }}>{err}</div>}
-      <button onClick={shareLocation} disabled={sharing} style={{ padding: '9px 16px', background: sharing ? '#334155' : '#10b98122', border: '1px solid #10b98133', borderRadius: 8, color: '#10b981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+      <button onClick={shareLocation} disabled={sharing} style={{ padding: '9px 16px', background: sharing ? 'var(--surface)' : '#10b98122', border: '1px solid #10b98133', borderRadius: 8, color: '#10b981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
         {sharing ? '📍 Getting location…' : '📍 Share My Current Location'}
       </button>
       <div style={{ color: 'var(--text-subtle)', fontSize: 11, marginTop: 6 }}>Your location is only shared when you tap this button — never automatically.</div>
@@ -190,7 +190,7 @@ export default function FamilyPage() {
             <button
               onClick={acceptInvite}
               disabled={accepting}
-              style={{ width: '100%', padding: 12, background: accepting ? '#334155' : '#f59e0b', color: '#0d1117', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
+              style={{ width: '100%', padding: 12, background: accepting ? 'var(--surface)' : '#f59e0b', color: '#0d1117', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}
             >{accepting ? 'Accepting...' : 'Accept Invite'}</button>
           </div>
         )}
@@ -339,7 +339,7 @@ export default function FamilyPage() {
           <LocationShare userId={user?.id} />
         </div>
 
-        <div style={{ color: '#334155', fontSize: 12, textAlign: 'center' }}>Invite links expire in 72 hours · Members can be removed anytime</div>
+        <div style={{ color: 'var(--surface)', fontSize: 12, textAlign: 'center' }}>Invite links expire in 72 hours · Members can be removed anytime</div>
       </div>
     </div>
     </>

@@ -273,14 +273,14 @@ export default function OnboardingPage() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: '14px',
                   padding: '14px 16px', borderRadius: '12px', cursor: 'pointer',
-                  border: `1px solid ${persona === p.value ? '#7c3aed' : 'rgba(255,255,255,0.1)'}`,
-                  background: persona === p.value ? 'rgba(124, 58, 237, 0.15)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${persona === p.value ? '#7c3aed' : 'var(--border)'}`,
+                  background: persona === p.value ? 'rgba(124, 58, 237, 0.15)' : 'var(--surface)',
                   textAlign: 'left', WebkitTapHighlightColor: 'transparent',
                 }}>
                 <span style={{ fontSize: '24px' }}>{p.emoji}</span>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: persona === p.value ? '#a855f7' : 'var(--text, #fff)' }}>{p.label}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-subtle, #a1a1aa)', marginTop: '2px' }}>{p.desc}</div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: persona === p.value ? '#a855f7' : 'var(--text)' }}>{p.label}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-subtle)', marginTop: '2px' }}>{p.desc}</div>
                 </div>
                 {persona === p.value && <span style={{ marginLeft: 'auto', color: '#a855f7', fontSize: '18px' }}>✓</span>}
               </button>

@@ -484,6 +484,9 @@ export async function POST(request) {
     }).catch(() => {});
 
   let tts_response = buildExecutionTTS(parsed, matchedContact, reminderAt, followUp)
+  // The brain replies in the language the user actually spoke — reading English
+  // back to a Telugu or Hindi speaker is the same as not answering at all.
+  if (llmAssist?.reply) tts_response = llmAssist.reply
   // v12: business TTS overrides generic TTS when resolver produced a confirmation
   if (bizPayload?.tts_response) tts_response = bizPayload.tts_response;
   // Feature 7: Contextual TalkBack — mentions both location and keep content

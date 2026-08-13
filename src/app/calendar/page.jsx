@@ -295,7 +295,7 @@ export default function CalendarPage() {
                   const { hasHoliday, hasPersonal } = getDayDots(dateISO);
                   return (
                     <div key={i} onClick={() => handleDayClick(dateISO)}
-                      style={{ background: isSelected ? '#6366f1' : isToday ? '#1e1e3a' : '#111', borderRadius: 8, padding: '0.4rem 0.2rem', textAlign: 'center', cursor: 'pointer', border: isToday && !isSelected ? '1px solid #6366f144' : '1px solid transparent', minHeight: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      style={{ background: isSelected ? '#6366f1' : isToday ? 'var(--primary-dim)' : 'var(--surface)', borderRadius: 8, padding: '0.4rem 0.2rem', textAlign: 'center', cursor: 'pointer', border: isToday && !isSelected ? '1px solid #6366f144' : '1px solid transparent', minHeight: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: isToday ? 700 : 400, color: isSelected ? '#fff' : isToday ? '#6366f1' : '#ccc' }}>{day}</span>
                       <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
                         {hasHoliday && <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />}

@@ -15,14 +15,37 @@ export default function BizMorePage() {
   const { user, accessToken, loading: authLoading } = useAuth();
   const router = useRouter();
   const [workspace, setWorkspace] = useState(null);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   useEffect(() => {
     if (authLoading) return; // wait for auth context to resolve
     if (!user) { router.replace('/biz-login'); return; }
     (async () => {
-            const { data: ws } = await supabase
-              .from('business_workspaces').select('*')
-              .eq('owner_user_id', user?.id).maybeSingle();
-            setWorkspace(ws);
+      let { data: ws } = await supabase
+        .from('business_workspaces').select('*')
+        .eq('owner_user_id', user?.id).maybeSingle();
+
+      // Staff joined by invite own nothing — fall back to membership so the
+      // workspace card does not read "My Business" for the whole team.
+      if (!ws) {
+        const { data: membership } = await supabase
+          .from('business_members')
+          .select('workspace_id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .maybeSingle();
+        if (membership?.workspace_id) {
+          const { data: memberWs } = await supabase
+            .from('business_workspaces').select('*')
+            .eq('id', membership.workspace_id).maybeSingle();
+          ws = memberWs || null;
+        }
+      }
+      setWorkspace(ws);
+
+      // Only platform staff see the internal admin panel.
+      const { data: admin } = await supabase
+        .from('admin_users').select('user_id').eq('user_id', user.id).maybeSingle();
+      setIsPlatformAdmin(!!admin);
     })();
   }, [user]);
 

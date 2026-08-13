@@ -69,8 +69,8 @@ export default function AuthConfirmPage() {
   const isError = !status.startsWith('Verifying');
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#fff', fontFamily: 'system-ui,sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-      <div style={{ width: '100%', maxWidth: '360px', background: '#12121a', borderRadius: '20px', padding: '32px 24px', textAlign: 'center' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'system-ui,sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ width: '100%', maxWidth: '360px', background: 'var(--bg)', borderRadius: '20px', padding: '32px 24px', textAlign: 'center' }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>
           {isError ? '❌' : '🔐'}
         </div>

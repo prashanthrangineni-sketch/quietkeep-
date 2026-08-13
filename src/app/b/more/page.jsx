@@ -47,9 +47,15 @@ export default function BizMorePage() {
     {
       title: 'Finance',
       items: [
-        { href: '/b/ledger',    icon: '📒', title: 'Khata / Ledger',   sub: 'Voice-first income & expense' },
-        { href: '/b/invoices',  icon: '🧾', title: 'GST Invoices',     sub: 'Create, PDF, send via WhatsApp' },
-        { href: '/b/customers', icon: '🤝', title: 'Customers',        sub: 'CRM with credit tracking' },
+        { href: '/b/ledger',      icon: '📒', title: 'Khata / Ledger',   sub: 'Voice-first income & expense' },
+        { href: '/b/invoices',    icon: '🧾', title: 'GST Invoices',     sub: 'Create, PDF, send via WhatsApp' },
+        { href: '/b/customers',   icon: '🤝', title: 'Customers',        sub: 'CRM with credit tracking' },
+        // These three were finished and working but appeared ONLY in the
+        // hamburger drawer, so anyone who tapped the "More" tab never found
+        // them. Scan & Pay in particular is the fastest way to take money.
+        { href: '/b/scan',        icon: '📷', title: 'Scan & Pay',       sub: 'Barcode, UPI QR, spoken confirmation' },
+        { href: '/b/collections', icon: '💸', title: 'Collections',      sub: 'Chase overdue payments on WhatsApp' },
+        { href: '/b/reports',     icon: '📑', title: 'Reports',          sub: 'GSTR-3B, ledger, payroll, outstanding' },
       ],
     },
     {

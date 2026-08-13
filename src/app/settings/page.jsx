@@ -372,7 +372,7 @@ export default function SettingsPage() {
         onClick={() => onChange(!value)}
         style={{
           width: 44, height: 24, borderRadius: 12, cursor: 'pointer', transition: 'background 0.2s',
-          background: value ? '#6366f1' : '#333', position: 'relative', flexShrink: 0,
+          background: value ? '#6366f1' : 'var(--surface)', position: 'relative', flexShrink: 0,
         }}
       >
         <div style={{

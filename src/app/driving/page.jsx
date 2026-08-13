@@ -202,7 +202,7 @@ export default function DrivingPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', color: '#f1f5f9',
+      <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', color: 'var(--text-muted)',
         padding: '20px', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', paddingTop: '112px' }}>
         <div style={{ maxWidth: '500px', width: '100%', textAlign: 'center' }}>

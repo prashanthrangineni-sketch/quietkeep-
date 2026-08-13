@@ -224,7 +224,7 @@ export default function TeamPage() {
           <div>
             <div style={{ fontSize:20, fontWeight:800, color:'var(--text)' }}>Team</div>
             <div style={{ fontSize:12, color:'var(--text-subtle)', marginTop:2 }}>
-              {workspace?.name} · {members.filter(m=>m.status==='active').length} active
+              {workspace?.name} · {members.filter(m=>m.status==='active'||m.status==='invited').length} on the team
             </div>
           </div>
           {activeTab === 'members' && (

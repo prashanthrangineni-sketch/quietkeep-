@@ -208,7 +208,7 @@ Return ONLY valid JSON matching this structure exactly:
 
   const inp = {
     width:'100%', background:'var(--surface)', border:'1px solid var(--border)',
-    borderRadius:10, padding:'10px 12px', color:'#f1f5f9', fontSize:14,
+    borderRadius:10, padding:'10px 12px', color:'var(--text)', fontSize:14,
     outline:'none', boxSizing:'border-box', fontFamily:'inherit',
   };
 

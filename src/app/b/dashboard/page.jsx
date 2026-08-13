@@ -2,6 +2,7 @@
 // Step 2.4: Business intent engine — isolated to /b/* pages only
 // This import MUST NOT appear in src/app/dashboard/page.jsx
 import { parseBusinessIntent, getBusinessAction } from '@/lib/businessIntentEngine';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 /**
  * src/app/b/dashboard/page.jsx

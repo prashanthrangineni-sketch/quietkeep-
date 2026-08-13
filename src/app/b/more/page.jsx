@@ -73,7 +73,12 @@ export default function BizMorePage() {
         // would load the personal UI inside the business APK with no re-isolation.
         // Users who need personal QuietKeep should install the separate personal APK.
         { href: '/pricing',      icon: '💎', title: 'Plans & Billing',     sub: 'Business · Growth · Enterprise' },
-        { href: '/admin',        icon: '🔐', title: 'Admin Panel',         sub: 'Metrics, users, feature flags' },
+        // The internal admin panel (platform metrics, all users, feature flags)
+        // was linked from every business owner's More menu. It is not a customer
+        // feature — it is now hidden unless the account is flagged as staff.
+        ...(isPlatformAdmin
+          ? [{ href: '/admin', icon: '🔐', title: 'Admin Panel', sub: 'Metrics, users, feature flags' }]
+          : []),
       ],
     },
   ];

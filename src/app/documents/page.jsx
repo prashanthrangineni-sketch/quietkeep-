@@ -21,7 +21,7 @@ const CATEGORIES = [
 ];
 
 const fmt = n => n >= 1048576 ? (n/1048576).toFixed(1)+'MB' : n >= 1024 ? (n/1024).toFixed(0)+'KB' : n+'B';
-const inp = { width:'100%', backgroundColor:'var(--surface)', border:'1px solid #334155', color:'#f1f5f9', padding:'10px 12px', borderRadius:'8px', fontSize:'13px', boxSizing:'border-box', outline:'none' };
+const inp = { width:'100%', backgroundColor:'var(--surface)', border:'1px solid var(--border)', color:'#f1f5f9', padding:'10px 12px', borderRadius:'8px', fontSize:'13px', boxSizing:'border-box', outline:'none' };
 
 export default function Documents() {
   const { user, accessToken, loading: authLoading } = useAuth();
@@ -152,7 +152,7 @@ export default function Documents() {
           {/* Category Filter */}
           <div style={{ display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'8px', marginBottom:'16px' }}>
             {['All', ...CATEGORIES.map(c => c.name)].map(cat => (
-              <button key={cat} onClick={() => setFilterCat(cat)} style={{ whiteSpace:'nowrap', padding:'6px 14px', borderRadius:20, border:`1px solid ${filterCat===cat ? '#6366f1' : '#334155'}`, background: filterCat===cat ? '#6366f122' : 'transparent', color: filterCat===cat ? '#6366f1' : '#94a3b8', fontSize:'12px', cursor:'pointer' }}>
+              <button key={cat} onClick={() => setFilterCat(cat)} style={{ whiteSpace:'nowrap', padding:'6px 14px', borderRadius:20, border:`1px solid ${filterCat===cat ? '#6366f1' : 'var(--border)'}`, background: filterCat===cat ? '#6366f122' : 'transparent', color: filterCat===cat ? '#6366f1' : '#94a3b8', fontSize:'12px', cursor:'pointer' }}>
                 {cat}
               </button>
             ))}
@@ -184,7 +184,7 @@ export default function Documents() {
               {/* Category picker */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(90px,1fr))', gap:'8px', marginBottom:'14px' }}>
                 {CATEGORIES.map(cat => (
-                  <button key={cat.name} onClick={() => setFormData({ ...formData, category: cat.name })} style={{ backgroundColor: formData.category===cat.name ? cat.color : '#1e1e2e', border:`1px solid ${formData.category===cat.name ? cat.color : '#334155'}`, color:'#f1f5f9', padding:'8px 4px', borderRadius:'8px', cursor:'pointer', fontSize:'11px', fontWeight:'600' }}>
+                  <button key={cat.name} onClick={() => setFormData({ ...formData, category: cat.name })} style={{ backgroundColor: formData.category===cat.name ? cat.color : '#1e1e2e', border:`1px solid ${formData.category===cat.name ? cat.color : 'var(--border)'}`, color:'#f1f5f9', padding:'8px 4px', borderRadius:'8px', cursor:'pointer', fontSize:'11px', fontWeight:'600' }}>
                     {cat.emoji} {cat.name}
                   </button>
                 ))}
@@ -212,7 +212,7 @@ export default function Documents() {
               {/* File upload */}
               <div
                 onClick={() => fileRef.current.click()}
-                style={{ border:'2px dashed #334155', borderRadius:'8px', padding:'1.2rem', textAlign:'center', cursor:'pointer', marginBottom:'12px', color: file ? '#10b981' : '#475569', fontSize:'13px' }}
+                style={{ border:'2px dashed var(--border)', borderRadius:'8px', padding:'1.2rem', textAlign:'center', cursor:'pointer', marginBottom:'12px', color: file ? '#10b981' : '#475569', fontSize:'13px' }}
               >
                 {file ? `✓ ${file.name} (${fmt(file.size)})` : '📎 Attach file (PDF, image — optional, max 50MB)'}
               </div>
@@ -233,7 +233,7 @@ export default function Documents() {
                 <button onClick={handleAddDocument} disabled={saving || uploading} style={{ flex:1, backgroundColor:'#6366f1', color:'#fff', border:'none', padding:'10px', borderRadius:'8px', fontSize:'13px', fontWeight:'600', cursor:'pointer', opacity: saving||uploading ? 0.6 : 1 }}>
                   {saving ? 'Saving…' : '💾 Save Document'}
                 </button>
-                <button onClick={() => { setShowForm(false); setFile(null); setErr(''); }} style={{ flex:1, backgroundColor:'var(--surface)', color:'#94a3b8', border:'1px solid #334155', padding:'10px', borderRadius:'8px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
+                <button onClick={() => { setShowForm(false); setFile(null); setErr(''); }} style={{ flex:1, backgroundColor:'var(--surface)', color:'#94a3b8', border:'1px solid var(--border)', padding:'10px', borderRadius:'8px', fontSize:'13px', fontWeight:'600', cursor:'pointer' }}>
                   Cancel
                 </button>
               </div>

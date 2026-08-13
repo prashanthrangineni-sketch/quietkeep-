@@ -239,7 +239,7 @@ export default function StockTracker({ supabase, userId }) {
 
       {/* Holdings list */}
       {holdings.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '32px 20px', color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>
+        <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
           No assets tracked yet. Add stocks, property, debts and more.
         </div>

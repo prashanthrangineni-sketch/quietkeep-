@@ -207,7 +207,7 @@ Return ONLY valid JSON matching this structure exactly:
   const budgetSpent  = expenses.reduce((s,e) => s + (parseFloat(e.amount)||0), 0);
 
   const inp = {
-    width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)',
+    width:'100%', background:'var(--surface)', border:'1px solid var(--border)',
     borderRadius:10, padding:'10px 12px', color:'#f1f5f9', fontSize:14,
     outline:'none', boxSizing:'border-box', fontFamily:'inherit',
   };

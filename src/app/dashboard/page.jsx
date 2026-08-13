@@ -881,7 +881,7 @@ export default function Dashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                 {followUpData.contacts.map((c) => (
                   <button key={c.id} onClick={() => { if (c.phone) window.location.href = `tel:${c.phone}`; setFollowUpData(null); }}
-                    style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e2e8f0', fontSize: 13, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'inherit' }}>
+                    style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e2e8f0', fontSize: 13, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'inherit' }}>
                     <span>{c.name}{c.relation ? ` (${c.relation})` : ''}</span>
                     <span style={{ color: '#22c55e', fontWeight: 600 }}>{c.phone || 'no phone'}</span>
                   </button>
@@ -1138,7 +1138,7 @@ export default function Dashboard() {
                   <div key={cat} style={{ marginBottom: 6 }}>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{cat}</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {cmds.map(cmd => <button key={cmd} onClick={() => { setContent(cmd); setShowVoiceHelp(false); textareaRef.current?.focus(); }} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 99, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontFamily: 'inherit' }}>{cmd}</button>)}
+                      {cmds.map(cmd => <button key={cmd} onClick={() => { setContent(cmd); setShowVoiceHelp(false); textareaRef.current?.focus(); }} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 99, cursor: 'pointer', background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontFamily: 'inherit' }}>{cmd}</button>)}
                     </div>
                   </div>
                 ))}
@@ -1174,7 +1174,7 @@ export default function Dashboard() {
                 <label style={{ fontSize: 11, color: 'var(--text-subtle)', display: 'block', marginBottom: 8 }}>How to remind you?</label>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {[{ value: 'app', label: 'App' }, { value: 'alarm', label: 'Alarm' }, { value: 'whatsapp', label: 'WhatsApp' }, { value: 'email', label: 'Email' }].map(opt => (
-                    <button key={opt.value} onClick={() => setReminderType(opt.value)} className="qk-btn qk-btn-sm" style={{ background: reminderType === opt.value ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${reminderType === opt.value ? 'rgba(99,102,241,0.4)' : 'var(--border)'}`, color: reminderType === opt.value ? '#a5b4fc' : '#64748b' }}>{opt.label}</button>
+                    <button key={opt.value} onClick={() => setReminderType(opt.value)} className="qk-btn qk-btn-sm" style={{ background: reminderType === opt.value ? 'rgba(99,102,241,0.15)' : 'var(--surface)', border: `1px solid ${reminderType === opt.value ? 'rgba(99,102,241,0.4)' : 'var(--border)'}`, color: reminderType === opt.value ? '#a5b4fc' : '#64748b' }}>{opt.label}</button>
                   ))}
                 </div>
                 {reminderType === 'whatsapp' && <div style={{ marginTop: 8, fontSize: 11, color: '#f59e0b', padding: '6px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 6, border: '1px solid rgba(245,158,11,0.2)' }}>WhatsApp reminder opens a draft at reminder time. You tap Send.</div>}
@@ -1252,7 +1252,7 @@ export default function Dashboard() {
               <button onClick={toggleAutomationPause} style={{ flex: 1, padding: '8px 12px', borderRadius: 9, border: automationPaused ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(99,102,241,0.2)', background: automationPaused ? 'rgba(239,68,68,0.12)' : 'rgba(99,102,241,0.1)', color: automationPaused ? '#f87171' : '#a5b4fc', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                 {automationPaused ? '▶ Resume automation' : '⏸ Pause automation'}
               </button>
-              <button onClick={async () => { await loadAutoHistory(); setShowReviewPanel(true); }} style={{ padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>📋 Review</button>
+              <button onClick={async () => { await loadAutoHistory(); setShowReviewPanel(true); }} style={{ padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>📋 Review</button>
             </div>
           )}
 

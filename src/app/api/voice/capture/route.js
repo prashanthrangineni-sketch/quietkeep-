@@ -146,6 +146,7 @@ export async function POST(request) {
       ((parsed.type === 'reminder' || parsed.type === 'task') && !reminderAt)
 
     if (needsBrain) {
+    llmStartedAt = Date.now()
     llmAssist = await aariaUnderstandLLM(text, {
       language,
       nowISO: new Date().toISOString(),

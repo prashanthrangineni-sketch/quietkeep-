@@ -894,7 +894,7 @@ export default function Dashboard() {
                 📞 Call {followUpData.contact.name} Now
               </button>
             )}
-            <button onClick={() => setFollowUpData(null)} style={{ width: '100%', padding: '10px', background: 'transparent', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Got it, dismiss</button>
+            <button onClick={() => setFollowUpData(null)} style={{ width: '100%', padding: '10px', background: 'transparent', color: '#64748b', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Got it, dismiss</button>
           </div>
         </div>
       )}
@@ -916,7 +916,7 @@ export default function Dashboard() {
                 ✓ Yes, that's right
               </button>
               <button onClick={() => setClarificationData(null)}
-                style={{ flex: 1, padding: '11px 0', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: '#64748b', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ flex: 1, padding: '11px 0', background: 'transparent', border: '1px solid var(--border)', borderRadius: 10, color: '#64748b', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Got it
               </button>
             </div>
@@ -945,7 +945,7 @@ export default function Dashboard() {
                   <span>Confidence</span>
                   <span style={{ color: whyPanel.score >= 0.8 ? '#6ee7b7' : whyPanel.score >= 0.6 ? '#fbbf24' : '#94a3b8', fontWeight: 700 }}>{Math.round(whyPanel.score * 100)}%</span>
                 </div>
-                <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                <div style={{ height: 5, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
                   <div style={{ height: '100%', borderRadius: 3, width: `${Math.round(whyPanel.score * 100)}%`, background: whyPanel.score >= 0.8 ? '#6ee7b7' : whyPanel.score >= 0.6 ? '#fbbf24' : '#94a3b8', transition: 'width 0.4s ease' }} />
                 </div>
               </div>
@@ -1174,7 +1174,7 @@ export default function Dashboard() {
                 <label style={{ fontSize: 11, color: 'var(--text-subtle)', display: 'block', marginBottom: 8 }}>How to remind you?</label>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {[{ value: 'app', label: 'App' }, { value: 'alarm', label: 'Alarm' }, { value: 'whatsapp', label: 'WhatsApp' }, { value: 'email', label: 'Email' }].map(opt => (
-                    <button key={opt.value} onClick={() => setReminderType(opt.value)} className="qk-btn qk-btn-sm" style={{ background: reminderType === opt.value ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${reminderType === opt.value ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`, color: reminderType === opt.value ? '#a5b4fc' : '#64748b' }}>{opt.label}</button>
+                    <button key={opt.value} onClick={() => setReminderType(opt.value)} className="qk-btn qk-btn-sm" style={{ background: reminderType === opt.value ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${reminderType === opt.value ? 'rgba(99,102,241,0.4)' : 'var(--border)'}`, color: reminderType === opt.value ? '#a5b4fc' : '#64748b' }}>{opt.label}</button>
                   ))}
                 </div>
                 {reminderType === 'whatsapp' && <div style={{ marginTop: 8, fontSize: 11, color: '#f59e0b', padding: '6px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 6, border: '1px solid rgba(245,158,11,0.2)' }}>WhatsApp reminder opens a draft at reminder time. You tap Send.</div>}
@@ -1252,7 +1252,7 @@ export default function Dashboard() {
               <button onClick={toggleAutomationPause} style={{ flex: 1, padding: '8px 12px', borderRadius: 9, border: automationPaused ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(99,102,241,0.2)', background: automationPaused ? 'rgba(239,68,68,0.12)' : 'rgba(99,102,241,0.1)', color: automationPaused ? '#f87171' : '#a5b4fc', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                 {automationPaused ? '▶ Resume automation' : '⏸ Pause automation'}
               </button>
-              <button onClick={async () => { await loadAutoHistory(); setShowReviewPanel(true); }} style={{ padding: '8px 12px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>📋 Review</button>
+              <button onClick={async () => { await loadAutoHistory(); setShowReviewPanel(true); }} style={{ padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>📋 Review</button>
             </div>
           )}
 
@@ -1265,7 +1265,7 @@ export default function Dashboard() {
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4, marginBottom: 3 }}>⚡ {s.message}</div>
                     {s.why_text && <div style={{ fontSize: 11, color: 'var(--text-subtle)', lineHeight: 1.4, marginBottom: 5 }}>{s.why_text}</div>}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <div style={{ width: 48, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><div style={{ height: '100%', width: `${Math.round(s.score * 100)}%`, background: '#fbbf24', borderRadius: 2 }} /></div>
+                      <div style={{ width: 48, height: 3, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}><div style={{ height: '100%', width: `${Math.round(s.score * 100)}%`, background: '#fbbf24', borderRadius: 2 }} /></div>
                       <span style={{ fontSize: 10, color: '#fbbf24', fontWeight: 700 }}>{Math.round(s.score * 100)}%</span>
                     </div>
                   </div>
@@ -1289,7 +1289,7 @@ export default function Dashboard() {
                     {s.prediction_reason && <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 3, lineHeight: 1.4 }}>{s.prediction_reason}</div>}
                     {s.prediction_conf && (
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 6 }}>
-                        <div style={{ width: 60, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                        <div style={{ width: 60, height: 3, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
                           <div style={{ height: '100%', borderRadius: 2, width: s.prediction_conf === 'high' ? '80%' : s.prediction_conf === 'medium' ? '55%' : '30%', background: s.prediction_conf === 'high' ? '#6ee7b7' : s.prediction_conf === 'medium' ? '#fbbf24' : '#94a3b8' }} />
                         </div>
                         <span style={{ fontSize: 9, fontWeight: 700, color: s.prediction_conf === 'high' ? '#6ee7b7' : s.prediction_conf === 'medium' ? '#fbbf24' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.prediction_conf}</span>
@@ -1298,7 +1298,7 @@ export default function Dashboard() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
                     <button onClick={async () => { const intentType = s.action_hint?.replace(/^(contact:|predicted:)/, '') || s.intentType; const contactName = s.action_hint?.startsWith('contact:') ? s.action_hint.replace('contact:', '') : null; if (contactName) setContent(`call ${contactName}`); else setContent(s.label || ''); setTimeout(() => textareaRef.current?.focus(), 50); await safeFetch('/api/suggestions/feedback', { method: 'POST', body: JSON.stringify({ intent_type: intentType, outcome: 'acted', contact_name: contactName }), token: accessToken }).catch(() => {}); setPredictedCards(prev => prev.filter((_, j) => j !== i)); }} style={{ padding: '5px 11px', borderRadius: 8, border: 'none', background: 'rgba(139,92,246,0.18)', color: '#c4b5fd', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>👍 Yes</button>
-                    <button onClick={async () => { const intentType = s.action_hint?.replace(/^(contact:|predicted:)/, '') || s.intentType; const contactName = s.action_hint?.startsWith('contact:') ? s.action_hint.replace('contact:', '') : null; await safeFetch('/api/suggestions/feedback', { method: 'POST', body: JSON.stringify({ intent_type: intentType, outcome: 'ignored', contact_name: contactName }), token: accessToken }).catch(() => {}); setPredictedCards(prev => prev.filter((_, j) => j !== i)); }} style={{ padding: '5px 11px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>👎 No</button>
+                    <button onClick={async () => { const intentType = s.action_hint?.replace(/^(contact:|predicted:)/, '') || s.intentType; const contactName = s.action_hint?.startsWith('contact:') ? s.action_hint.replace('contact:', '') : null; await safeFetch('/api/suggestions/feedback', { method: 'POST', body: JSON.stringify({ intent_type: intentType, outcome: 'ignored', contact_name: contactName }), token: accessToken }).catch(() => {}); setPredictedCards(prev => prev.filter((_, j) => j !== i)); }} style={{ padding: '5px 11px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-subtle)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>👎 No</button>
                   </div>
                 </div>
               ))}

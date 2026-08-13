@@ -176,7 +176,7 @@ export default function KidsPage() {
   );
 
   return (
-    <div style={{ minHeight:'100vh', background:'var(--bg)', color:'#fff', fontFamily:'system-ui,sans-serif' }}>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', color:'var(--text)', fontFamily:'system-ui,sans-serif' }}>
       {showPinSetup && (
         <PinSetupModal
           onSave={(pin) => { setKidsLock(true); setKidsMode(true); setShowPinSetup(false); }}

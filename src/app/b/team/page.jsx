@@ -352,13 +352,26 @@ export default function TeamPage() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                       <div style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>{m.name}</div>
-                      <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999,
-                        background:`${ROLE_COLOR[m.role]||'#64748b'}20`,
-                        color:ROLE_COLOR[m.role]||'#64748b',
-                        border:`1px solid ${ROLE_COLOR[m.role]||'#64748b'}30`,
-                        textTransform:'uppercase', letterSpacing:'0.06em' }}>
-                        {m.role}
-                      </span>
+                      <div style={{ display:'flex', gap:5, flexShrink:0 }}>
+                        {/* No user_id means nobody has signed in as this person
+                            yet. Eight rows sat in exactly this state for months
+                            with nothing on screen to say so. */}
+                        {!m.user_id && (
+                          <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999,
+                            background:'rgba(245,158,11,0.15)', color:'#b45309',
+                            border:'1px solid rgba(245,158,11,0.35)',
+                            textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
+                            Not signed in
+                          </span>
+                        )}
+                        <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999,
+                          background:`${ROLE_COLOR[m.role]||'#64748b'}20`,
+                          color:ROLE_COLOR[m.role]||'#64748b',
+                          border:`1px solid ${ROLE_COLOR[m.role]||'#64748b'}30`,
+                          textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                          {m.role}
+                        </span>
+                      </div>
                     </div>
                     {m.designation && (
                       <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:1 }}>{m.designation}</div>

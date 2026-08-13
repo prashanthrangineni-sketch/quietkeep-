@@ -225,7 +225,7 @@ export default function BizLoginPage() {
     width: '100%', background: 'rgba(255,255,255,0.06)',
     border: '1.5px solid rgba(255,255,255,0.1)',
     borderRadius: 12, padding: '14px 16px',
-    color: '#f1f5f9', fontSize: 15, outline: 'none',
+    color: 'var(--text)', fontSize: 15, outline: 'none',
     boxSizing: 'border-box', fontFamily: 'inherit',
   };
 
@@ -314,7 +314,7 @@ export default function BizLoginPage() {
               🏢 Built for Indian SMBs
             </div>
 
-            <h1 style={{ fontSize: 24, fontWeight: 900, color: '#f1f5f9', margin: '0 0 10px', lineHeight: 1.15 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)', margin: '0 0 10px', lineHeight: 1.15 }}>
               Run your business<br />
               <span style={{ background: `linear-gradient(135deg,${G},#34d399)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 by voice.
@@ -355,7 +355,7 @@ export default function BizLoginPage() {
             <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '3px 12px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
               🏢 Business Mobile OTP
             </div>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>Business Sign In</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>Business Sign In</h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>
               Enter your mobile number to receive a 6-digit SMS OTP.
             </p>
@@ -364,7 +364,7 @@ export default function BizLoginPage() {
                 Mobile Number
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ background: 'rgba(255,255,255,0.08)', border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '14px 14px', fontSize: 15, fontWeight: 700, color: '#f1f5f9', display: 'flex', alignItems: 'center' }}>
+                <div style={{ background: 'rgba(255,255,255,0.08)', border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '14px 14px', fontSize: 15, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center' }}>
                   +91
                 </div>
                 <input
@@ -398,7 +398,7 @@ export default function BizLoginPage() {
         {step === 'phone_otp' && (
           <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)', textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 10 }}>💬</div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>Enter SMS OTP</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>Enter SMS OTP</h1>
             <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 6px' }}>
               Sent to <strong style={{ color: G }}>+91 {phone}</strong>
             </p>
@@ -418,7 +418,7 @@ export default function BizLoginPage() {
                     width: 44, height: 54, textAlign: 'center',
                     background: v ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)',
                     border: `1.5px solid ${v ? G : 'rgba(255,255,255,0.12)'}`,
-                    borderRadius: 10, color: '#f1f5f9', fontSize: 22,
+                    borderRadius: 10, color: 'var(--text)', fontSize: 22,
                     fontWeight: 700, outline: 'none', fontFamily: 'inherit',
                   }}
                 />
@@ -445,7 +445,7 @@ export default function BizLoginPage() {
         {step === 'sent' && (
           <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '40px 28px', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', margin: '0 0 10px' }}>Check your email</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 10px' }}>Check your email</h2>
             <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>
               We sent a sign-in link to <strong style={{ color: G }}>{email}</strong>.<br />
               Click the link to open your business workspace.
@@ -463,7 +463,7 @@ export default function BizLoginPage() {
             <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '3px 12px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
               🏢 Business Workspace
             </div>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: '#f1f5f9', margin: '0 0 6px' }}>Email Sign In</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>Email Sign In</h1>
             <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>
               Enter your email to access your business workspace.
             </p>
@@ -499,7 +499,7 @@ export default function BizLoginPage() {
         {/* Beta Password step */}
         {step === 'otp' && (
           <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9', margin: '0 0 4px' }}>Beta Access Code</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Beta Access Code</h1>
             <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 24px' }}>
               {email}
             </p>
@@ -521,7 +521,7 @@ export default function BizLoginPage() {
                     width: 36, height: 44, textAlign: 'center',
                     background: 'rgba(255,255,255,0.08)',
                     border: `1.5px solid ${v ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.12)'}`,
-                    borderRadius: 8, color: '#f1f5f9', fontSize: 18,
+                    borderRadius: 8, color: 'var(--text)', fontSize: 18,
                     fontWeight: 700, outline: 'none', fontFamily: 'inherit',
                   }}
                 />

@@ -219,7 +219,7 @@ export default function EmergencyPage() {
   return (
     <>
       <NavbarClient />
-      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#f0f0f5', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-muted)', fontFamily: "'DM Sans', -apple-system, sans-serif", paddingBottom: '80px', paddingTop: '96px' }}>
 
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg, #1a0a0a 0%, var(--bg) 100%)', borderBottom: '1px solid rgba(255,80,80,0.2)', padding: '20px 16px 16px' }}>
@@ -227,7 +227,7 @@ export default function EmergencyPage() {
           <span style={{ fontSize: '22px' }}>🆘</span>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Emergency Contacts</h1>
         </div>
-        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.45)' }}>
+        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
           Share your live location instantly in emergencies
         </p>
       </div>

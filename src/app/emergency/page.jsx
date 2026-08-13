@@ -332,7 +332,7 @@ export default function EmergencyPage() {
               onClick={getLocation}
               style={{
                 marginTop: '12px', padding: '9px 20px',
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                background: 'var(--surface)', border: '1px solid var(--border)',
                 borderRadius: '8px', color: 'rgba(255,255,255,0.7)', fontSize: '13px',
                 cursor: 'pointer'
               }}
@@ -345,8 +345,8 @@ export default function EmergencyPage() {
               onClick={getLocation}
               style={{
                 marginTop: '10px', padding: '7px 16px',
-                background: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: '8px', color: 'rgba(255,255,255,0.5)', fontSize: '12px',
+                background: 'transparent', border: '1px solid var(--border)',
+                borderRadius: '8px', color: 'var(--text-muted)', fontSize: '12px',
                 cursor: 'pointer'
               }}
             >

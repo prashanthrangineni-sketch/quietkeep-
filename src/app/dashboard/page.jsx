@@ -253,7 +253,7 @@ function IntentCard({ intent, onUpdateState, onDelete, onEdit, onFeedback, acces
             <span style={{ fontSize: 10, color: color, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', background: color + '18', padding: '2px 7px', borderRadius: 999, border: `1px solid ${color}30` }}>
               {intent.status}
             </span>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>{intent.intent_type}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-subtle)' }}>{intent.intent_type}</span>
             {intent.loop_state && intent.loop_state !== 'closed' && intent.status !== 'closed' && (
               <span style={{ fontSize: 10, fontWeight: 700, color: intent.loop_state === 'abandoned' ? '#ef4444' : intent.stale_at && new Date(intent.stale_at) < new Date() ? '#f59e0b' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {intent.stale_at && new Date(intent.stale_at) < new Date() ? '⚠ stale' : intent.loop_state}
@@ -264,7 +264,7 @@ function IntentCard({ intent, onUpdateState, onDelete, onEdit, onFeedback, acces
                 ⏰ {new Date(intent.reminder_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.15)' }}>
+            <span style={{ fontSize: 10, color: 'var(--text-subtle)' }}>
               {new Date(intent.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
             </span>
           </div>

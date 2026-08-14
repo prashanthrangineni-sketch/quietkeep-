@@ -254,6 +254,7 @@ export default function VoiceCapture({
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) return
 
+    claimMic()
     startMediaRecorder()
 
     const recognition = new SR()

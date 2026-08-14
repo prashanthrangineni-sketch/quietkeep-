@@ -205,6 +205,39 @@ export default function VoiceSettings() {
           {!wakeModes.includes('counter') && (
             <p style={hint}>Always-on “Aaria” (works with the screen locked) is available in the Android app.</p>
           )}
+
+          {/* Browser wake word — the propped-up counter phone.
+              Kept separate from the modes above because it is a genuinely
+              different promise: it works only while this tab is open and in
+              front. Saying otherwise is the dishonesty wake-word-engine.js was
+              written to remove, so the copy here states the limit plainly. */}
+          {webWakePossible && (
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+              gap:12, marginTop:14, paddingTop:14, borderTop:'1px solid rgba(0,0,0,.08)' }}>
+              <div style={{ minWidth:0 }}>
+                <b style={{ fontSize:14 }}>Listen for “Aaria” in this tab</b>
+                <small style={{ display:'block', color:'#64748b', fontSize:12, lineHeight:1.5 }}>
+                  For a phone or tablet propped up while you work. The microphone
+                  stays open while this tab is open and in front — and only then.
+                  It stops the moment you switch tabs or lock the screen.
+                </small>
+              </div>
+              <button
+                aria-label="Toggle browser wake word"
+                onClick={() => {
+                  const next = !webWake;
+                  setWebWake(next);
+                  try { setWebHotwordEnabled(next); } catch {}
+                  // The listener is created once, in AariaProvider, from this
+                  // stored value. Reload so it picks the change up rather than
+                  // leaving a half-applied state the user cannot see.
+                  setTimeout(() => window.location.reload(), 250);
+                }}
+                style={{ ...toggle, background: webWake ? P : '#cbd5e1', flexShrink:0 }}>
+                <span style={{ ...knob, transform: webWake ? 'translateX(20px)' : 'translateX(0)' }} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Voice input */}

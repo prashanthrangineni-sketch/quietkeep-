@@ -42,6 +42,7 @@ export default function VoiceSettings() {
         const d = await r.json(); if (r.ok) setPrefs(d);
       } catch {}
       try { setWakeModes(availableWakeModes()); setWake(getWakeMode()); } catch {}
+      try { setWebWakePossible(isHotwordSupported()); setWebWake(isWebHotwordEnabled()); } catch {}
     })();
   }, [accessToken]);
 

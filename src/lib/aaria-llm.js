@@ -207,6 +207,7 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       nowISO: opts.nowISO || new Date().toISOString(),
       timezone: opts.timezone || 'Asia/Kolkata',
       workspaceMode: opts.workspaceMode || 'personal',
+      pageLabel: opts.pageLabel || null,
     });
 
     const res = await fetch(SARVAM_CHAT_URL, {

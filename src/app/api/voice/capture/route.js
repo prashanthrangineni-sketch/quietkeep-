@@ -158,6 +158,11 @@ export async function POST(request) {
       nowISO: new Date().toISOString(),
       timezone: 'Asia/Kolkata',
       workspaceMode: workspace_id ? 'business' : 'personal',
+      // Trimmed hard: this goes into a prompt, and an unbounded client string
+      // in a prompt is how injection gets in. A screen label is never long.
+      pageLabel: typeof page_context?.label === 'string'
+        ? page_context.label.replace(/[^\w &/-]/g, '').slice(0, 40)
+        : null,
     }).catch(() => null)
   }
 

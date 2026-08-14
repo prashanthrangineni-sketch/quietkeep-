@@ -315,6 +315,7 @@ export default function VoiceCapture({
     stopMediaRecorder()
     setIsListening(false)
     setInterim('')
+    releaseMic()
   }, [stopMediaRecorder])
 
   // ── Submit ────────────────────────────────────────────────────────────

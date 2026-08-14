@@ -25,6 +25,8 @@ export default function VoiceSettings() {
   const [msg, setMsg] = useState('');
   const [wakeModes, setWakeModes] = useState(['manual']);
   const [wake, setWake] = useState('manual');
+  const [webWake, setWebWake] = useState(false);
+  const [webWakePossible, setWebWakePossible] = useState(false);
 
   // recording state
   const [consent, setConsent] = useState(false);

@@ -5,6 +5,11 @@ import { getMessages } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import { LanguageProvider } from '@/lib/context/language';
 import { AuthProvider } from '@/lib/context/auth';
+// Aaria lives here, at the root, so she is present on every screen by
+// construction. Before this she was imported by src/app/dashboard/page.jsx and
+// nowhere else — the assistant existed on one page out of eighty.
+import { AariaProvider } from '@/lib/context/aaria';
+import AariaDock from '@/components/AariaDock';
 import './globals.css';
 import './design-refinements.css';
 

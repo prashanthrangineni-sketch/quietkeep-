@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/auth';
 import { availableWakeModes, getWakeMode, setWakeMode } from '@/lib/wake-word-engine';
+import { isWebHotwordEnabled, setWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 
 const P = '#6366f1';
 const LANGS = [

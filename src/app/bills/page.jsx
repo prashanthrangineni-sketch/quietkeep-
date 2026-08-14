@@ -49,7 +49,7 @@ export default function BillsPage() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     loadBills(user?.id);
-  }, [user]);
+  }, [user, authLoading]);
 
   async function loadBills(uid) {
     const { data } = await supabase.from('bill_reminders').select('*').eq('user_id',uid).eq('is_active',true).order('created_at',{ ascending:false });

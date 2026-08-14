@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 // src/app/b/compliance/page.jsx — GST, IT, licences, renewals compliance tracker
 
@@ -53,12 +54,12 @@ export default function CompliancePage() {
     if (authLoading) return;
     if (!user) { router.replace('/biz-login'); return; }
     initPage();
-  }, [user]);
+  }, [user, authLoading]);
 
   async function initPage() {
     setLoadError('');
     try {
-      const { data: ws } = await supabase.from('business_workspaces').select('id,business_type,gstin').eq('owner_user_id', user?.id).maybeSingle();
+      const ws = await resolveWorkspace(supabase, user?.id, 'id,business_type,gstin');
       if (ws) { setWorkspace(ws); await loadData(ws.id); } else { setLoading(false); }
     } catch { setLoadError('Could not load data. Check your connection.'); setLoading(false); }
   }

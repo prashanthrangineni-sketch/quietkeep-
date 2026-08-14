@@ -44,11 +44,18 @@ export default function Documents() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     (async () => {
-            const { data } = await supabase.from('documents').select('*').eq('user_id', user?.id).order('created_at', { ascending: false });
-            setDocuments(data || []);
-            setLoading(false);
+      // The error used to be discarded, so a failed read was indistinguishable
+      // from "you have no documents" -- silent, and wrong.
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+      if (error) setErr(error.message);
+      setDocuments(data || []);
+      setLoading(false);
     })();
-  }, [user]);
+  }, [user, authLoading]);
 
   const getDaysUntilExpiry = (expiryDate) => {
     if (!expiryDate) return null;
@@ -68,8 +75,17 @@ export default function Documents() {
       const { error: upErr } = await supabase.storage.from('documents').upload(path, file, { cacheControl:'3600', upsert:false });
       if (upErr) { setErr(upErr.message); setSaving(false); setUploading(false); return; }
       setUploadPct(70);
-      const { data: signed } = await supabase.storage.from('documents').createSignedUrl(path, 60*60*24*365*5);
-      file_url = signed?.signedUrl || path;
+      // A signed URL is what the "Open" link uses. If signing fails we used to
+      // fall back to the raw storage path, which renders as a dead link the
+      // user only discovers later -- fail here instead, the upload is already
+      // safe in the bucket.
+      const { data: signed, error: signErr } = await supabase.storage
+        .from('documents').createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr || !signed?.signedUrl) {
+        setErr(signErr?.message || 'Uploaded, but could not create a link to the file.');
+        setSaving(false); setUploading(false); return;
+      }
+      file_url = signed.signedUrl;
       file_name = file.name; file_size = file.size; file_type = file.type;
       setUploadPct(90); setUploading(false);
     }
@@ -107,18 +123,22 @@ export default function Documents() {
     setAiLoading(p => ({ ...p, [doc.id]: true }));
     setAiResult(p => ({ ...p, [doc.id]: null }));
     try {
-      // auth from useAuth context
-            const { data: res, error: resErr } = await apiPost('/api/keep-assist', {
+      // The access token was never passed, so /api/keep-assist returned 401 on
+      // every call. safeFetch then yields data:null, `data.error` threw a
+      // TypeError, and the catch below reported a missing ANTHROPIC_API_KEY --
+      // a message that sent anyone debugging this to the wrong place entirely.
+      const { data: res, error: resErr } = await apiPost('/api/keep-assist', {
           content: `Document: ${doc.name}, Category: ${doc.category}${doc.expiry_date ? `, Expiry: ${doc.expiry_date}` : ''}`,
           intent_type: 'document',
           action: 'suggest',
-        });
-      const data = res;
-      if (data.error) throw new Error(data.error);
-      const result = Array.isArray(data.result) ? data.result : [data.result];
+        }, accessToken);
+      if (resErr) throw new Error(resErr.message || String(resErr));
+      if (!res) throw new Error('No response from the assistant.');
+      if (res.error) throw new Error(res.error);
+      const result = Array.isArray(res.result) ? res.result : [res.result];
       setAiResult(p => ({ ...p, [doc.id]: result }));
     } catch (e) {
-      setAiResult(p => ({ ...p, [doc.id]: ['AI analysis unavailable — check ANTHROPIC_API_KEY'] }));
+      setAiResult(p => ({ ...p, [doc.id]: [`AI analysis unavailable — ${e.message}`] }));
     }
     setAiLoading(p => ({ ...p, [doc.id]: false }));
   }

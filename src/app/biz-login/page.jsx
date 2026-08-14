@@ -6,6 +6,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { supabase as _supabaseSingleton } from '@/lib/supabase';
+import { routeAfterBusinessLogin } from '@/lib/biz-after-login';
 
 const BETA_OTP_LEN = 8;
 const SMS_OTP_LEN = 6;
@@ -14,6 +15,19 @@ const G2 = '#059669';
 
 function getClient() {
   return _supabaseSingleton;
+}
+
+/**
+ * The destination middleware asked for, if any. Without this an invite link
+ * (/b/join?token=...) is lost the moment the invitee is bounced to sign in.
+ */
+function pendingNext() {
+  if (typeof window === 'undefined') return '/b/dashboard';
+  const n = new URLSearchParams(window.location.search).get('next');
+  if (!n) return '/b/dashboard';
+  let v = n;
+  try { v = decodeURIComponent(n); } catch { /* use as-is */ }
+  return (v.startsWith('/') && !v.startsWith('//')) ? v : '/b/dashboard';
 }
 
 function setBusinessMode() {
@@ -116,18 +130,10 @@ export default function BizLoginPage() {
 
       setBusinessMode();
 
-      const userId = data.session?.user?.id;
-      const { data: profile } = userId ? await getClient()
-        .from('profiles')
-        .select('business_name, business_onboarding_done')
-        .eq('user_id', userId)
-        .maybeSingle() : { data: null };
-
-      if (!profile || !profile.business_name || !profile.business_onboarding_done) {
-        window.location.href = '/b/onboarding';
-      } else {
-        window.location.href = '/b/dashboard';
-      }
+      // Claim any staff row the employer already created for this phone, then
+      // decide. A staff member sent to /b/onboarding is handed their own empty
+      // workspace instead of their employer's.
+      window.location.href = await routeAfterBusinessLogin(getClient(), data.session);
     } catch (err) {
       setLoading(false);
       setError(err?.message || 'Verification failed. Try again.');
@@ -173,7 +179,7 @@ export default function BizLoginPage() {
     const sb = getClient();
     const { error: err } = await sb.auth.signInWithOtp({
       email: emailAddr,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/b/dashboard` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(pendingNext())}` },
     });
     setLoading(false);
     if (err) { setError(err.message || 'Failed to send link.'); return; }
@@ -218,7 +224,10 @@ export default function BizLoginPage() {
     }
     setLoading(false);
     setBusinessMode();
-    window.location.href = '/b/dashboard';
+    {
+      const { data: { session } } = await getClient().auth.getSession();
+      window.location.href = await routeAfterBusinessLogin(getClient(), session);
+    }
   }
 
   const inp = {
@@ -242,7 +251,7 @@ export default function BizLoginPage() {
       if (!isNativeApp) {
         const { error: oauthErr } = await getClient().auth.signInWithOAuth({
           provider: 'google',
-          options: { redirectTo: `${window.location.origin}/auth/callback?next=/b/dashboard` },
+          options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(pendingNext())}` },
         });
         if (oauthErr) {
           setError(oauthErr.message || 'Google sign-in is not available right now.');
@@ -270,7 +279,10 @@ export default function BizLoginPage() {
           return;
         }
         setBusinessMode();
-        window.location.href = '/b/dashboard';
+        {
+          const { data: { session } } = await getClient().auth.getSession();
+          window.location.href = await routeAfterBusinessLogin(getClient(), session);
+        }
       } else {
         setError('Could not retrieve Google ID token.');
       }

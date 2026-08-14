@@ -1,5 +1,6 @@
 'use client';
 import { apiGet } from '@/lib/safeFetch';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 /**
  * src/app/b/chat/page.jsx
@@ -50,9 +51,7 @@ export default function BizChatPage() {
     if (authLoading) return; // wait for auth context to resolve
     if (!user) return;
     (async () => {
-      const { data: ws } = await supabase
-        .from('business_workspaces').select('id,name')
-        .eq('owner_user_id', user?.id).maybeSingle();
+      const ws = await resolveWorkspace(supabase, user?.id, 'id,name');
       if (ws) {
         setWorkspace(ws);
         await loadRooms(ws.id);
@@ -64,7 +63,7 @@ export default function BizChatPage() {
       setLoading(false);
     })();
     return () => { channelRef.current?.unsubscribe(); };
-  }, [user]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

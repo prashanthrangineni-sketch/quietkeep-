@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 /**
  * src/app/b/team/page.jsx
@@ -38,6 +39,8 @@ export default function TeamPage() {
   const [saving, setSaving]         = useState(false);
   const [deleting, setDeleting]     = useState(null);
   const [msg, setMsg]               = useState('');
+  const [inviteUrl, setInviteUrl]   = useState('');
+  const [inviteName, setInviteName] = useState('');
   const [filter, setFilter]         = useState('active');
   // Tasks
   const [tasks, setTasks]           = useState([]);
@@ -53,14 +56,12 @@ export default function TeamPage() {
     if (authLoading) return;
     if (!user) { router.replace('/biz-login'); return; }
     initPage();
-  }, [user]);
+  }, [user, authLoading]);
 
   async function initPage() {
     setLoadError('');
     try {
-      const { data: ws } = await supabase
-        .from('business_workspaces').select('id,name')
-        .eq('owner_user_id', user?.id).maybeSingle();
+      const ws = await resolveWorkspace(supabase, user?.id, 'id,name');
       if (ws) { setWorkspace(ws); await loadMembers(ws.id); loadTasks(ws.id); } else { setLoading(false); }
     } catch { setLoadError('Could not load data. Check your connection.'); setLoading(false); }
   }
@@ -111,6 +112,12 @@ export default function TeamPage() {
     setShowForm(true);
   }
 
+  async function copyInvite() {
+    try { await navigator.clipboard.writeText(inviteUrl); setMsg('Invite link copied ✓'); }
+    catch { setMsg('Copy failed — select the link and copy it manually.'); }
+    setTimeout(() => setMsg(''), 3000);
+  }
+
   async function saveMember() {
     if (!form.name.trim() || !workspace) return;
     setSaving(true); setMsg('');
@@ -126,11 +133,28 @@ export default function TeamPage() {
       emergency_contact: form.emergency_contact.trim()||null,
       status: form.status,
     };
-    await fetch('/api/business/team', {
+    const res = await fetch('/api/business/team', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify(editMember ? { ...p, id: editMember.id } : p),
     });
+    const out = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      // This used to be fire-and-forget: a rejected save still said "added".
+      setMsg(out.error ? `Could not save: ${out.error}` : 'Could not save this member.');
+      setSaving(false);
+      setTimeout(() => setMsg(''), 6000);
+      return;
+    }
+
+    // Adding a member creates a record, not a login. Surface the invite link so
+    // the owner can actually send it -- without this the person stays a row in
+    // a table and can never sign in to see their own shift or payslip.
+    if (!editMember && out.invite_url) {
+      setInviteUrl(out.invite_url);
+      setInviteName(p.name);
+    }
     setMsg(editMember ? 'Member updated ✓' : 'Member added ✓');
     setSaving(false); setShowForm(false);
     loadMembers(workspace.id);
@@ -176,7 +200,12 @@ export default function TeamPage() {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t));
   }
 
-  const filtered = members.filter(m => filter === 'all' || m.status === filter);
+  // A newly added member is 'invited' until they sign in once. Treating that as
+  // a separate bucket would make them disappear from the default view the
+  // moment the owner saved them, which is worse than the bug being fixed.
+  const filtered = members.filter(m =>
+    filter === 'all' ||
+    (filter === 'active' ? (m.status === 'active' || m.status === 'invited') : m.status === filter));
 
   const inp = {
     width:'100%', background:'var(--surface)', border:'1px solid var(--border)',
@@ -195,7 +224,7 @@ export default function TeamPage() {
           <div>
             <div style={{ fontSize:20, fontWeight:800, color:'var(--text)' }}>Team</div>
             <div style={{ fontSize:12, color:'var(--text-subtle)', marginTop:2 }}>
-              {workspace?.name} · {members.filter(m=>m.status==='active').length} active
+              {workspace?.name} · {members.filter(m=>m.status==='active'||m.status==='invited').length} on the team
             </div>
           </div>
           {activeTab === 'members' && (
@@ -231,7 +260,46 @@ export default function TeamPage() {
         {msg && (
           <div style={{ background:`${G}15`, border:`1px solid ${G}40`,
             borderRadius:8, padding:'8px 12px', fontSize:13, color:G, marginBottom:12 }}>
-            ✓ {msg}
+            {msg}
+          </div>
+        )}
+
+        {/* Adding someone creates a record, not a login. This is the link that
+            turns the record into a person who can actually sign in. */}
+        {inviteUrl && (
+          <div style={{ background:'var(--surface)', border:`1px solid ${G}40`,
+            borderRadius:12, padding:'14px 16px', marginBottom:12 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:4 }}>
+              Send {inviteName || 'them'} this link to finish
+            </div>
+            <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:10, lineHeight:1.5 }}>
+              They are saved, but they cannot sign in or see their own shifts and
+              payslips until they open this and sign in once.
+            </div>
+            <div style={{
+              fontSize:11, fontFamily:'monospace', wordBreak:'break-all',
+              background:'var(--bg)', border:'1px solid var(--border)',
+              borderRadius:8, padding:'8px 10px', color:'var(--text-muted)', marginBottom:10,
+            }}>{inviteUrl}</div>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <button onClick={copyInvite}
+                style={{ padding:'8px 14px', borderRadius:9, border:'none', background:G,
+                  color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                Copy link
+              </button>
+              <a href={`https://wa.me/?text=${encodeURIComponent(`Join our QuietKeep Business workspace: ${inviteUrl}`)}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{ padding:'8px 14px', borderRadius:9, border:`1px solid ${G}`, color:G,
+                  fontSize:13, fontWeight:600, textDecoration:'none', fontFamily:'inherit' }}>
+                Send on WhatsApp
+              </a>
+              <button onClick={() => setInviteUrl('')}
+                style={{ padding:'8px 14px', borderRadius:9, border:'1px solid var(--border)',
+                  background:'transparent', color:'var(--text-muted)', fontSize:13,
+                  cursor:'pointer', fontFamily:'inherit' }}>
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 
@@ -284,13 +352,26 @@ export default function TeamPage() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                       <div style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>{m.name}</div>
-                      <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999,
-                        background:`${ROLE_COLOR[m.role]||'#64748b'}20`,
-                        color:ROLE_COLOR[m.role]||'#64748b',
-                        border:`1px solid ${ROLE_COLOR[m.role]||'#64748b'}30`,
-                        textTransform:'uppercase', letterSpacing:'0.06em' }}>
-                        {m.role}
-                      </span>
+                      <div style={{ display:'flex', gap:5, flexShrink:0 }}>
+                        {/* No user_id means nobody has signed in as this person
+                            yet. Eight rows sat in exactly this state for months
+                            with nothing on screen to say so. */}
+                        {!m.user_id && (
+                          <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999,
+                            background:'rgba(245,158,11,0.15)', color:'#b45309',
+                            border:'1px solid rgba(245,158,11,0.35)',
+                            textTransform:'uppercase', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
+                            Not signed in
+                          </span>
+                        )}
+                        <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999,
+                          background:`${ROLE_COLOR[m.role]||'#64748b'}20`,
+                          color:ROLE_COLOR[m.role]||'#64748b',
+                          border:`1px solid ${ROLE_COLOR[m.role]||'#64748b'}30`,
+                          textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                          {m.role}
+                        </span>
+                      </div>
                     </div>
                     {m.designation && (
                       <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:1 }}>{m.designation}</div>

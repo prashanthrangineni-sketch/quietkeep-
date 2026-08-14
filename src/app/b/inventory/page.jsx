@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -24,10 +25,10 @@ export default function InventoryPage() {
     if (authLoading) return; // wait for auth context to resolve
     if (!user) { router.replace('/biz-login'); return; }
     (async () => {
-            const { data: ws } = await supabase.from('business_workspaces').select('id').eq('owner_user_id', user?.id).maybeSingle();
+            const ws = await resolveWorkspace(supabase, user?.id, 'id');
             if (ws) { setWorkspace(ws); loadItems(ws.id); }
     })();
-  }, [user]);
+  }, [user, authLoading]);
 
   const loadItems = useCallback(async (wsId) => {
     setLoading(true);

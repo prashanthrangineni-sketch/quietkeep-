@@ -8,6 +8,7 @@
 // Section 47 — automating the arithmetic without owning the filing is the
 // safe, useful thing to do now.
 import { useState, useEffect, useCallback } from 'react';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { supabase } from '@/lib/supabase';
@@ -64,8 +65,7 @@ export default function GSTR3BPage() {
     if (authLoading) return;
     if (!user) { router.replace('/biz-login'); return; }
     (async () => {
-      const { data: ws } = await supabase.from('business_workspaces')
-        .select('id,name').eq('owner_user_id', user.id).maybeSingle();
+      const ws = await resolveWorkspace(supabase, user.id, 'id,name');
       if (!ws) { router.replace('/b/onboarding'); return; }
       setWorkspace(ws);
       load(period);

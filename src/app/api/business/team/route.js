@@ -30,9 +30,36 @@ export async function POST(req) {
     } = body;
     const payload = { ...safe, workspace_id: ctx.workspace.id };
 
+    // BUG FOUND 13 Aug 2026 — the orphan factory.
+    //   Stripping user_id and invite_token is right: neither may be settable by
+    //   a client. But the result was a row with no identity AND no way to ever
+    //   gain one, saved as status:'active'. Every membership query filters on
+    //   user_id, so the person the row describes could never match it.
+    //   Production held 9 such rows; 8 were unclaimable.
+    //
+    //   The row still must not carry a user_id from the client. What it can
+    //   carry is a token only the server minted, which the invitee redeems at
+    //   /b/join. Creates only — an edit must never rotate a live token.
+    const isCreate = !body.id;
+    if (isCreate) {
+      payload.invite_token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+      payload.invited_at = new Date().toISOString();
+      // 'active' with no user behind it is a lie the rest of the app believes.
+      payload.status = 'invited';
+    }
+
     const { data, error } = await db.from('business_members').upsert(payload).select().single();
     if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ data });
+
+    // The owner needs something to send. Without this the token exists but is
+    // invisible, which is how the invite page ended up unreachable in practice.
+    const origin = new URL(req.url).origin;
+    return Response.json({
+      data,
+      ...(isCreate && data?.invite_token
+        ? { invite_url: `${origin}/b/join?token=${data.invite_token}` }
+        : {}),
+    });
   } catch (e) {
     console.error('[TEAM POST]', e.message);
     return Response.json({ error: 'Internal error' }, { status: 500 });

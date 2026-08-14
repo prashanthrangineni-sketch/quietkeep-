@@ -64,7 +64,7 @@ export default function BizOnboardingPage() {
           setStep(1);
         }
       });
-  }, [user, router]);
+  }, [user, router, authLoading]);
 
   async function finish() {
     if (!bizName.trim()) { setError('Business name is required'); return; }

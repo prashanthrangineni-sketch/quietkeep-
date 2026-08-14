@@ -33,7 +33,7 @@ export default function SOSPage() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     loadEvents(user?.id);
-  }, [user]);
+  }, [user, authLoading]);
 
   async function loadEvents(uid) {
     setLoading(true);

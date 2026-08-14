@@ -45,7 +45,7 @@ export default function MemoriesPage() {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
           loadMemories(user?.id);
-  }, [user]);
+  }, [user, authLoading]);
 
   async function loadMemories(uid) {
     setLoading(true);

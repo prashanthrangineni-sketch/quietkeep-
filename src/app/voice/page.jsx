@@ -55,7 +55,7 @@ export default function VoicePage() {
             // Check voice_talkback feature flag
             supabase.from('feature_flags').select('feature_name').eq('feature_name', 'sarvam_tts').single()
               .then(({ data }) => { if (data) setTalkbackEnabled(true); });
-  }, [user]);
+  }, [user, authLoading]);
 
   async function loadSessions(uid) {
     setLoading(true);

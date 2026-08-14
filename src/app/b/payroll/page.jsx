@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 // src/app/b/payroll/page.jsx — Payroll engine with attendance-based calculation
 
@@ -36,10 +37,10 @@ export default function PayrollPage() {
     if (authLoading) return; // wait for auth context to resolve
     if (!user) { router.replace('/biz-login'); return; }
     (async () => {
-            const { data: ws } = await supabase.from('business_workspaces').select('id').eq('owner_user_id', user?.id).maybeSingle();
+            const ws = await resolveWorkspace(supabase, user?.id, 'id');
             if (ws) { setWorkspace(ws); loadData(ws.id, period); }
     })();
-  }, [user]);
+  }, [user, authLoading]);
 
   const loadData = useCallback(async (wsId, per) => {
     setLoading(true);

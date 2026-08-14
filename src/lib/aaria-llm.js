@@ -69,22 +69,23 @@ MODE: ${workspaceMode === 'business' ? 'Business workspace' : 'Personal'}
 The user said (speech-to-text; may contain errors; may be any Indian language, native script or romanised):
 """${text}"""
 
-Reply with ONLY a JSON object, no explanation, no markdown fence:
+Reply with ONLY a JSON object, no explanation, no markdown fence.
+
+OMIT ANY KEY YOU HAVE NO VALUE FOR. Do not write nulls, do not write empty
+strings, do not pad the object. Every token you emit is time the user spends
+waiting for you to speak, so emit only what you actually know:
 {
   "intent": one of ${JSON.stringify(INTENTS)},
   "confidence": number 0-1,
   "language_detected": BCP-47 code of the language the USER spoke, e.g. "te-IN",
   "entities": {
-    "person": string or null,
-    "datetime_iso": absolute ISO 8601 datetime if a time is stated or implied, else null,
-    "datetime_is_explicit": boolean,
-    "amount": number or null,
-    "currency": "INR" or null,
-    "direction": "in" if money received, "out" if money spent/paid/given, else null,
-    "item": string or null,
-    "location": string or null
+    "person": string,
+    "datetime_iso": absolute ISO 8601 datetime, if a time is stated or implied,
+    "amount": number,
+    "direction": "in" if money received, "out" if money spent/paid/given,
+    "item": string
   },
-  "missing": array from ["datetime","person","amount","item"] — only what you truly need before acting; [] if you can act now,
+  "missing": array from ["datetime","person","amount","item"] — only what you truly need before acting; omit if you can act now,
   "reply": the sentence Aaria SPEAKS next
 }
 
@@ -101,6 +102,84 @@ OTHER RULES:
 - Resolve relative time against CURRENT TIME. "tomorrow morning" → next day 09:00 local.
 - For a reminder with no usable time, put "datetime" in "missing" and ASK.
 - If the user is asking a question rather than storing something, intent = "query".`;
+}
+
+// Escape hatch: if Sarvam ever changes its SSE shape, set SARVAM_STREAM=0 and
+// the original single-shot request comes back with no redeploy.
+const STREAM_DISABLED = process.env.SARVAM_STREAM === '0';
+
+/**
+ * Read an OpenAI-style SSE completion, stopping the moment the JSON object the
+ * model is writing is closed.
+ *
+ * Why not just await res.json(): a buffered response is only readable once the
+ * generation has fully stopped, so we wait for every token the model chooses to
+ * emit after the answer -- a markdown fence, an apology, filler toward
+ * max_tokens. None of that is ever parsed; all of it is time the user spends
+ * listening to silence. Here we count braces (ignoring any inside strings) and
+ * abort as soon as depth returns to zero.
+ *
+ * Falls through to whatever it has accumulated if the stream ends first, so a
+ * malformed or non-SSE body degrades to the same behaviour as before.
+ */
+async function readUntilJsonComplete(body, ctrl) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let sse = '';        // unparsed SSE buffer
+  let out = '';        // model content so far
+  let depth = 0, inString = false, escaped = false, started = false;
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      sse += decoder.decode(value, { stream: true });
+
+      let nl;
+      while ((nl = sse.indexOf('\n')) !== -1) {
+        const line = sse.slice(0, nl).trim();
+        sse = sse.slice(nl + 1);
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === '[DONE]') continue;
+
+        let piece = '';
+        try { piece = JSON.parse(payload)?.choices?.[0]?.delta?.content || ''; }
+        catch { continue; }
+        if (!piece) continue;
+        const base = out.length;
+        out += piece;
+
+        for (let i = 0; i < piece.length; i++) {
+          const ch = piece[i];
+          if (inString) {
+            if (escaped) escaped = false;
+            else if (ch === '\\') escaped = true;
+            else if (ch === '"') inString = false;
+            continue;
+          }
+          if (ch === '"') { inString = true; continue; }
+          if (ch === '{') { depth++; started = true; continue; }
+          if (ch === '}') {
+            depth--;
+            if (started && depth === 0) {
+              try { ctrl.abort(); } catch { /* already done */ }
+              // Cut exactly at the brace. The closing token often arrives in
+              // the same chunk as a trailing fence or a stray sentence; keeping
+              // those would push the caller onto its regex fallback path for no
+              // reason.
+              return out.slice(0, base + i + 1).trim();
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // An abort here is ours, fired on the closing brace above.
+  } finally {
+    try { reader.releaseLock(); } catch { /* noop */ }
+  }
+  return out.trim();
 }
 
 /**
@@ -142,6 +221,12 @@ export async function aariaUnderstandLLM(text, opts = {}) {
         // ~12s round trip is Sarvam generating this JSON). Everything the app
         // actually acts on fits comfortably in 300.
         max_tokens: 300,
+        // Streaming does not make the model faster. It makes US faster: a
+        // non-streamed request cannot be read until the server has finished,
+        // so we also pay for whatever the model emits AFTER the closing brace
+        // -- trailing prose, a markdown fence, padding toward max_tokens. With
+        // the stream we stop at the brace and cancel the rest.
+        stream: !STREAM_DISABLED,
         messages: [{ role: 'user', content: prompt }],
       }),
       signal: ctrl.signal,
@@ -153,8 +238,9 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       return null;
     }
 
-    const data = await res.json();
-    const raw = data?.choices?.[0]?.message?.content?.trim() || '';
+    const raw = (!STREAM_DISABLED && res.body)
+      ? await readUntilJsonComplete(res.body, ctrl)
+      : ((await res.json())?.choices?.[0]?.message?.content?.trim() || '');
     const jsonText = raw.replace(/```json|```/g, '').trim();
 
     let parsed;
@@ -177,16 +263,13 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       entities: {
         person: ents.person ?? null,
         datetimeISO: ents.datetime_iso ?? null,
-        datetimeIsExplicit: !!ents.datetime_is_explicit,
         amount: typeof ents.amount === 'number' ? ents.amount : null,
-        currency: ents.currency ?? null,
         direction: ents.direction ?? null,
         item: ents.item ?? null,
-        location: ents.location ?? null,
       },
       missing: Array.isArray(parsed.missing) ? parsed.missing : [],
       reply: typeof parsed.reply === 'string' && parsed.reply.trim() ? parsed.reply.trim() : null,
-      engine: 'sarvam-m',
+      engine: MODEL,
     };
   } catch (err) {
     if (err?.name !== 'AbortError') {

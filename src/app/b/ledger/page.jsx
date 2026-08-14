@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 import { apiPost, apiGet } from '@/lib/safeFetch';
 // src/app/b/ledger/page.jsx — Voice-first business ledger with edit + delete
@@ -40,7 +41,7 @@ export default function LedgerPage() {
     if (authLoading) return; // wait for auth context to resolve
     if (!user) { router.replace('/biz-login'); return; }
     (async () => {
-            const { data: ws } = await supabase.from('business_workspaces').select('id').eq('owner_user_id', user?.id).maybeSingle();
+            const ws = await resolveWorkspace(supabase, user?.id, 'id');
             if (ws) {
               setWorkspace(ws);
               loadEntries(ws.id);
@@ -50,7 +51,7 @@ export default function LedgerPage() {
                 .catch(() => {}); // permissions fail → canDo returns true (allow-all fallback)
             }
     })();
-  }, [user]);
+  }, [user, authLoading]);
 
   const loadEntries = useCallback(async (wsId) => {
     setLoading(true);

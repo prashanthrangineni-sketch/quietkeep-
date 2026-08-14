@@ -60,11 +60,15 @@ const INTENTS = [
   'document', 'query', 'note',
 ];
 
-function buildPrompt({ text, language, nowISO, timezone, workspaceMode }) {
+function buildPrompt({ text, language, nowISO, timezone, workspaceMode, pageLabel }) {
   return `You are Aaria, the voice assistant inside QuietKeep. Decide what the app should DO with what the user said.
 
 CURRENT TIME: ${nowISO} (timezone ${timezone})
-MODE: ${workspaceMode === 'business' ? 'Business workspace' : 'Personal'}
+MODE: ${workspaceMode === 'business' ? 'Business workspace' : 'Personal'}${pageLabel ? `
+SCREEN THE USER IS LOOKING AT: ${pageLabel}
+Use this to break ties, nothing more. On Invoices, a bare amount and a name is
+most likely an invoice; on Money it is most likely an expense. If the words are
+explicit, the words win — never override what the user actually said.` : ''}
 
 The user said (speech-to-text; may contain errors; may be any Indian language, native script or romanised):
 """${text}"""
@@ -203,6 +207,7 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       nowISO: opts.nowISO || new Date().toISOString(),
       timezone: opts.timezone || 'Asia/Kolkata',
       workspaceMode: opts.workspaceMode || 'personal',
+      pageLabel: opts.pageLabel || null,
     });
 
     const res = await fetch(SARVAM_CHAT_URL, {

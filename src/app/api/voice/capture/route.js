@@ -82,6 +82,13 @@ export async function POST(request) {
     // Protocol fields from voice-loop-engine (non-blocking, informational only)
     decision_id   = null,
     protocol_version: _protocol_version = null,
+    // Where the user was standing when they spoke. Sent by the global Aaria
+    // dock (src/lib/context/aaria.jsx), which is mounted on every screen.
+    // "Add 2000 for Ravi" is an invoice on the Invoices screen and an expense
+    // on the Money screen; without this the model has to guess, and it guesses
+    // wrong roughly half the time. Purely a hint — never a permission, never a
+    // routing decision, so a forged value can only produce a worse guess.
+    page_context  = null,
   } = body
 
   if (!transcript || !transcript.trim()) {

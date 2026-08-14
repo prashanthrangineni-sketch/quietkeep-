@@ -143,7 +143,17 @@ export default async function RootLayout({ children }) {
         <NextIntlClientProvider messages={messages} locale={displayLocale}>
           <LanguageProvider initialLang={initialLang}>
             <AuthProvider>
-              <BiometricGate>{children}</BiometricGate>
+              <AariaProvider>
+                <BiometricGate>
+                  {children}
+                  {/* INSIDE the gate, deliberately. BiometricGate returns a lock
+                      screen *instead of* its children when the app is locked, so
+                      a sibling here would float a live microphone button over
+                      that lock screen. Nesting makes "no assistant while locked"
+                      structural rather than something to remember. */}
+                  <AariaDock />
+                </BiometricGate>
+              </AariaProvider>
             </AuthProvider>
           </LanguageProvider>
         </NextIntlClientProvider>

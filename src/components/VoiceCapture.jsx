@@ -2,6 +2,10 @@
 import { safeFetch, apiPost, apiGet } from '@/lib/safeFetch';
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+// This component opens its own SpeechRecognition. Since the global Aaria dock
+// may be holding one open for the wake word, announce the claim so exactly one
+// recogniser is ever live — two wedge the microphone until a page reload.
+import { claimMic, releaseMic } from '@/lib/aaria-hotword'
 
 const LANG_MAP = {
   'en':'en-IN','en-IN':'en-IN','en-US':'en-US',

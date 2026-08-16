@@ -324,6 +324,17 @@ export function AariaProvider({ children }) {
     const handle = startWebHotword({
       wakeWord: getWakeWord(),
       lang: speechLang(voiceLang),
+
+      // Name heard, still mid-sentence. Show it instantly — the acknowledgement
+      // is what makes someone keep talking instead of repeating themselves.
+      onArmed: () => { setOpen(true); setStatus('listening'); setError(''); },
+
+      // "Aaria, open invoices" — name AND command in one breath. The hotword
+      // recogniser already has the whole thing, so act on it directly. Handing
+      // off here is what used to drop the command.
+      onUtterance: (text) => { setTranscript(text); submitRef.current?.(text); },
+
+      // Name alone. Open a capture recogniser and wait for the command.
       onWake: () => { startListening(); },
       onError: (reason) => {
         setHotwordOn(false);

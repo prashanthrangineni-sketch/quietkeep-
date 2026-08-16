@@ -128,11 +128,21 @@ These are blocked on a login, not on code.
 Both were in earlier reports and neither has been re-tested. **No claim is being
 made that they are still real.**
 
-- **IGST on interstate invoices.** `b/invoices` reportedly emits only CGST/SGST,
-  which would make every inter-state GST invoice tax-incorrect. One earlier
-  report says PR #40 fixed it and contradicts itself in the same document.
-  *This is the only open item that is a compliance problem rather than an
-  inconvenience — check it first.*
+- **IGST on interstate invoices — CHECKED 14 Aug 2026, CLAIM IS FALSE. CLOSED.**
+  `src/app/b/invoices/page.jsx` line 198 writes
+  `igst: isInterState(workspace, form) ? totalGst : 0` and zeroes CGST/SGST on
+  the same branch. `isInterState` compares the first two digits of the two
+  GSTINs — the state code — which is correct place-of-supply logic.
+  **B2B invoices are tax-correct.**
+
+  *One narrower gap found while verifying, which is real:* `isInterState`
+  returns false when the customer has **no GSTIN**, and the code comment says so
+  ("Same/unknown → CGST+SGST"). For an unregistered B2C customer in another
+  state, GST law still requires IGST — place of supply for B2C is the
+  recipient's location, not a GSTIN they do not have. So **B2C inter-state sales
+  are charged CGST+SGST when they should be IGST.** Fixing it needs a customer
+  *state* field; `customer_address` is free text and not reliably parseable, so
+  this is a schema decision for the founder, not a code fix.
 - **SOS lat/lng column mismatch.** Reader uses `location_lat`/`location_lng`,
   writer uses `latitude`/`longitude`.
 

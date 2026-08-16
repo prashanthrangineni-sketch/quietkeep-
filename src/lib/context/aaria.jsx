@@ -310,6 +310,9 @@ export function AariaProvider({ children }) {
     return () => { try { off(); } catch {} };
   }, [silent, signedIn, startListening]);
 
+  // Keep the ref pointing at the current submit, every render.
+  useEffect(() => { submitRef.current = submit; }, [submit]);
+
   // ── web hotword: opt-in, for the propped-up counter phone ──────────────────
   // Deliberately not started by initWakeEngine: that engine's honest answer for
   // the web is "you cannot listen in the background", and that stays true. This

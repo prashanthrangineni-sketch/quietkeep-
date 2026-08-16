@@ -108,6 +108,7 @@ export function afterWake(heard, matchedForm) {
   let backoff = 400;
   let restartTimer = null;
   let lastFireAt = 0;
+  let armed = false;   // named, waiting to see if a command follows
 
   function clearTimer() {
     if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }

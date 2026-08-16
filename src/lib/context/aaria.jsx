@@ -336,6 +336,7 @@ export function AariaProvider({ children }) {
 
       // Name alone. Open a capture recogniser and wait for the command.
       onWake: () => { startListening(); },
+
       onError: (reason) => {
         setHotwordOn(false);
         if (reason === 'microphone-denied') {

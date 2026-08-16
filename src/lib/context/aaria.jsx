@@ -105,6 +105,14 @@ export function AariaProvider({ children }) {
   // would drift within a week.
   const hotwordRef     = useRef(null);
   const [hotwordOn, setHotwordOn] = useState(false);
+  // The hotword listener is created ONCE and lives across navigation. Its
+  // callbacks must therefore never close over `submit` directly: `submit`
+  // depends on `pathname`, so listing it as an effect dependency would tear
+  // down and restart the microphone on every page change, and omitting it
+  // would leave the callback calling a stale version — the exact bug that
+  // silently broke 28 pages in this codebase since April. A ref gives the
+  // current function without making the effect depend on it.
+  const submitRef      = useRef(null);
 
   const silent   = isSilent(pathname);
   const signedIn = !!user && !!accessToken;

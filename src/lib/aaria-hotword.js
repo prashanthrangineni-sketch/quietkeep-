@@ -137,18 +137,44 @@ export function afterWake(heard, matchedForm) {
 
     rec.onresult = (ev) => {
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        const heard = ev.results[i][0]?.transcript || '';
+        const res = ev.results[i];
+        const heard = res[0]?.transcript || '';
         const hit = matches(heard);
         if (!hit) continue;
 
+        // ── INTERIM: she has been named, but we do not yet know whether a
+        // command followed. Light up immediately so the user gets the same
+        // instant acknowledgement Alexa gives, but do NOT hand over yet.
+        if (!res.isFinal) {
+          if (!armed) { armed = true; try { onArmed?.(); } catch {} }
+          continue;
+        }
+
+        // ── FINAL: now we know what the whole utterance was.
         // One wake per second, whatever the browser does with interim results —
-        // otherwise a single "Aaria" fires four times as the interim firms up.
+        // otherwise a single "Aaria" fires several times as the interim firms up.
         const now = Date.now();
         if (now - lastFireAt < 1000) return;
         lastFireAt = now;
+        armed = false;
 
-        // Suspend BEFORE handing over: the caller is about to open its own
-        // recogniser, and two live recognisers wedge the microphone.
+        const rest = afterWake(heard, hit);
+
+        if (rest) {
+          // "Aaria, open invoices" — the entire command arrived in one breath.
+          //
+          // The obvious implementation hands off to a second recogniser the
+          // moment the name is heard. That loses everything spoken during the
+          // 300-500ms the new recogniser takes to start, which is precisely the
+          // words that matter. So we keep this recogniser and deliver the text
+          // ourselves; no handoff, nothing dropped.
+          try { onUtterance?.(rest); } catch {}
+          return;
+        }
+
+        // She was named and nothing followed. Hand over so the capture
+        // recogniser can listen for the command as a separate utterance.
+        // Suspend BEFORE handing over: two live recognisers wedge the mic.
         suspend();
         try { onWake?.(hit); } catch {}
         return;

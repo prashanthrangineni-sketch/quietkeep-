@@ -97,6 +97,8 @@ export function afterWake(heard, matchedForm) {
  * @param {Function} [opts.onError] called with a short reason string
  * @returns {{stop:Function, suspend:Function, resume:Function, running:Function}|null}
  *          null when the browser cannot do this at all.
+ */
+export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, onUtterance, onArmed, onError } = {}) {
   if (!isHotwordSupported()) return null;
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;

@@ -105,6 +105,14 @@ export function AariaProvider({ children }) {
   // would drift within a week.
   const hotwordRef     = useRef(null);
   const [hotwordOn, setHotwordOn] = useState(false);
+  // The hotword listener is created ONCE and lives across navigation. Its
+  // callbacks must therefore never close over `submit` directly: `submit`
+  // depends on `pathname`, so listing it as an effect dependency would tear
+  // down and restart the microphone on every page change, and omitting it
+  // would leave the callback calling a stale version — the exact bug that
+  // silently broke 28 pages in this codebase since April. A ref gives the
+  // current function without making the effect depend on it.
+  const submitRef      = useRef(null);
 
   const silent   = isSilent(pathname);
   const signedIn = !!user && !!accessToken;
@@ -302,6 +310,9 @@ export function AariaProvider({ children }) {
     return () => { try { off(); } catch {} };
   }, [silent, signedIn, startListening]);
 
+  // Keep the ref pointing at the current submit, every render.
+  useEffect(() => { submitRef.current = submit; }, [submit]);
+
   // ── web hotword: opt-in, for the propped-up counter phone ──────────────────
   // Deliberately not started by initWakeEngine: that engine's honest answer for
   // the web is "you cannot listen in the background", and that stays true. This
@@ -313,7 +324,19 @@ export function AariaProvider({ children }) {
     const handle = startWebHotword({
       wakeWord: getWakeWord(),
       lang: speechLang(voiceLang),
+
+      // Name heard, still mid-sentence. Show it instantly — the acknowledgement
+      // is what makes someone keep talking instead of repeating themselves.
+      onArmed: () => { setOpen(true); setStatus('listening'); setError(''); },
+
+      // "Aaria, open invoices" — name AND command in one breath. The hotword
+      // recogniser already has the whole thing, so act on it directly. Handing
+      // off here is what used to drop the command.
+      onUtterance: (text) => { setTranscript(text); submitRef.current?.(text); },
+
+      // Name alone. Open a capture recogniser and wait for the command.
       onWake: () => { startListening(); },
+
       onError: (reason) => {
         setHotwordOn(false);
         if (reason === 'microphone-denied') {

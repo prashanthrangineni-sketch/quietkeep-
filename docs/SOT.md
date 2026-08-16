@@ -113,7 +113,7 @@ These are blocked on a login, not on code.
 | Google OAuth credentials | **DONE 13 Aug 2026.** Client "QuietKeep Web (Supabase Auth)" exists in Google Cloud project `pranix-play-publisher-503408`; Client ID and Secret are populated in Supabase. Sign-in still needs an end-to-end test. |
 | Consent screen in Testing | Only whitelisted addresses can sign in at all. Publishing status lives at `console.cloud.google.com/auth/audience`. |
 | Consent screen shows a raw Supabase hostname | Users read it as phishing. Setting the app name at `console.cloud.google.com/auth/branding` fixes the headline; the domain needs verification or a custom auth domain (paid plan) to disappear entirely. Needs a 120×120 logo. |
-| Android keystore password in git history | Flagged since PR #24, never rotated. Treat the signing key as compromised. If the keystore *file* was committed, needs a Play Console upload-key reset. |
+| Android keystore password in git history | **Scope resolved 14 Aug 2026.** No `.jks`/`.keystore`/`.p12`/`.pfx` was ever committed on any branch — **the signing key did not leak, and no Play Console upload-key reset is needed.** The password appears in `90828b0` (13 Apr) and `94ccdf3` (28 Jul, which removed it); it is not in the current tree. Repo is public, so it must still be rotated: `keytool -storepasswd -keystore <file>.jks`, then keep the new value in `~/.gradle/gradle.properties` or an env var. |
 | Play Console | versionCode 4 not uploaded; signed `.aab` required; Data Safety needs contacts, notification listener, background location, microphone, call screening; store icon must match launcher icon. |
 | MSG91 key rotation | **Parked by founder** — the key is shared across several products. |
 | GitHub token | **Will not be revoked** — Doppler and the MCP connection depend on it. Accepted risk, recorded here so it is a decision rather than an oversight. |
@@ -128,11 +128,21 @@ These are blocked on a login, not on code.
 Both were in earlier reports and neither has been re-tested. **No claim is being
 made that they are still real.**
 
-- **IGST on interstate invoices.** `b/invoices` reportedly emits only CGST/SGST,
-  which would make every inter-state GST invoice tax-incorrect. One earlier
-  report says PR #40 fixed it and contradicts itself in the same document.
-  *This is the only open item that is a compliance problem rather than an
-  inconvenience — check it first.*
+- **IGST on interstate invoices — CHECKED 14 Aug 2026, CLAIM IS FALSE. CLOSED.**
+  `src/app/b/invoices/page.jsx` line 198 writes
+  `igst: isInterState(workspace, form) ? totalGst : 0` and zeroes CGST/SGST on
+  the same branch. `isInterState` compares the first two digits of the two
+  GSTINs — the state code — which is correct place-of-supply logic.
+  **B2B invoices are tax-correct.**
+
+  *One narrower gap found while verifying, which is real:* `isInterState`
+  returns false when the customer has **no GSTIN**, and the code comment says so
+  ("Same/unknown → CGST+SGST"). For an unregistered B2C customer in another
+  state, GST law still requires IGST — place of supply for B2C is the
+  recipient's location, not a GSTIN they do not have. So **B2C inter-state sales
+  are charged CGST+SGST when they should be IGST.** Fixing it needs a customer
+  *state* field; `customer_address` is free text and not reliably parseable, so
+  this is a schema decision for the founder, not a code fix.
 - **SOS lat/lng column mismatch.** Reader uses `location_lat`/`location_lng`,
   writer uses `latitude`/`longitude`.
 

@@ -312,12 +312,31 @@ The understanding layer already detects language — `src/lib/aaria-llm.js` retu
 Play requires a signed `.aab`; a debug APK is rejected. **Do not hardcode the
 keystore password** — read it from an env var or `~/.gradle/gradle.properties`.
 
-**Keystore, before any Play upload:** the signing password was committed and the
-repo is public. Run
-`git log --all --diff-filter=A --name-only -- '*.jks' '*.keystore'`.
-Nothing printed → only the password leaked; rotate with `keytool -storepasswd`.
-A filename printed → the key itself leaked; **stop and tell the founder** — it
-needs a Play Console upload-key reset under his login.
+**Keystore — this has now been checked, 14 Aug 2026. Do not re-litigate it.**
+
+```
+git log --all --diff-filter=A --name-only -- '*.jks' '*.keystore' '*.p12' '*.pfx'
+→ (no output)
+```
+
+**No keystore file was ever committed, on any branch, in the entire history.**
+The signing key itself did not leak. **No Play Console upload-key reset is
+needed.**
+
+What did leak is the password, in exactly two commits: `90828b0` (initial commit,
+13 Apr 2026) and `94ccdf3` (28 Jul 2026, which removed it). It is **not in the
+current working tree**. The repo is public, so anyone who cloned before 28 July —
+or who reads history today — has that string.
+
+**Required action:** rotate the password on the keystore file, which lives on the
+founder's machine and not in this repo:
+
+```
+keytool -storepasswd -keystore <path-to-keystore>.jks
+```
+
+Then store the new password in `~/.gradle/gradle.properties` or an environment
+variable. **Never in a tracked file** — that is how this happened.
 
 ### Manual matrix (report as a pass/fail table)
 personal + business × {gesture nav, 3-button nav} × {screen on, locked, backgrounded}

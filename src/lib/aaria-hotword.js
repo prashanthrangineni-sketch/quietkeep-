@@ -47,6 +47,8 @@ export function isHotwordSupported() {
   return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
+const escapeRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /** Build the matcher once, so the hot path is a plain substring scan. */
 function buildMatcher(wakeWord) {
   const w = String(wakeWord || 'aaria').toLowerCase().trim();
@@ -55,11 +57,32 @@ function buildMatcher(wakeWord) {
     const t = String(heard || '').toLowerCase();
     for (const f of forms) {
       // Word-boundary check, so "areas" and "malaria" do not wake her up.
-      const re = new RegExp(`(^|[^a-z])${f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`);
+      const re = new RegExp(`(^|[^a-z])${escapeRe(f)}([^a-z]|$)`);
       if (re.test(t)) return f;
     }
     return null;
   };
+}
+
+/**
+ * Everything the user said AFTER naming her.
+ *
+ * This is what makes one-breath commands possible. "Aaria, open invoices" has
+ * to work, because that is how people actually talk to an assistant — and the
+ * alternative (say the name, wait for a light, then speak) is a walkie-talkie,
+ * not an assistant.
+ *
+ * Returns '' when she was named and nothing followed, which is the signal to
+ * hand over to the capture recogniser and listen for the command instead.
+ */
+export function afterWake(heard, matchedForm) {
+  const text = String(heard || '');
+  const re = new RegExp(`(^|[^a-z])${escapeRe(matchedForm)}([^a-z]|$)`, 'i');
+  const m = re.exec(text);
+  if (!m) return text.trim();
+  // Cut at the end of the matched word, keeping any trailing delimiter out.
+  const cut = m.index + m[0].length - (m[2] ? m[2].length : 0);
+  return text.slice(cut).replace(/^[\s,.:;—–-]+/, '').trim();
 }
 
 /**
@@ -68,12 +91,12 @@ function buildMatcher(wakeWord) {
  * @param {object}   opts
  * @param {string}   opts.wakeWord  default 'aaria'
  * @param {string}   opts.lang      BCP-47, e.g. 'te-IN'
- * @param {Function} opts.onWake    called with the matched form
+ * @param {Function} opts.onWake      named, nothing followed -> caller should listen
+ * @param {Function} opts.onUtterance named AND a command followed, in one breath
+ * @param {Function} opts.onArmed     name heard (interim) -> light up immediately
  * @param {Function} [opts.onError] called with a short reason string
  * @returns {{stop:Function, suspend:Function, resume:Function, running:Function}|null}
  *          null when the browser cannot do this at all.
- */
-export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, onError } = {}) {
   if (!isHotwordSupported()) return null;
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;

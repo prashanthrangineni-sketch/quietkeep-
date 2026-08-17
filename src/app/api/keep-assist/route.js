@@ -55,44 +55,22 @@ export async function POST(req) {
     const basePrompt = actionPrompts[action] || actionPrompts.suggest;
     const prompt = basePrompt + langNote;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+    const answer = await askModel(prompt, { maxTokens: 300, json: true });
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '{}');
-      console.error('[keep-assist] Anthropic error HTTP', response.status, ':', errText.slice(0, 400));
-      let userMsg = 'AI unavailable — try again shortly.';
-      let httpStatus = 500;
-      try {
-        const errJson = JSON.parse(errText);
-        const t = errJson?.error?.type || '';
-        if (t === 'authentication_error' || t === 'invalid_api_key') {
-          userMsg = 'AI not configured — ANTHROPIC_API_KEY is invalid. Contact support.';
-        } else if (t === 'rate_limit_error') {
-          userMsg = 'AI rate limit reached — try again in a minute.';
-          httpStatus = 429;
-        } else if (t === 'overloaded_error') {
-          userMsg = 'AI is temporarily busy — please try again in a few seconds.';
-        } else if (errJson?.error?.message?.includes('credit')) {
-          userMsg = 'AI account credits exhausted — contact support.';
-        }
-      } catch {}
-      return Response.json({ error: userMsg }, { status: httpStatus });
+    // The old branch here decoded Anthropic's error taxonomy to tell the user
+    // which key was wrong. That distinction is gone: askModel already walked the
+    // whole fallback chain, so reaching here means EVERY configured provider
+    // failed. There is nothing actionable left to tell the user apart from that.
+    if (!answer) {
+      console.error('[keep-assist] every provider in the chain failed');
+      return Response.json({
+        error: isConfigured()
+          ? 'AI is busy right now — please try again in a moment.'
+          : 'AI not configured — contact support.',
+      }, { status: isConfigured() ? 503 : 500 });
     }
 
-    const data = await response.json();
-    const raw = data.content?.[0]?.text?.trim() || '[]';
+    const raw = answer.text || '[]';
 
     let parsed;
     try {

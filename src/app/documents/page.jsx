@@ -290,7 +290,14 @@ export default function Documents() {
               >
                 {file ? `✓ ${file.name} (${fmt(file.size)})` : '📎 Attach file (PDF, image — optional, max 50MB)'}
               </div>
-              <input ref={fileRef} type="file" style={{ display:'none' }} accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" onChange={e => setFile(e.target.files[0])} />
+              <input ref={fileRef} type="file" style={{ display:'none' }} accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx"
+                onChange={e => { const f = e.target.files[0]; setFile(f); suggestFromFile(f); }} />
+              {(reading || readNote) && (
+                <p style={{ fontSize:'12px', color: reading ? 'var(--text-muted)' : 'var(--text-subtle)',
+                  margin:'6px 0 0', lineHeight:1.5 }}>
+                  {reading ? 'Reading the document…' : readNote}
+                </p>
+              )}
 
               {uploading && (
                 <div style={{ marginBottom:'10px' }}>

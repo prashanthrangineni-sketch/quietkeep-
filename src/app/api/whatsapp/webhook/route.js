@@ -3,6 +3,7 @@
 // Setup: Twilio Console → WhatsApp Sandbox → Webhook URL: https://quietkeep.com/api/whatsapp/webhook
 
 import { createClient } from '@supabase/supabase-js';
+import { askModel, isConfigured } from '@/lib/llm';
 import crypto from 'crypto';
 
 // ── Twilio request signature validation (X-Twilio-Signature) ─────────────────

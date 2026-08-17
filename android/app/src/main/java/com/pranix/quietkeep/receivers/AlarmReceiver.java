@@ -16,21 +16,6 @@ import androidx.core.app.NotificationCompat;
 
 import com.pranix.quietkeep.MainActivity;
 
-/**
- * AlarmReceiver — fires when an AlarmManager alarm triggers for a QuietKeep reminder.
- *
- * Called by ReminderAlarmManager.scheduleReminder() when the alarm time arrives.
- * Works even when the app is completely closed or the phone is locked.
- *
- * The notification:
- * - Shows reminder text
- * - Rings even if phone is on silent (for "Alarm" type reminders)
- * - Tapping opens the app at /reminders
- *
- * Registration: android/app/src/main/AndroidManifest.xml
- * Must add:
- *   <receiver android:name=".receivers.AlarmReceiver" android:exported="false" />
- */
 public class AlarmReceiver extends BroadcastReceiver {
 
     private static final String TAG        = "QK_ALARM";
@@ -50,7 +35,45 @@ public class AlarmReceiver extends BroadcastReceiver {
         }
 
         createNotificationChannel(context, isAlarmType);
-        showNotification(context, reminderId, reminderText, isAlarmType);
+
+        String actionType = intent.getStringExtra("action_type");
+        if (actionType != null && !actionType.trim().isEmpty()) {
+            // Build the intent to launch CountdownActivity
+            Intent countdownIntent = new Intent(context, com.pranix.quietkeep.activities.CountdownActivity.class);
+            countdownIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            
+            // Forward action spec properties
+            countdownIntent.putExtra("action_type", actionType);
+            countdownIntent.putExtra("phone", intent.getStringExtra("phone"));
+            countdownIntent.putExtra("whatsapp_phone", intent.getStringExtra("whatsapp_phone"));
+            countdownIntent.putExtra("whatsapp_message", intent.getStringExtra("whatsapp_message"));
+            countdownIntent.putExtra("navigation_query", intent.getStringExtra("navigation_query"));
+            countdownIntent.putExtra("lat", intent.getStringExtra("lat"));
+            countdownIntent.putExtra("lng", intent.getStringExtra("lng"));
+            countdownIntent.putExtra("search_query", intent.getStringExtra("search_query"));
+            countdownIntent.putExtra("app_name", intent.getStringExtra("app_name"));
+            countdownIntent.putExtra("alarm_message", intent.getStringExtra("alarm_message"));
+            if (intent.hasExtra("alarm_hour")) countdownIntent.putExtra("alarm_hour", intent.getIntExtra("alarm_hour", 8));
+            if (intent.hasExtra("alarm_minutes")) countdownIntent.putExtra("alarm_minutes", intent.getIntExtra("alarm_minutes", 0));
+            if (intent.hasExtra("timer_length_seconds")) countdownIntent.putExtra("timer_length_seconds", intent.getIntExtra("timer_length_seconds", 60));
+            countdownIntent.putExtra("sms_message", intent.getStringExtra("sms_message"));
+            if (intent.hasExtra("torch_enable")) countdownIntent.putExtra("torch_enable", intent.getBooleanExtra("torch_enable", false));
+            if (intent.hasExtra("volume_direction")) countdownIntent.putExtra("volume_direction", intent.getIntExtra("volume_direction", 0));
+            countdownIntent.putExtra("display_name", intent.getStringExtra("display_name"));
+
+            // Show full screen intent notification
+            showNotificationWithFullScreenIntent(context, reminderId, reminderText, isAlarmType, countdownIntent);
+
+            // Also launch CountdownActivity directly
+            try {
+                context.startActivity(countdownIntent);
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to start CountdownActivity directly: " + e.getMessage());
+            }
+        } else {
+            // Legacy / simple notification flow
+            showNotification(context, reminderId, reminderText, isAlarmType);
+        }
 
         // Speak the reminder out loud via native TTS
         try {
@@ -81,7 +104,6 @@ public class AlarmReceiver extends BroadcastReceiver {
         channel.setVibrationPattern(new long[]{0, 300, 150, 300});
 
         if (isAlarmType) {
-            // Alarm type: ring even on silent using the default alarm sound
             Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
             if (alarmUri == null) {
                 alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
@@ -101,7 +123,6 @@ public class AlarmReceiver extends BroadcastReceiver {
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
 
-        // Tap notification → open app at /reminders
         Intent openIntent = new Intent(context, MainActivity.class);
         openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         openIntent.putExtra("deeplink", "/reminders");
@@ -131,11 +152,40 @@ public class AlarmReceiver extends BroadcastReceiver {
             .setStyle(new NotificationCompat.BigTextStyle().bigText(reminderText));
 
         if (isAlarmType) {
-            builder.setFullScreenIntent(pi, true);  // Show over lock screen
+            builder.setFullScreenIntent(pi, true);
         }
 
-        // Use reminder_id hash as notification ID so each reminder shows separately
         nm.notify(Math.abs(reminderId.hashCode()) % 10000, builder.build());
         Log.d(TAG, "AlarmReceiver: notification shown for reminder=" + reminderId);
+    }
+
+    private void showNotificationWithFullScreenIntent(Context context, String reminderId, String reminderText, boolean isAlarmType, Intent countdownIntent) {
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+            ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+            : PendingIntent.FLAG_UPDATE_CURRENT;
+
+        PendingIntent pi = PendingIntent.getActivity(
+            context, reminderId.hashCode(), countdownIntent, flags
+        );
+
+        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle("⏰ QuietKeep Scheduled Execution")
+            .setContentText(reminderText)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setFullScreenIntent(pi, true)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setSound(soundUri)
+            .setVibrate(new long[]{0, 300, 150, 300})
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(reminderText));
+
+        nm.notify(Math.abs(reminderId.hashCode()) % 10000, builder.build());
+        Log.d(TAG, "AlarmReceiver: full screen notification shown for reminder=" + reminderId);
     }
 }

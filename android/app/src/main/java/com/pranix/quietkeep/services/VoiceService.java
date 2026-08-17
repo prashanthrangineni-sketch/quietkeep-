@@ -82,7 +82,7 @@ public class VoiceService extends Service {
 
     public static volatile boolean captureActive = false;
 
-    private final WakeWordEngine wakeWordEngine = new WakeWordEngine();
+    private WakeWordEngine wakeWordEngine;
 
     private volatile boolean alwaysOnMode = false;
 
@@ -133,9 +133,11 @@ public class VoiceService extends Service {
         }
     };
 
+    @Override
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "VoiceService.onCreate");
+        wakeWordEngine = new WakeWordEngine();
         createNotificationChannel();
     }
 
@@ -468,6 +470,12 @@ public class VoiceService extends Service {
                 while ((line = br.readLine()) != null) sb.append(line);
                 String json = sb.toString();
                 Log.d(TAG, "voice/capture response: " + json.substring(0, Math.min(300, json.length())));
+                
+                String detectedLanguage = extractField(json, "language");
+                if (detectedLanguage != null && !detectedLanguage.trim().isEmpty() && !"null".equals(detectedLanguage)) {
+                    languageCode = detectedLanguage.trim();
+                    Log.d(TAG, "Dynamic language switch: updated languageCode to " + languageCode);
+                }
                 new Thread(() -> { try { flushRetryQueue(); } catch (Exception ignored) {} }).start();
                 new Thread(() -> { try { fetchSuggestions(); } catch (Exception ignored) {} }).start();
                 String intentType    = extractNestedField(json, "auto_exec", "intent_type");
@@ -477,32 +485,61 @@ public class VoiceService extends Service {
                 String navQuery      = extractNestedField(json, "auto_exec", "navigation_query");
                 String navLat        = extractNestedField(json, "auto_exec", "lat");
                 String navLng        = extractNestedField(json, "auto_exec", "lng");
-                if ("contact".equals(intentType) && phone != null && !phone.isEmpty()) {
-                    Intent callIntent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phone));
-                    callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    getApplicationContext().startActivity(callIntent);
-                } else if ("whatsapp".equals(intentType) && whatsappPhone != null) {
-                    String waUrl = "https://wa.me/" + whatsappPhone.replaceAll("[^0-9]", "");
-                    if (whatsappMsg != null && !whatsappMsg.isEmpty()) {
-                        try { waUrl += "?text=" + java.net.URLEncoder.encode(whatsappMsg, "UTF-8"); }
-                        catch (Exception ignored) {}
-                    }
-                    Intent waIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(waUrl));
-                    waIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    getApplicationContext().startActivity(waIntent);
-                } else if ("navigation".equals(intentType)) {
-                    String mapsUri = null;
-                    if (navLat != null && navLng != null) {
-                        mapsUri = "geo:" + navLat + "," + navLng
-                            + (navQuery != null ? "?q=" + Uri.encode(navQuery) : "");
-                    } else if (navQuery != null) {
-                        mapsUri = "geo:0,0?q=" + Uri.encode(navQuery);
-                    }
-                    if (mapsUri != null) {
-                        Intent navIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(mapsUri));
-                        navIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        getApplicationContext().startActivity(navIntent);
-                    }
+                String searchQuery   = extractNestedField(json, "auto_exec", "search_query");
+                String appName       = extractNestedField(json, "auto_exec", "app_name");
+                String alarmMessage  = extractNestedField(json, "auto_exec", "alarm_message");
+                String smsMessage    = extractNestedField(json, "auto_exec", "sms_message");
+
+                Integer alarmHour = null;
+                try {
+                    String val = extractNestedField(json, "auto_exec", "alarm_hour");
+                    if (val != null) alarmHour = Integer.parseInt(val);
+                } catch (Exception ignored) {}
+
+                Integer alarmMinutes = null;
+                try {
+                    String val = extractNestedField(json, "auto_exec", "alarm_minutes");
+                    if (val != null) alarmMinutes = Integer.parseInt(val);
+                } catch (Exception ignored) {}
+
+                Integer timerLengthSeconds = null;
+                try {
+                    String val = extractNestedField(json, "auto_exec", "timer_length_seconds");
+                    if (val != null) timerLengthSeconds = Integer.parseInt(val);
+                } catch (Exception ignored) {}
+
+                Boolean torchEnable = null;
+                try {
+                    String val = extractNestedField(json, "auto_exec", "torch_enable");
+                    if (val != null) torchEnable = Boolean.parseBoolean(val);
+                } catch (Exception ignored) {}
+
+                Integer volumeDirection = null;
+                try {
+                    String val = extractNestedField(json, "auto_exec", "volume_direction");
+                    if (val != null) volumeDirection = Integer.parseInt(val);
+                } catch (Exception ignored) {}
+
+                if (intentType != null && !intentType.isEmpty()) {
+                    ActionExecutor.ActionSpec spec = new ActionExecutor.ActionSpec();
+                    spec.type = intentType;
+                    spec.phone = phone;
+                    spec.whatsappPhone = whatsappPhone;
+                    spec.whatsappMessage = whatsappMsg;
+                    spec.navigationQuery = navQuery;
+                    spec.lat = navLat;
+                    spec.lng = navLng;
+                    spec.searchQuery = searchQuery;
+                    spec.appName = appName;
+                    spec.alarmMessage = alarmMessage;
+                    spec.alarmHour = alarmHour;
+                    spec.alarmMinutes = alarmMinutes;
+                    spec.timerLengthSeconds = timerLengthSeconds;
+                    spec.smsMessage = smsMessage;
+                    spec.torchEnable = torchEnable;
+                    spec.volumeDirection = volumeDirection;
+
+                    ActionExecutor.execute(getApplicationContext(), spec);
                 }
             } else {
                 Log.w(TAG, "postCapture: HTTP " + code + " — queuing for retry");
@@ -661,7 +698,7 @@ public class VoiceService extends Service {
                     if (!(act instanceof com.getcapacitor.BridgeActivity)) { Log.w(TAG, "not a BridgeActivity"); return; }
                     android.webkit.WebView webView = ((com.getcapacitor.BridgeActivity) act).getBridge().getWebView();
                     if (webView == null) { Log.w(TAG, "WebView not available"); return; }
-                    String js = "window.dispatchEvent(new CustomEvent('lotus_wake',{detail:{source:'background'}}));";
+                    String js = "window.dispatchEvent(new CustomEvent('qk_wake',{detail:{source:'background'}})); window.dispatchEvent(new CustomEvent('lotus_wake',{detail:{source:'background'}}));";
                     webView.evaluateJavascript(js, null);
                     Log.d(TAG, "lotus_wake event dispatched to WebView ✓");
                 } catch (Exception e) {

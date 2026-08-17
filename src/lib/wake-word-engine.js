@@ -64,9 +64,13 @@ export function isInvokeSupported() {
 // TIER 2 (acoustic hotword) — Android native + a mic foreground service + a model.
 export function isCounterModeSupported() {
   const b = nativeBridge();
+  const cachedAvailable = typeof window !== 'undefined' && window.localStorage
+    ? localStorage.getItem('qk_wake_word_available') !== 'false'
+    : false;
   return getPlatform() === 'android'
     && !!b
-    && typeof b.startHotword === 'function';   // native reports capability by exposing the method
+    && typeof b.startHotword === 'function'
+    && cachedAvailable;
 }
 
 // What the UI should actually offer the user, given this device.
@@ -178,6 +182,21 @@ export function registerNativeWake() {
 export function initWakeEngine() {
   registerNativeWake();
   start(getWakeMode());
+
+  // Asynchronously query native wake word availability and cache it
+  const b = nativeBridge();
+  if (b && typeof b.isWakeWordAvailable === 'function') {
+    b.isWakeWordAvailable().then(avail => {
+      localStorage.setItem('qk_wake_word_available', avail ? 'true' : 'false');
+    }).catch(() => {
+      localStorage.setItem('qk_wake_word_available', 'false');
+    });
+  } else {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('qk_wake_word_available', 'false');
+    }
+  }
+
   return {
     mode: getWakeMode(),
     available: availableWakeModes(),

@@ -26,6 +26,13 @@ public class BootReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         if (!Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) return;
 
+        // Restore scheduled alarms
+        try {
+            com.pranix.quietkeep.services.ReminderAlarmManager.restoreAlarms(context);
+        } catch (Exception e) {
+            Log.e(TAG, "BootReceiver: Failed to restore alarms: " + e.getMessage());
+        }
+
         // FIX B10: Check RECORD_AUDIO permission before attempting service restart.
         // If user revoked mic permission after enabling TAU, skip restart gracefully.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {

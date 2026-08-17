@@ -57,7 +57,7 @@ async function sendPush({ user_id, title, body, url }) {
 async function handle(req) {
   // ── auth: the bearer secret, and ONLY the bearer secret ───────────────────
   //
-  // This previously also accepted `x-vercel-cron: 1` as proof of a cron
+  // This previously also accepted the vercel cron header as proof of a cron
   // invocation. Vercel does not strip that header from inbound public requests,
   // so anyone could set it and skip CRON_SECRET completely -- the endpoint was
   // effectively unauthenticated, and it sends notifications to real users.

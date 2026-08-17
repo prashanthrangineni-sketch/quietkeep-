@@ -1,6 +1,23 @@
 include ':app'
-include ':capacitor-android'
-project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
 
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins')
+
+apply from: 'capacitor.settings.gradle'
+
+gradle.beforeProject { project ->
+    if (project != project.rootProject) {
+        project.buildscript {
+            repositories.clear()
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        project.repositories.clear()
+        project.repositories {
+            google()
+            mavenCentral()
+        }
+    }
+}

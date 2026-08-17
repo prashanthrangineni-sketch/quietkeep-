@@ -12,6 +12,14 @@ buildscript {
 apply from: "variables.gradle"
 
 allprojects {
+    buildscript {
+        repositories.clear()
+        repositories {
+            google()
+            mavenCentral()
+        }
+    }
+    repositories.clear()
     repositories {
         google()
         mavenCentral()

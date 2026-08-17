@@ -51,6 +51,8 @@
     <!-- AlarmManager exact alarms (Android 12+) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
 
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
@@ -125,6 +127,14 @@
                 <data android:scheme="com.pranix.quietkeep" android:host="caller-context" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".activities.CountdownActivity"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/AppTheme"
+            android:exported="false" />
 
         <!-- QuietKeepCallScreeningService: Track A1 incoming call context moat -->
         <service

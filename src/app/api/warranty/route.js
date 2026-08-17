@@ -63,7 +63,7 @@ export async function POST(req) {
       .from('products').select('*').eq('id', product_id).single();
     if (!product) return Response.json({ error: 'Product not found' }, { status: 404 });
 
-    const rec = await getAIRecommendation(product, process.env.ANTHROPIC_API_KEY);
+    const rec = await getAIRecommendation(product);
     if (rec) {
       // Write via service role.
       await db.from('products').update({

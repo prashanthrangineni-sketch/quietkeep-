@@ -139,8 +139,13 @@ export default function InvoicesPage() {
   const [loading, setLoading]     = useState(true);
   const [view, setView]           = useState('list'); // list | create | detail
   const [selectedInv, setSelectedInv] = useState(null);
+  // The shop's own state, used to pre-select the dropdown so the common
+  // intra-state sale needs no thought from the shopkeeper.
+  const homeStateCode = stateCodeFromGstin(workspace?.gstin);
+
   const [form, setForm]           = useState({
     customer_name:'', customer_phone:'', customer_gstin:'', customer_address:'',
+    customer_state_code:'',
     invoice_type:'sales', invoice_date: new Date().toISOString().split('T')[0],
     due_date:'', notes:'',
   });

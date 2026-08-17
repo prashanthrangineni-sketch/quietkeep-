@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { GST_STATES, resolvePlaceOfSupply, splitGst, stateCodeFromGstin } from '@/lib/gst-place-of-supply';
 import { resolveWorkspace } from '@/lib/resolve-workspace';
 import { useAuth } from '@/lib/context/auth';
 import { apiPost, apiGet } from '@/lib/safeFetch';
@@ -27,12 +28,13 @@ function rupee(n) {
     { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// GST place-of-supply: the first 2 digits of a GSTIN are the state code.
-// Different state codes → inter-state supply → IGST (full rate). Same/unknown → CGST+SGST.
-function stateCode(gstin) { return String(gstin || '').trim().slice(0, 2); }
+// GST place-of-supply. Delegates to src/lib/gst-place-of-supply.js so the B2C
+// case is handled: a customer with no GSTIN in another state still owes IGST,
+// because place of supply for B2C is the recipient's location, not a GSTIN they
+// do not have. The old version here compared GSTINs only and so charged
+// CGST+SGST on every B2C inter-state sale.
 function isInterState(ws, form) {
-  const a = stateCode(ws?.gstin), b = stateCode(form?.customer_gstin);
-  return !!(a && b && a !== b);
+  return resolvePlaceOfSupply(ws?.gstin, form?.customer_gstin, form?.customer_state_code).interState;
 }
 
 const STATUS_STYLE = {
@@ -137,8 +139,13 @@ export default function InvoicesPage() {
   const [loading, setLoading]     = useState(true);
   const [view, setView]           = useState('list'); // list | create | detail
   const [selectedInv, setSelectedInv] = useState(null);
+  // The shop's own state, used to pre-select the dropdown so the common
+  // intra-state sale needs no thought from the shopkeeper.
+  const homeStateCode = stateCodeFromGstin(workspace?.gstin);
+
   const [form, setForm]           = useState({
     customer_name:'', customer_phone:'', customer_gstin:'', customer_address:'',
+    customer_state_code:'',
     invoice_type:'sales', invoice_date: new Date().toISOString().split('T')[0],
     due_date:'', notes:'',
   });
@@ -193,9 +200,10 @@ export default function InvoicesPage() {
       customer_name: form.customer_name, customer_phone: form.customer_phone||null,
       customer_gstin: form.customer_gstin||null, customer_address: form.customer_address||null,
       line_items: ci, subtotal,
-      cgst: isInterState(workspace, form) ? 0 : totalGst / 2,
-      sgst: isInterState(workspace, form) ? 0 : totalGst / 2,
-      igst: isInterState(workspace, form) ? totalGst : 0,
+      // splitGst gives the rounding remainder to SGST, so cgst + sgst always
+      // equals total_gst exactly. An invoice whose parts do not sum to its
+      // whole is rejected at filing.
+      ...splitGst(totalGst, isInterState(workspace, form)),
       total_gst: totalGst, total_amount: total, amount_paid: 0, amount_due: total,
       invoice_date: form.invoice_date, due_date: form.due_date||null,
       notes: form.notes||null, status: 'draft',
@@ -283,7 +291,7 @@ export default function InvoicesPage() {
                 </div>
               </div>
               <button onClick={() => {
-                setForm({ customer_name:'', customer_phone:'', customer_gstin:'',
+                setForm({ customer_name:'', customer_phone:'', customer_gstin:'', customer_state_code:'',
                   customer_address:'', invoice_type:'sales',
                   invoice_date: new Date().toISOString().split('T')[0],
                   due_date:'', notes:'' });
@@ -396,6 +404,34 @@ export default function InvoicesPage() {
                     placeholder={f.ph} style={inp} />
                 </div>
               ))}
+
+              {/* Place of supply. Only shown when the customer has no GSTIN --
+                  with a GSTIN the state is already known and asking again is
+                  noise. This is the B2C case that was being taxed incorrectly:
+                  an unregistered buyer in another state owes IGST, and there is
+                  nothing in a free-text address we can safely read it from. */}
+              {!String(form.customer_gstin || '').trim() && (
+                <div style={{ marginBottom:10 }}>
+                  <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)',
+                    display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>
+                    Customer's state
+                  </label>
+                  <select
+                    value={form.customer_state_code || homeStateCode || ''}
+                    onChange={e => setForm(p => ({ ...p, customer_state_code: e.target.value }))}
+                    style={inp}>
+                    {GST_STATES.map(([code, name]) => (
+                      <option key={code} value={code}>
+                        {name}{code === homeStateCode ? ' (your state)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize:10, color:'var(--text-subtle)', margin:'4px 0 0', lineHeight:1.5 }}>
+                    Decides IGST vs CGST+SGST. Defaults to your own state.
+                  </p>
+                </div>
+              )}
+
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                 <div>
                   <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)',

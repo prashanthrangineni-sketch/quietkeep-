@@ -57,33 +57,17 @@ export async function POST(req) {
   const prompt = `You are QuietKeep's AI assistant. Today is ${today}. Write a warm, natural 2–3 sentence morning brief for ${name}.\nIMPORTANT: Respond ONLY in ${langName}. Do not mix languages.\nContext:\n${lines.join('\n')}\nWrite only the brief text. Do not start with a greeting.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300, messages: [{ role: 'user', content: prompt }] }),
-    });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '{}');
-      console.error('[daily-brief-summary] Anthropic HTTP', res.status, ':', errText.slice(0, 400));
-      let userMsg = 'AI unavailable — try again shortly.';
-      let httpStatus = 500;
-      try {
-        const parsed = JSON.parse(errText)?.error || {};
-        if (parsed.type === 'authentication_error' || parsed.type === 'invalid_api_key') {
-          userMsg = 'AI not configured — ANTHROPIC_API_KEY is invalid or missing. Contact support.';
-        } else if (parsed.type === 'rate_limit_error') {
-          userMsg = 'AI rate limit reached — try again in a minute.';
-          httpStatus = 429;
-        } else if (parsed.type === 'overloaded_error') {
-          userMsg = 'AI is temporarily busy — try again shortly.';
-        } else if (errText.includes('credit')) {
-          userMsg = 'AI account credits exhausted — contact support.';
-        }
-      } catch {}
-      return NextResponse.json({ error: userMsg }, { status: httpStatus });
+    const answer = await askModel(prompt, { maxTokens: 300 });
+    // Reaching here means every provider in the chain failed, so the old
+    // per-error-type messages have nothing left to distinguish.
+    if (!answer) {
+      console.error('[daily-brief-summary] every provider in the chain failed');
+      return NextResponse.json({
+        error: isConfigured() ? 'AI is busy right now — try again shortly.'
+                              : 'AI not configured — contact support.',
+      }, { status: isConfigured() ? 503 : 500 });
     }
-    const data = await res.json();
-    return NextResponse.json({ summary: data.content?.[0]?.text?.trim() || 'Have a great day!' });
+    return NextResponse.json({ summary: answer.text || 'Have a great day!' });
   } catch (err) {
     console.error('[daily-brief-summary]', err?.message);
     return NextResponse.json({ error: 'AI request failed — check your connection.' }, { status: 500 });

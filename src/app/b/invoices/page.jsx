@@ -28,12 +28,13 @@ function rupee(n) {
     { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// GST place-of-supply: the first 2 digits of a GSTIN are the state code.
-// Different state codes → inter-state supply → IGST (full rate). Same/unknown → CGST+SGST.
-function stateCode(gstin) { return String(gstin || '').trim().slice(0, 2); }
+// GST place-of-supply. Delegates to src/lib/gst-place-of-supply.js so the B2C
+// case is handled: a customer with no GSTIN in another state still owes IGST,
+// because place of supply for B2C is the recipient's location, not a GSTIN they
+// do not have. The old version here compared GSTINs only and so charged
+// CGST+SGST on every B2C inter-state sale.
 function isInterState(ws, form) {
-  const a = stateCode(ws?.gstin), b = stateCode(form?.customer_gstin);
-  return !!(a && b && a !== b);
+  return resolvePlaceOfSupply(ws?.gstin, form?.customer_gstin, form?.customer_state_code).interState;
 }
 
 const STATUS_STYLE = {

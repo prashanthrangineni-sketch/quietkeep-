@@ -291,7 +291,7 @@ export default function InvoicesPage() {
                 </div>
               </div>
               <button onClick={() => {
-                setForm({ customer_name:'', customer_phone:'', customer_gstin:'',
+                setForm({ customer_name:'', customer_phone:'', customer_gstin:'', customer_state_code:'',
                   customer_address:'', invoice_type:'sales',
                   invoice_date: new Date().toISOString().split('T')[0],
                   due_date:'', notes:'' });

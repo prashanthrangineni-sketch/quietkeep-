@@ -7,21 +7,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import com.pranix.quietkeep.services.ReminderAlarmManager;
+import com.pranix.quietkeep.services.ActionExecutor.ActionSpec;
 
-/**
- * ReminderAlarmPlugin — Capacitor bridge exposing AlarmManager to JS.
- *
- * Register in MainActivity.java:
- *   add(ReminderAlarmPlugin.class);
- *
- * Call from JS (after bridge is ready):
- *   const result = await window.Capacitor.Plugins.ReminderAlarm.schedule({
- *     reminderId: "uuid-string",
- *     reminderText: "Doctor at 2pm",
- *     fireAtMs: 1712345678000,
- *     isAlarmType: true,
- *   });
- */
 @CapacitorPlugin(name = "ReminderAlarm")
 public class ReminderAlarmPlugin extends Plugin {
 
@@ -37,8 +24,30 @@ public class ReminderAlarmPlugin extends Plugin {
             return;
         }
 
+        ActionSpec spec = null;
+        String actionType = call.getString("actionType");
+        if (actionType != null && !actionType.trim().isEmpty()) {
+            spec = new ActionSpec();
+            spec.type = actionType;
+            spec.phone = call.getString("phone");
+            spec.whatsappPhone = call.getString("whatsappPhone");
+            spec.whatsappMessage = call.getString("whatsappMessage");
+            spec.navigationQuery = call.getString("navigationQuery");
+            spec.lat = call.getString("lat");
+            spec.lng = call.getString("lng");
+            spec.searchQuery = call.getString("searchQuery");
+            spec.appName = call.getString("appName");
+            spec.alarmMessage = call.getString("alarmMessage");
+            if (call.hasOption("alarmHour")) spec.alarmHour = call.getInt("alarmHour");
+            if (call.hasOption("alarmMinutes")) spec.alarmMinutes = call.getInt("alarmMinutes");
+            if (call.hasOption("timerLengthSeconds")) spec.timerLengthSeconds = call.getInt("timerLengthSeconds");
+            spec.smsMessage = call.getString("smsMessage");
+            if (call.hasOption("torchEnable")) spec.torchEnable = call.getBoolean("torchEnable");
+            if (call.hasOption("volumeDirection")) spec.volumeDirection = call.getInt("volumeDirection");
+        }
+
         ReminderAlarmManager.scheduleReminder(
-            getContext(), reminderId, reminderText, fireAtMs, isAlarm
+            getContext(), reminderId, reminderText, fireAtMs, isAlarm, spec
         );
 
         JSObject result = new JSObject();

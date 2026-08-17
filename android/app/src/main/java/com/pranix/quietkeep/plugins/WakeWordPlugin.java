@@ -58,4 +58,12 @@ public class WakeWordPlugin extends Plugin {
         res.put("surfacesRegistered", true);
         call.resolve(res);
     }
+
+    @PluginMethod
+    public void isWakeWordAvailable(PluginCall call) {
+        Log.d(TAG, "isWakeWordAvailable requested");
+        JSObject res = new JSObject();
+        res.put("available", false);
+        call.resolve(res);
+    }
 }

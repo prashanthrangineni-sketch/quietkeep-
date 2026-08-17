@@ -69,7 +69,7 @@ function classifyCategory(text, entryType) {
 // ── Customer matching ─────────────────────────────────────────────────────────
 // Fuzzy match against business_customers for this workspace.
 // Returns { id, name, phone } or null.
-async function matchCustomer(supabase, workspaceId, partyName) {
+export async function matchCustomer(supabase, workspaceId, partyName) {
   if (!partyName) return null;
   try {
     const { data } = await supabase

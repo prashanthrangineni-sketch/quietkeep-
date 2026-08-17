@@ -28,7 +28,7 @@ import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep }
 import { detectRouteIntent } from '@/lib/intent-parser'
 import { recordVoiceGeoIntent, getTimeBucket } from '@/lib/behavior-engine'
 import { recordActionPattern, recordSequence } from '@/lib/behavior-intelligence' // v14: Behavior Intel
-import { resolveBusinessIntent, writeLedgerEntry } from '@/lib/business-resolver' // v12: business voice pipeline
+import { resolveBusinessIntent, writeLedgerEntry, matchCustomer } from '@/lib/business-resolver' // v12: business voice pipeline
 import { scoredIntent, executeSubIntents } from '@/lib/intent-brain' // v13: Voice Brain
 import {
   createDecisionRecord, writeAuditRecord, AGENTS, PROTOCOL_VERSION,
@@ -214,10 +214,22 @@ export async function POST(request) {
   const nameEntity   = parsed.entities?.names?.[0]
 
   if (['contact', 'meeting', 'communication'].includes(parsed.type) && nameEntity) {
-    ;[matchedContact, allContacts] = await Promise.all([
-      matchContactByName(supabase, user.id, nameEntity),
-      findAllMatchingContacts(supabase, user.id, nameEntity),
-    ])
+    if (workspace_id) {
+      const bizCust = await matchCustomer(supabase, workspace_id, nameEntity);
+      if (bizCust) {
+        matchedContact = {
+          id: bizCust.id,
+          name: bizCust.name,
+          phone: bizCust.phone,
+          is_business: true
+        };
+      }
+    } else {
+      ;[matchedContact, allContacts] = await Promise.all([
+        matchContactByName(supabase, user.id, nameEntity),
+        findAllMatchingContacts(supabase, user.id, nameEntity),
+      ])
+    }
   }
 
   const followUp = computeFollowUp(parsed, matchedContact, allContacts)
@@ -561,15 +573,61 @@ export async function POST(request) {
   let auto_exec = null
   const isSourcePrediction = (body.source === 'prediction' || keep.is_prediction === true)
 
-  const isAutoEligible = (
+  let isAutoEligible = (
     parsed.confidence >= 0.82
     && AUTO_EXEC_TYPES.has(parsed.type)
     && !BLOCKED_FROM_AUTO.has(parsed.type)
     && !followUp
-    && !workspace_id
     && !(parsed.type === 'contact' && !keep.contact_phone)
     && !isSourcePrediction
+    && !(reminderAt && new Date(reminderAt).getTime() > Date.now() + 60_000)
   )
+
+  if (isAutoEligible && workspace_id) {
+    // Check RBAC permissions for business version
+    let resource = 'ledger';
+    let action = 'view';
+    if (parsed.type === 'contact') {
+      resource = 'billing';
+      action = 'view';
+    } else if (['invoice', 'expense', 'ledger_credit', 'ledger_debit', 'sale'].includes(parsed.type)) {
+      resource = 'ledger';
+      action = 'create';
+    }
+
+    const { data: allowed } = await supabase.rpc('check_biz_permission', {
+      p_user_id: user.id,
+      p_workspace_id: workspace_id,
+      p_resource: resource,
+      p_action: action
+    }).catch(() => ({ data: false }));
+
+    if (!allowed) {
+      console.warn(`[RBAC] Voice auto-exec DENIED for user=${user.id} on ${resource}.${action}`);
+      isAutoEligible = false;
+    }
+
+    // Business version specific auto-exec rules
+    if (isAutoEligible) {
+      if (parsed.type === 'navigation') {
+        // Allowed
+      } else if (parsed.type === 'contact') {
+        // Only allow resolved customer (fuzzy matched in business_customers table)
+        if (!matchedContact || !matchedContact.is_business) {
+          console.warn(`[BIZ-POLICY] Blocked auto-exec: contact is not a resolved customer`);
+          isAutoEligible = false;
+        }
+      } else {
+        // Block other auto exec types in business mode
+        isAutoEligible = false;
+      }
+    }
+  } else if (isAutoEligible && !workspace_id) {
+    // Personal version specific rules: cannot call a business customer
+    if (matchedContact && matchedContact.is_business) {
+      isAutoEligible = false;
+    }
+  }
 
   if (isAutoEligible) {
     // v10: Extract navigation destination for Maps Intent in VoiceService

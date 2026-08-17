@@ -150,6 +150,34 @@ made that they are still real.**
 RazorpayX payroll · e-invoice IRN (needs AATO ≥ ₹5cr) · DigiLocker/BBPS (needs a
 GSP account) · Meta WhatsApp Cloud API · QR merchant storefront.
 
+### Model strategy — DECIDED 17 Aug 2026, do not re-litigate
+
+**Anthropic is not used and `ANTHROPIC_API_KEY` will not be provisioned.** Voice
+goes through Sarvam via Pranix Aaria. Anything else uses free models via
+OpenRouter, or a KIMI / GLM subscription. Founder's decision.
+
+**Consequence: six routes read `process.env.ANTHROPIC_API_KEY` and therefore
+return "AI not configured" (503) in production today.** They are not broken code
+— they are pointed at a provider that was never configured:
+
+| Route | What the user loses |
+|---|---|
+| `src/app/api/parse-intent/route.js` | intent parsing fallback |
+| `src/app/api/keep-assist/route.js` | the AI button on Documents and keeps |
+| `src/app/api/ai/summary/route.js` | keep summaries |
+| `src/app/api/daily-brief-summary/route.js` | the daily brief |
+| `src/app/api/warranty/route.js` | warranty extraction |
+| `src/app/api/whatsapp/webhook/route.js` | inbound WhatsApp understanding |
+
+Each names `claude-haiku-4-5-20251001` or `claude-3-5-haiku`. Repointing them is
+mostly mechanical — OpenRouter speaks the OpenAI chat-completions shape, which
+these routes already build — but it is **six separate routes with six separate
+prompts**, and each needs its own verification that the replacement model returns
+the same JSON shape. Not a find-and-replace.
+
+`src/app/api/documents/classify/route.js` is deliberately NOT in this list: it
+uses `OPENAI_API_KEY`, which is provisioned, precisely because of this.
+
 ### Built but not yet delivered
 Documents OCR — the columns exist and nothing writes them, while "Document OCR"
 is sold in the upgrade modal. Tau profile compilation.

@@ -136,7 +136,6 @@ export async function POST(req) {
     }).eq('phone_number', phone);
 
     const userId = session.user_id;
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
     // ── IMAGE: Invoice OCR flow ────────────────────────────────
     if (numMedia > 0 && mediaUrl) {

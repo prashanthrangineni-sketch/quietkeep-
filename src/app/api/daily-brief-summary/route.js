@@ -32,8 +32,7 @@ export async function POST(req) {
     }, { status: 429 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: 'AI not configured — contact support.' }, { status: 500 });
+  if (!isConfigured()) return NextResponse.json({ error: 'AI not configured — contact support.' }, { status: 500 });
 
   const body = await req.json().catch(() => ({}));
   const { brief, userLanguage = 'en' } = body;

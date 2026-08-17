@@ -55,11 +55,26 @@ async function sendPush({ user_id, title, body, url }) {
 }
 
 async function handle(req) {
-  // ── auth: only the cron (or a caller holding CRON_SECRET) may run this ──
+  // ── auth: the bearer secret, and ONLY the bearer secret ───────────────────
+  //
+  // This previously also accepted `x-vercel-cron: 1` as proof of a cron
+  // invocation. Vercel does not strip that header from inbound public requests,
+  // so anyone could set it and skip CRON_SECRET completely -- the endpoint was
+  // effectively unauthenticated, and it sends notifications to real users.
+  //
+  // The header bypass is removed rather than repaired: this job is scheduled
+  // from pg_cron inside Supabase (see supabase/migrations/), which sends the
+  // bearer token, so nothing legitimate depended on it.
+  //
+  // A missing CRON_SECRET now fails closed. The old `secret &&` guard meant an
+  // unset variable disabled the whole check -- exactly backwards for a secret.
   const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    console.error('[cron/process-nudges] CRON_SECRET is not set; refusing to run');
+    return NextResponse.json({ error: 'Not configured' }, { status: 503 });
+  }
   const authz = req.headers.get('Authorization') || '';
-  const isVercelCron = req.headers.get('x-vercel-cron') === '1';
-  if (secret && authz !== `Bearer ${secret}` && !isVercelCron) {
+  if (authz !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   if (!SUPABASE_URL || !SERVICE_KEY) {

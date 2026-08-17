@@ -46,21 +46,11 @@ async function extractInvoiceData(mediaUrl, mediaContentType, anthropicKey) {
     const base64 = Buffer.from(arrayBuffer).toString('base64');
     const mimeType = mediaContentType || 'image/jpeg';
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-            { type: 'text', text: `Extract product information from this invoice/receipt image. Return ONLY a JSON object with these exact keys (use null if not found):
+    // Carries an image, so askModel routes this down the VISION chain rather
+    // than the free-text one. Free text models cannot see, and the dangerous
+    // failure is not an error -- it is a model confidently describing an
+    // invoice it never received.
+    const prompt = `Extract product information from this invoice/receipt image. Return ONLY a JSON object with these exact keys (use null if not found):
 {
   "name": "product name",
   "brand": "brand name",
@@ -71,13 +61,11 @@ async function extractInvoiceData(mediaUrl, mediaContentType, anthropicKey) {
   "serial_number": "serial number if visible",
   "model_number": "model number if visible",
   "warranty_years": 1
-}` }
-          ],
-        }],
-      }),
+}`;
+    const answer = await askModel(prompt, {
+      maxTokens: 400, json: true, image: { base64, mime: mimeType },
     });
-    const data = await res.json();
-    const text = data.content?.[0]?.text || '';
+    const text = answer?.text || '';
     const match = text.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
     return null;

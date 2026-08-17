@@ -39,8 +39,7 @@ export async function POST(req) {
     const { text, context } = await req.json();
     if (!text) return NextResponse.json({ error: 'text required' }, { status: 400 });
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: 'AI not configured' }, { status: 500 });
+    if (!isConfigured()) return NextResponse.json({ error: 'AI not configured' }, { status: 500 });
 
     const ctxStr = context
       ? Object.entries(context).map(([k, v]) => `${k}:${v}`).join('|')

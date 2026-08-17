@@ -404,6 +404,34 @@ export default function InvoicesPage() {
                     placeholder={f.ph} style={inp} />
                 </div>
               ))}
+
+              {/* Place of supply. Only shown when the customer has no GSTIN --
+                  with a GSTIN the state is already known and asking again is
+                  noise. This is the B2C case that was being taxed incorrectly:
+                  an unregistered buyer in another state owes IGST, and there is
+                  nothing in a free-text address we can safely read it from. */}
+              {!String(form.customer_gstin || '').trim() && (
+                <div style={{ marginBottom:10 }}>
+                  <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)',
+                    display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>
+                    Customer's state
+                  </label>
+                  <select
+                    value={form.customer_state_code || homeStateCode || ''}
+                    onChange={e => setForm(p => ({ ...p, customer_state_code: e.target.value }))}
+                    style={inp}>
+                    {GST_STATES.map(([code, name]) => (
+                      <option key={code} value={code}>
+                        {name}{code === homeStateCode ? ' (your state)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize:10, color:'var(--text-subtle)', margin:'4px 0 0', lineHeight:1.5 }}>
+                    Decides IGST vs CGST+SGST. Defaults to your own state.
+                  </p>
+                </div>
+              )}
+
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                 <div>
                   <label style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)',

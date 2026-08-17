@@ -200,9 +200,10 @@ export default function InvoicesPage() {
       customer_name: form.customer_name, customer_phone: form.customer_phone||null,
       customer_gstin: form.customer_gstin||null, customer_address: form.customer_address||null,
       line_items: ci, subtotal,
-      cgst: isInterState(workspace, form) ? 0 : totalGst / 2,
-      sgst: isInterState(workspace, form) ? 0 : totalGst / 2,
-      igst: isInterState(workspace, form) ? totalGst : 0,
+      // splitGst gives the rounding remainder to SGST, so cgst + sgst always
+      // equals total_gst exactly. An invoice whose parts do not sum to its
+      // whole is rejected at filing.
+      ...splitGst(totalGst, isInterState(workspace, form)),
       total_gst: totalGst, total_amount: total, amount_paid: 0, amount_due: total,
       invoice_date: form.invoice_date, due_date: form.due_date||null,
       notes: form.notes||null, status: 'draft',

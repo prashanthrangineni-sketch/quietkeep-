@@ -24,8 +24,7 @@ export async function POST(request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized — session expired, please refresh.' }, { status: 401 });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: 'AI not configured — contact support.' }, { status: 503 });
+  if (!isConfigured()) return NextResponse.json({ error: 'AI not configured — contact support.' }, { status: 503 });
 
   let body;
   try { body = await request.json(); } catch {

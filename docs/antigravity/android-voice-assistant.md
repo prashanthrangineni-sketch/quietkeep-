@@ -328,15 +328,41 @@ What did leak is the password, in exactly two commits: `90828b0` (initial commit
 current working tree**. The repo is public, so anyone who cloned before 28 July —
 or who reads history today — has that string.
 
-**Required action:** rotate the password on the keystore file, which lives on the
-founder's machine and not in this repo:
+**Required action — YOU do this, not the founder.** He is non-technical and has
+never run a terminal command; every previous rotation was done by an agent with
+machine access. That is you.
 
-```
-keytool -storepasswd -keystore <path-to-keystore>.jks
-```
+1. Find the keystore. It is on this machine, not in the repo:
+   ```
+   Get-ChildItem -Path $HOME -Include *.jks,*.keystore -Recurse -ErrorAction SilentlyContinue
+   ```
+   If nothing is found, **stop and tell the founder** — the signing key may only
+   exist on another machine or in Play Console, and guessing here is how an app
+   becomes unupdatable.
 
-Then store the new password in `~/.gradle/gradle.properties` or an environment
-variable. **Never in a tracked file** — that is how this happened.
+2. Rotate it, using the current password (in git history, commits `90828b0`
+   through `94ccdf3`):
+   ```
+   keytool -storepasswd -keystore <path>.jks
+   ```
+   Generate the new password yourself — 24+ random characters. **Do not ask the
+   founder to invent one, and do not print it into the chat transcript.**
+
+3. Write it to `~/.gradle/gradle.properties` (never a tracked file):
+   ```
+   QUIETKEEP_STORE_PASSWORD=<new>
+   QUIETKEEP_KEY_PASSWORD=<new>
+   ```
+
+4. Confirm `android/app/build.gradle` reads those properties rather than a
+   literal, and that `gradle.properties` is in `.gitignore`.
+
+5. Verify by building: `./gradlew bundlePersonalRelease`. A wrong password fails
+   at the signing step with `keystore password was incorrect`.
+
+6. Report to the founder: rotated yes/no, where the new password is stored, and
+   that he should record it in his password manager. **Report the location, not
+   the password.**
 
 ### Manual matrix (report as a pass/fail table)
 personal + business × {gesture nav, 3-button nav} × {screen on, locked, backgrounded}

@@ -37,6 +37,60 @@ export default function Documents() {
   const [uploading, setUploading] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
   const [file, setFile] = useState(null);
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState('');
+
+  // Look at the document once, on selection, and propose how to file it.
+  //
+  // Everything it returns is a SUGGESTION written into the form the user is
+  // already looking at — never a silent save. A misfiled document the user
+  // watched themselves approve is a small annoyance; one that filed itself
+  // wrongly while they weren't looking is why people stop trusting automation.
+  //
+  // Only fields the user has not already typed are filled, so picking the file
+  // last never overwrites what they entered first.
+  async function suggestFromFile(f) {
+    setReadNote('');
+    if (!f || !accessToken) return;
+    if (!/^image\//.test(f.type)) return;      // PDFs/Word: stored fine, just not readable here
+    if (f.size > 6 * 1024 * 1024) return;
+
+    setReading(true);
+    try {
+      const b64 = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload  = () => resolve(String(r.result).split(',')[1] || '');
+        r.onerror = reject;
+        r.readAsDataURL(f);
+      });
+
+      const res = await fetch('/api/documents/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ image_base64: b64, mime: f.type }),
+      });
+      const json = await res.json().catch(() => null);
+      const fields = json?.fields;
+      if (!fields) { setReading(false); return; }
+
+      setFormData(prev => ({
+        ...prev,
+        name:        prev.name?.trim()   ? prev.name        : fields.name,
+        category:    prev.category === 'Other' ? fields.category : prev.category,
+        expiry_date: prev.expiry_date    ? prev.expiry_date : (fields.expiry_date || ''),
+        reminder_days_before: fields.reminder_days_before ?? prev.reminder_days_before,
+      }));
+
+      // Say what was NOT read, rather than leaving a blank field that looks
+      // like it was never attempted.
+      if (fields.expiry_unreadable) setReadNote("I couldn't read the expiry date — please add it.");
+      else if (fields.low_confidence) setReadNote('Filed as a guess — check the category.');
+      else setReadNote('Filled in from the document. Change anything that looks wrong.');
+    } catch {
+      /* silent: the form still works by hand */
+    }
+    setReading(false);
+  }
   const [err, setErr] = useState('');
   const fileRef = useRef();
 
@@ -236,7 +290,14 @@ export default function Documents() {
               >
                 {file ? `✓ ${file.name} (${fmt(file.size)})` : '📎 Attach file (PDF, image — optional, max 50MB)'}
               </div>
-              <input ref={fileRef} type="file" style={{ display:'none' }} accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" onChange={e => setFile(e.target.files[0])} />
+              <input ref={fileRef} type="file" style={{ display:'none' }} accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx"
+                onChange={e => { const f = e.target.files[0]; setFile(f); suggestFromFile(f); }} />
+              {(reading || readNote) && (
+                <p style={{ fontSize:'12px', color: reading ? 'var(--text-muted)' : 'var(--text-subtle)',
+                  margin:'6px 0 0', lineHeight:1.5 }}>
+                  {reading ? 'Reading the document…' : readNote}
+                </p>
+              )}
 
               {uploading && (
                 <div style={{ marginBottom:'10px' }}>

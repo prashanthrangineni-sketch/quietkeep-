@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { askModel, isConfigured } from '@/lib/llm';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 

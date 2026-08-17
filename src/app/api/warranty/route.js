@@ -4,9 +4,10 @@
 // All writes now use createWriteClient (service role). Reads use anon Bearer.
 
 import { createBearerClient, createWriteClient, unauthorized } from '@/lib/supabase-bearer';
+import { askModel, isConfigured } from '@/lib/llm';
 
-async function getAIRecommendation(product, anthropicKey) {
-  if (!anthropicKey) return null;
+async function getAIRecommendation(product) {
+  if (!isConfigured()) return null;
   try {
     const prompt = 'You are a product lifecycle advisor. Given this product:\n' +
       'Name: ' + product.name + '\n' +
@@ -22,21 +23,8 @@ async function getAIRecommendation(product, anthropicKey) {
       '(e.g. "Diwali sale", "Amazon Great Indian Festival", "year-end clearance"). ' +
       'Be specific and practical.';
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 200,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    const data = await res.json();
-    return data.content?.[0]?.text?.trim() || null;
+    const answer = await askModel(prompt, { maxTokens: 200, json: true });
+    return answer?.text || null;
   } catch { return null; }
 }
 
@@ -75,7 +63,7 @@ export async function POST(req) {
       .from('products').select('*').eq('id', product_id).single();
     if (!product) return Response.json({ error: 'Product not found' }, { status: 404 });
 
-    const rec = await getAIRecommendation(product, process.env.ANTHROPIC_API_KEY);
+    const rec = await getAIRecommendation(product);
     if (rec) {
       // Write via service role.
       await db.from('products').update({

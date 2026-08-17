@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 import { checkAndIncrementAIUsage } from '@/lib/ai-rate-limit';
+import { askModel, isConfigured } from '@/lib/llm';
 
 export async function POST(req) {
   try {

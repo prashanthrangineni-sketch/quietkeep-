@@ -4,9 +4,10 @@
 // All writes now use createWriteClient (service role). Reads use anon Bearer.
 
 import { createBearerClient, createWriteClient, unauthorized } from '@/lib/supabase-bearer';
+import { askModel, isConfigured } from '@/lib/llm';
 
-async function getAIRecommendation(product, anthropicKey) {
-  if (!anthropicKey) return null;
+async function getAIRecommendation(product) {
+  if (!isConfigured()) return null;
   try {
     const prompt = 'You are a product lifecycle advisor. Given this product:\n' +
       'Name: ' + product.name + '\n' +

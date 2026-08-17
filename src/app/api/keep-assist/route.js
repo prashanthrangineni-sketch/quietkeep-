@@ -42,8 +42,7 @@ export async function POST(req) {
     const langNote = langName !== 'English' ? `\nIMPORTANT: Respond ONLY in ${langName}. Do not mix languages.` : '';
     if (!content) return Response.json({ error: 'content required' }, { status: 400 });
 
-    const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-    if (!ANTHROPIC_API_KEY) return Response.json({ error: 'AI not configured' }, { status: 500 });
+    if (!isConfigured()) return Response.json({ error: 'AI not configured' }, { status: 500 });
 
     const actionPrompts = {
       suggest: `You are a helpful personal assistant. The user has a keep/note: "${content}". Intent type: ${intent_type || 'general'}. Provide 3 concise, actionable suggestions to help them complete or follow through on this. Format as a JSON array of strings. Each suggestion max 80 chars. Respond ONLY with JSON array, no other text.`,

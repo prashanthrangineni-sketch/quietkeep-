@@ -36,8 +36,8 @@ function twimlResponse(msg) {
 }
 
 // Claude Vision OCR — extracts product info from invoice image
-async function extractInvoiceData(mediaUrl, mediaContentType, anthropicKey) {
-  if (!anthropicKey || !mediaUrl) return null;
+async function extractInvoiceData(mediaUrl, mediaContentType) {
+  if (!isConfigured() || !mediaUrl) return null;
   try {
     // Fetch the image and convert to base64
     const imgRes = await fetch(mediaUrl);

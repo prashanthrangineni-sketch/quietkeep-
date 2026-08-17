@@ -50,14 +50,9 @@ export async function POST(request) {
   const prompt = `Summarize this single intent in 1 concise sentence (max 100 chars). Intent type: ${intent_type}. Text: "${text.slice(0,200)}"\nJSON only: {"summary":"...","action":"next step in 10 words"}`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 200, messages: [{ role: 'user', content: prompt }] }),
-    });
-    if (!res.ok) return NextResponse.json({ error: `AI unavailable (${res.status}) — try again shortly.` }, { status: 500 });
-    const data  = await res.json();
-    const raw   = data.content?.[0]?.text?.trim() || '{}';
+    const answer = await askModel(prompt, { maxTokens: 200, json: true });
+    if (!answer) return NextResponse.json({ error: 'AI unavailable — try again shortly.' }, { status: 503 });
+    const raw = answer.text || '{}';
     let result;
     try { result = JSON.parse(raw.replace(/```json|```/g, '').trim()); } catch { result = { summary: raw.slice(0, 200) }; }
 

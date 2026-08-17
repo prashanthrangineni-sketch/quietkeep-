@@ -49,24 +49,14 @@ export async function POST(req) {
 
     const prompt = `Date:${dateStr}\nInput:"${text.slice(0, 200)}"\n${ctxStr ? `Ctx:${ctxStr}` : ''}\nJSON only:\n{"intent_type":"note|reminder|contact|task|purchase|expense|trip|document|invoice|compliance","title":"max 80 chars","reminder_at":"ISO8601 or null","tags":["1-3 tags"],"confidence":0.0-1.0}`;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 150,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+    // Provider and model are chosen at runtime by src/lib/llm.js, which walks a
+    // fallback chain. Nothing here names a model, so a retired one is an env
+    // change rather than an edit in six files -- which is how all six of these
+    // routes ended up dead against an unprovisioned key.
+    const answer = await askModel(prompt, { maxTokens: 150, json: true });
+    if (!answer) return NextResponse.json({ error: 'Intent parsing failed' }, { status: 500 });
 
-    if (!response.ok) return NextResponse.json({ error: 'Intent parsing failed' }, { status: 500 });
-
-    const data  = await response.json();
-    const raw   = data.content?.[0]?.text?.trim() || '{}';
+    const raw = answer.text || '{}';
     let parsed;
     try {
       parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());

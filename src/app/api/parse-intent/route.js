@@ -5,6 +5,7 @@
 export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { askModel, isConfigured } from '@/lib/llm';
 import { checkAndIncrementAIUsage } from '@/lib/ai-rate-limit';
 
 function createSupabaseClientFromBearer(req) {

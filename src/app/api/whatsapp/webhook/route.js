@@ -150,7 +150,7 @@ export async function POST(req) {
       });
 
       // Process immediately (Edge runtime allows this)
-      const extracted = await extractInvoiceData(mediaUrl, mediaContentType, anthropicKey);
+      const extracted = await extractInvoiceData(mediaUrl, mediaContentType);
 
       if (extracted && extracted.name) {
         // Calculate cost per day

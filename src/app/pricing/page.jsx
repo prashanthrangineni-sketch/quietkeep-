@@ -1,6 +1,7 @@
 'use client';
 // src/app/pricing/page.jsx — Full pricing page with all 4 plans + monthly/yearly toggle
 import { useState } from 'react';
+import { getAppType } from '@/lib/app-type';
 import Link from 'next/link';
 
 const PLANS = [
@@ -114,6 +115,11 @@ const FAQS = [
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
+  const isNative = typeof window !== 'undefined'
+    && window.Capacitor
+    && typeof window.Capacitor.isNativePlatform === 'function'
+    && window.Capacitor.isNativePlatform();
+  const appType = getAppType();
 
   return (
     <>
@@ -180,7 +186,7 @@ export default function PricingPage() {
 
         {/* Plan cards */}
         <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 16px 80px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
-          {PLANS.map((plan) => {
+          {PLANS.filter(p => !isNative || (appType === 'business' ? p.id === 'business' : p.id !== 'business')).map((plan) => {
             const price = annual ? plan.yearlyPrice : plan.monthlyPrice;
             const planKey = annual ? plan.yearlyPlanKey : plan.monthlyPlanKey;
 

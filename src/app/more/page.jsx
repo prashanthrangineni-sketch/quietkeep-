@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/context/auth';
  * CHANGE: Added Camera / AI Memory Capture to personal menu
  */
 import { useState, useEffect } from 'react';
+import { getAppType } from '@/lib/app-type';
 import { supabase } from '@/lib/supabase';
 import NavbarClient from '@/components/NavbarClient';
 
@@ -98,6 +99,13 @@ export default function MorePage() {
     ]},
   ];
 
+  const isNative = typeof window !== 'undefined'
+    && window.Capacitor
+    && typeof window.Capacitor.isNativePlatform === 'function'
+    && window.Capacitor.isNativePlatform();
+  const appType = getAppType();
+  const hideBusinessGroup = isNative && appType !== 'business';
+
   const TIER_COLOR = { free: '#64748b', personal: '#6366f1', family: '#8b5cf6', pro: '#f59e0b' };
   const tierColor  = TIER_COLOR[profile?.subscription_tier] || '#64748b';
 
@@ -173,7 +181,7 @@ export default function MorePage() {
         {/* All pages menu */}
         <div className="qk-section-label">All Pages</div>
         <div className="qk-grid-auto" style={{ marginBottom: 20 }}>
-          {menuGroups.map(group => (
+          {menuGroups.filter(g => !(g.label === 'Business' && hideBusinessGroup)).map(group => (
             <div key={group.label} className="qk-card" style={{ overflow: 'hidden' }}>
               <div style={{
                 padding: '12px 16px 10px', fontSize: 11, fontWeight: 700,
@@ -212,9 +220,11 @@ export default function MorePage() {
             { href: '/pricing',      icon: '💎', title: 'Pricing & Plans',      sub: 'Free · Premium ₹99 · Family ₹199' },
             { href: '/settings',     icon: '⚙️', title: 'Settings',             sub: 'Notifications, voice, calendar' },
             { href: '/subscription', icon: '⭐', title: 'Upgrade to Premium',   sub: 'Unlimited + WhatsApp OCR + AI advice' },
-          ].map((row, i) => (
+            { href: '/privacy',      icon: '🔒', title: 'Privacy Policy',       sub: 'Data protection and DPDP compliance' },
+            { href: '/terms',        icon: '📄', title: 'Terms of Service',     sub: 'Terms and conditions of use' },
+          ].map((row, i, arr) => (
             <a key={i} href={row.href} className="qk-list-item"
-              style={{ borderBottom: i < 4 ? '1px solid var(--border)' : 'none' }}>
+              style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
               <span style={{ fontSize: 20, marginRight: 14, minWidth: 28, textAlign: 'center' }}>
                 {row.icon}
               </span>

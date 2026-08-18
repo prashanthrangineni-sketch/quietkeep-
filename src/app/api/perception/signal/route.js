@@ -1,6 +1,6 @@
 // src/app/api/perception/signal/route.js
 // Passive signal ingestion from device perception layer (Capacitor plugin)
-// Accepts signals from: foreground app detection, device context, clipboard changes
+// Accepts signals from: foreground app detection, device context
 // Calls ingest_passive_signal() + behaviour_signals INSERT → triggers realtime-relay
 // Auth: Bearer token (from Capacitor native context where no cookie session exists)
 //
@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 
 const VALID_SIGNALS = [
   'app_foreground','app_background','app_active','device_context',
-  'clipboard_changed','screen_on','screen_off','idle_detected','charging_started',
+'screen_on','screen_off','idle_detected','charging_started',
 ];
 
 // Compute user state from IST clock as fallback when no model exists

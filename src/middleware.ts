@@ -62,8 +62,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // An explicit ?mode= switch is the user telling us which app they want.
-  const requestedMode = request.nextUrl.searchParams.get('mode');
+  // An explicit ?mode= or ?app= switch is the user telling us which app they want.
+  const requestedMode = request.nextUrl.searchParams.get('mode') || request.nextUrl.searchParams.get('app');
   if (requestedMode === 'business' || requestedMode === 'personal') {
     const res = NextResponse.next();
     res.cookies.set('qk_app_mode', requestedMode, { path: '/', sameSite: 'lax' });

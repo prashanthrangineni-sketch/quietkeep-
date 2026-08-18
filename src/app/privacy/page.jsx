@@ -18,15 +18,15 @@ export const metadata = {
 const sections = [
   {
     title: '1. Who We Are',
-    body: 'QuietKeep is a product of Pranix AI Labs Private Limited ("we", "our", "us"), incorporated in India. We build voice-first personal and business productivity software.\n\nContact: privacy@quietkeep.com',
+    body: 'QuietKeep is a product of Pranix AI Labs Private Limited ("we", "our", "us"), incorporated in India. We build voice-first personal and business productivity software.\n\nUnder the Digital Personal Data Protection (DPDP) Act 2023:\n• QuietKeep Personal App:\n  - Data Controller: Pranix AI Labs Private Limited\n• QuietKeep Business App:\n  - Data Controller: Respective business or shop owners utilizing the app to manage their shop operations, staff, and customers.\n  - Data Processor: Pranix AI Labs Private Limited (acting on the instructions of the business data controller).\n\nContact: privacy@quietkeep.com',
   },
   {
     title: '2. What Data We Collect',
-    body: 'We collect:\n• Email address — for magic link authentication\n• Profile data — name, date of birth, city, language preference (all optional, you provide these)\n• Keeps and notes — text and voice content you record\n• Reminders and calendar events — dates, times, recurrence\n• Finance data — expenses, budgets, subscriptions you enter manually\n• Health and mood logs — data you choose to log\n• Location — only when you use Drive Mode or Business Geo Check-in (not stored continuously)\n• Device info — type, OS, browser for app functionality\n\nWe do NOT collect:\n• Passwords (we use passwordless magic link authentication)\n• Payment card details (handled by Razorpay — we never see them)\n• Biometric data\n• Your phone contacts (you manually enter contact details)',
+    body: 'We collect:\n• Email address — for magic link authentication\n• Profile data — name, date of birth, city, language preference (all optional)\n• Keeps and notes — text and voice content you record\n• Reminders and calendar events — dates, times, recurrence\n• Finance data — expenses, budgets, subscriptions you enter manually\n• Health and mood logs — data you choose to log\n• Location — only when you use Drive Mode or Business Geo Check-in (not stored continuously)\n• Clipboard data — 30-character previews of newly copied text are securely transmitted to the server when changed to process automated clipboard commands/syncing.\n• Foreground app usage — foreground app package names are read via PACKAGE_USAGE_STATS and transmitted to the server for passive perception analytics (suggesting reminders/tasks).\n• Device info — type, OS, browser for app functionality\n\nWe do NOT collect:\n• Passwords (we use passwordless magic link authentication)\n• Payment card details (handled by Razorpay — we never see them)\n• Biometric data\n• Your phone contacts (you manually enter contact details)',
   },
   {
     title: '3. How We Use Your Data',
-    body: '• To provide QuietKeep — storing keeps, sending reminders, generating daily briefs\n• To improve the product — anonymised usage analytics\n• To send transactional emails — OTP magic links, subscription confirmations (via Resend)\n• To send notifications — reminders and alerts (via Knock.app)\n• To process payments — subscription billing (via Razorpay — they are the data controller for payment data)\n• To provide AI features — your keep text is sent to Anthropic Claude API for intent parsing and summaries\n\nWe do NOT sell your data or use it for advertising.',
+    body: '• To provide QuietKeep — storing keeps, sending reminders, generating daily briefs\n• To improve the product — anonymised usage analytics\n• To send transactional emails — OTP magic links, subscription confirmations (via Resend)\n• To send notifications — reminders and alerts (via Knock.app)\n• To process payments — subscription billing (via Razorpay)\n• To provide AI features — your keep text is sent to our AI subprocessors for intent parsing, summaries, and semantic analysis\n\nWe do NOT sell your data or use it for advertising.',
   },
   {
     title: '4. Data Storage and Security',
@@ -38,7 +38,7 @@ const sections = [
   },
   {
     title: '6. Third-Party Services',
-    body: 'QuietKeep uses these third-party services:\n• Supabase — database and authentication\n• Anthropic Claude — AI features\n• Razorpay — payment processing\n• Resend — transactional email\n• Knock.app — push notifications\n• Vercel — app hosting\n\nEach has their own privacy policy. We have data processing agreements with each provider.',
+    body: 'QuietKeep uses the following third-party subprocessors for core functionalities:\n• Supabase — database and authentication hosting\n• Vercel — frontend application hosting\n• Sarvam AI — Indic speech recognition and translation APIs\n• OpenAI — intent extraction and semantic intelligence features\n• OpenRouter — AI inference fallback routing\n• Groq — AI inference processing fallback\n• Razorpay — subscription payment gateway processing\n• MSG91 — transactional SMS OTP notifications\n• OneSignal — in-app push notifications delivery\n• Knock — notification delivery orchestration\n• Resend — transactional email delivery\n• ElevenLabs — AI text-to-speech voice generation\n\nEach provider has their own privacy policy. We have data processing agreements with each provider.',
   },
   {
     title: '7. Your Rights (DPDP Act 2023)',
@@ -66,7 +66,9 @@ const sections = [
   },
 ];
 
-export default function PrivacyPage() {
+export default async function PrivacyPage({ searchParams }) {
+  const params = await searchParams;
+  const isBusiness = params.app === 'business';
   return (
     <div
       style={{
@@ -78,6 +80,21 @@ export default function PrivacyPage() {
       }}
     >
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        {isBusiness && (
+          <div style={{
+            background: 'rgba(10, 166, 116, 0.1)',
+            border: '1px solid #0aa674',
+            color: '#0aa674',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontWeight: 600,
+            marginBottom: '24px',
+            textAlign: 'center'
+          }}>
+            QuietKeep Business Edition Privacy Policy
+          </div>
+        )}
         <Link
           href="/"
           style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none' }}
@@ -98,7 +115,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-subtle)', marginBottom: 40 }}>
-          Last updated: March 26, 2026 · Pranix AI Labs Pvt Ltd
+          Last updated: August 18, 2026 · Pranix AI Labs Pvt Ltd
         </p>
 
         {sections.map(({ title, body }) => (

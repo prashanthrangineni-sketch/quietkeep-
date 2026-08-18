@@ -2,7 +2,6 @@ package com.pranix.quietkeep.plugins;
 
 import android.app.usage.UsageStats;
 import android.app.usage.UsageStatsManager;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.BatteryManager;
@@ -81,18 +80,4 @@ public class PerceptionPlugin extends Plugin {
         } catch (Exception e) { call.reject("getActivityContext: " + e.getMessage()); }
     }
 
-    @PluginMethod
-    public void getClipboardText(PluginCall call) {
-        try {
-            ClipboardManager cm = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
-            String text = "";
-            if (cm != null && cm.hasPrimaryClip()) {
-                android.content.ClipData.Item item = cm.getPrimaryClip().getItemAt(0);
-                if (item != null && item.getText() != null) text = item.getText().toString();
-            }
-            JSObject r = new JSObject();
-            r.put("text", text.length() > 300 ? text.substring(0, 300) : text);
-            call.resolve(r);
-        } catch (Exception e) { call.reject("getClipboardText: " + e.getMessage()); }
-    }
 }

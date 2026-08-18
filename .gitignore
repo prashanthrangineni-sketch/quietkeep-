@@ -33,3 +33,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# android build outputs
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+android/codetrix-studio-capacitor-google-auth/build/
+android/capacitor-android/build/

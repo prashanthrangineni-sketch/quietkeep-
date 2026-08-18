@@ -45,53 +45,43 @@ This document contains the exact declarations, justifications, and configuration
 
 ---
 
+### E. USE_FULL_SCREEN_INTENT (Full-Screen Intent)
+* **Declared in:** AndroidManifest.xml
+* **Used by:** AlarmReceiver.java.
+* **Justification:**
+  QuietKeep delivers critical alarm-type reminder notifications (such as timer countdowns and scheduled tasks). To ensure the user is immediately notified and can interact with the alarm even when the device is locked, the app launches a full-screen notification intent (CountdownActivity.java). On Android 14+ (API 34+), this is guarded by runtime canUseFullScreenIntent() checks, with standard notifications as a fallback when the permission is not granted.
+
+---
+
 ## 2. Data Safety & Privacy Declarations
 
-### A. Clipboard Data Collection
-* **Data Type:** Clipboard text
-* **Collected & Transmitted:** Yes.
-* **Justification:** QuietKeep reads copy events to support voice-triggered clipboard parsing commands (e.g., *"Aaria, add this clipboard link to my workspace"* or parsing phone numbers and invoices copied to the clipboard).
-* **Transmission Details:**
-  * **Code Reference:** `src/lib/capacitor/perception.ts` lines 61-69:
-    ```typescript
-    const clip = await P.getClipboardText?.();
-    if (clip?.text && clip.text !== _lastClip && clip.text.length > 20
-        && !clip.text.startsWith('http')) {
-      _lastClip = clip.text;
-      await _send(authToken, serverUrl, 'clipboard_changed',
-        { content_length: clip.text.length, preview: clip.text.slice(0, 30) });
-    }
-    ```
-  * **Server Endpoint:** `src/app/api/perception/signal/route.js`.
-  * **Exposure:** A 30-character preview of the copied clipboard text is sent to the database via the perception API. This could capture sensitive inputs (passwords, OTPs, or card details) if they are copied to the clipboard. The listing declaration must state that clipboard contents are transmitted and processed.
-
-### B. Location
+### A. Location
 * **Data Type:** Approximate location, Precise location
 * **Collected:** Yes (when geo triggers are active or during check-in)
 * **Shared:** No (only transmitted to secure user-owned DB for geofence evaluation)
 * **Ephemeral:** No (coordinates of saved geo-triggered keeps are stored in database)
 * **Users can delete:** Yes (via "Delete Account" or deleting individual keeps)
 
-### C. Personal Info
+### B. Personal Info
 * **Data Type:** Name, Email address, User IDs
 * **Collected:** Yes (for Supabase passwordless magic link login)
 * **Shared:** No
 * **Processed:** Transmitted securely over HTTPS to Supabase databases.
 
-### D. Financial Info
+### C. Financial Info
 * **Data Type:** Purchase history, Expense logs, Ledger records
 * **Collected:** Yes (user logs their expenses, bills, and GST invoices)
 * **Shared:** No
 * **Processed:** Transmitted securely to Supabase. Subscription payments are processed securely by Razorpay.
 
-### E. Audio Files
+### D. Audio Files
 * **Data Type:** Voice / Sound recordings
 * **Collected:** Yes (3-second WAV voice chunks are captured to translate voice commands)
 * **Shared:** Yes (sent to AI processors for transcription)
-* **Subprocessors:** Sarvam AI (Indic speech recognition), OpenAI / OpenRouter / Groq (voice processing and LLM)
+* **Subprocessors:** Sarvam AI (Indic speech recognition), OpenAI / OpenRouter / Groq (voice processing and LLM), ElevenLabs (text-to-speech voice generation)
 * **Ephemeral:** Yes (audio chunks are processed on-the-fly and are not persistently stored on servers)
 
-### F. App Activity & Device Info
+### E. App Activity & Device Info
 * **Data Type:** Package names (`PACKAGE_USAGE_STATS`), Device ID, OS version
 * **Collected:** Yes
 * **Shared:** No

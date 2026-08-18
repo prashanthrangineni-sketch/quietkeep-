@@ -38,7 +38,9 @@ const sections = [
   },
   {
     title: '6. Third-Party Services',
-    body: 'QuietKeep uses the following third-party subprocessors for core functionalities:\n• Supabase — database and authentication hosting\n• Vercel — frontend application hosting\n• Sarvam AI — Indic speech recognition and translation APIs\n• OpenAI — intent extraction and semantic intelligence features\n• OpenRouter — AI inference fallback routing\n• Groq — AI inference processing fallback\n• Razorpay — subscription payment gateway processing\n• MSG91 — transactional SMS OTP notifications\n• OneSignal — in-app push notifications delivery\n• Knock — notification delivery orchestration\n\nEach provider has their own privacy policy. We have data processing agreements with each provider.',
+    body: 'QuietKeep uses the following third-party subprocessors for core functionalities:\n• Supabase — database and authentication hosting\n• Vercel — frontend application hosting\n• Sarvam AI — Indic speech recognition and translation APIs\n• OpenAI — intent extraction and semantic intelligence features\n• OpenRouter — AI inference fallback routing\n• Groq — AI inference processing fallback\n• Razorpay — subscription payment gateway processing\n• MSG91 — transactional SMS OTP notifications\n• OneSignal — in-app push notifications delivery\n• Knock — notification delivery orchestration
+• Resend — transactional email delivery
+• ElevenLabs — AI text-to-speech voice generation\n\nEach provider has their own privacy policy. We have data processing agreements with each provider.',
   },
   {
     title: '7. Your Rights (DPDP Act 2023)',
@@ -66,7 +68,9 @@ const sections = [
   },
 ];
 
-export default function PrivacyPage() {
+export default async function PrivacyPage({ searchParams }) {
+  const params = await searchParams;
+  const isBusiness = params.app === 'business';
   return (
     <div
       style={{
@@ -78,6 +82,21 @@ export default function PrivacyPage() {
       }}
     >
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        {isBusiness && (
+          <div style={{
+            background: 'rgba(10, 166, 116, 0.1)',
+            border: '1px solid #0aa674',
+            color: '#0aa674',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontWeight: 600,
+            marginBottom: '24px',
+            textAlign: 'center'
+          }}>
+            QuietKeep Business Edition Privacy Policy
+          </div>
+        )}
         <Link
           href="/"
           style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none' }}

@@ -19,7 +19,6 @@ function isNativePlatform(): boolean {
 
 let _intervalId: ReturnType<typeof setInterval> | null = null;
 let _lastApp = '';
-let _lastClip = '';
 
 export async function startPerceptionLoop(
   authToken: string,
@@ -57,15 +56,6 @@ async function _pollNative(authToken: string, serverUrl: string): Promise<void> 
     const ctx = await P.getActivityContext?.();
     if (ctx) await _send(authToken, serverUrl, 'device_context',
       { battery_level: ctx.battery_level, charging: ctx.charging, screen_on: ctx.screen_on });
-  } catch {}
-  try {
-    const clip = await P.getClipboardText?.();
-    if (clip?.text && clip.text !== _lastClip && clip.text.length > 20
-        && !clip.text.startsWith('http')) {
-      _lastClip = clip.text;
-      await _send(authToken, serverUrl, 'clipboard_changed',
-        { content_length: clip.text.length, preview: clip.text.slice(0, 30) });
-    }
   } catch {}
 }
 

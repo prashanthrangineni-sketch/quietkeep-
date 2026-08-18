@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getAppType } from '@/lib/app-type';
 import { useRouter } from 'next/navigation';
 
 // APP_TYPE is baked into the bundle at build time by next.config.js.
@@ -17,6 +18,9 @@ const LOGIN_PATH     = APP_TYPE === 'business' ? '/biz-login'   : '/login';
 export default function AuthConfirmPage() {
   const [status, setStatus] = useState('Verifying your link…');
   const router = useRouter();
+  const appType = getAppType();
+  const postAuthPath = appType === 'business' ? '/b/dashboard' : '/dashboard';
+  const loginPath = appType === 'business' ? '/biz-login' : '/login';
 
   useEffect(() => {
     // FIX: use singleton so session lands in the same storageKey as AuthContext
@@ -36,7 +40,7 @@ export default function AuthConfirmPage() {
         // PATH 1: token_hash — stateless OTP, works on all devices
         if (token_hash) {
           const { error } = await supabase.auth.verifyOtp({ token_hash, type });
-          if (!error) { router.replace(POST_AUTH_PATH); return; }
+          if (!error) { router.replace(postAuthPath); return; }
           setStatus('Login failed: ' + error.message);
           return;
         }
@@ -44,7 +48,7 @@ export default function AuthConfirmPage() {
         // PATH 2: access_token in hash — iOS Mail implicit flow
         if (access_token && refresh_token) {
           const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-          if (!error) { router.replace(POST_AUTH_PATH); return; }
+          if (!error) { router.replace(postAuthPath); return; }
           setStatus('Login failed: ' + error.message);
           return;
         }
@@ -52,7 +56,7 @@ export default function AuthConfirmPage() {
         // PATH 3: PKCE code — desktop only, same-browser session required
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (!error) { router.replace(POST_AUTH_PATH); return; }
+          if (!error) { router.replace(postAuthPath); return; }
           setStatus('This link expired or was opened in a different browser. Use the sign-in page instead.');
           return;
         }
@@ -79,7 +83,7 @@ export default function AuthConfirmPage() {
         </div>
         {isError && (
           <button
-            onClick={() => router.replace(LOGIN_PATH)}
+            onClick={() => router.replace(loginPath)}
             style={{ marginTop: '20px', background: '#6366f1', border: 'none', color: '#fff', padding: '10px 24px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
             Back to Login
           </button>

@@ -16,6 +16,7 @@
  */
 
 import { safeFetch } from '../safeFetch';
+import { getAppType as getAppTypeHelper } from '../app-type';
 import { processOffline, flushOfflineQueue, type OfflineResult } from '../offlineVoice';
 
 function _cap(): any {
@@ -346,12 +347,7 @@ export async function requestBatteryOptimizationExemption(): Promise<{ exempt: b
 // ── Push registration ─────────────────────────────────────────────────────────
 
 function getAppType(): 'personal' | 'business' {
-  if (typeof window !== 'undefined' && (window as any).__QK_APP_TYPE__ === 'business') return 'business';
-  if (process.env.NEXT_PUBLIC_APP_TYPE === 'business') return 'business';
-  if (typeof window !== 'undefined' &&
-      (window.location.pathname.startsWith('/b/') || window.location.pathname.startsWith('/biz')))
-    return 'business';
-  return 'personal';
+  return getAppTypeHelper() as 'personal' | 'business';
 }
 
 async function waitForPushPlugin(maxMs = 8000): Promise<any | null> {

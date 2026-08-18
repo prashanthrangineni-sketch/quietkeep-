@@ -8,6 +8,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
+import { getAppType } from '@/lib/app-type';
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -114,9 +115,7 @@ export default function HomePage() {
       && window.Capacitor.isNativePlatform();
 
     // FIX v2: Check runtime injection FIRST, then build-time env, then default.
-    const appType = (typeof window !== 'undefined' && window.__QK_APP_TYPE__)
-      || process.env.NEXT_PUBLIC_APP_TYPE
-      || 'personal';
+    const appType = getAppType();
 
     if (isNative) {
       if (!authLoading) {

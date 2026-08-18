@@ -643,10 +643,18 @@ export default function SettingsPage() {
             width: '100%', padding: '0.9rem', borderRadius: 10, border: 'none',
             background: saving ? 'var(--surface)' : '#6366f1', color: saving ? 'var(--text-muted)' : '#fff', fontSize: '1rem',
             fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+            marginBottom: '1rem',
           }}
         >
           {saving ? 'Saving…' : saved || 'Save Settings'}
         </button>
+
+        {/* Legal links */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', padding: '16px 0', borderTop: '1px solid var(--border)' }}>
+          <a href="/privacy" style={{ color: 'var(--text-muted)', fontSize: '13px', textDecoration: 'none' }}>Privacy Policy</a>
+          <span style={{ color: 'var(--border)' }}>|</span>
+          <a href="/terms" style={{ color: 'var(--text-muted)', fontSize: '13px', textDecoration: 'none' }}>Terms of Service</a>
+        </div>
       </div>
     </div>
   );

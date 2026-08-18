@@ -64,11 +64,15 @@ public class AlarmReceiver extends BroadcastReceiver {
             // Show full screen intent notification
             showNotificationWithFullScreenIntent(context, reminderId, reminderText, isAlarmType, countdownIntent);
 
-            // Also launch CountdownActivity directly
-            try {
-                context.startActivity(countdownIntent);
-            } catch (Exception e) {
-                Log.w(TAG, "Failed to start CountdownActivity directly: " + e.getMessage());
+            // Also launch CountdownActivity directly if full screen intent is allowed
+            if (canUseFullScreenIntent(context)) {
+                try {
+                    context.startActivity(countdownIntent);
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to start CountdownActivity directly: " + e.getMessage());
+                }
+            } else {
+                Log.w(TAG, "Skipping direct CountdownActivity start because full-screen intent is not permitted by OS/user.");
             }
         } else {
             // Legacy / simple notification flow
@@ -83,6 +87,20 @@ public class AlarmReceiver extends BroadcastReceiver {
         } catch (Exception e) {
             Log.w(TAG, "Failed to start ReminderTTSService: " + e.getMessage());
         }
+    }
+
+    private boolean canUseFullScreenIntent(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) {
+                boolean allowed = nm.canUseFullScreenIntent();
+                if (!allowed) {
+                    Log.w(TAG, "canUseFullScreenIntent: USE_FULL_SCREEN_INTENT permission is withheld by the OS/user.");
+                }
+                return allowed;
+            }
+        }
+        return true;
     }
 
     private void createNotificationChannel(Context context, boolean isAlarmType) {
@@ -152,7 +170,11 @@ public class AlarmReceiver extends BroadcastReceiver {
             .setStyle(new NotificationCompat.BigTextStyle().bigText(reminderText));
 
         if (isAlarmType) {
-            builder.setFullScreenIntent(pi, true);
+            if (canUseFullScreenIntent(context)) {
+                builder.setFullScreenIntent(pi, true);
+            } else {
+                Log.w(TAG, "showNotification: Skipping setFullScreenIntent because permission is withheld.");
+            }
         }
 
         nm.notify(Math.abs(reminderId.hashCode()) % 10000, builder.build());
@@ -177,13 +199,18 @@ public class AlarmReceiver extends BroadcastReceiver {
             .setContentTitle("⏰ QuietKeep Scheduled Execution")
             .setContentText(reminderText)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setFullScreenIntent(pi, true)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setSound(soundUri)
             .setVibrate(new long[]{0, 300, 150, 300})
             .setStyle(new NotificationCompat.BigTextStyle().bigText(reminderText));
+
+        if (canUseFullScreenIntent(context)) {
+            builder.setFullScreenIntent(pi, true);
+        } else {
+            Log.w(TAG, "showNotificationWithFullScreenIntent: Skipping setFullScreenIntent because permission is withheld.");
+        }
 
         nm.notify(Math.abs(reminderId.hashCode()) % 10000, builder.build());
         Log.d(TAG, "AlarmReceiver: full screen notification shown for reminder=" + reminderId);

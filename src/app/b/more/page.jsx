@@ -102,6 +102,8 @@ export default function BizMorePage() {
         ...(isPlatformAdmin
           ? [{ href: '/admin', icon: '🔐', title: 'Admin Panel', sub: 'Metrics, users, feature flags' }]
           : []),
+        { href: '/privacy?app=business', icon: '🔒', title: 'Privacy Policy', sub: 'Data protection and DPDP compliance' },
+        { href: '/terms',                icon: '📄', title: 'Terms of Service', sub: 'Terms and conditions of use' },
       ],
     },
   ];

@@ -2,6 +2,7 @@ package com.pranix.quietkeep.activities;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Insets;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -9,7 +10,10 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.view.WindowManager;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -36,6 +40,19 @@ public class CountdownActivity extends Activity {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                     | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
                     | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+        }
+
+        // Register predictive back gesture callback for API 33+ (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                new OnBackInvokedCallback() {
+                    @Override
+                    public void onBackInvoked() {
+                        cancelAction();
+                    }
+                }
+            );
         }
 
         // Parse ActionSpec from intent
@@ -81,6 +98,23 @@ public class CountdownActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
+
+        // Handle edge-to-edge system bar insets (API 20+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+            root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+                @Override
+                public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        Insets systemBars = insets.getInsets(WindowInsets.Type.systemBars());
+                        v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+                    } else {
+                        v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
+                                     insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+                    }
+                    return insets;
+                }
+            });
+        }
 
         titleView = new TextView(this);
         titleView.setText("Calling " + displayName);
@@ -171,6 +205,12 @@ public class CountdownActivity extends Activity {
             countDownTimer.cancel();
         }
         finish();
+    }
+
+    @Override
+    public void onBackPressed() {
+        cancelAction();
+        super.onBackPressed();
     }
 
     @Override

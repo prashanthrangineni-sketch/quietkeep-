@@ -38,9 +38,7 @@ const sections = [
   },
   {
     title: '6. Third-Party Services',
-    body: 'QuietKeep uses the following third-party subprocessors for core functionalities:\n• Supabase — database and authentication hosting\n• Vercel — frontend application hosting\n• Sarvam AI — Indic speech recognition and translation APIs\n• OpenAI — intent extraction and semantic intelligence features\n• OpenRouter — AI inference fallback routing\n• Groq — AI inference processing fallback\n• Razorpay — subscription payment gateway processing\n• MSG91 — transactional SMS OTP notifications\n• OneSignal — in-app push notifications delivery\n• Knock — notification delivery orchestration
-• Resend — transactional email delivery
-• ElevenLabs — AI text-to-speech voice generation\n\nEach provider has their own privacy policy. We have data processing agreements with each provider.',
+    body: 'QuietKeep uses the following third-party subprocessors for core functionalities:\n• Supabase — database and authentication hosting\n• Vercel — frontend application hosting\n• Sarvam AI — Indic speech recognition and translation APIs\n• OpenAI — intent extraction and semantic intelligence features\n• OpenRouter — AI inference fallback routing\n• Groq — AI inference processing fallback\n• Razorpay — subscription payment gateway processing\n• MSG91 — transactional SMS OTP notifications\n• OneSignal — in-app push notifications delivery\n• Knock — notification delivery orchestration\n• Resend — transactional email delivery\n• ElevenLabs — AI text-to-speech voice generation\n\nEach provider has their own privacy policy. We have data processing agreements with each provider.',
   },
   {
     title: '7. Your Rights (DPDP Act 2023)',

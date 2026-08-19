@@ -44,3 +44,6 @@ android/capacitor-android/build/
 *.jks
 *.keystore
 .env*
+
+android/.gradle/
+android/build/

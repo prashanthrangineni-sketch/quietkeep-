@@ -12,28 +12,55 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
- * PaymentNotificationListener — Track A5 Payment SMS / Banking Notification Auto-Capture
+ * PaymentNotificationListener — Track A5 Payment / Banking Notification Auto-Capture
  *
- * Listens for incoming bank & UPI notifications (SBI, HDFC, ICICI, Axis, PhonePe, Paytm, GPay, BHIM)
+ * Strictly listens for incoming bank & UPI notifications from verified financial apps
  * and posts transaction text to /api/finance/sms-expense for auto-logging.
+ *
+ * Whitelist covers top Indian UPI apps and scheduled commercial banks.
  */
 public class PaymentNotificationListener extends NotificationListenerService {
     private static final String TAG = "QK_PAYMENT_NOTIF";
 
-    private static final Set<String> BANK_PACKAGES = new HashSet<>(Arrays.asList(
-        "com.phonepe.app",
-        "net.one97.paytm",
-        "com.google.android.apps.nfc.phone",
-        "in.org.npci.upiapp",
-        "com.sbi.SBIFreedomPlus",
-        "com.snapwork.hdfc",
-        "com.csam.icici.bank.imobile",
-        "com.axis.mobile"
-    ));
+    public static final Set<String> ALLOWED_BANK_PACKAGES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+        // UPI & Wallet Apps
+        "com.phonepe.app",                    // PhonePe
+        "net.one97.paytm",                    // Paytm
+        "com.google.android.apps.nfc.phone",   // Google Pay (GPay)
+        "in.org.npci.upiapp",                 // BHIM NPCI
+        "com.dreamplug.androidapp",           // CRED
+        "in.amazon.mShop.android.shopping",   // Amazon Pay
+        "com.mobikwik_new",                   // MobiKwik
+        "com.freecharge.android",             // Freecharge
+        "com.tatadigital.tcp",                // Tata Neu / Tata Pay
+        "com.naviapp",                        // Navi UPI
+        "money.jupiter",                      // Jupiter Money
+        "money.fi",                           // Fi Money
+
+        // Major Public & Private Sector Indian Banks
+        "com.sbi.SBIFreedomPlus",             // SBI Yono Lite
+        "com.sbi.lotusintouch",               // SBI Yono
+        "com.snapwork.hdfc",                  // HDFC MobileBanking
+        "com.enstage.wibmo.hdfc",             // HDFC PayZapp
+        "com.csam.icici.bank.imobile",        // ICICI iMobile Pay
+        "com.icicibank.pockets",              // ICICI Pockets
+        "com.axis.mobile",                    // Axis Mobile
+        "com.msf.kbank.mobile",               // Kotak 811
+        "com.bankofbaroda.mconnect",          // bob World (Bank of Baroda)
+        "com.pnb.one",                        // PNB ONE (Punjab National Bank)
+        "com.canarabank.mobility",            // Canara ai1
+        "com.infrasofttech.uboi",             // Union Bank Vyom
+        "com.idfcfirstbank.optimus",          // IDFC FIRST Bank
+        "com.rblbank.mobank",                 // RBL MoBank
+        "com.fss.indus",                      // IndusInd Bank INDIE
+        "com.sc.mobile.in",                   // Standard Chartered India
+        "com.citibank.mobile.in"              // Citi Mobile India
+    )));
 
     private String lastTextHash = "";
     private long lastTextTime = 0;
@@ -43,7 +70,9 @@ public class PaymentNotificationListener extends NotificationListenerService {
         if (sbn == null) return;
         String pkg = sbn.getPackageName();
 
-        if (pkg != null && (BANK_PACKAGES.contains(pkg) || pkg.contains("bank") || pkg.contains("upi") || pkg.contains("pay"))) {
+        // STRICT PACKAGE FILTER: Must match approved banking/UPI whitelist only.
+        // No broad substring matching.
+        if (pkg != null && ALLOWED_BANK_PACKAGES.contains(pkg)) {
             Notification notification = sbn.getNotification();
             if (notification == null || notification.extras == null) return;
 

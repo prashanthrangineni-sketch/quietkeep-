@@ -1,7 +1,7 @@
 'use client';
 // src/app/biz-login/page.jsx — Business Login with Welcome Intro & (◕‿◕) Brand Orb
 // Primary Auth: Phone Number SMS OTP via MSG91
-// Secondary Auth: Email + Beta Password / Magic Link
+// Secondary Auth: Email + Password / Beta Code / Magic Link
 
 import { useState, useRef, useEffect } from 'react';
 import { getAppType } from '@/lib/app-type';
@@ -70,10 +70,13 @@ export default function BizLoginPage() {
   const [phone, setPhone] = useState('');
   const [smsOtp, setSmsOtp] = useState(Array(SMS_OTP_LEN).fill(''));
   const [email, setEmail] = useState('');
-  const [step, setStep] = useState('welcome'); // 'welcome' | 'phone' | 'phone_otp' | 'email' | 'otp' | 'sent'
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [step, setStep] = useState('welcome'); // 'welcome' | 'phone' | 'phone_otp' | 'email' | 'password' | 'signup' | 'forgot' | 'otp' | 'sent' | 'reset_sent'
   const [otp, setOtp] = useState(Array(BETA_OTP_LEN).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isBeta, setIsBeta] = useState(false);
   const refs = useRef([]);
   const smsRefs = useRef([]);
   const otpTokenRef = useRef('');
@@ -144,10 +147,6 @@ export default function BizLoginPage() {
       });
 
       setBusinessMode();
-
-      // Claim any staff row the employer already created for this phone, then
-      // decide. A staff member sent to /b/onboarding is handed their own empty
-      // workspace instead of their employer's.
       window.location.href = await routeAfterBusinessLogin(getClient(), data.session);
     } catch (err) {
       setLoading(false);
@@ -173,27 +172,122 @@ export default function BizLoginPage() {
   async function handleContinueEmail() {
     if (!email.trim()) return;
     const norm = email.trim().toLowerCase();
+    setLoading(true);
+    setError('');
+
     try {
-      const res = await fetch('/api/auth/beta-verify', {
+      const betaRes = await fetch('/api/auth/beta-verify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: norm }),
       });
-      const data = await res.json();
-      if (data.isBeta) {
-        setError('');
+      const betaData = await betaRes.json();
+      if (betaData.isBeta) {
+        setLoading(false);
+        setIsBeta(true);
         setStep('otp');
         setTimeout(() => refs.current[0]?.focus(), 120);
         return;
       }
     } catch {}
-    sendMagicLink(norm);
+
+    try {
+      const checkRes = await fetch('/api/auth/check-email', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: norm }),
+      });
+      const checkData = await checkRes.json();
+      setLoading(false);
+
+      setStep('password');
+      setTimeout(() => document.getElementById('qk-biz-password-input')?.focus(), 100);
+    } catch (err) {
+      setLoading(false);
+      setStep('password');
+      setTimeout(() => document.getElementById('qk-biz-password-input')?.focus(), 100);
+    }
   }
 
-  async function sendMagicLink(emailAddr) {
+  async function verifyPassword() {
+    if (!password) { setError('Enter your password.'); return; }
+    setLoading(true);
+    setError('');
+
+    const { data, error: authErr } = await getClient().auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+
+    setLoading(false);
+
+    if (authErr) {
+      const msg = authErr.message || '';
+      if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
+        setError('Incorrect password. Use "Forgot password?" if you need to reset it.');
+      } else {
+        setError(msg || 'Sign-in failed. Try again.');
+      }
+      return;
+    }
+
+    setBusinessMode();
+    const session = data?.session;
+    window.location.href = await routeAfterBusinessLogin(getClient(), session);
+  }
+
+  async function signUp() {
+    if (!password || password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== confirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+
+    const { data, error: signUpErr } = await getClient().auth.signUp({
+      email: email.trim().toLowerCase(),
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(pendingNext())}`,
+      },
+    });
+
+    setLoading(false);
+
+    if (signUpErr) {
+      setError(signUpErr.message || 'Sign-up failed.');
+      return;
+    }
+
+    if (data.session) {
+      setBusinessMode();
+      window.location.href = await routeAfterBusinessLogin(getClient(), data.session);
+    } else {
+      setStep('sent');
+    }
+  }
+
+  async function sendReset() {
+    setLoading(true);
+    setError('');
+
+    const { error: resetErr } = await getClient().auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      { redirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(pendingNext())}` }
+    );
+
+    setLoading(false);
+    if (resetErr) { setError(resetErr.message || 'Could not send reset email.'); return; }
+    setStep('reset_sent');
+  }
+
+  async function sendMagicLink() {
     setLoading(true); setError('');
     const sb = getClient();
     const { error: err } = await sb.auth.signInWithOtp({
-      email: emailAddr,
+      email: email.trim().toLowerCase(),
       options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(pendingNext())}` },
     });
     setLoading(false);
@@ -206,24 +300,32 @@ export default function BizLoginPage() {
     next[idx] = val.slice(-1);
     setOtp(next);
     if (val && idx < BETA_OTP_LEN - 1) refs.current[idx + 1]?.focus();
+    if (isBeta && next.every(d => d !== '') && next.join('').length === BETA_OTP_LEN) {
+      setTimeout(verifyBeta, 80);
+    }
   }
 
   function handleOtpKey(idx, e) {
     if (e.key === 'Backspace' && !otp[idx] && idx > 0) refs.current[idx - 1]?.focus();
-    if (e.key === 'Enter' && otp.join('').length === BETA_OTP_LEN) verifyBeta();
+    if (e.key === 'Enter' && isBeta) verifyBeta();
   }
 
   async function verifyBeta() {
     const norm = email.trim().toLowerCase();
+    const pwd = otp.join('');
+    if (!pwd || pwd.length < BETA_OTP_LEN) { setError('Enter your full beta password.'); return; }
+
     setLoading(true); setError('');
     try {
       const res = await fetch('/api/auth/beta-verify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: norm, code: otp.join('') }),
+        body: JSON.stringify({ email: norm, code: pwd }),
       });
       const data = await res.json();
       if (!data.access_token) {
         setError(data.error || 'Beta sign-in failed.');
+        setOtp(Array(BETA_OTP_LEN).fill(''));
+        setTimeout(() => refs.current[0]?.focus(), 100);
         setLoading(false);
         return;
       }
@@ -234,6 +336,7 @@ export default function BizLoginPage() {
       });
     } catch {
       setError('Sign-in failed. Please try again.');
+      setOtp(Array(BETA_OTP_LEN).fill(''));
       setLoading(false);
       return;
     }
@@ -262,7 +365,7 @@ export default function BizLoginPage() {
         && typeof window.Capacitor.isNativePlatform === 'function'
         && window.Capacitor.isNativePlatform();
 
-      // Web / PWA: the native plugin does not exist in a browser — use Supabase OAuth.
+      // Web / PWA: use Supabase OAuth redirect
       if (!isNativeApp) {
         const { error: oauthErr } = await getClient().auth.signInWithOAuth({
           provider: 'google',
@@ -272,7 +375,7 @@ export default function BizLoginPage() {
           setError(oauthErr.message || 'Google sign-in is not available right now.');
           setLoading(false);
         }
-        return; // browser navigates to Google
+        return;
       }
 
       const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
@@ -375,7 +478,7 @@ export default function BizLoginPage() {
 
               <button onClick={() => setStep('email')}
                 style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 12, padding: '13px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                Sign In with Email / Beta Code
+                Sign In with Email / Password
               </button>
             </div>
 
@@ -424,7 +527,7 @@ export default function BizLoginPage() {
               </button>
               <button onClick={() => { setStep('email'); setError(''); }}
                 style={{ background: 'none', border: 'none', color: G, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', textDecoration: 'underline' }}>
-                Or Email / Beta Code →
+                Or Email / Password →
               </button>
             </div>
           </div>
@@ -477,14 +580,19 @@ export default function BizLoginPage() {
           </div>
         )}
 
-        {/* Sent state */}
-        {step === 'sent' && (
+        {/* Sent / Reset sent state */}
+        {(step === 'sent' || step === 'reset_sent') && (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '40px 28px', textAlign: 'center' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 10px' }}>Check your email</h2>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>{step === 'reset_sent' ? '🔑' : '📬'}</div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 10px' }}>
+              {step === 'reset_sent' ? 'Reset link sent' : 'Check your email'}
+            </h2>
             <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>
-              We sent a sign-in link to <strong style={{ color: G }}>{email}</strong>.<br />
-              Click the link to open your business workspace.
+              {step === 'reset_sent' ? (
+                <>We sent a password reset link to <strong style={{ color: G }}>{email}</strong>. Click the link to set a new password.</>
+              ) : (
+                <>We sent a sign-in link to <strong style={{ color: G }}>{email}</strong>.<br />Click the link to open your business workspace.</>
+              )}
             </p>
             <button onClick={() => { setStep('welcome'); setError(''); }}
               style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>
@@ -510,8 +618,8 @@ export default function BizLoginPage() {
               <input
                 type="email" value={email}
                 onChange={e => { setEmail(e.target.value); setError(''); }}
-                onKeyDown={e => e.key === 'Enter' && !loading && handleContinueEmail()}
-                placeholder="beta@quietkeep.com"
+                onKeyDown={e => e.key === 'Enter' && !loading && email.trim() && handleContinueEmail()}
+                placeholder="you@company.com"
                 autoFocus
                 style={inp}
                 onFocus={e => e.target.style.borderColor = 'rgba(16,185,129,0.5)'}
@@ -520,8 +628,8 @@ export default function BizLoginPage() {
             </div>
             {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 12 }}>⚠️ {error}</div>}
             <button onClick={handleContinueEmail} disabled={loading || !email.trim()}
-              style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: loading ? 0.7 : 1 }}>
-              {loading ? 'Please wait…' : 'Continue →'}
+              style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: loading || !email.trim() ? 0.7 : 1 }}>
+              {loading ? 'Checking…' : 'Continue →'}
             </button>
             <div style={{ marginTop: 16, textAlign: 'center' }}>
               <button onClick={() => { setStep('welcome'); setError(''); }}
@@ -529,6 +637,114 @@ export default function BizLoginPage() {
                 ← Back to welcome screen
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Password step (Email + Password Login) */}
+        {step === 'password' && (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
+            <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '3px 12px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+              🏢 Business Sign In
+            </div>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Welcome back</h1>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px' }}>{email}</p>
+            {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 12 }}>⚠️ {error}</div>}
+            
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6, fontWeight: 500 }}>
+                Password
+              </label>
+              <input
+                id="qk-biz-password-input"
+                type="password"
+                value={password}
+                onChange={e => { setPassword(e.target.value); setError(''); }}
+                onKeyDown={e => e.key === 'Enter' && !loading && verifyPassword()}
+                placeholder="Your password"
+                autoFocus
+                style={inp}
+                onFocus={e => e.target.style.borderColor = 'rgba(16,185,129,0.5)'}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+              />
+            </div>
+
+            <button onClick={() => { setStep('forgot'); setPassword(''); setError(''); }}
+              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', textDecoration: 'underline', marginBottom: 16, display: 'block' }}>
+              Forgot password?
+            </button>
+
+            <button onClick={verifyPassword} disabled={!password || loading}
+              style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: !password || loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !password || loading ? 0.7 : 1 }}>
+              {loading ? 'Signing in…' : 'Sign In'}
+            </button>
+
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+              <button onClick={() => { setStep('signup'); setPassword(''); setConfirm(''); setError(''); }}
+                style={{ background: 'none', border: '1px solid var(--border)', color: '#94a3b8', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', borderRadius: 8, padding: '8px 16px' }}>
+                No account? Create one →
+              </button>
+              <button onClick={() => sendMagicLink()}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', textDecoration: 'underline' }}>
+                Use magic link instead
+              </button>
+            </div>
+
+            <button onClick={() => { setStep('email'); setPassword(''); setError(''); }}
+              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', marginTop: 12, display: 'block', width: '100%', textAlign: 'center' }}>
+              ← Change email
+            </button>
+          </div>
+        )}
+
+        {/* Sign up step */}
+        {step === 'signup' && (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
+            <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 999, padding: '3px 12px', fontSize: 11, color: G, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+              🏢 New Business Account
+            </div>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px' }}>Create account</h1>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px' }}>{email}</p>
+            {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 12 }}>⚠️ {error}</div>}
+
+            <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6, fontWeight: 500 }}>Choose a password</label>
+            <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
+              placeholder="At least 8 characters" autoFocus style={{ ...inp, marginBottom: 12 }} />
+            
+            <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6, fontWeight: 500 }}>Confirm password</label>
+            <input type="password" value={confirm} onChange={e => { setConfirm(e.target.value); setError(''); }}
+              onKeyDown={e => e.key === 'Enter' && !loading && signUp()}
+              placeholder="Same password again" style={{ ...inp, marginBottom: 16 }} />
+
+            <button onClick={signUp} disabled={!password || !confirm || loading}
+              style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: !password || !confirm || loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !password || !confirm || loading ? 0.7 : 1 }}>
+              {loading ? 'Creating account…' : 'Create Account'}
+            </button>
+
+            <button onClick={() => { setStep('password'); setPassword(''); setConfirm(''); setError(''); }}
+              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', marginTop: 12, display: 'block', width: '100%', textAlign: 'center', textDecoration: 'underline' }}>
+              ← Back to sign in
+            </button>
+          </div>
+        )}
+
+        {/* Forgot password step */}
+        {step === 'forgot' && (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 22, padding: '36px 28px', backdropFilter: 'blur(20px)' }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px' }}>Reset password</h1>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', lineHeight: 1.6 }}>
+              We'll send a reset link to <strong style={{ color: G }}>{email}</strong>.
+            </p>
+            {error && <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 12 }}>⚠️ {error}</div>}
+
+            <button onClick={sendReset} disabled={loading}
+              style={{ width: '100%', background: `linear-gradient(135deg,${G},#059669)`, color: '#fff', border: 'none', borderRadius: 12, padding: '15px', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', marginBottom: 12, opacity: loading ? 0.7 : 1 }}>
+              {loading ? 'Sending…' : 'Send Reset Link'}
+            </button>
+
+            <button onClick={() => { setStep('password'); setError(''); }}
+              style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', display: 'block', width: '100%', textAlign: 'center', textDecoration: 'underline' }}>
+              ← Back
+            </button>
           </div>
         )}
 
@@ -575,7 +791,7 @@ export default function BizLoginPage() {
               {loading ? 'Signing in…' : 'Sign In →'}
             </button>
 
-            <button onClick={() => { setStep('email'); setOtp(Array(BETA_OTP_LEN).fill('')); setError(''); }}
+            <button onClick={() => { setStep('email'); setOtp(Array(BETA_OTP_LEN).fill('')); setError(''); setIsBeta(false); }}
               style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', width: '100%', marginTop: 12, fontFamily: 'inherit' }}>
               ← Back
             </button>

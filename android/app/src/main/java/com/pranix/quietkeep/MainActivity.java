@@ -42,8 +42,6 @@ public class MainActivity extends BridgeActivity {
         // freezing the UID during the Capacitor WebView cold-start window.
         startKeepAliveService();
 
-        super.onCreate(savedInstanceState);
-
         registerPlugin(PerceptionPlugin.class);
         registerPlugin(VoicePlugin.class);
         registerPlugin(ReminderAlarmPlugin.class);
@@ -51,6 +49,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(WakeWordPlugin.class);
         registerPlugin(OCRPlugin.class);
         registerPlugin(SOSPlugin.class);
+
+        super.onCreate(savedInstanceState);
 
         // v6: Eagerly initialise TTS engine so it is ready by first speak call
         TTSManager.getInstance(this);

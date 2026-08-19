@@ -1,10 +1,11 @@
-'use client';
+﻿'use client';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import NavbarClient from '@/components/NavbarClient';
 import StockTracker from '@/components/StockTracker';
+import NotificationDisclosureModal from '@/components/NotificationDisclosureModal';
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -38,11 +39,67 @@ export default function FinancePage() {
   const thisMonth = new Date().toISOString().slice(0, 7);
 
   const [loadError, setLoadError] = useState('');
+  const [showNotificationDisclosure, setShowNotificationDisclosure] = useState(false);
+  const [autoLogEnabled, setAutoLogEnabled] = useState(false);
 
-  useEffect(() => { if (!authLoading) init(); }, [authLoading]);
+  useEffect(() => {
+    if (!authLoading) init();
+    checkNotificationStatus();
+  }, [authLoading]);
+
+  async function checkNotificationStatus() {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('qk_auto_log_expenses') === 'true';
+        if (window.Capacitor?.Plugins?.Perception?.isNotificationListenerEnabled) {
+          const res = await window.Capacitor.Plugins.Perception.isNotificationListenerEnabled();
+          setAutoLogEnabled(Boolean(res?.enabled && stored));
+        } else {
+          setAutoLogEnabled(stored);
+        }
+      }
+    } catch {}
+  }
+
+  function handleAutoLogToggle() {
+    if (!autoLogEnabled) {
+      // PROMINENT DISCLOSURE REQUIREMENT:
+      // Must show the dedicated full-screen disclosure step FIRST.
+      // Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS is NEVER called here.
+      setShowNotificationDisclosure(true);
+    } else {
+      // User turning off
+      setAutoLogEnabled(false);
+      try {
+        localStorage.setItem('qk_auto_log_expenses', 'false');
+      } catch {}
+    }
+  }
+
+  function handleDisclosureCancel() {
+    // User selected "Not now":
+    // Close screen, do NOT enable, do NOT open system settings
+    setShowNotificationDisclosure(false);
+    setAutoLogEnabled(false);
+  }
+
+  function handleDisclosureContinue() {
+    // User selected "Continue":
+    // Record consent, update state, and ONLY NOW trigger system settings
+    setShowNotificationDisclosure(false);
+    setAutoLogEnabled(true);
+    try {
+      localStorage.setItem('qk_auto_log_expenses', 'true');
+      if (window.Capacitor?.Plugins?.Perception?.openNotificationListenerSettings) {
+        window.Capacitor.Plugins.Perception.openNotificationListenerSettings();
+      }
+    } catch (e) {
+      console.warn('Could not open notification listener settings:', e);
+    }
+  }
 
   async function init() {
-        if (authLoading) return;
+    if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     setLoadError('');
     try {
@@ -131,6 +188,63 @@ export default function FinancePage() {
 
         {tab === 'expenses' && (
           <div>
+            {/* Automatic Expense Logging Toggle Card */}
+            <div
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 14,
+                padding: '1rem 1.2rem',
+                marginBottom: '1.2rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>💳</span> Log expenses automatically
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.4 }}>
+                  Auto-detect amount & merchant from bank & UPI payment notifications.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoLogEnabled}
+                onClick={handleAutoLogToggle}
+                style={{
+                  width: 46,
+                  height: 26,
+                  borderRadius: 13,
+                  border: 'none',
+                  background: autoLogEnabled ? 'linear-gradient(135deg, #4f46e5, #6366f1)' : 'var(--surface-hover, #334155)',
+                  position: 'relative',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s ease',
+                  flexShrink: 0,
+                  outline: 'none',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 3,
+                    left: autoLogEnabled ? 23 : 3,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    background: '#ffffff',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    transition: 'left 0.2s ease',
+                  }}
+                />
+              </button>
+            </div>
+
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
               <h2 style={{ fontSize:'1rem', fontWeight:600 }}>Expenses</h2>
               <button onClick={() => setShowAddE(!showAddE)} style={btn1}>+ Add</button>
@@ -198,12 +312,11 @@ export default function FinancePage() {
                 <div key={b.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1rem', marginBottom:'0.5rem' }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
                     <span style={{ color:'var(--text)', fontWeight:500 }}>{b.category}</span>
-                    <span style={{ color:col, fontSize:'0.85rem' }}>₹{spent.toLocaleString('en-IN')} / ₹{parseFloat(b.limit_amount).toLocaleString('en-IN')}</span>
+                    <span style={{ color:col, fontWeight:700, fontSize:'0.88rem' }}>₹{spent.toLocaleString('en-IN')} / ₹{parseFloat(b.limit_amount).toLocaleString('en-IN')}</span>
                   </div>
-                  <div style={{ background:'var(--bg)', borderRadius:4, height:6 }}>
-                    <div style={{ width:`${pct}%`, background:col, height:'100%', borderRadius:4 }} />
+                  <div style={{ background:'var(--border)', borderRadius:4, height:6, overflow:'hidden' }}>
+                    <div style={{ background:col, width:`${pct}%`, height:'100%', transition:'width 0.3s' }} />
                   </div>
-                  <div style={{ color:'#555', fontSize:'0.75rem', marginTop:4 }}>{pct}% used · Alert at {b.alert_threshold}%</div>
                 </div>
               );
             })}
@@ -219,49 +332,48 @@ export default function FinancePage() {
             {showAddS && (
               <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'1.2rem', marginBottom:'1rem' }}>
                 <div style={g2}>
-                  <div><label style={lbl}>Service Name*</label><input style={inp} placeholder="Netflix, Hotstar…" value={sName} onChange={e => setSName(e.target.value)} /></div>
+                  <div><label style={lbl}>Service Name*</label><input style={inp} placeholder="Netflix, Gym…" value={sName} onChange={e => setSName(e.target.value)} /></div>
                   <div><label style={lbl}>Amount (₹)*</label><input style={inp} type="number" placeholder="499" value={sAmt} onChange={e => setSAmt(e.target.value)} /></div>
                 </div>
                 <div style={g2}>
                   <div><label style={lbl}>Cycle</label><select style={inp} value={sCycle} onChange={e => setSCycle(e.target.value)}>{SUB_CYCLES.map(c => <option key={c}>{c}</option>)}</select></div>
-                  <div><label style={lbl}>Next Due</label><input style={inp} type="date" value={sDue} onChange={e => setSDue(e.target.value)} /></div>
+                  <div><label style={lbl}>Next Due Date</label><input style={inp} type="date" value={sDue} onChange={e => setSDue(e.target.value)} /></div>
                 </div>
-                <div style={{ marginBottom:'0.75rem' }}><label style={lbl}>Category</label><select style={inp} value={sCat} onChange={e => setSCat(e.target.value)}>{EXP_CATS.map(c => <option key={c}>{c}</option>)}</select></div>
                 <div style={{ display:'flex', gap:'0.5rem' }}>
                   <button onClick={addSub} disabled={savingS} style={btn1}>{savingS ? 'Saving…' : 'Save'}</button>
                   <button onClick={() => setShowAddS(false)} style={btn0}>Cancel</button>
                 </div>
               </div>
             )}
-            {subscriptions.length === 0 ? <div style={{ textAlign:'center', padding:'3rem', color:'#444' }}>No subscriptions tracked yet.</div> : subscriptions.map(s => {
-              const daysLeft = s.next_due ? Math.ceil((new Date(s.next_due) - new Date()) / 86400000) : null;
-              const urgent = daysLeft !== null && daysLeft <= 3;
-              return (
-                <div key={s.id} style={{ background:'var(--surface)', border:`1px solid ${urgent ? '#ef4444' : 'var(--border)'}`, borderRadius:10, padding:'0.9rem 1rem', marginBottom:'0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div>
-                    <div style={{ color:'var(--text)', fontWeight:500, fontSize:'0.9rem' }}>{s.name}</div>
-                    <div style={{ color:'#555', fontSize:'0.78rem', marginTop:2 }}>
-                      {s.cycle} · {s.category}
-                      {daysLeft !== null && <span style={{ color: urgent ? '#ef4444' : '#666', marginLeft:8 }}>· due in {daysLeft}d</span>}
-                    </div>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-                    <div style={{ color:'#f59e0b', fontWeight:700 }}>₹{parseFloat(s.amount).toLocaleString('en-IN')}</div>
-                    <div onClick={() => toggleSub(s.id, s.is_active)} style={{ width:36, height:20, borderRadius:10, background: s.is_active ? '#6366f1' : 'var(--surface)', position:'relative', cursor:'pointer' }}>
-                      <div style={{ position:'absolute', top:2, left: s.is_active ? 18 : 2, width:16, height:16, borderRadius:'50%', background:'var(--text)', transition:'left 0.2s' }} />
-                    </div>
-                  </div>
+            {subscriptions.length === 0 ? <div style={{ textAlign:'center', padding:'3rem', color:'#444' }}>No subscriptions tracked.</div> : subscriptions.map(s => (
+              <div key={s.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'0.9rem 1rem', marginBottom:'0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <div style={{ color:'var(--text)', fontSize:'0.9rem', fontWeight:500 }}>{s.name}</div>
+                  <div style={{ color:'#555', fontSize:'0.78rem', marginTop:2 }}>{s.cycle} · Next: {s.next_due || 'Not set'}</div>
                 </div>
-              );
-            })}
+                <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                  <div style={{ color:'#f59e0b', fontWeight:700 }}>₹{parseFloat(s.amount).toLocaleString('en-IN')}</div>
+                  <button onClick={() => toggleSub(s.id, s.is_active)} style={{ ...btn0, padding:'0.3rem 0.6rem', fontSize:'0.75rem', background: s.is_active ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', color: s.is_active ? '#22c55e' : '#ef4444', border:'none' }}>{s.is_active ? 'Active' : 'Paused'}</button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
         {tab === 'assets' && stockEnabled && (
-          <StockTracker supabase={supabase} userId={user?.id} />
+          <div>
+            <StockTracker />
+          </div>
         )}
 
       </div>
+
+      {/* Prominent In-App Notification Disclosure Modal */}
+      <NotificationDisclosureModal
+        isOpen={showNotificationDisclosure}
+        onContinue={handleDisclosureContinue}
+        onCancel={handleDisclosureCancel}
+      />
     </div>
   );
 }

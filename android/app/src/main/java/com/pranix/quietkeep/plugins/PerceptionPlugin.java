@@ -3,8 +3,10 @@ package com.pranix.quietkeep.plugins;
 import android.app.usage.UsageStats;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.BatteryManager;
+import android.provider.Settings;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -78,6 +80,36 @@ public class PerceptionPlugin extends Plugin {
             r.put("timestamp_ms",   System.currentTimeMillis());
             call.resolve(r);
         } catch (Exception e) { call.reject("getActivityContext: " + e.getMessage()); }
+    }
+
+    @PluginMethod
+    public void isNotificationListenerEnabled(PluginCall call) {
+        try {
+            Context context = getContext();
+            String pkgName = context.getPackageName();
+            String flat = Settings.Secure.getString(
+                context.getContentResolver(),
+                "enabled_notification_listeners"
+            );
+            boolean enabled = flat != null && flat.contains(pkgName);
+            JSObject ret = new JSObject();
+            ret.put("enabled", enabled);
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("isNotificationListenerEnabled: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void openNotificationListenerSettings(PluginCall call) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("openNotificationListenerSettings: " + e.getMessage());
+        }
     }
 
 }

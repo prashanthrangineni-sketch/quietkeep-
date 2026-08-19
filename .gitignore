@@ -39,3 +39,8 @@ android/app/build/
 android/capacitor-cordova-android-plugins/build/
 android/codetrix-studio-capacitor-google-auth/build/
 android/capacitor-android/build/
+
+# keystores
+*.jks
+*.keystore
+.env*

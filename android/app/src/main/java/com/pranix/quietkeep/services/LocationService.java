@@ -130,6 +130,14 @@ public class LocationService extends Service {
 
     private void startPolling() {
         if (running) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED &&
+                checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                Log.w(TAG, "LocationService: location permission not granted. Aborting service start.");
+                stopSelf();
+                return;
+            }
+        }
         running = true;
 
         Notification n = buildNotification();
@@ -138,10 +146,18 @@ public class LocationService extends Service {
                 startForeground(NOTIF_ID, n,
                     android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
             } catch (Exception e) {
-                startForeground(NOTIF_ID, n);
+                try {
+                    startForeground(NOTIF_ID, n);
+                } catch (Exception e2) {
+                    Log.e(TAG, "LocationService: startForeground fallback failed: " + e2.getMessage());
+                }
             }
         } else {
-            startForeground(NOTIF_ID, n);
+            try {
+                startForeground(NOTIF_ID, n);
+            } catch (Exception e) {
+                Log.e(TAG, "LocationService: startForeground failed: " + e.getMessage());
+            }
         }
 
         // Fire immediately, then every GEO_INTERVAL_MS

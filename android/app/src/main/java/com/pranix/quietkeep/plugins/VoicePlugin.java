@@ -361,6 +361,15 @@ public class VoicePlugin extends Plugin {
                 call.reject("LOCATION_START_FAILED: auth_token required");
                 return;
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                boolean hasCoarse = getContext().checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+                boolean hasFine = getContext().checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+                if (!hasCoarse && !hasFine) {
+                    Log.w(TAG, "startLocationService: location permission not granted — rejecting call");
+                    call.reject("LOCATION_PERMISSION_REQUIRED: ACCESS_COARSE_LOCATION or ACCESS_FINE_LOCATION is required");
+                    return;
+                }
+            }
 
             Intent i = new Intent(getContext(), LocationService.class);
             i.setAction("START");

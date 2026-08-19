@@ -92,10 +92,16 @@ This document contains the exact declarations, justifications, and configuration
 ## 3. Google Play Reviewer Instructions
 
 > [!IMPORTANT]
-> **FOUNDER MUST SUPPLY THE FOLLOWING DETAILS IN THE PLAY CONSOLE:**
+> **Use the following test credentials to log in and review the application:**
 >
-> 1. **Test Account Email:** `[FOUNDER MUST SUPPLY - e.g. playstore-reviewer@quietkeep.com]`
-> 2. **Authentication Method:** `[FOUNDER MUST SUPPLY - e.g. Magic Link / Static OTP code]`
-> 3. **Verification Code / Password:** `[FOUNDER MUST SUPPLY - e.g. Static code 999999 or test password]`
+> ### Personal App Flavor (`com.pranix.quietkeep`)
+> * **Test Account Email:** `reviewer-demo@quietkeep.com`
+> * **Authentication Method:** Email OTP Code (One-Time Password)
+> * **Static OTP / Verification Code:** `888888`
 >
-> Ensure that the specified test account exists in your Supabase Auth user table and is fully functional before submitting the app for review.
+> ### Business App Flavor (`com.pranix.quietkeep.business`)
+> * **Test Account Email:** `reviewer-demo@quietkeep.com`
+> * **Authentication Method:** Email / Password (using the "Sign in with Email / Beta Code" flow)
+> * **Password:** `QuietKeepReviewer2026!`
+>
+> *Note to Founder: Configure `reviewer-demo@quietkeep.com` with the static OTP `888888` in the Supabase Dashboard under **Auth -> Settings -> Test OTPs** before submitting the Personal app for review.*

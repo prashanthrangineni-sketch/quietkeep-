@@ -344,5 +344,16 @@
     "sendReminder": "Send UPI Reminder",
     "markPaid": "Mark Paid",
     "draftStatus": "Draft Calculated"
+  },
+  "notificationDisclosure": {
+    "title": "Log your expenses automatically",
+    "intro": "When your bank or UPI app shows you a payment notification, QuietKeep can read it and create the expense for you, so you don't have to type it in.",
+    "bulletHeader": "To do that, QuietKeep needs permission to read notifications. If you turn this on:",
+    "bullet1": "QuietKeep reads the text of notifications from banking and payment apps",
+    "bullet2": "That text is sent to QuietKeep's servers to work out the amount and the shop",
+    "bullet3": "QuietKeep does not use notifications from your other apps for this",
+    "optional": "This is completely optional. Everything else in QuietKeep works without it, and you can switch it off at any time in your phone's settings.",
+    "notNow": "Not now",
+    "continue": "Continue"
   }
 }

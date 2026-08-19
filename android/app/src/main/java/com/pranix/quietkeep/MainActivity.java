@@ -60,6 +60,9 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
+        // Enable remote debugging of WebView
+        WebView.setWebContentsDebuggingEnabled(true);
+
         // v6: Eagerly initialise TTS engine so it is ready by first speak call
         TTSManager.getInstance(this);
 

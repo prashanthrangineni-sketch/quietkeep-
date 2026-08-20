@@ -14,6 +14,14 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.core.graphics.Insets;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.Color;
+import android.content.res.Configuration;
 import com.getcapacitor.BridgeActivity;
 import com.pranix.quietkeep.plugins.ContactsPlugin;
 import com.pranix.quietkeep.plugins.OCRPlugin;
@@ -52,6 +60,9 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
+        // Enable remote debugging of WebView
+        WebView.setWebContentsDebuggingEnabled(true);
+
         // v6: Eagerly initialise TTS engine so it is ready by first speak call
         TTSManager.getInstance(this);
 
@@ -70,11 +81,66 @@ public class MainActivity extends BridgeActivity {
 
         // Apply WebView bridge after super.onCreate() so getBridge() is available.
         applyWebViewBridge();
+
+        // Apply system bar insets and status bar color padding
+        applySystemBarInsets();
     }
 
     // onDestroy() moved to LotusWakeBridgeHolder registration block above
 
     // ── WebView audio bridge + runtime injection ──────────────────────────
+
+    
+    /**
+     * P0 Fix: Handle SDK 35+ forced edge-to-edge window insets on Android 15+.
+     * Padds the content view by systemBars() and displayCutout() so the app header
+     * is completely clear of the status bar clock/battery/notification icons.
+     * Also sets the Activity window background to seamlessly match the app navbar
+     * in both light and dark modes.
+     */
+    private void applySystemBarInsets() {
+        try {
+            final View root = findViewById(android.R.id.content);
+            if (root == null) {
+                Log.w(TAG, "applySystemBarInsets: content view null — skipping");
+                return;
+            }
+
+            boolean isBusiness = getPackageName().contains(".business");
+            boolean isDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                    == Configuration.UI_MODE_NIGHT_YES;
+
+            int navBarColor;
+            if (isBusiness) {
+                navBarColor = isDark ? Color.parseColor("#0a1b14") : Color.parseColor("#ffffff");
+            } else {
+                navBarColor = isDark ? Color.parseColor("#0b0f19") : Color.parseColor("#ffffff");
+            }
+
+            getWindow().setBackgroundDrawable(new ColorDrawable(navBarColor));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                getWindow().setStatusBarColor(navBarColor);
+            }
+
+            WindowInsetsControllerCompat insetsController =
+                    WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+            if (insetsController != null) {
+                insetsController.setAppearanceLightStatusBars(!isDark);
+            }
+
+            ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+                Insets bars = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars()
+                    | WindowInsetsCompat.Type.displayCutout());
+                v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                return WindowInsetsCompat.CONSUMED;
+            });
+            ViewCompat.requestApplyInsets(root);
+            Log.d(TAG, "applySystemBarInsets: system bar padding applied ✓ (isBusiness=" + isBusiness + " isDark=" + isDark + ")");
+        } catch (Exception e) {
+            Log.w(TAG, "applySystemBarInsets failed (non-fatal): " + e.getMessage());
+        }
+    }
 
     private void applyWebViewBridge() {
         try {

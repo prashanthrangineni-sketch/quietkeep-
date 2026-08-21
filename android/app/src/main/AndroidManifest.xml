@@ -60,7 +60,14 @@
     <!-- Location: LocationService geo-trigger polling -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- ACCESS_BACKGROUND_LOCATION removed for the v1.2.0 Play submission.
+         Play's Location permissions declaration additionally requires a
+         prominent in-app disclosure screen shown before the runtime prompt,
+         plus a video of it. That screen does not exist yet, so the
+         declaration cannot be completed truthfully. Returns in 1.3.0.
+         Foreground location is unaffected: ACCESS_FINE_LOCATION,
+         ACCESS_COARSE_LOCATION and FOREGROUND_SERVICE_LOCATION are retained,
+         so Family Space "Share My Current Location" and SOS still work. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <queries>

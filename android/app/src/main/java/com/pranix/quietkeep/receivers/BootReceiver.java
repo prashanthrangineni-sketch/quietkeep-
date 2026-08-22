@@ -80,29 +80,11 @@ public class BootReceiver extends BroadcastReceiver {
             Log.e(TAG, "BootReceiver: Failed to start VoiceService: " + e.getMessage());
         }
 
-        // Also restart LocationService for geo-triggered keeps
-        try {
-            boolean hasLocPerm = true;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                hasLocPerm = context.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
-                             context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
-            }
-            if (hasLocPerm) {
-                Intent locSvc = new Intent(context, LocationService.class);
-                locSvc.setAction("START");
-                locSvc.putExtra("auth_token", authToken);
-                locSvc.putExtra("server_url", serverUrl);
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    context.startForegroundService(locSvc);
-                } else {
-                    context.startService(locSvc);
-                }
-                Log.d(TAG, "BootReceiver: LocationService started OK");
-            } else {
-                Log.w(TAG, "BootReceiver: Location permission not granted — skipping LocationService restart.");
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "BootReceiver: Could not start LocationService: " + e.getMessage());
-        }
+        // LocationService boot restart removed 22 Aug 2026.
+        // The service is no longer declared in AndroidManifest.xml (its
+        // FOREGROUND_SERVICE_LOCATION permission was removed because nothing
+        // in the app ever started it). Starting an undeclared service throws,
+        // so this block would fail on every boot — caught, but pointless.
+        // Returns in 1.3.0 with geo-trigger reminders.
     }
 }

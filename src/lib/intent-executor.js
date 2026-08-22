@@ -45,20 +45,85 @@ function parseDateString(dateStr) {
   return null;
 }
 
+// ── TIMEZONE ──────────────────────────────────────────────────────────────────
+// setHours() resolves in the SERVER's timezone. On Vercel that is UTC, so
+// "tomorrow at 10 a.m." was stored as 10:00Z — which is 15:30 IST. Every
+// English voice reminder fired 5 hours 30 minutes late. The Sarvam path was
+// never affected because the brain returns an absolute offset (+05:30).
+// Found 22 Aug 2026, after the parser fix stopped masking it.
+export const DEFAULT_TZ = 'Asia/Kolkata';
+
+function tzOffsetMs(date, timeZone) {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone, hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const p = Object.fromEntries(
+    dtf.formatToParts(date).filter(x => x.type !== 'literal').map(x => [x.type, x.value])
+  );
+  const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, p.hour === '24' ? 0 : +p.hour, +p.minute, +p.second);
+  return asUTC - date.getTime();
+}
+
+// Wall-clock time in `timeZone` -> the correct UTC instant.
+// Two passes so a DST boundary resolves to the right side.
+function zonedWallClockToUtc(y, mo, d, hh, mm, timeZone) {
+  const guess = Date.UTC(y, mo, d, hh, mm, 0, 0);
+  let off = tzOffsetMs(new Date(guess), timeZone);
+  off = tzOffsetMs(new Date(guess - off), timeZone);
+  return new Date(guess - off);
+}
+
+// The calendar date as seen in `timeZone`, not on the server.
+function zonedDateParts(date, timeZone) {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+  });
+  const p = Object.fromEntries(
+    dtf.formatToParts(date).filter(x => x.type !== 'literal').map(x => [x.type, x.value])
+  );
+  return { y: +p.year, mo: +p.month - 1, d: +p.day };
+}
+
 // ── COMPUTE reminder_at FROM ENTITIES ─────────────────────────────────────────
-export function computeReminderAt(entities) {
+export function computeReminderAt(entities, timeZone = DEFAULT_TZ) {
   if (!entities) return null;
   const { dates = [], times = [] } = entities;
-  let base = null;
-  for (const d of dates) { const p = parseDateString(d); if (p) { base = p; break; } }
+
+  let baseDate = null;
+  for (const d of dates) { const p = parseDateString(d); if (p) { baseDate = p; break; } }
+
+  // Hours and minutes are wall-clock in the user's zone — parseTimeToDate is
+  // only used here to read them, never to fix the instant.
+  let hh = null, mm = 0;
   if (times.length > 0) {
-    const td = parseTimeToDate(times[0], base || new Date());
-    if (td) {
-      if (base) { base = new Date(base); base.setHours(td.getHours(), td.getMinutes(), 0, 0); }
-      else base = td;
-    }
+    const td = parseTimeToDate(times[0], new Date());
+    if (td) { hh = td.getHours(); mm = td.getMinutes(); }
   }
-  return base;
+
+  if (baseDate === null && hh === null) return null;
+
+  const { y, mo, d } = zonedDateParts(baseDate || new Date(), timeZone);
+
+  // A date with no spoken time keeps the previous behaviour: same wall-clock
+  // time of day as now, in the user's zone.
+  if (hh === null) {
+    const nowParts = new Intl.DateTimeFormat('en-US', {
+      timeZone, hour12: false, hour: '2-digit', minute: '2-digit',
+    }).formatToParts(new Date()).filter(x => x.type !== 'literal');
+    const np = Object.fromEntries(nowParts.map(x => [x.type, x.value]));
+    hh = np.hour === '24' ? 0 : +np.hour;
+    mm = +np.minute;
+  }
+
+  let result = zonedWallClockToUtc(y, mo, d, hh, mm, timeZone);
+  // Bare time with no date ("at 10 a.m.") that has already passed today rolls
+  // to tomorrow — same rule as before, applied in the user's zone.
+  if (!baseDate && result.getTime() <= Date.now()) {
+    result = zonedWallClockToUtc(y, mo, d + 1, hh, mm, timeZone);
+  }
+  return result;
 }
 
 // ── SERVER: SCHEDULE PRECISE REMINDER NUDGE ───────────────────────────────────

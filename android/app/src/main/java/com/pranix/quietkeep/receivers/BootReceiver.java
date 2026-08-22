@@ -7,7 +7,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.util.Log;
 import com.pranix.quietkeep.services.VoiceService;
-import com.pranix.quietkeep.services.LocationService;
 
 /**
  * BootReceiver — restarts VoiceService after device reboot if it was active.

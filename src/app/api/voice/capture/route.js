@@ -244,7 +244,7 @@ export async function POST(request) {
     }
   }
 
-  const followUp = computeFollowUp(parsed, matchedContact, allContacts)
+  const followUp = computeFollowUp(parsed, matchedContact, reminderAt)
 
   // ── Voice Brain: confidence scoring + clarification ──────────────────────
   // scoredIntent() enriches parsed with { tier, needs_followup, clarification, human_type }

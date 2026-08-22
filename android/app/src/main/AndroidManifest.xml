@@ -68,7 +68,17 @@
          Foreground location is unaffected: ACCESS_FINE_LOCATION,
          ACCESS_COARSE_LOCATION and FOREGROUND_SERVICE_LOCATION are retained,
          so Family Space "Share My Current Location" and SOS still work. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- FOREGROUND_SERVICE_LOCATION removed 22 Aug 2026.
+         LocationService is never started: startBackgroundServices() in
+         src/lib/orchestrator.ts is the only caller of startLocationService(),
+         and nothing in the app calls startBackgroundServices(). Verified on
+         device — `dumpsys activity services com.pranix.quietkeep` returns
+         zero LocationService records under every user path.
+         Family Space "Share My Current Location", SOS and /geo all use
+         @capacitor/geolocation on demand in the WebView, which needs only
+         ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION (both retained above).
+         Declaring a foreground service type the app never starts is a claim
+         we cannot evidence, so the permission goes. -->
 
     <queries>
         <intent>

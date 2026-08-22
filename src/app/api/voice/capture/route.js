@@ -205,6 +205,18 @@ export async function POST(request) {
       const dt = new Date(llmAssist.entities.datetimeISO)
       if (!isNaN(dt.getTime()) && dt.getTime() > Date.now() - 60000) {
         reminderAt = dt
+        // Write the resolved time back into entities. computeFollowUp() and
+        // the timeAmbiguous check below both read parsed.entities, not
+        // reminderAt — so without this the app saved and scheduled the
+        // reminder and then still asked "When should I remind you?" and
+        // showed the quick-time overlay. Fixed 22 Aug 2026.
+        parsed.entities = parsed.entities || {}
+        parsed.entities.dates = [
+          `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+        ]
+        parsed.entities.times = [
+          `${(dt.getHours() % 12) || 12}:${String(dt.getMinutes()).padStart(2, '0')} ${dt.getHours() < 12 ? 'am' : 'pm'}`
+        ]
       }
     }
   }

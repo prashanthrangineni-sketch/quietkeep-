@@ -122,7 +122,11 @@ export async function findAllMatchingContacts(supabase, userId, name) {
 
 // ── FOLLOW-UP LOGIC ───────────────────────────────────────────────────────────
 // Returns follow_up object or null if intent is complete
-export function computeFollowUp(parsed, contactResult = null) {
+// reminderAt is passed in because the Sarvam brain resolves times the regex
+// cannot see ("రేపు ఉదయం", "कल सुबह") and writes them straight to reminderAt.
+// Testing entities alone made the app ask "When should I remind you?" on a
+// reminder it had already set and scheduled. Fixed 22 Aug 2026.
+export function computeFollowUp(parsed, contactResult = null, reminderAt = null) {
   const { type, entities } = parsed;
 
   // Contact / meeting: check for disambiguation or missing info

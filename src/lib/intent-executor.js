@@ -171,8 +171,10 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
     }
   }
 
-  // Reminder/task with no time: ask when
-  if ((type === 'reminder' || type === 'task') && !entities?.dates?.length && !entities?.times?.length) {
+  // Reminder/task with no time: ask when.
+  // reminderAt short-circuits this — if a time was resolved by any route, the
+  // reminder is already scheduled and asking again is wrong.
+  if ((type === 'reminder' || type === 'task') && !reminderAt && !entities?.dates?.length && !entities?.times?.length) {
     return {
       follow_up:   'When should I remind you? Say a time like "at 3pm" or "tomorrow morning".',
       action_hint: 'time_needed',

@@ -702,7 +702,11 @@ export async function POST(request) {
   }
 
   const hasSpecificTime = parsed.entities?.times?.length > 0;
-  const timeAmbiguous   = parsed.type === 'reminder' && reminderAt && !hasSpecificTime;
+  // A time the brain resolved to an absolute instant is not ambiguous, even
+  // when the regex found no time token — otherwise every Indic-language
+  // reminder came back with the quick-time overlay on a correct reminder.
+  const brainResolvedTime = Boolean(llmAssist?.entities?.datetimeISO);
+  const timeAmbiguous   = parsed.type === 'reminder' && reminderAt && !hasSpecificTime && !brainResolvedTime;
   const needsReminderPrompt = (parsed.type === 'note' || parsed.type === 'task') && !reminderAt && /remind|remember|later/i.test(text);
 
   return NextResponse.json({

@@ -6,8 +6,19 @@
 // v4: detectGeoIntent(); parseIntent() geo field.
 // v3: NAME_PATTERNS case-insensitive.
 
+// Words that follow a name but are never part of one. Without this the
+// capture swallowed the next token: "Call Ravi at 5 p.m." produced the
+// contact "Ravi At", and the app told the user «"Ravi At" isn't in your
+// contacts». Fixed 22 Aug 2026.
+const NAME_STOPWORDS = 'at|to|me|on|by|in|the|about|for|from|regarding|re|and|a|an|tomorrow|today|tonight|next|this|that|him|her|them|us';
+
 const NAME_PATTERNS = [
-  /(?:call|contact|tell|meet|remind|message|email|invoice to|for)\s+([A-Za-z][a-zA-Z]+(?: [A-Za-z][a-zA-Z]+)?)/i,
+  new RegExp(
+    '(?:call|contact|tell|meet|remind|message|email|invoice to|for)\\s+' +
+    `((?!(?:${NAME_STOPWORDS})\\b)[A-Za-z][a-zA-Z]+` +
+    `(?:\\s+(?!(?:${NAME_STOPWORDS})\\b)[A-Za-z][a-zA-Z]+)?)`,
+    'i'
+  ),
   /([A-Za-z][a-zA-Z]+(?: [A-Za-z][a-zA-Z]+)?)\s+(?:trader|stores?|pvt|ltd|llp)/i,
 ];
 const DATE_PATTERNS = [

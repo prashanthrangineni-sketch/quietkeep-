@@ -180,12 +180,11 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
-        <!-- LocationService: geo-trigger polling for location-based keeps -->
-        <service
-            android:name=".services.LocationService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="location" />
+        <!-- LocationService declaration removed 22 Aug 2026 along with
+             FOREGROUND_SERVICE_LOCATION. The class stays in the source tree
+             for 1.3.0, when geo-trigger reminders return with a prominent
+             disclosure screen — but an undeclared service cannot be started,
+             and nothing starts it today. -->
 
         <!-- PaymentNotificationListener: Track A5 payment SMS & UPI notification auto-capture -->
         <service

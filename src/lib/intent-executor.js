@@ -415,7 +415,7 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
 
   if (parsed.type === 'task' && reminderAt) {
     const dt      = new Date(reminderAt);
-    const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: DEFAULT_TZ });
     return `Task saved. I'll remind you at ${timeStr}.`;
   }
 

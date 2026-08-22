@@ -393,9 +393,15 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
     const taskContent     = (parsed.subject || '').replace(/^remind\s+(?:me\s+)?(?:to\s+)?/i, '').trim();
 
     if (reminderAt) {
+      // Format in the USER's zone. Without the timeZone option these render in
+      // the server's zone (UTC on Vercel), so a correctly stored 04:30Z was
+      // read back to the user as "4:30 am" when they had said 10 a.m. The
+      // reminder fired at the right moment; the confirmation lied about it.
+      // Found 22 Aug 2026 in the spoken confirmation, after the stored value
+      // was already correct.
       const dt      = new Date(reminderAt);
-      const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
-      const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+      const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: DEFAULT_TZ });
+      const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: DEFAULT_TZ });
 
       if (hasSpecificTime) {
         return `Got it — I'll remind you to ${taskContent || 'do this'} ${dateStr} at ${timeStr}.`;

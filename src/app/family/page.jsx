@@ -13,10 +13,32 @@ function LocationShare({ userId }) {
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(false);
 
+  // Inside the Capacitor WebView there is no permission bridge behind
+  // navigator.geolocation, so it always failed on device and painted
+  // "Location access denied or unavailable" even with permission granted.
+  // /geo already did this correctly via the plugin; this brings Family Space
+  // in line. The browser API stays as the web fallback. Fixed 22 Aug 2026.
+  async function getPosition() {
+    const Geo = typeof window !== 'undefined' && window.Capacitor?.Plugins?.Geolocation;
+    if (Geo) {
+      try {
+        const perm = await Geo.checkPermissions();
+        if (perm?.location !== 'granted' && perm?.coarseLocation !== 'granted') {
+          await Geo.requestPermissions();
+        }
+      } catch { /* older plugin builds have no checkPermissions — fall through */ }
+      return await Geo.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+    }
+    if (!navigator.geolocation) throw new Error('unsupported');
+    return await new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+    );
+  }
+
   async function shareLocation() {
-    if (!navigator.geolocation) { setErr('Geolocation not supported on this device'); return; }
     setSharing(true); setErr('');
-    navigator.geolocation.getCurrentPosition(async (position) => {
+    try {
+      const position = await getPosition();
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       setPos({ lat, lng });
@@ -26,8 +48,18 @@ function LocationShare({ userId }) {
         location_sharing: true, last_lat: lat, last_lng: lng,
         last_location_at: new Date().toISOString(),
       }).eq('owner_user_id', userId);
-      setSaved(true); setSharing(false);
-    }, (e) => { setErr('Location access denied or unavailable'); setSharing(false); });
+      setSaved(true);
+    } catch (e) {
+      // Say which failure it was — the old blanket message sent debugging the
+      // wrong way for weeks.
+      const msg = String(e?.message || e || '');
+      if (msg === 'unsupported')          setErr('Geolocation not supported on this device');
+      else if (/denied|permission/i.test(msg)) setErr('Location permission denied — enable it in Settings to share');
+      else if (/timeout/i.test(msg))      setErr('Could not get a location fix — try again outdoors');
+      else                                 setErr('Location unavailable right now — please try again');
+    } finally {
+      setSharing(false);
+    }
   }
 
   return (

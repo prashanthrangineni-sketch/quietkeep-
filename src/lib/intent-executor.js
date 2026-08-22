@@ -4,9 +4,20 @@
 //          navigation intent, improved follow-up engine
 
 // ── TIME PARSING ──────────────────────────────────────────────────────────────
+// Speech-to-text emits "10 a.m." / "5 P.M." with full stops and inconsistent
+// spacing. Normalise those to the bare "am" / "pm" the matchers below expect,
+// otherwise a spoken time parses to null and is silently discarded.
+function normalizeMeridiem(s) {
+  return String(s).toLowerCase()
+    .replace(/\ba\.?\s?m\.?/g, 'am')
+    .replace(/\bp\.?\s?m\.?/g, 'pm')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function parseTimeToDate(timeStr, referenceDate = new Date()) {
   if (!timeStr) return null;
-  const t = timeStr.toLowerCase().trim();
+  const t = normalizeMeridiem(timeStr);
   let hours = null; let minutes = 0;
 
   const ap = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);

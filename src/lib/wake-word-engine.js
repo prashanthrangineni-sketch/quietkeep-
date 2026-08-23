@@ -73,15 +73,42 @@ export function isInvokeSupported() {
   return getPlatform() === 'android' && !!nativeBridge();
 }
 // TIER 2 (acoustic hotword) — Android native + a mic foreground service + a model.
+//
+// Availability is opt-IN, not opt-out. This previously read the cache as
+// `!== 'false'`, so an unset value counted as available — which advertised hotword
+// on every Android device. The native detector currently returns false
+// unconditionally (WakeWordEngine.detectWakeWord) because the shipped
+// aaria_wakeword.tflite is a placeholder, so claiming support would be a lie.
+// Counter mode stays unsupported until the native side positively says otherwise.
 export function isCounterModeSupported() {
   const b = nativeBridge();
   const cachedAvailable = typeof window !== 'undefined' && window.localStorage
-    ? localStorage.getItem('qk_wake_word_available') !== 'false'
+    ? localStorage.getItem('qk_wake_word_available') === 'true'
     : false;
   return getPlatform() === 'android'
     && !!b
     && typeof b.startHotword === 'function'
     && cachedAvailable;
+}
+
+// Ask the native side whether acoustic hotword is genuinely usable and cache the
+// answer. Safe to call on mount; resolves false on web and on any error.
+// Returns the boolean it cached, so a caller can re-render off the truth.
+export async function refreshCounterAvailability() {
+  const b = nativeBridge();
+  let available = false;
+  try {
+    if (b && typeof b.isWakeWordAvailable === 'function') {
+      const res = await b.isWakeWordAvailable();
+      available = !!(res && res.available);
+    }
+  } catch (_) {
+    available = false;
+  }
+  if (isBrowser() && window.localStorage) {
+    try { localStorage.setItem('qk_wake_word_available', available ? 'true' : 'false'); } catch (_) {}
+  }
+  return available;
 }
 
 // What the UI should actually offer the user, given this device.

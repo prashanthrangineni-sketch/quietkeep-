@@ -44,7 +44,18 @@ export function onWake(fn) { listeners.add(fn); return () => listeners.delete(fn
 
 // ── platform + capability detection (honest, no pretending) ──────────────────
 function isBrowser() { return typeof window !== 'undefined'; }
-function nativeBridge() { return (isBrowser() && window.__QK_WAKE__) || null; }
+// The native side registers WakeWordPlugin as a Capacitor plugin (see
+// MainActivity.onCreate → registerPlugin(WakeWordPlugin.class)), which surfaces it
+// at window.Capacitor.Plugins.WakeWordPlugin — not at window.__QK_WAKE__. Its method
+// names (startHotword / stopHotword / ensureInvokeSurfaces / isWakeWordAvailable)
+// already match what this file calls. __QK_WAKE__ is still preferred so a future
+// direct injection takes precedence over the plugin.
+function nativeBridge() {
+  if (!isBrowser()) return null;
+  return window.__QK_WAKE__
+    || (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.WakeWordPlugin)
+    || null;
+}
 
 export function isNativePlatform() {
   return !!(isBrowser() && window.Capacitor

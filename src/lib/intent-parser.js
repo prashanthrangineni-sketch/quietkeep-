@@ -37,39 +37,91 @@ function toTitleCase(str) {
 }
 
 // ── Regional number word → digit mapping ──────────────────────────
+// v8: three fixes to parseRegionalAmount.
+//   1. Native script was missing entirely — only romanised spellings existed, so
+//      "పది" from Telugu STT could never match 'padi'. Telugu and Devanagari added,
+//      plus digit normalisation (౧౦ / १० → 10).
+//   2. Matching was lower.includes(word), i.e. substring. 'edu' (Telugu seven) also
+//      sits inside veduka/chedu/nedu, so unrelated sentences resolved to 7.
+//      Now matched on Unicode-aware word boundaries.
+//   3. The first key in object order won rather than the best one. Longest match
+//      now wins, so declaration order no longer decides the answer.
 const REGIONAL_NUMBERS = {
-  // Hindi
+  // Hindi — romanised
   'ek': 1, 'do': 2, 'teen': 3, 'char': 4, 'paanch': 5,
   'chhe': 6, 'saat': 7, 'aath': 8, 'nau': 9, 'das': 10,
   'bees': 20, 'tees': 30, 'chalees': 40, 'pachaas': 50,
   'sau': 100, 'hazaar': 1000, 'hazar': 1000, 'lakh': 100000,
-  // Telugu
+  // Hindi — Devanagari
+  'एक': 1, 'दो': 2, 'तीन': 3, 'चार': 4, 'पांच': 5, 'पाँच': 5,
+  'छह': 6, 'छे': 6, 'सात': 7, 'आठ': 8, 'नौ': 9, 'दस': 10,
+  'बीस': 20, 'तीस': 30, 'चालीस': 40, 'पचास': 50,
+  'सौ': 100, 'हजार': 1000, 'हज़ार': 1000, 'लाख': 100000,
+  // Telugu — romanised
   'okati': 1, 'rendu': 2, 'moodu': 3, 'nalugu': 4, 'aidu': 5,
   'aaru': 6, 'edu': 7, 'enimidi': 8, 'tommidi': 9, 'padi': 10,
-  'vela': 1000, 'velu': 1000, 'laksha': 100000,
-  // Tamil
+  'vanda': 100, 'vela': 1000, 'velu': 1000, 'laksha': 100000,
+  // Telugu — script
+  'ఒకటి': 1, 'రెండు': 2, 'మూడు': 3, 'నాలుగు': 4, 'ఐదు': 5,
+  'ఆరు': 6, 'ఏడు': 7, 'ఎనిమిది': 8, 'తొమ్మిది': 9, 'పది': 10,
+  'ఇరవై': 20, 'ముప్పై': 30, 'నలభై': 40, 'యాభై': 50,
+  'వంద': 100, 'వెయ్యి': 1000, 'వేలు': 1000, 'లక్ష': 100000,
+  // Tamil — romanised
   'onnu': 1, 'randu': 2, 'moonu': 3, 'naalu': 4, 'anju': 5,
-  'aaru_ta': 6, 'saavira': 1000,
+  'saavira': 1000,
 };
 
+// Multiplier words, in every script we accept.
+const MULTIPLIER_WORDS = [
+  'sau', 'hazaar', 'hazar', 'vanda', 'vela', 'velu', 'lakh', 'laksha', 'saavira',
+  'सौ', 'हजार', 'हज़ार', 'लाख',
+  'వంద', 'వెయ్యి', 'వేలు', 'లక్ష',
+];
+
+// Telugu ౦-౯ (U+0C66..) and Devanagari ०-९ (U+0966..) → ASCII, so "౧౦" parses as "10".
+// Helps times as well as amounts.
+function normalizeIndicDigits(str) {
+  return String(str)
+    .replace(/[౦-౯]/g, (d) => String(d.charCodeAt(0) - 0x0C66))
+    .replace(/[०-९]/g, (d) => String(d.charCodeAt(0) - 0x0966));
+}
+
+function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// \b is ASCII-only and matches nothing useful against Telugu or Devanagari, so use an
+// explicit "not a letter or digit" boundary that behaves the same in every script.
+function wordRe(word) {
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escapeRe(word)}(?=$|[^\\p{L}\\p{N}])`, 'iu');
+}
+
+// Longest match wins — a short key can no longer beat a longer, more specific one
+// purely because it was declared first.
+function matchNumberWord(text) {
+  let best = null;
+  for (const [word, num] of Object.entries(REGIONAL_NUMBERS)) {
+    if (wordRe(word).test(text) && (!best || word.length > best.word.length)) {
+      best = { word, num };
+    }
+  }
+  return best;
+}
+
 function parseRegionalAmount(text) {
-  const lower = text.toLowerCase();
-  // "paanch sau" → 500, "ek hazaar" → 1000, "rendu vela" → 2000, "padi velu" → 10000
-  const multiplierWords = ['sau', 'hazaar', 'hazar', 'vela', 'velu', 'lakh', 'laksha', 'saavira'];
-  for (const mw of multiplierWords) {
-    const re = new RegExp(`(\\w+)\\s+${mw}`, 'i');
+  const lower = normalizeIndicDigits(String(text || '')).toLowerCase();
+
+  // "paanch sau" → 500, "ek hazaar" → 1000, "rendu vela" → 2000, "పది వేలు" → 10000
+  for (const mw of MULTIPLIER_WORDS) {
+    const re = new RegExp(`([\\p{L}\\p{N}]+)\\s+${escapeRe(mw)}(?=$|[^\\p{L}\\p{N}])`, 'iu');
     const m = lower.match(re);
     if (m) {
-      const base = REGIONAL_NUMBERS[m[1]] || parseInt(m[1]);
+      const base = REGIONAL_NUMBERS[m[1]] ?? parseInt(m[1], 10);
       const mult = REGIONAL_NUMBERS[mw];
       if (base && mult) return base * mult;
     }
   }
-  // Single number word: "paanch" → 5
-  for (const [word, num] of Object.entries(REGIONAL_NUMBERS)) {
-    if (lower.includes(word)) return num;
-  }
-  return null;
+
+  const hit = matchNumberWord(lower);
+  return hit ? hit.num : null;
 }
 
 export { parseRegionalAmount };

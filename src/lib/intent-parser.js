@@ -113,7 +113,7 @@ function parseRegionalAmount(text) {
 
   // "paanch sau" → 500, "ek hazaar" → 1000, "rendu vela" → 2000, "పది వేలు" → 10000
   for (const mw of MULTIPLIER_WORDS) {
-    const re = new RegExp(`([\\p{L}\\p{N}]+)\\s+${escapeRe(mw)}(?=$|[^\\p{L}\\p{N}])`, 'iu');
+    const re = new RegExp(`([\\p{L}\\p{N}\\p{M}]+)\\s+${escapeRe(mw)}(?=$|[^\\p{L}\\p{N}\\p{M}])`, 'iu');
     const m = lower.match(re);
     if (m) {
       const base = REGIONAL_NUMBERS[m[1]] ?? parseInt(m[1], 10);

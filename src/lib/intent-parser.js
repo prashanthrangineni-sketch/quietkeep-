@@ -90,8 +90,10 @@ function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 // \b is ASCII-only and matches nothing useful against Telugu or Devanagari, so use an
 // explicit "not a letter or digit" boundary that behaves the same in every script.
+// \p{M} matters: Telugu vowel signs (ి in పది) and Devanagari marks (ँ in पाँच)
+// are combining marks, not letters. Leaving them out cuts words in half.
 function wordRe(word) {
-  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escapeRe(word)}(?=$|[^\\p{L}\\p{N}])`, 'iu');
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}\\p{M}])${escapeRe(word)}(?=$|[^\\p{L}\\p{N}\\p{M}])`, 'iu');
 }
 
 // Longest match wins — a short key can no longer beat a longer, more specific one

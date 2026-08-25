@@ -27,8 +27,21 @@ const LS_WAKE_MODE = 'qk_wake_mode_v2';   // 'manual' | 'invoke' | 'counter'
 const LS_WAKE_WORD = 'qk_wake_word';      // customizable, default 'aaria'
 const DEFAULT_WAKE_WORD = 'aaria';
 
-// openWakeWord model shipped in /public/models/ (tflite). Free, Apache-2.0.
-const OWW_MODEL_URL = '/models/aaria_wakeword.tflite';
+// openWakeWord model — NOT SHIPPED YET. This URL currently resolves to a 404.
+//
+// `public/models/` does not exist in this repo, so nothing is served at this
+// path. The comment previously read "model shipped in /public/models/", which
+// was read as a statement of fact by at least one audit and is not true.
+//
+// The Android side matches this state honestly: WakeWordEngine.detectWakeWord()
+// returns false unconditionally, and isCounterModeSupported() below is opt-in
+// and defaults to false, so no code path depends on this file existing. The
+// constant is kept (rather than deleted) so the intended location stays
+// recorded for whoever integrates openWakeWord.
+//
+// When the real model ships: add public/models/aaria_wakeword.tflite, replace
+// the native detector, and delete this warning.
+const OWW_MODEL_URL = '/models/aaria_wakeword.tflite'; // 404 until the model ships
 const OWW_THRESHOLD = 0.6;   // detection confidence; tune per accuracy tests
 
 // ── tiny event emitter (no deps) ─────────────────────────────────────────────

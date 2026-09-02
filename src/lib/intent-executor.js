@@ -4,9 +4,20 @@
 //          navigation intent, improved follow-up engine
 
 // ── TIME PARSING ──────────────────────────────────────────────────────────────
+// Speech-to-text emits "10 a.m." / "5 P.M." with full stops and inconsistent
+// spacing. Normalise those to the bare "am" / "pm" the matchers below expect,
+// otherwise a spoken time parses to null and is silently discarded.
+function normalizeMeridiem(s) {
+  return String(s).toLowerCase()
+    .replace(/\ba\.?\s?m\.?/g, 'am')
+    .replace(/\bp\.?\s?m\.?/g, 'pm')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function parseTimeToDate(timeStr, referenceDate = new Date()) {
   if (!timeStr) return null;
-  const t = timeStr.toLowerCase().trim();
+  const t = normalizeMeridiem(timeStr);
   let hours = null; let minutes = 0;
 
   const ap = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
@@ -34,20 +45,85 @@ function parseDateString(dateStr) {
   return null;
 }
 
+// ── TIMEZONE ──────────────────────────────────────────────────────────────────
+// setHours() resolves in the SERVER's timezone. On Vercel that is UTC, so
+// "tomorrow at 10 a.m." was stored as 10:00Z — which is 15:30 IST. Every
+// English voice reminder fired 5 hours 30 minutes late. The Sarvam path was
+// never affected because the brain returns an absolute offset (+05:30).
+// Found 22 Aug 2026, after the parser fix stopped masking it.
+export const DEFAULT_TZ = 'Asia/Kolkata';
+
+function tzOffsetMs(date, timeZone) {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone, hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const p = Object.fromEntries(
+    dtf.formatToParts(date).filter(x => x.type !== 'literal').map(x => [x.type, x.value])
+  );
+  const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, p.hour === '24' ? 0 : +p.hour, +p.minute, +p.second);
+  return asUTC - date.getTime();
+}
+
+// Wall-clock time in `timeZone` -> the correct UTC instant.
+// Two passes so a DST boundary resolves to the right side.
+function zonedWallClockToUtc(y, mo, d, hh, mm, timeZone) {
+  const guess = Date.UTC(y, mo, d, hh, mm, 0, 0);
+  let off = tzOffsetMs(new Date(guess), timeZone);
+  off = tzOffsetMs(new Date(guess - off), timeZone);
+  return new Date(guess - off);
+}
+
+// The calendar date as seen in `timeZone`, not on the server.
+function zonedDateParts(date, timeZone) {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+  });
+  const p = Object.fromEntries(
+    dtf.formatToParts(date).filter(x => x.type !== 'literal').map(x => [x.type, x.value])
+  );
+  return { y: +p.year, mo: +p.month - 1, d: +p.day };
+}
+
 // ── COMPUTE reminder_at FROM ENTITIES ─────────────────────────────────────────
-export function computeReminderAt(entities) {
+export function computeReminderAt(entities, timeZone = DEFAULT_TZ) {
   if (!entities) return null;
   const { dates = [], times = [] } = entities;
-  let base = null;
-  for (const d of dates) { const p = parseDateString(d); if (p) { base = p; break; } }
+
+  let baseDate = null;
+  for (const d of dates) { const p = parseDateString(d); if (p) { baseDate = p; break; } }
+
+  // Hours and minutes are wall-clock in the user's zone — parseTimeToDate is
+  // only used here to read them, never to fix the instant.
+  let hh = null, mm = 0;
   if (times.length > 0) {
-    const td = parseTimeToDate(times[0], base || new Date());
-    if (td) {
-      if (base) { base = new Date(base); base.setHours(td.getHours(), td.getMinutes(), 0, 0); }
-      else base = td;
-    }
+    const td = parseTimeToDate(times[0], new Date());
+    if (td) { hh = td.getHours(); mm = td.getMinutes(); }
   }
-  return base;
+
+  if (baseDate === null && hh === null) return null;
+
+  const { y, mo, d } = zonedDateParts(baseDate || new Date(), timeZone);
+
+  // A date with no spoken time keeps the previous behaviour: same wall-clock
+  // time of day as now, in the user's zone.
+  if (hh === null) {
+    const nowParts = new Intl.DateTimeFormat('en-US', {
+      timeZone, hour12: false, hour: '2-digit', minute: '2-digit',
+    }).formatToParts(new Date()).filter(x => x.type !== 'literal');
+    const np = Object.fromEntries(nowParts.map(x => [x.type, x.value]));
+    hh = np.hour === '24' ? 0 : +np.hour;
+    mm = +np.minute;
+  }
+
+  let result = zonedWallClockToUtc(y, mo, d, hh, mm, timeZone);
+  // Bare time with no date ("at 10 a.m.") that has already passed today rolls
+  // to tomorrow — same rule as before, applied in the user's zone.
+  if (!baseDate && result.getTime() <= Date.now()) {
+    result = zonedWallClockToUtc(y, mo, d + 1, hh, mm, timeZone);
+  }
+  return result;
 }
 
 // ── SERVER: SCHEDULE PRECISE REMINDER NUDGE ───────────────────────────────────
@@ -111,7 +187,11 @@ export async function findAllMatchingContacts(supabase, userId, name) {
 
 // ── FOLLOW-UP LOGIC ───────────────────────────────────────────────────────────
 // Returns follow_up object or null if intent is complete
-export function computeFollowUp(parsed, contactResult = null) {
+// reminderAt is passed in because the Sarvam brain resolves times the regex
+// cannot see ("రేపు ఉదయం", "कल सुबह") and writes them straight to reminderAt.
+// Testing entities alone made the app ask "When should I remind you?" on a
+// reminder it had already set and scheduled. Fixed 22 Aug 2026.
+export function computeFollowUp(parsed, contactResult = null, reminderAt = null) {
   const { type, entities } = parsed;
 
   // Contact / meeting: check for disambiguation or missing info
@@ -156,8 +236,10 @@ export function computeFollowUp(parsed, contactResult = null) {
     }
   }
 
-  // Reminder/task with no time: ask when
-  if ((type === 'reminder' || type === 'task') && !entities?.dates?.length && !entities?.times?.length) {
+  // Reminder/task with no time: ask when.
+  // reminderAt short-circuits this — if a time was resolved by any route, the
+  // reminder is already scheduled and asking again is wrong.
+  if ((type === 'reminder' || type === 'task') && !reminderAt && !entities?.dates?.length && !entities?.times?.length) {
     return {
       follow_up:   'When should I remind you? Say a time like "at 3pm" or "tomorrow morning".',
       action_hint: 'time_needed',
@@ -311,9 +393,15 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
     const taskContent     = (parsed.subject || '').replace(/^remind\s+(?:me\s+)?(?:to\s+)?/i, '').trim();
 
     if (reminderAt) {
+      // Format in the USER's zone. Without the timeZone option these render in
+      // the server's zone (UTC on Vercel), so a correctly stored 04:30Z was
+      // read back to the user as "4:30 am" when they had said 10 a.m. The
+      // reminder fired at the right moment; the confirmation lied about it.
+      // Found 22 Aug 2026 in the spoken confirmation, after the stored value
+      // was already correct.
       const dt      = new Date(reminderAt);
-      const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
-      const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+      const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: DEFAULT_TZ });
+      const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: DEFAULT_TZ });
 
       if (hasSpecificTime) {
         return `Got it — I'll remind you to ${taskContent || 'do this'} ${dateStr} at ${timeStr}.`;
@@ -327,7 +415,7 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
 
   if (parsed.type === 'task' && reminderAt) {
     const dt      = new Date(reminderAt);
-    const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: DEFAULT_TZ });
     return `Task saved. I'll remind you at ${timeStr}.`;
   }
 

@@ -132,8 +132,11 @@ export default function GeoPage() {
         setShowAttachPrompt(true);
         setTimeout(() => setLocSaved(''), 2000);
       } else {
-        const err = await geoSaveRes.json().catch(() => ({}));
-        setSaveError(err.error || `Save failed (${geoSaveRes.status})`);
+        // geoSaveRes never existed in this scope — apiPost returns
+        // { data, error }. The ReferenceError was swallowed by the catch
+        // below and surfaced as "Network error — check connection", which
+        // sent debugging in entirely the wrong direction. Fixed 22 Aug 2026.
+        setSaveError(saveErr.message || saveErr.error || 'Could not save this location');
         setTimeout(() => setSaveError(''), 4000);
       }
     } catch (e) {

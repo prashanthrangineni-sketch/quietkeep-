@@ -3,6 +3,9 @@ package com.pranix.quietkeep;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -13,15 +16,13 @@ import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.graphics.Insets;
-import android.graphics.drawable.ColorDrawable;
-import android.graphics.Color;
-import android.content.res.Configuration;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 import com.pranix.quietkeep.plugins.ContactsPlugin;
 import com.pranix.quietkeep.plugins.OCRPlugin;
@@ -33,13 +34,17 @@ import com.pranix.quietkeep.plugins.WakeWordPlugin;
 import com.pranix.quietkeep.services.KeepAliveService;
 
 /**
- * MainActivity v7
+ * MainActivity v8
+ * WS-2a: Fixed Android WebView asynchronous microphone permission request bridge.
  */
 public class MainActivity extends BridgeActivity {
 
     private static final String TAG = "QK_MAIN";
     private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
+    private static final int AUDIO_PERMISSION_REQUEST_CODE = 1002;
+
     private android.webkit.ValueCallback<android.net.Uri[]> mFilePathCallback;
+    private PermissionRequest mPendingAudioPermissionRequest = null;
 
     // Server URL baked in at build time — always the production API host.
     private static final String SERVER_URL = "https://quietkeep.com";
@@ -86,11 +91,6 @@ public class MainActivity extends BridgeActivity {
         applySystemBarInsets();
     }
 
-    // onDestroy() moved to LotusWakeBridgeHolder registration block above
-
-    // ── WebView audio bridge + runtime injection ──────────────────────────
-
-    
     /**
      * P0 Fix: Handle SDK 35+ forced edge-to-edge window insets on Android 15+.
      * Padds the content view by systemBars() and displayCutout() so the app header
@@ -164,8 +164,6 @@ public class MainActivity extends BridgeActivity {
             webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
             // v6: Register TTSBridge so JS can call window.AndroidTTS.speak(text)
-            // Must be done BEFORE the page loads — addJavascriptInterface is safe
-            // to call here because we're before the first page navigation.
             webView.addJavascriptInterface(new TTSBridge(this), "AndroidTTS");
             Log.d(TAG, "TTSBridge registered as 'AndroidTTS' ✓");
 
@@ -251,11 +249,16 @@ public class MainActivity extends BridgeActivity {
                         ) == PackageManager.PERMISSION_GRANTED;
 
                         if (osGranted) {
-                            Log.d(TAG, "onPermissionRequest: RECORD_AUDIO granted → granting WebView");
+                            Log.d(TAG, "onPermissionRequest: RECORD_AUDIO already granted → granting WebView");
                             request.grant(request.getResources());
                         } else {
-                            Log.w(TAG, "onPermissionRequest: RECORD_AUDIO not granted → denying WebView");
-                            request.deny();
+                            Log.d(TAG, "onPermissionRequest: RECORD_AUDIO not yet granted → requesting runtime permission from OS");
+                            mPendingAudioPermissionRequest = request;
+                            ActivityCompat.requestPermissions(
+                                MainActivity.this,
+                                new String[]{android.Manifest.permission.RECORD_AUDIO},
+                                AUDIO_PERMISSION_REQUEST_CODE
+                            );
                         }
                         return;
                     }
@@ -269,6 +272,9 @@ public class MainActivity extends BridgeActivity {
 
                 @Override
                 public void onPermissionRequestCanceled(PermissionRequest request) {
+                    if (request == mPendingAudioPermissionRequest) {
+                        mPendingAudioPermissionRequest = null;
+                    }
                     if (existing != null) {
                         existing.onPermissionRequestCanceled(request);
                     } else {
@@ -328,12 +334,6 @@ public class MainActivity extends BridgeActivity {
 
     /**
      * v6: Inject runtime JS constants + __QK_TTS__ alias.
-     *
-     * __QK_TTS__(text) → window.AndroidTTS.speak(text) → TTSBridge → TTSManager
-     *
-     * The alias lets all JS code call window.__QK_TTS__("text") without
-     * caring about the JavascriptInterface name. The fallback to
-     * speechSynthesis is handled in VoiceTalkback.jsx speak() function.
      */
     private void injectRuntimeJS(android.webkit.WebView view) {
         String appType = getPackageName().contains(".business") ? "business" : "personal";
@@ -347,9 +347,6 @@ public class MainActivity extends BridgeActivity {
             + "  window.__QK_APP_TYPE__   = '" + appType + "';\n"
             + "\n"
             + "  // 2. Native TTS alias — __QK_TTS__(text) calls TTSBridge.speak()\n"
-            + "  //    AndroidTTS is registered via addJavascriptInterface in applyWebViewBridge().\n"
-            + "  //    VoiceTalkback.jsx checks window.__QK_TTS__ before falling back\n"
-            + "  //    to browser speechSynthesis.\n"
             + "  if (window.AndroidTTS && typeof window.AndroidTTS.speak === 'function') {\n"
             + "    window.__QK_TTS__     = function(t){try{window.AndroidTTS.speak(String(t||'')); }catch(e){}};\n"
             + "    window.__QK_TTS_LOW__ = function(t){try{window.AndroidTTS.speakLow(String(t||'')); }catch(e){}};\n"
@@ -459,15 +456,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * Phase 9B: LotusWakeBridgeHolder
-     *
-     * Allows VoiceService (a background Service) to dispatch events to the
-     * WebView without a direct reference to MainActivity.
-     *
-     * SAFETY: sActivity is set to null in onDestroy() to prevent memory leaks.
-     * VoiceService checks for null before using it.
-     * WeakReference is intentionally NOT used — we need a reliable reference
-     * during active voice capture sessions, and the service is bound to app lifetime.
+     * LotusWakeBridgeHolder
      */
     public static class LotusWakeBridgeHolder {
         public static volatile android.app.Activity sActivity = null;
@@ -476,7 +465,6 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
-        // Register this Activity so VoiceService can dispatch wake events to WebView
         LotusWakeBridgeHolder.sActivity = this;
         Log.d(TAG, "LotusWakeBridgeHolder: Activity registered ✓");
     }
@@ -484,16 +472,30 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onPause() {
         super.onPause();
-        // Keep registration when paused (service still needs it for background detection)
-        // Only clear on full destroy
     }
 
     @Override
     public void onDestroy() {
-        // Clear bridge holder to prevent memory leak
         LotusWakeBridgeHolder.sActivity = null;
         super.onDestroy();
         TTSManager.getInstance(this).shutdown();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == AUDIO_PERMISSION_REQUEST_CODE) {
+            if (mPendingAudioPermissionRequest != null) {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "onRequestPermissionsResult: RECORD_AUDIO granted by user → granting WebView");
+                    mPendingAudioPermissionRequest.grant(mPendingAudioPermissionRequest.getResources());
+                } else {
+                    Log.w(TAG, "onRequestPermissionsResult: RECORD_AUDIO denied by user → denying WebView");
+                    mPendingAudioPermissionRequest.deny();
+                }
+                mPendingAudioPermissionRequest = null;
+            }
+        }
     }
 
     @Override

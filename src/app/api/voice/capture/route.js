@@ -205,6 +205,18 @@ export async function POST(request) {
       const dt = new Date(llmAssist.entities.datetimeISO)
       if (!isNaN(dt.getTime()) && dt.getTime() > Date.now() - 60000) {
         reminderAt = dt
+        // Write the resolved time back into entities. computeFollowUp() and
+        // the timeAmbiguous check below both read parsed.entities, not
+        // reminderAt — so without this the app saved and scheduled the
+        // reminder and then still asked "When should I remind you?" and
+        // showed the quick-time overlay. Fixed 22 Aug 2026.
+        parsed.entities = parsed.entities || {}
+        parsed.entities.dates = [
+          `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+        ]
+        parsed.entities.times = [
+          `${(dt.getHours() % 12) || 12}:${String(dt.getMinutes()).padStart(2, '0')} ${dt.getHours() < 12 ? 'am' : 'pm'}`
+        ]
       }
     }
   }
@@ -232,7 +244,7 @@ export async function POST(request) {
     }
   }
 
-  const followUp = computeFollowUp(parsed, matchedContact, allContacts)
+  const followUp = computeFollowUp(parsed, matchedContact, reminderAt)
 
   // ── Voice Brain: confidence scoring + clarification ──────────────────────
   // scoredIntent() enriches parsed with { tier, needs_followup, clarification, human_type }
@@ -690,7 +702,11 @@ export async function POST(request) {
   }
 
   const hasSpecificTime = parsed.entities?.times?.length > 0;
-  const timeAmbiguous   = parsed.type === 'reminder' && reminderAt && !hasSpecificTime;
+  // A time the brain resolved to an absolute instant is not ambiguous, even
+  // when the regex found no time token — otherwise every Indic-language
+  // reminder came back with the quick-time overlay on a correct reminder.
+  const brainResolvedTime = Boolean(llmAssist?.entities?.datetimeISO);
+  const timeAmbiguous   = parsed.type === 'reminder' && reminderAt && !hasSpecificTime && !brainResolvedTime;
   const needsReminderPrompt = (parsed.type === 'note' || parsed.type === 'task') && !reminderAt && /remind|remember|later/i.test(text);
 
   return NextResponse.json({

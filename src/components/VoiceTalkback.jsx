@@ -166,6 +166,9 @@ export function speak(text, options = {}) {
         window.__QK_TTS__(String(text));
       }
     } catch {}
+    // The native bridge owns playback from here; we cannot observe its end, so
+    // release the token rather than leaving the app permanently "speaking".
+    endSpeech(token);
     return;
   }
 

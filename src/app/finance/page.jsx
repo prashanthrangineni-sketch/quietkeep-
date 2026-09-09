@@ -370,7 +370,8 @@ export default function FinancePage() {
 
         {tab === 'assets' && stockEnabled && (
           <div>
-            <StockTracker />
+            {/* StockTracker requires both props; without them it renders nothing. */}
+            <StockTracker supabase={supabase} userId={user.id} />
           </div>
         )}
 

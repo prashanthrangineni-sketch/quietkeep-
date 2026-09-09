@@ -280,6 +280,12 @@ export default function StockTracker({ supabase, userId }) {
         </div>
       )}
 
+      {mismatchCount > 0 && (
+        <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 11, color: '#f59e0b' }}>
+          ⚠️ {mismatchCount} holding{mismatchCount !== 1 ? 's are' : ' is'} priced in a different currency to how {mismatchCount !== 1 ? 'they are' : 'it is'} recorded, so {mismatchCount !== 1 ? 'they are' : 'it is'} left out of the “Current” total above. See the warning on the holding below.
+        </div>
+      )}
+
       {/* Add form */}
       {showAdd && (
         <div style={{ ...cardStyle, marginBottom: 14, border: '1px solid rgba(99,102,241,0.25)' }}>

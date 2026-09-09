@@ -144,6 +144,23 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
         const res = ev.results[i];
         const heard = res[0]?.transcript || '';
         const hit = matches(heard);
+
+        // ── W12 BARGE-IN, part 1: detection ──────────────────────────────
+        // This recogniser stays open while Aaria is speaking, so it is the
+        // only place that can notice the user talking over her.
+        //
+        // It deliberately does NOT interrupt on any speech. The open mic hears
+        // Aaria's own voice first, so "interrupt on any detected speech" makes
+        // her cut herself off every single time. considerUserSpeech() filters
+        // self-echo and only accepts the wake word or an explicit stop command
+        // - high precision, because a false interruption is far worse than a
+        // missed one. Full open-mic barge-in needs acoustic echo cancellation,
+        // which the Web Speech API cannot give us and the streaming rebuild
+        // (W11) will.
+        if (heard) {
+          try { considerUserSpeech(heard, !!hit); } catch {}
+        }
+
         if (!hit) continue;
 
         // ── INTERIM: she has been named, but we do not yet know whether a

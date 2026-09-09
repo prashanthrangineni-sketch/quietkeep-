@@ -13,6 +13,27 @@ import {
   beginSpeech, endSpeech, isCurrent, bargeIn, setSpokenText,
   registerStopper, BARGE_IN_REASON,
 } from '@/lib/barge-in';
+import { shouldUseAaria } from '@/lib/aaria-audio';
+
+// ── Aaria's voice ───────────────────────────────────────────────────────────
+// Until now every reply was spoken by the phone's built-in voice, which is
+// poor to unusable in Indic languages. Aaria speaks through Sarvam Bulbul v3;
+// the route, the engine and the cascade in src/lib/tts.js all existed and were
+// simply never connected to each other.
+//
+// The token is pushed in from the auth context rather than fetched here,
+// because speak() is a plain module function called from a dozen places and
+// has no access to React context. Absent token means no Aaria - the proxy
+// requires a signed-in user - and we fall through to the behaviour that has
+// always been here.
+let _authToken = null;
+export function setSpeechAuthToken(token) {
+  _authToken = token || null;
+}
+
+function aariaMode() {
+  try { return localStorage.getItem('qk_voice_aaria') || 'indic'; } catch { return 'indic'; }
+}
 
 let voiceEnabled = true;
 

@@ -1,0 +1,33 @@
+# Run the unit test suites.
+#
+# WHY THIS FILE EXISTS
+# There were nine test files in tests/ and no workflow that ran any of them.
+# They passed when someone remembered to run them by hand, which is the same
+# as not having them: a test nobody executes cannot fail, so it cannot protect
+# anything.
+#
+# The suites are plain node scripts that exit non-zero on failure, so no test
+# runner or dependency install is needed.
+
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: Unit test suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run every suite in tests/
+        run: bash scripts/run-tests.sh

@@ -192,13 +192,18 @@ export default function StockTracker({ supabase, userId }) {
       ticker: fTicker.trim().toUpperCase() || null,
       quantity: fQty ? parseFloat(fQty) : null,
       purchase_price: fBuyPrice ? parseFloat(fBuyPrice) : null,
-      current_value: tickerPreview?.price ? parseFloat(fQty || 1) * tickerPreview.price : null,
+      // Only seed current_value when the quote is in the same currency we store
+      // the holding in — otherwise it silently records a USD figure as rupees.
+      current_value: (tickerPreview?.price && (tickerPreview.currency || 'INR') === 'INR')
+        ? parseFloat(fQty || 1) * tickerPreview.price
+        : null,
       currency: 'INR',
       notes: fNotes.trim() || null,
     }).select().single();
     if (error) { setFError(error.message); setSaving(false); return; }
-    setHoldings(p => [data, ...p]);
-    if (data.ticker) fetchPrice(data.ticker, true);
+    const next = [data, ...holdings];
+    setHoldings(next);
+    loadPrices(next);
     resetForm(); setSaving(false); setShowAdd(false);
   }
 

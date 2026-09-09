@@ -1,12 +1,46 @@
 'use client';
 import { safeFetch } from '@/lib/safeFetch';
 // StockTracker.jsx — tracks asset_holdings of type stock/mutual_fund
-// Fetches live prices from /api/connectors/stock every 15 minutes
+// Prices are READ from the shared connector_values cache (scope='stock').
+// The cache is refreshed server-side every 15 minutes: ONE upstream fetch per
+// distinct ticker for the whole app. This component makes NO periodic upstream
+// calls — the old per-holding-per-tab setInterval is what got us rate-limited.
+// A Supabase realtime subscription pushes each refresh instead.
 // Controlled by stock_tracking feature flag (checked by parent)
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
-const PRICE_TTL = 15 * 60 * 1000; // 15 minutes
+const CURRENCY_SYMBOL = { INR: '₹', USD: '$', EUR: '€', GBP: '£', AED: 'AED ' };
+
+// Same normalisation the server uses for connector_values.key.
+const normTicker = (t) => String(t || '').trim().toUpperCase();
+
+function money(amount, currency) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return '—';
+  const cur = currency || 'INR';
+  const txt = n.toLocaleString(cur === 'INR' ? 'en-IN' : 'en-US', { maximumFractionDigits: 2 });
+  const sym = CURRENCY_SYMBOL[cur];
+  return sym ? `${sym}${txt}` : `${txt} ${cur}`;
+}
+
+function freshness(iso) {
+  if (!iso) return '';
+  const ms = Date.now() - Date.parse(iso);
+  if (!Number.isFinite(ms)) return '';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr ago`;
+  return `${Math.floor(hrs / 24)} d ago`;
+}
+
+// Yahoo resolves a bare Indian symbol to its US ADR (INFY -> NYSE, in USD).
+// Exchange-suffixed tickers resolve to the Indian listing, in INR.
+function suggestIndianTicker(ticker) {
+  return `${normTicker(ticker).replace(/\.(NS|BO)$/i, '')}.NS`;
+}
 
 const ASSET_TYPES = [
   { value: 'stock', label: '📈 Stock', color: '#6366f1' },

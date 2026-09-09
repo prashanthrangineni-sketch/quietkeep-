@@ -44,6 +44,7 @@ export default function ProfilePage() {
       setProfile(profileRes.data);
       setFullName(profileRes.data.full_name || '');
       setTimezone(profileRes.data.timezone || 'Asia/Kolkata');
+      setCity(profileRes.data.city || '');
     }
 
     setStats({

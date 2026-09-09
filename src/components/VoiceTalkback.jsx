@@ -221,7 +221,9 @@ export function speak(text, options = {}) {
   }
 
   // ── BROWSER FALLBACK (web / PWA) ─────────────────────────────────────
-  if (!window.speechSynthesis) return;
+  // No output path at all. Release the token, or the app believes it is
+  // speaking forever and every later utterance is treated as superseded.
+  if (!window.speechSynthesis) { endSpeech(token); return; }
   try { window.speechSynthesis.cancel(); } catch {}
 
   let _fired = false;

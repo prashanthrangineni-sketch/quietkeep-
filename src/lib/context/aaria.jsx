@@ -85,6 +85,14 @@ export function AariaProvider({ children }) {
   const { user, accessToken } = useAuth();
   const { voiceLang } = useLanguage();
 
+  // Hand the token to the speech layer. speak() is a plain module function
+  // called from a dozen components and has no access to React context, so the
+  // token has to be pushed in rather than pulled. Without it Aaria cannot
+  // speak - the /api/voice/tts proxy requires a signed-in user - and every
+  // reply falls back to the phone's built-in voice, which is what happened
+  // for the whole of the product's life until now.
+  useEffect(() => { setSpeechAuthToken(accessToken); }, [accessToken]);
+
   // 'idle' | 'listening' | 'thinking' | 'speaking'
   const [status,     setStatus]     = useState('idle');
   const [open,       setOpen]       = useState(false);

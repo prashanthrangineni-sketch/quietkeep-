@@ -373,13 +373,21 @@ export default function StockTracker({ supabase, userId }) {
       ) : (
         holdings.map(h => {
           const typeInfo = ASSET_TYPES.find(t => t.value === h.asset_type) || ASSET_TYPES[7];
-          const priceData = h.ticker ? prices[h.ticker.toUpperCase()] : null;
-          const currentPrice = priceData?.price || null;
+          const priceData = priceFor(h);
+          const currentPrice = priceData?.price ?? null;
+          const hCur = holdingCurrency(h);
+          const quoteCur = priceData?.currency || null;
+          const mismatch = isMismatched(h);
           const investedVal = h.purchase_price && h.quantity ? h.purchase_price * h.quantity : null;
-          const currentVal = currentPrice && h.quantity ? currentPrice * h.quantity : h.current_value;
+          // A cross-currency quote cannot be turned into a gain figure without
+          // an exchange rate, so we show the warning instead of a wrong number.
+          const currentVal = (currentPrice !== null && h.quantity && !mismatch)
+            ? currentPrice * h.quantity
+            : (mismatch ? null : h.current_value);
           const gain = investedVal && currentVal ? currentVal - investedVal : null;
           const gainPctItem = investedVal && gain !== null ? (gain / investedVal * 100).toFixed(1) : null;
           const isPositive = gain !== null ? gain >= 0 : null;
+          const ago = freshness(priceData?.fetched_at);
 
           return (
             <div key={h.id} style={{ ...cardStyle, borderLeft: `3px solid ${typeInfo.color}` }}>

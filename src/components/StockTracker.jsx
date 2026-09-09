@@ -80,6 +80,27 @@ export default function StockTracker({ supabase, userId }) {
     loadHoldings();
   }, [userId]);
 
+  // Read prices out of the shared cache. One query for every ticker at once —
+  // no upstream call, so this is safe to run on mount and on manual refresh.
+  const loadPrices = useCallback(async (list) => {
+    const keys = [...new Set((list || [])
+      .filter(h => h.ticker && ['stock', 'mutual_fund'].includes(h.asset_type))
+      .map(h => normTicker(h.ticker))
+      .filter(Boolean))];
+    if (!keys.length) { setPrices({}); return; }
+    const { data } = await supabase
+      .from('connector_values')
+      .select('key,value,status,fetched_at')
+      .eq('scope', 'stock')
+      .in('key', keys);
+    const next = {};
+    for (const r of (data || [])) {
+      // status='error' still carries the last good value — keep showing it.
+      if (r && r.value) next[r.key] = { ...r.value, fetched_at: r.fetched_at, stale: r.status === 'error' };
+    }
+    setPrices(next);
+  }, [supabase]);
+
   async function loadHoldings() {
     setLoading(true);
     const { data } = await supabase
@@ -90,42 +111,71 @@ export default function StockTracker({ supabase, userId }) {
       .order('created_at', { ascending: false });
     setHoldings(data || []);
     setLoading(false);
-    // Fetch prices for stock/MF holdings
-    const tradeable = (data || []).filter(h => h.ticker && ['stock', 'mutual_fund'].includes(h.asset_type));
-    for (const h of tradeable) fetchPrice(h.ticker, false);
+    await loadPrices(data || []);
   }
 
-  const fetchPrice = useCallback(async (symbol, force = false) => {
-    if (!symbol) return null;
-    const key = symbol.toUpperCase();
-    // Check cache
-    if (!force && prices[key]?.fetchedAt && Date.now() - prices[key].fetchedAt < PRICE_TTL) {
-      return prices[key];
-    }
-    try {
-      const { data: res, error: resErr } = await safeFetch(`/api/connectors/stock?symbol=${encodeURIComponent(symbol)}`);
-      if (resErr || !res) return null;
-      const data = res;
-      if (data.error) return null;
-      const entry = { ...data, fetchedAt: Date.now() };
-      setPrices(p => ({ ...p, [key]: entry }));
-      return entry;
-    } catch { return null; }
-  }, [prices]);
+  // Manual refresh: re-reads the cached rows. Never calls the upstream.
+  async function refreshPrices() {
+    setRefreshing(true);
+    await loadPrices(holdings);
+    setRefreshing(false);
+  }
 
-  // Auto-refresh prices every 15 min
+  const tickerKey = useMemo(
+    () => [...new Set(holdings.map(h => normTicker(h.ticker)).filter(Boolean))].sort().join(','),
+    [holdings]
+  );
+
+  // Push, not poll. Same idiom as src/lib/capacitor/realtime.ts: one channel,
+  // postgres_changes, removed on unmount.
   useEffect(() => {
-    const interval = setInterval(() => {
-      const tradeable = holdings.filter(h => h.ticker && ['stock', 'mutual_fund'].includes(h.asset_type));
-      tradeable.forEach(h => fetchPrice(h.ticker, true));
-    }, PRICE_TTL);
-    return () => clearInterval(interval);
-  }, [holdings, fetchPrice]);
+    if (!supabase || !tickerKey) return;
+    const mine = new Set(tickerKey.split(','));
+    const channel = supabase
+      .channel(`connector-stock-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'connector_values', filter: 'scope=eq.stock' },
+        (payload) => {
+          const row = payload?.new;
+          if (!row || !row.key || !mine.has(row.key) || !row.value) return;
+          setPrices(p => ({
+            ...p,
+            [row.key]: { ...row.value, fetched_at: row.fetched_at, stale: row.status === 'error' },
+          }));
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, userId, tickerKey]);
 
+  // Add-form lookup for a symbol the user has just typed. This one symbol is not
+  // in the cache yet, so it is the one place a (now authenticated) upstream call
+  // is still justified — user-initiated, once, never on a timer.
   async function previewTicker() {
-    if (!fTicker.trim()) return;
+    const symbol = normTicker(fTicker);
+    if (!symbol) return;
     setFetchingPrice(true);
-    const data = await fetchPrice(fTicker.trim().toUpperCase(), true);
+    let data = null;
+    try {
+      const { data: cachedRow } = await supabase
+        .from('connector_values')
+        .select('value,fetched_at')
+        .eq('scope', 'stock')
+        .eq('key', symbol)
+        .maybeSingle();
+      if (cachedRow?.value) data = { ...cachedRow.value, fetched_at: cachedRow.fetched_at };
+    } catch {}
+    if (!data) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const { data: res, error: resErr } = await safeFetch(
+          `/api/connectors/stock?symbol=${encodeURIComponent(symbol)}`,
+          { token: session?.access_token || '' }
+        );
+        if (!resErr && res && !res.error) data = res;
+      } catch {}
+    }
     setTickerPreview(data);
     if (data && !fBuyPrice) setFBuyPrice(String(data.price));
     setFetchingPrice(false);

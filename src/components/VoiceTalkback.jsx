@@ -257,6 +257,7 @@ export function speak(text, options = {}) {
     });
     setTimeout(doSpeak, 600);
   }
+  }
   }, DEBOUNCE_MS); // end Step 4 debounce
 }
 

@@ -61,10 +61,13 @@ export default function ProfilePage() {
     if (!user) return;
     setSaving(true);
 
+    const cityVal = city.trim() || null;
+
     await supabase.from('profiles').upsert({
       user_id: user.id,
       full_name: fullName,
       timezone,
+      city: cityVal,
       onboarding_done: true,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
@@ -73,7 +76,7 @@ export default function ProfilePage() {
       user_id: user.id,
       action: 'profile_updated',
       service: 'profile',
-      details: { full_name: fullName, timezone },
+      details: { full_name: fullName, timezone, city: cityVal },
     });
 
     setSaving(false);

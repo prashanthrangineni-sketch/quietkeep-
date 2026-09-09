@@ -24,6 +24,7 @@ export default function ProfilePage() {
 
   const [fullName, setFullName] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kolkata');
+  const [city, setCity] = useState('');
 
   useEffect(() => { if (!authLoading) loadProfile(); }, [authLoading]);
 

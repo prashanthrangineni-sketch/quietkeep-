@@ -214,9 +214,14 @@ export function speak(text, options = {}) {
  * cancelSpeech() — Phase 4: cancel + reset dedup guard.
  * Call when user starts speaking to interrupt any current TTS.
  */
-export function cancelSpeech() {
+export function cancelSpeech(reason = BARGE_IN_REASON.USER_ACTION) {
   _lastSpokenText = '';
   _lastSpokenTime = 0;
+  // W12: route through barge-in so the flush and history truncation happen
+  // too. Previously this only silenced the current audio, which left an
+  // in-flight utterance free to arrive and play a moment later.
+  ensureStoppersRegistered();
+  bargeIn(reason);
   if (typeof window !== 'undefined') {
     if (window.__QK_TTS__ && window.AndroidTTS?.stop) {
       try { window.AndroidTTS.stop(); } catch {}

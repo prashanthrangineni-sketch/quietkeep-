@@ -134,9 +134,20 @@ export function speak(text, options = {}) {
   _lastSpokenTime = now;
 
   // Step 4: debounce — defer execution 100ms, cancel if speak() called again
+  ensureStoppersRegistered();
   if (_debounce) clearTimeout(_debounce);
+
+  // W12: claim the right to speak now, before the debounce and before any
+  // async work. Anything that interrupts between here and playback invalidates
+  // this token.
+  const token = beginSpeech();
+  setSpokenText(text);
+
   _debounce = setTimeout(() => {
     _debounce = null;
+
+    // The user interrupted during the debounce window. Say nothing.
+    if (!isCurrent(token)) return;
 
   // ── NATIVE TTS (Android) ──────────────────────────────────────────────
   // window.__QK_TTS__ is injected by MainActivity.injectRuntimeJS() via

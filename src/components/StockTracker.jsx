@@ -407,24 +407,39 @@ export default function StockTracker({ supabase, userId }) {
                     )}
                     {h.purchase_price && (
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        Avg: <span style={{ color: 'var(--text)' }}>₹{Number(h.purchase_price).toLocaleString('en-IN')}</span>
+                        Avg: <span style={{ color: 'var(--text)' }}>{money(h.purchase_price, hCur)}</span>
                       </div>
                     )}
-                    {currentPrice && (
+                    {currentPrice !== null && (
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        LTP: <span style={{ color: '#60a5fa' }}>₹{currentPrice.toLocaleString('en-IN')}</span>
+                        {/* Currency comes from the live quote, never assumed. */}
+                        LTP: <span style={{ color: '#60a5fa' }}>{money(currentPrice, quoteCur)}</span>
                         {priceData?.change_pct && (
                           <span style={{ color: priceData.change_pct >= 0 ? '#34d399' : '#ef4444', marginLeft: 4 }}>
                             ({priceData.change_pct >= 0 ? '+' : ''}{priceData.change_pct}%)
+                          </span>
+                        )}
+                        {(ago || priceData?.stale) && (
+                          <span style={{ color: priceData?.stale ? '#f59e0b' : 'var(--text-subtle)', marginLeft: 6, fontSize: 11 }}>
+                            {ago}{priceData?.stale ? ' · may be out of date' : ''}
                           </span>
                         )}
                       </div>
                     )}
                   </div>
 
+                  {mismatch && (
+                    <div style={{ marginTop: 8, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '8px 10px', fontSize: 11, color: '#f59e0b', lineHeight: 1.5 }}>
+                      ⚠️ Currency mismatch: <b>{h.ticker}</b> is quoted in <b>{quoteCur}</b> on {priceData?.exchange || 'its exchange'},
+                      but this holding is recorded in <b>{hCur}</b>. No exchange rate is applied, so gain/loss is hidden rather than
+                      shown wrong. For the Indian listing use <b>{suggestIndianTicker(h.ticker)}</b> (NSE) or{' '}
+                      <b>{suggestIndianTicker(h.ticker).replace(/\.NS$/, '.BO')}</b> (BSE).
+                    </div>
+                  )}
+
                   {gain !== null && (
                     <div style={{ marginTop: 8, fontSize: 13, fontWeight: 600, color: isPositive ? '#34d399' : '#ef4444' }}>
-                      {isPositive ? '▲' : '▼'} ₹{Math.abs(gain).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                      {isPositive ? '▲' : '▼'} {money(Math.abs(gain), hCur)}
                       {gainPctItem && <span style={{ fontWeight: 400, fontSize: 11, marginLeft: 6 }}>({isPositive ? '+' : ''}{gainPctItem}%)</span>}
                     </div>
                   )}

@@ -150,6 +150,20 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ marginBottom: '1rem' }}>
+            <label style={{ color: '#aaa', fontSize: '0.82rem', display: 'block', marginBottom: 6 }}>City</label>
+            <input
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              placeholder="e.g. Hyderabad"
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+            />
+            <div style={{ color: '#666', fontSize: '0.72rem', marginTop: 5 }}>
+              Used for your weather card. Just the city name — we look up the location for you.
+              Leave blank for Hyderabad. Updates appear within about 15 minutes.
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '1rem' }}>
             <label style={{ color: '#aaa', fontSize: '0.82rem', display: 'block', marginBottom: 6 }}>Email</label>
             <div style={{ color: '#555', fontSize: '0.88rem', padding: '0.65rem 0.8rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}>{user?.email}</div>
           </div>

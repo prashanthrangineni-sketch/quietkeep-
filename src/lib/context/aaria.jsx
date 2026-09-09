@@ -351,6 +351,15 @@ export function AariaProvider({ children }) {
 
     rec.onend = () => {
       listeningRef.current = false;
+      clearTimers();
+      // The browser can end the session on its own - a long silence, a tab
+      // change, an internal timeout. Anything already heard must still be
+      // acted on, or the turn is silently lost.
+      if (!finished) {
+        finished = true;
+        const text = (heard + ' ' + lastPartial).trim();
+        if (text) { setTranscript(text); submit(text); }
+      }
       setStatus((s) => (s === 'listening' ? 'idle' : s));
       setInterim('');
       if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);

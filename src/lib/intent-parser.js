@@ -35,7 +35,12 @@ const NAME_STOPWORDS = 'at|to|me|on|by|in|the|about|for|from|regarding|re|and|a|
 
 const NAME_PATTERNS = [
   new RegExp(
-    '(?:call|contact|tell|meet|remind|message|email|invoice to|for)\\s+' +
+    // W14: bare "for" removed as a trigger. It almost never introduces a person
+    // and routinely introduces a commodity: "Paid 1850 for petrol at Shell"
+    // captured "petrol" as a contact name. "invoice to" is kept because it is
+    // unambiguous, and "remind"/"message" already cover the reminder cases that
+    // "for" was catching.
+    '(?:call|contact|tell|meet|remind|message|email|invoice to)\\s+' +
     `((?!(?:${NAME_STOPWORDS})\\b)[A-Za-z][a-zA-Z]+` +
     `(?:\\s+(?!(?:${NAME_STOPWORDS})\\b)[A-Za-z][a-zA-Z]+)?)`,
     'i'

@@ -13,6 +13,27 @@ import {
   beginSpeech, endSpeech, isCurrent, bargeIn, setSpokenText,
   registerStopper, BARGE_IN_REASON,
 } from '@/lib/barge-in';
+import { shouldUseAaria } from '@/lib/aaria-audio';
+
+// ── Aaria's voice ───────────────────────────────────────────────────────────
+// Until now every reply was spoken by the phone's built-in voice, which is
+// poor to unusable in Indic languages. Aaria speaks through Sarvam Bulbul v3;
+// the route, the engine and the cascade in src/lib/tts.js all existed and were
+// simply never connected to each other.
+//
+// The token is pushed in from the auth context rather than fetched here,
+// because speak() is a plain module function called from a dozen places and
+// has no access to React context. Absent token means no Aaria - the proxy
+// requires a signed-in user - and we fall through to the behaviour that has
+// always been here.
+let _authToken = null;
+export function setSpeechAuthToken(token) {
+  _authToken = token || null;
+}
+
+function aariaMode() {
+  try { return localStorage.getItem('qk_voice_aaria') || 'indic'; } catch { return 'indic'; }
+}
 
 let voiceEnabled = true;
 
@@ -149,6 +170,33 @@ export function speak(text, options = {}) {
     // The user interrupted during the debounce window. Say nothing.
     if (!isCurrent(token)) return;
 
+  // ── AARIA (real Indic voice) ──────────────────────────────────────────
+  // Async, so it re-checks the barge-in token immediately before playing:
+  // between asking Aaria to speak and the audio arriving, the user may
+  // already have interrupted. Any failure falls through to the paths below,
+  // so the worst case is exactly the behaviour we had before.
+  const activeLangForAaria = options.lang || getCurrentLang();
+  if (shouldUseAaria(activeLangForAaria, !!_authToken, aariaMode())) {
+    import('@/lib/tts')
+      .then(({ speakAaria }) => {
+        if (!isCurrent(token)) throw new Error('interrupted');
+        return speakAaria(text, { lang: activeLangForAaria, authToken: _authToken });
+      })
+      .then(() => endSpeech(token))
+      .catch(() => {
+        // Aaria unreachable, asleep, or interrupted. Only speak again if this
+        // utterance is still the current one.
+        if (isCurrent(token)) speakFallback();
+        else endSpeech(token);
+      });
+    return;
+  }
+
+  speakFallback();
+  return;
+
+  function speakFallback() {
+
   // ── NATIVE TTS (Android) ──────────────────────────────────────────────
   // window.__QK_TTS__ is injected by MainActivity.injectRuntimeJS() via
   // addJavascriptInterface(new TTSBridge(this), "AndroidTTS").
@@ -173,7 +221,9 @@ export function speak(text, options = {}) {
   }
 
   // ── BROWSER FALLBACK (web / PWA) ─────────────────────────────────────
-  if (!window.speechSynthesis) return;
+  // No output path at all. Release the token, or the app believes it is
+  // speaking forever and every later utterance is treated as superseded.
+  if (!window.speechSynthesis) { endSpeech(token); return; }
   try { window.speechSynthesis.cancel(); } catch {}
 
   let _fired = false;
@@ -206,6 +256,7 @@ export function speak(text, options = {}) {
       doSpeak();
     });
     setTimeout(doSpeak, 600);
+  }
   }
   }, DEBOUNCE_MS); // end Step 4 debounce
 }

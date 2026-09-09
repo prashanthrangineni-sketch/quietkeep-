@@ -37,7 +37,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { useLanguage } from '@/lib/context/language';
 import { routeUtterance, helpText, DESTINATIONS } from '@/lib/aaria-router';
-import { speak, cancelSpeech } from '@/components/VoiceTalkback';
+import { speak, cancelSpeech, setSpeechAuthToken } from '@/components/VoiceTalkback';
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 import { checkForNotices } from '@/lib/aaria-watch';
@@ -84,6 +84,14 @@ export function AariaProvider({ children }) {
   const router   = useRouter();
   const { user, accessToken } = useAuth();
   const { voiceLang } = useLanguage();
+
+  // Hand the token to the speech layer. speak() is a plain module function
+  // called from a dozen components and has no access to React context, so the
+  // token has to be pushed in rather than pulled. Without it Aaria cannot
+  // speak - the /api/voice/tts proxy requires a signed-in user - and every
+  // reply falls back to the phone's built-in voice, which is what happened
+  // for the whole of the product's life until now.
+  useEffect(() => { setSpeechAuthToken(accessToken); }, [accessToken]);
 
   // 'idle' | 'listening' | 'thinking' | 'speaking'
   const [status,     setStatus]     = useState('idle');

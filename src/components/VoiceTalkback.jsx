@@ -1,8 +1,51 @@
 'use client';
 // VoiceTalkback.jsx — browser speechSynthesis only (PWA-safe)
 // Works when app is foregrounded. Cannot speak on lock screen (PWA constraint).
+//
+// W12: every utterance now runs under a barge-in token. See src/lib/barge-in.js
+// for why interrupting is four things rather than one. The important part here
+// is that speak() is DEBOUNCED by 100ms and the native bridge is asynchronous,
+// so between "speak was called" and "sound comes out" the user may already have
+// interrupted. Checking isCurrent(token) immediately before making a sound is
+// what stops a cancelled utterance from arriving late and talking over them.
+
+import {
+  beginSpeech, endSpeech, isCurrent, bargeIn, setSpokenText,
+  registerStopper, BARGE_IN_REASON,
+} from '@/lib/barge-in';
 
 let voiceEnabled = true;
+
+// Register every independent output path exactly once. Whichever path is not
+// registered here is the one that keeps talking through an interruption.
+let _stoppersRegistered = false;
+function ensureStoppersRegistered() {
+  if (_stoppersRegistered || typeof window === 'undefined') return;
+  _stoppersRegistered = true;
+  registerStopper(() => {
+    if (window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
+  });
+  registerStopper(() => {
+    // Native Android TTS, injected by MainActivity.
+    if (window.AndroidTTS?.stop) {
+      try { window.AndroidTTS.stop(); } catch {}
+    }
+  });
+  registerStopper(() => {
+    // Audio element used by lib/tts.js for Aaria and ElevenLabs playback.
+    if (window.__qkActiveAudio) {
+      try { window.__qkActiveAudio.pause(); window.__qkActiveAudio.src = ''; } catch {}
+      window.__qkActiveAudio = null;
+    }
+  });
+  registerStopper(() => {
+    // A pending debounced utterance must be cancelled too, or it starts
+    // speaking 100ms after the user asked for silence.
+    if (_debounce) { clearTimeout(_debounce); _debounce = null; }
+  });
+}
 // Use sessionStorage instead of module variable — survives SPA navigation
 // but resets properly on new browser tab/session
 const SESSION_GREET_KEY = 'qk_greeted_session';
@@ -91,9 +134,20 @@ export function speak(text, options = {}) {
   _lastSpokenTime = now;
 
   // Step 4: debounce — defer execution 100ms, cancel if speak() called again
+  ensureStoppersRegistered();
   if (_debounce) clearTimeout(_debounce);
+
+  // W12: claim the right to speak now, before the debounce and before any
+  // async work. Anything that interrupts between here and playback invalidates
+  // this token.
+  const token = beginSpeech();
+  setSpokenText(text);
+
   _debounce = setTimeout(() => {
     _debounce = null;
+
+    // The user interrupted during the debounce window. Say nothing.
+    if (!isCurrent(token)) return;
 
   // ── NATIVE TTS (Android) ──────────────────────────────────────────────
   // window.__QK_TTS__ is injected by MainActivity.injectRuntimeJS() via
@@ -112,6 +166,9 @@ export function speak(text, options = {}) {
         window.__QK_TTS__(String(text));
       }
     } catch {}
+    // The native bridge owns playback from here; we cannot observe its end, so
+    // release the token rather than leaving the app permanently "speaking".
+    endSpeech(token);
     return;
   }
 
@@ -123,6 +180,9 @@ export function speak(text, options = {}) {
   function doSpeak() {
     if (_fired) return;
     _fired = true;
+    // Voices can load late; by the time they do, the utterance may have been
+    // interrupted. This is the flush, part 3.
+    if (!isCurrent(token)) return;
     try {
       const utter = new SpeechSynthesisUtterance(text);
       const activeLang = options.lang || getCurrentLang();
@@ -132,8 +192,10 @@ export function speak(text, options = {}) {
       utter.volume = options.volume || 1.0;
       const voice = getVoice(activeLang);
       if (voice) utter.voice = voice;
+      utter.onend = () => endSpeech(token);
+      utter.onerror = () => endSpeech(token);
       window.speechSynthesis.speak(utter);
-    } catch {}
+    } catch { endSpeech(token); }
   }
 
   if (window.speechSynthesis.getVoices().length > 0) {
@@ -152,9 +214,14 @@ export function speak(text, options = {}) {
  * cancelSpeech() — Phase 4: cancel + reset dedup guard.
  * Call when user starts speaking to interrupt any current TTS.
  */
-export function cancelSpeech() {
+export function cancelSpeech(reason = BARGE_IN_REASON.USER_ACTION) {
   _lastSpokenText = '';
   _lastSpokenTime = 0;
+  // W12: route through barge-in so the flush and history truncation happen
+  // too. Previously this only silenced the current audio, which left an
+  // in-flight utterance free to arrive and play a moment later.
+  ensureStoppersRegistered();
+  bargeIn(reason);
   if (typeof window !== 'undefined') {
     if (window.__QK_TTS__ && window.AndroidTTS?.stop) {
       try { window.AndroidTTS.stop(); } catch {}

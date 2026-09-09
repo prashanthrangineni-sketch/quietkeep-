@@ -225,7 +225,7 @@ export function createVoiceLoop(options = {}) {
           recognition.stop();
           processTranscript(currentText.trim());
         }
-      }, SILENCE_THRESHOLD_MS);
+      }, silenceThresholdMs);
     };
 
     recognition.onend = () => {

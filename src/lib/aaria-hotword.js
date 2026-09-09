@@ -36,6 +36,8 @@
 //     is running. No silent listening, ever.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { considerUserSpeech } from './barge-in.js';
+
 /** Near-misses we accept, per wake word. Explicit beats fuzzy. */
 const HOMOPHONES = {
   aaria: ['aaria', 'aria', 'area', 'arya', 'ariya', 'aariya', 'idea aaria'],

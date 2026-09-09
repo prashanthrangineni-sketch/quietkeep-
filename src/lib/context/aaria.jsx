@@ -38,6 +38,7 @@ import { useAuth } from '@/lib/context/auth';
 import { useLanguage } from '@/lib/context/language';
 import { routeUtterance, helpText, DESTINATIONS } from '@/lib/aaria-router';
 import { speak, cancelSpeech, setSpeechAuthToken } from '@/components/VoiceTalkback';
+import { endpointSilenceMsFor, MAX_LISTEN_MS } from '@/lib/endpointing';
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 import { checkForNotices } from '@/lib/aaria-watch';
@@ -256,12 +257,63 @@ export function AariaProvider({ children }) {
     setOpen(true);
 
     const rec = new SR();
-    rec.continuous     = false;   // one utterance, then act. Continuous capture
-                                  // belongs to the native service, not here.
+    // W5 (redone on the path that is actually live).
+    //
+    // This used to be `continuous = false`, which hands endpointing - the
+    // decision that the person has stopped talking - entirely to the browser.
+    // The browser's threshold is tuned for English and cannot be configured,
+    // and NVIDIA's streaming session is explicit that Indic pauses are longer,
+    // so English tuning "fails sooner than it suggests". In practice it cut
+    // people off exactly where our users pause: mid-sentence, switching
+    // between Telugu and English.
+    //
+    // Continuous mode plus our own silence timer moves that decision into
+    // src/lib/endpointing.js, where it is a per-language dial we can tune
+    // against real recordings. Finals accumulate across pauses instead of each
+    // one ending the turn.
+    rec.continuous     = true;
     rec.interimResults = true;
     rec.lang           = speechLang(voiceLang);
 
-    rec.onstart = () => { listeningRef.current = true; setStatus('listening'); };
+    const silenceMs = endpointSilenceMsFor(rec.lang);
+    let heard = '';          // finals accumulated across pauses
+    let lastPartial = '';
+    let silenceTimer = null;
+    let maxTimer = null;
+    let finished = false;
+
+    const clearTimers = () => {
+      if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+      if (maxTimer) { clearTimeout(maxTimer); maxTimer = null; }
+    };
+
+    // The endpoint decision itself. Called from the silence timer, or from the
+    // hard cap. Idempotent - the browser can still fire onend underneath us.
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      clearTimers();
+      const text = (heard + ' ' + lastPartial).trim();
+      try { rec.stop(); } catch {}
+      if (text) {
+        setInterim('');
+        setTranscript(text);
+        submit(text);
+      }
+    };
+
+    const armSilence = () => {
+      if (silenceTimer) clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(finish, silenceMs);
+    };
+
+    rec.onstart = () => {
+      listeningRef.current = true;
+      setStatus('listening');
+      // A hard cap so a stuck recogniser cannot hold the microphone forever.
+      // We take what we have rather than dropping the turn.
+      maxTimer = setTimeout(finish, MAX_LISTEN_MS);
+    };
 
     rec.onresult = (ev) => {
       let final = '', partial = '';
@@ -270,16 +322,24 @@ export function AariaProvider({ children }) {
         if (r.isFinal) final += r[0].transcript;
         else partial += r[0].transcript;
       }
-      if (partial) setInterim(partial);
       if (final) {
+        // A final no longer ends the turn. It is one phrase; the person may
+        // still be mid-sentence and simply pausing to switch language.
+        heard = (heard + ' ' + final).trim();
+        lastPartial = '';
         setInterim('');
-        setTranscript(final.trim());
-        submit(final.trim());
       }
+      if (partial) {
+        lastPartial = partial;
+        setInterim((heard + ' ' + partial).trim());
+      }
+      // Any speech at all restarts the clock.
+      if (final || partial) armSilence();
     };
 
     rec.onerror = (ev) => {
       listeningRef.current = false;
+      clearTimers();
       setStatus('idle');
       setInterim('');
       if (ev.error === 'not-allowed') {
@@ -291,6 +351,15 @@ export function AariaProvider({ children }) {
 
     rec.onend = () => {
       listeningRef.current = false;
+      clearTimers();
+      // The browser can end the session on its own - a long silence, a tab
+      // change, an internal timeout. Anything already heard must still be
+      // acted on, or the turn is silently lost.
+      if (!finished) {
+        finished = true;
+        const text = (heard + ' ' + lastPartial).trim();
+        if (text) { setTranscript(text); submit(text); }
+      }
       setStatus((s) => (s === 'listening' ? 'idle' : s));
       setInterim('');
       if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);

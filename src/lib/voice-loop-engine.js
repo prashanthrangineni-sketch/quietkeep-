@@ -35,46 +35,13 @@ export const LOOP_STATES = {
 const MAX_LISTEN_MS = 15000; // force-process after 15s
 
 // ── ENDPOINTING (W5) ────────────────────────────────────────────────────────
-// How long we wait in silence before deciding the person has finished.
-//
-// NVIDIA's streaming-pipeline session is unambiguous about this number:
-//   "The largest single number in the loop is a silence threshold, and it is
-//    set in a configuration file."
-// Their reference default is 800ms, and they add the part that matters to us:
-//   "In Indic conversational speech, natural pauses are longer, so this fails
-//    sooner than English tuning suggests."
-//
-// Too short and we cut people off mid-sentence (a false endpoint). Too long and
-// the person has finished and we are still waiting (dead air) - which they name
-// as "the single most common cause of a pipeline that measures well and feels
-// slow". Our users pause mid-utterance to switch between Telugu and English,
-// which puts us squarely in the failure mode they describe.
-//
-// THESE VALUES ARE STARTING POINTS, NOT FINDINGS. They have not yet been tuned
-// against real recordings. NVIDIA's prescribed step two is "tune endpointing on
-// your audio" - one day of work, the largest latency recovery available - and
-// that requires this to be a dial rather than a constant, which is the whole
-// point of this change. Sweep them with scripts/measure in the Aaria repo and
-// replace them with measured values.
-const ENDPOINT_SILENCE_MS = {
-  default: 1200, // the previous single hardcoded value, kept for anything unmapped
-  en: 900,       // closer to NVIDIA's 800ms reference; English pauses are shorter
-  hi: 1400,
-  te: 1400,
-  ta: 1400,
-  kn: 1400,
-  ml: 1400,
-  mr: 1400,
-};
-
-/**
- * Resolve the silence threshold for a language tag.
- * Accepts 'te-IN', 'te', 'en-US' etc. Unknown tags fall back to the default.
- */
-export function endpointSilenceMsFor(langTag) {
-  const base = String(langTag || '').split('-')[0].toLowerCase();
-  return ENDPOINT_SILENCE_MS[base] ?? ENDPOINT_SILENCE_MS.default;
-}
+// The thresholds moved to src/lib/endpointing.js. They lived here, and this
+// module is imported by nothing - so the dial was correct code that changed
+// nothing for any user. It now lives where the live capture path
+// (src/lib/context/aaria.jsx) can import it, and is re-exported here so there
+// is one source of truth rather than two copies drifting apart.
+export { ENDPOINT_SILENCE_MS, endpointSilenceMsFor } from './endpointing.js';
+import { endpointSilenceMsFor } from './endpointing.js';
 
 /**
  * Creates a voice loop controller.

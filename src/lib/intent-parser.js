@@ -10,11 +10,37 @@
 // capture swallowed the next token: "Call Ravi at 5 p.m." produced the
 // contact "Ravi At", and the app told the user «"Ravi At" isn't in your
 // contacts». Fixed 22 Aug 2026.
-const NAME_STOPWORDS = 'at|to|me|on|by|in|the|about|for|from|regarding|re|and|a|an|tomorrow|today|tonight|next|this|that|him|her|them|us';
+// W14 (9 Sep 2026): the 22 Aug fix above works - "Ravi At", "Me To",
+// "Gautam Tomorrow" and "Petrol At" no longer reproduce. What it does not cover
+// is CODE-MIXED speech, because every stopword in it is English.
+//
+// In Telugu the verb follows the name: "Gautam ki call cheyali" means "call
+// Gautam". The English pattern "call <name>" then captures the VERB, and we
+// saved a contact called "Cheyali Safe". Verified against the live database:
+// that row exists, alongside the historical artefacts the August fix retired.
+//
+// So the Indic verbs and particles that commonly sit after "call" are added
+// here. This suppresses the wrong capture; it does NOT yet extract the right
+// name from Telugu word order, which needs a separate pattern for
+// "<name> ki/ko <verb>" and is deliberately out of scope for this fix.
+const NAME_STOPWORDS = 'at|to|me|on|by|in|the|about|for|from|regarding|re|and|a|an|tomorrow|today|tonight|next|this|that|him|her|them|us'
+  // Telugu verbs/particles seen in our own production transcripts
+  + '|cheyali|cheyyali|cheyyi|cheyi|chey|chesi|cheseyi|chestha|pettu|ivvu|kottu|gurthu|maatladali|matladali'
+  // Hindi verbs/particles
+  + '|karo|karna|kar|karke|kardo|karenge|bolo|bol|bhejo|dena|dedo|diye|milna'
+  // Case markers and postpositions - never part of a name
+  + '|ki|ko|se|ka|ke|nunchi|nundi|kosam|gurinchi'
+  // English words mis-transcribed into the name slot in real transcripts
+  + '|safe|save';
 
 const NAME_PATTERNS = [
   new RegExp(
-    '(?:call|contact|tell|meet|remind|message|email|invoice to|for)\\s+' +
+    // W14: bare "for" removed as a trigger. It almost never introduces a person
+    // and routinely introduces a commodity: "Paid 1850 for petrol at Shell"
+    // captured "petrol" as a contact name. "invoice to" is kept because it is
+    // unambiguous, and "remind"/"message" already cover the reminder cases that
+    // "for" was catching.
+    '(?:call|contact|tell|meet|remind|message|email|invoice to)\\s+' +
     `((?!(?:${NAME_STOPWORDS})\\b)[A-Za-z][a-zA-Z]+` +
     `(?:\\s+(?!(?:${NAME_STOPWORDS})\\b)[A-Za-z][a-zA-Z]+)?)`,
     'i'

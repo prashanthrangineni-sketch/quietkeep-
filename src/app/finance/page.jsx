@@ -109,9 +109,17 @@ export default function FinancePage() {
         supabase.from('subscriptions').select('*').eq('user_id', user.id).eq('is_active', true).order('next_due', { ascending: true }),
       ]);
       setExpenses(eR.data || []); setBudgets(bR.data || []); setSubscriptions(sR.data || []);
-      // Check stock_tracking feature flag
-      const { data: stockFlag } = await supabase.from('feature_flags').select('feature_name').eq('feature_name', 'stock_tracking').single();
-      if (stockFlag) setStockEnabled(true);
+      // Check stock_tracking feature flag AGAINST THE USER'S TIER.
+      // feature_flags has a policy `Anyone can read feature flags` (qual: true),
+      // so the row is always visible — its existence proves nothing. The gate is
+      // enabled_for_tiers (a text[]), matched against profiles.subscription_tier.
+      const [flagRes, tierRes] = await Promise.all([
+        supabase.from('feature_flags').select('feature_name, enabled_for_tiers').eq('feature_name', 'stock_tracking').maybeSingle(),
+        supabase.from('profiles').select('subscription_tier').eq('user_id', user.id).maybeSingle(),
+      ]);
+      const tiers = flagRes.data?.enabled_for_tiers;
+      const tier = tierRes.data?.subscription_tier || 'free';
+      setStockEnabled(Array.isArray(tiers) && tiers.includes(tier));
     } catch {
       setLoadError('Could not load data. Check your connection.');
     }
@@ -362,7 +370,8 @@ export default function FinancePage() {
 
         {tab === 'assets' && stockEnabled && (
           <div>
-            <StockTracker />
+            {/* StockTracker requires both props; without them it renders nothing. */}
+            <StockTracker supabase={supabase} userId={user.id} />
           </div>
         )}
 

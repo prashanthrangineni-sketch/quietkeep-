@@ -156,7 +156,8 @@ export default function DailyBriefPage() {
           <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>{dateStr}</div>
 
           <div style={{ marginTop: 12 }}>
-            <WeatherWidget city="Hyderabad" lat={17.385} lon={78.487} />
+            {/* City comes from profiles.city; "Hyderabad" is only the fallback. */}
+            <WeatherWidget />
           </div>
         </div>
 

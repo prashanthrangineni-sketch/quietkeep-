@@ -24,6 +24,7 @@ export default function ProfilePage() {
 
   const [fullName, setFullName] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kolkata');
+  const [city, setCity] = useState('');
 
   useEffect(() => { if (!authLoading) loadProfile(); }, [authLoading]);
 
@@ -43,6 +44,7 @@ export default function ProfilePage() {
       setProfile(profileRes.data);
       setFullName(profileRes.data.full_name || '');
       setTimezone(profileRes.data.timezone || 'Asia/Kolkata');
+      setCity(profileRes.data.city || '');
     }
 
     setStats({
@@ -59,10 +61,13 @@ export default function ProfilePage() {
     if (!user) return;
     setSaving(true);
 
+    const cityVal = city.trim() || null;
+
     await supabase.from('profiles').upsert({
       user_id: user.id,
       full_name: fullName,
       timezone,
+      city: cityVal,
       onboarding_done: true,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
@@ -71,7 +76,7 @@ export default function ProfilePage() {
       user_id: user.id,
       action: 'profile_updated',
       service: 'profile',
-      details: { full_name: fullName, timezone },
+      details: { full_name: fullName, timezone, city: cityVal },
     });
 
     setSaving(false);
@@ -142,6 +147,20 @@ export default function ProfilePage() {
               placeholder="Your name"
               style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
             />
+          </div>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ color: '#aaa', fontSize: '0.82rem', display: 'block', marginBottom: 6 }}>City</label>
+            <input
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              placeholder="e.g. Hyderabad"
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '0.65rem 0.8rem', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+            />
+            <div style={{ color: '#666', fontSize: '0.72rem', marginTop: 5 }}>
+              Used for your weather card. Just the city name — we look up the location for you.
+              Leave blank for Hyderabad. Updates appear within about 15 minutes.
+            </div>
           </div>
 
           <div style={{ marginBottom: '1rem' }}>

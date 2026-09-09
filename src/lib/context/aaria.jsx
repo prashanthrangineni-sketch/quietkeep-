@@ -339,6 +339,7 @@ export function AariaProvider({ children }) {
 
     rec.onerror = (ev) => {
       listeningRef.current = false;
+      clearTimers();
       setStatus('idle');
       setInterim('');
       if (ev.error === 'not-allowed') {

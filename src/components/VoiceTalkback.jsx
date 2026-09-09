@@ -180,6 +180,9 @@ export function speak(text, options = {}) {
   function doSpeak() {
     if (_fired) return;
     _fired = true;
+    // Voices can load late; by the time they do, the utterance may have been
+    // interrupted. This is the flush, part 3.
+    if (!isCurrent(token)) return;
     try {
       const utter = new SpeechSynthesisUtterance(text);
       const activeLang = options.lang || getCurrentLang();

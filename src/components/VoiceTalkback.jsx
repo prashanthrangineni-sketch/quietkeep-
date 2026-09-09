@@ -1,8 +1,51 @@
 'use client';
 // VoiceTalkback.jsx — browser speechSynthesis only (PWA-safe)
 // Works when app is foregrounded. Cannot speak on lock screen (PWA constraint).
+//
+// W12: every utterance now runs under a barge-in token. See src/lib/barge-in.js
+// for why interrupting is four things rather than one. The important part here
+// is that speak() is DEBOUNCED by 100ms and the native bridge is asynchronous,
+// so between "speak was called" and "sound comes out" the user may already have
+// interrupted. Checking isCurrent(token) immediately before making a sound is
+// what stops a cancelled utterance from arriving late and talking over them.
+
+import {
+  beginSpeech, endSpeech, isCurrent, bargeIn, setSpokenText,
+  registerStopper, BARGE_IN_REASON,
+} from '@/lib/barge-in';
 
 let voiceEnabled = true;
+
+// Register every independent output path exactly once. Whichever path is not
+// registered here is the one that keeps talking through an interruption.
+let _stoppersRegistered = false;
+function ensureStoppersRegistered() {
+  if (_stoppersRegistered || typeof window === 'undefined') return;
+  _stoppersRegistered = true;
+  registerStopper(() => {
+    if (window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
+  });
+  registerStopper(() => {
+    // Native Android TTS, injected by MainActivity.
+    if (window.AndroidTTS?.stop) {
+      try { window.AndroidTTS.stop(); } catch {}
+    }
+  });
+  registerStopper(() => {
+    // Audio element used by lib/tts.js for Aaria and ElevenLabs playback.
+    if (window.__qkActiveAudio) {
+      try { window.__qkActiveAudio.pause(); window.__qkActiveAudio.src = ''; } catch {}
+      window.__qkActiveAudio = null;
+    }
+  });
+  registerStopper(() => {
+    // A pending debounced utterance must be cancelled too, or it starts
+    // speaking 100ms after the user asked for silence.
+    if (_debounce) { clearTimeout(_debounce); _debounce = null; }
+  });
+}
 // Use sessionStorage instead of module variable — survives SPA navigation
 // but resets properly on new browser tab/session
 const SESSION_GREET_KEY = 'qk_greeted_session';

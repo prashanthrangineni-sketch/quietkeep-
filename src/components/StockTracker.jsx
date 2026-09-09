@@ -59,11 +59,12 @@ const btn0 = { ...btn1, background: 'transparent', border: '1px solid var(--bord
 
 export default function StockTracker({ supabase, userId }) {
   const [holdings, setHoldings] = useState([]);
-  const [prices, setPrices] = useState({}); // { symbol: { price, change_pct, fetchedAt } }
+  const [prices, setPrices] = useState({}); // { TICKER: { ...value, fetched_at, stale } }
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fetchingPrice, setFetchingPrice] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Form state
   const [fType, setFType] = useState('stock');

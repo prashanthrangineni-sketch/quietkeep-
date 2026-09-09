@@ -47,20 +47,12 @@ function normalizeLang(lang) {
   return String(lang).trim();
 }
 
-// Aaria's speak contract may return audio under a few shapes depending on the
-// provider behind it. Accept all of them rather than assuming one.
-function extractAudio(d) {
-  if (!d || typeof d !== 'object') return { audio: null, audio_url: null };
-  const audio =
-    d.audio_base64 ||
-    d.audioBase64 ||
-    d.audio_content ||
-    (typeof d.audio === 'string' ? d.audio : null) ||
-    (Array.isArray(d.audios) ? d.audios[0] : null) ||
-    null;
-  const audio_url = d.audio_url || d.audioUrl || d.url || null;
-  return { audio, audio_url };
-}
+// Audio extraction lives in src/lib/aaria-audio.js so it can be unit tested.
+// It could not be, sitting here: this file imports next/server, so no plain
+// node test could reach it - which is how it went a whole release cycle
+// looking for every field name except the one Aaria actually returns
+// (`audio_ref`), always answering "no audio", and silently handing every
+// reply back to the phone's built-in voice.
 
 export async function POST(req) {
   const sb = bearer(req);

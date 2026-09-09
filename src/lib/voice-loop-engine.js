@@ -96,7 +96,15 @@ export function createVoiceLoop(options = {}) {
     onError       = () => {},
     lang          = 'en-IN',
     continuous    = true,
+    silenceMs     = null,   // W5: explicit override, for sweeping during tuning
   } = options;
+
+  // W5: the endpointing dial for this loop instance. Language-aware by default
+  // (Indic pauses are longer than English), overridable per call so the
+  // measurement harness can sweep values against real recordings.
+  const silenceThresholdMs = Number.isFinite(silenceMs)
+    ? silenceMs
+    : endpointSilenceMsFor(lang);
 
   let recognition   = null;
   let state         = LOOP_STATES.IDLE;

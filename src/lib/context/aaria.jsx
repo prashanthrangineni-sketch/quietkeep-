@@ -37,7 +37,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { useLanguage } from '@/lib/context/language';
 import { routeUtterance, helpText, DESTINATIONS } from '@/lib/aaria-router';
-import { speak, cancelSpeech } from '@/components/VoiceTalkback';
+import { speak, cancelSpeech, setSpeechAuthToken } from '@/components/VoiceTalkback';
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 import { checkForNotices } from '@/lib/aaria-watch';

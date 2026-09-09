@@ -217,13 +217,28 @@ export default function StockTracker({ supabase, userId }) {
   }
 
   // Compute portfolio totals
-  const totalInvested = holdings.reduce((s, h) => s + (h.purchase_price && h.quantity ? h.purchase_price * h.quantity : 0), 0);
+  const priceFor = (h) => (h.ticker ? prices[normTicker(h.ticker)] : null) || null;
+  const holdingCurrency = (h) => h.currency || 'INR';
+  // The quote currency and the holding currency can disagree — e.g. a bare
+  // "INFY" resolves to the New York ADR in USD while the holding is in INR.
+  const isMismatched = (h) => {
+    const p = priceFor(h);
+    return !!(p && p.currency && p.currency !== holdingCurrency(h));
+  };
+  const investedOf = (h) => (h.purchase_price && h.quantity ? h.purchase_price * h.quantity : 0);
+
+  const totalInvested = holdings.reduce((s, h) => s + investedOf(h), 0);
   const totalCurrent = holdings.reduce((s, h) => {
-    if (h.ticker && prices[h.ticker.toUpperCase()]?.price && h.quantity) {
-      return s + prices[h.ticker.toUpperCase()].price * h.quantity;
+    const p = priceFor(h);
+    if (p && typeof p.price === 'number' && h.quantity) {
+      // Never add a foreign-currency figure into a rupee total. Mismatched
+      // holdings fall back to what they cost and are flagged inline instead.
+      if (!isMismatched(h)) return s + p.price * h.quantity;
+      return s + investedOf(h);
     }
     return s + (h.current_value || 0);
   }, 0);
+  const mismatchCount = holdings.filter(isMismatched).length;
   const totalGain = totalCurrent - totalInvested;
   const gainPct = totalInvested > 0 ? ((totalGain / totalInvested) * 100).toFixed(1) : null;
 

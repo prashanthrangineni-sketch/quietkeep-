@@ -317,6 +317,11 @@ export default function StockTracker({ supabase, userId }) {
                     {fetchingPrice ? '…' : '↗'}
                   </button>
                 </div>
+                <div style={{ fontSize: 10, color: '#888', marginTop: 4, lineHeight: 1.5 }}>
+                  Indian listings need an exchange suffix: <b>.NS</b> for NSE (e.g. INFY.NS),
+                  <b> .BO</b> for BSE (e.g. INFY.BO). Without one, “INFY” resolves to the
+                  US-listed share and is priced in dollars, not rupees.
+                </div>
               </div>
             )}
           </div>
@@ -324,7 +329,13 @@ export default function StockTracker({ supabase, userId }) {
           {/* Ticker preview */}
           {tickerPreview && (
             <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: '#a5b4fc' }}>
-              {tickerPreview.symbol}: ₹{tickerPreview.price?.toLocaleString('en-IN')} ({tickerPreview.change_pct > 0 ? '+' : ''}{tickerPreview.change_pct}%)
+              {tickerPreview.symbol}: {money(tickerPreview.price, tickerPreview.currency)} ({tickerPreview.change_pct > 0 ? '+' : ''}{tickerPreview.change_pct}%)
+              {tickerPreview.exchange ? <span style={{ opacity: 0.7 }}> · {tickerPreview.exchange}</span> : null}
+              {tickerPreview.currency && tickerPreview.currency !== 'INR' && (
+                <div style={{ color: '#f59e0b', marginTop: 4 }}>
+                  Quoted in {tickerPreview.currency}, not rupees. For the Indian listing try <b>{suggestIndianTicker(fTicker)}</b>.
+                </div>
+              )}
             </div>
           )}
 

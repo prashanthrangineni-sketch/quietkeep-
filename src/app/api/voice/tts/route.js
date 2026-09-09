@@ -23,6 +23,7 @@
 // browser voice in src/lib/tts.js rather than breaking the reply.
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { extractAudio } from '@/lib/aaria-audio';
 
 export const dynamic = 'force-dynamic';
 

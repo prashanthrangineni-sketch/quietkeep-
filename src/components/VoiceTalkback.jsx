@@ -170,6 +170,33 @@ export function speak(text, options = {}) {
     // The user interrupted during the debounce window. Say nothing.
     if (!isCurrent(token)) return;
 
+  // ── AARIA (real Indic voice) ──────────────────────────────────────────
+  // Async, so it re-checks the barge-in token immediately before playing:
+  // between asking Aaria to speak and the audio arriving, the user may
+  // already have interrupted. Any failure falls through to the paths below,
+  // so the worst case is exactly the behaviour we had before.
+  const activeLangForAaria = options.lang || getCurrentLang();
+  if (shouldUseAaria(activeLangForAaria, !!_authToken, aariaMode())) {
+    import('@/lib/tts')
+      .then(({ speakAaria }) => {
+        if (!isCurrent(token)) throw new Error('interrupted');
+        return speakAaria(text, { lang: activeLangForAaria, authToken: _authToken });
+      })
+      .then(() => endSpeech(token))
+      .catch(() => {
+        // Aaria unreachable, asleep, or interrupted. Only speak again if this
+        // utterance is still the current one.
+        if (isCurrent(token)) speakFallback();
+        else endSpeech(token);
+      });
+    return;
+  }
+
+  speakFallback();
+  return;
+
+  function speakFallback() {
+
   // ── NATIVE TTS (Android) ──────────────────────────────────────────────
   // window.__QK_TTS__ is injected by MainActivity.injectRuntimeJS() via
   // addJavascriptInterface(new TTSBridge(this), "AndroidTTS").

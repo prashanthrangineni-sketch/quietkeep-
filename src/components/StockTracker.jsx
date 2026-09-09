@@ -254,9 +254,14 @@ export default function StockTracker({ supabase, userId }) {
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>📊 Assets & Stocks</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{holdings.length} holding{holdings.length !== 1 ? 's' : ''}</div>
         </div>
-        <button onClick={() => { resetForm(); setShowAdd(!showAdd); }} style={btn1}>
-          {showAdd ? 'Cancel' : '+ Add'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={refreshPrices} disabled={refreshing} title="Re-read the latest cached prices" style={{ ...btn0, opacity: refreshing ? 0.6 : 1 }}>
+            {refreshing ? '…' : '↻'}
+          </button>
+          <button onClick={() => { resetForm(); setShowAdd(!showAdd); }} style={btn1}>
+            {showAdd ? 'Cancel' : '+ Add'}
+          </button>
+        </div>
       </div>
 
       {/* Portfolio summary */}

@@ -192,8 +192,10 @@ export function speak(text, options = {}) {
       utter.volume = options.volume || 1.0;
       const voice = getVoice(activeLang);
       if (voice) utter.voice = voice;
+      utter.onend = () => endSpeech(token);
+      utter.onerror = () => endSpeech(token);
       window.speechSynthesis.speak(utter);
-    } catch {}
+    } catch { endSpeech(token); }
   }
 
   if (window.speechSynthesis.getVoices().length > 0) {

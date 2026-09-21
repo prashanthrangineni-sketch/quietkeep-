@@ -11,6 +11,7 @@ import { speak, cancelSpeech } from '@/components/VoiceTalkback';
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { isNavigationRequest, extractDestination, navigationUrl } from '@/lib/intent-executor';
 
 // drivespeak: thin wrapper — onEnd callback for sequential speech+action
 function drivespeak(text, onEnd) {

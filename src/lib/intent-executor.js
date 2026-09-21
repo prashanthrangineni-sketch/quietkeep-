@@ -324,8 +324,8 @@ export function executeClientAction(intent) {
     case 'trip':
     case 'navigation': {
       // Extract destination from content
-      const query = content.replace(/^(navigate to|go to|directions to|take me to)\s*/i, '').trim() || content;
-      window.open(`https://www.google.com/maps/dir/?api=1&travelmode=driving&dir_action=navigate&destination=${encodeURIComponent(query)}`, '_blank');
+      const query = extractDestination(content) || content;
+      window.open(navigationUrl(query), '_blank');
       return { executed: true, action_taken: `Opened Maps: ${query.slice(0, 40)}` };
     }
 

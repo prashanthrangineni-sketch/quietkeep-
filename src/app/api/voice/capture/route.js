@@ -23,6 +23,7 @@ import {
   findAllMatchingContacts,
   computeFollowUp,
   buildExecutionTTS,
+  extractDestination,
 } from '@/lib/intent-executor'
 import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep } from '@/lib/geo-resolver'
 import { detectRouteIntent } from '@/lib/intent-parser'

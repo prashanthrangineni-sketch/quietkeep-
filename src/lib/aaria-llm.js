@@ -105,6 +105,9 @@ OTHER RULES:
   Money PAID (diye / spent / కట్టాను / दिए) = "expense", direction "out". Never swap these.
 - Resolve relative time against CURRENT TIME. "tomorrow morning" → next day 09:00 local.
 - For a reminder with no usable time, put "datetime" in "missing" and ASK.
+- If the user wants to go somewhere or get directions ("set location to Charminar",
+  "చార్మినార్ కి వెళ్ళాలి", "चारमीनार ले चलो"), intent = "navigation" and
+  entities.item = ONLY the place name, in English letters. Reply that you are starting navigation.
 - If the user is asking a question rather than storing something, intent = "query".`;
 }
 

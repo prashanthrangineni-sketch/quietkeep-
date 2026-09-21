@@ -138,7 +138,12 @@ export default function DriveModePage() {
   }
 
   function handleVoiceCommand(cmd) {
-    if (cmd.includes('maps') || cmd.includes('navigate')) {
+    // "navigate to X" / "set location to X" / "take me to X" → start the route.
+    // Previously every Maps command opened the bare map with no destination.
+    const destination = isNavigationRequest(cmd) ? extractDestination(cmd) : '';
+    if (destination) {
+      drivespeak(`Starting navigation to ${destination}.`, () => window.open(navigationUrl(destination), '_blank'));
+    } else if (cmd.includes('maps') || cmd.includes('navigate') || cmd.includes('location')) {
       drivespeak('Opening Maps.', () => window.open('https://maps.google.com', '_blank'));
     } else if (cmd.includes('music') || cmd.includes('spotify')) {
       drivespeak('Opening Music.', () => {

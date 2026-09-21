@@ -645,7 +645,8 @@ export async function POST(request) {
   if (isAutoEligible) {
     // v10: Extract navigation destination for Maps Intent in VoiceService
     const navQuery = (['navigation', 'trip'].includes(keep.intent_type))
-      ? (keep.content || '').replace(/^(navigate to|go to|directions to|take me to)\s*/i, '').trim().slice(0, 120)
+      ? ((llmAssist?.intent === 'navigation' && llmAssist?.entities?.item)
+          || extractDestination(keep.content || '')).slice(0, 120)
       : null
 
     auto_exec = {

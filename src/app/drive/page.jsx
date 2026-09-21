@@ -176,7 +176,7 @@ export default function DriveModePage() {
     } else if (cmd.includes('keep') || cmd.includes('read')) {
       readNextKeep();
     } else {
-      drivespeak(`Sorry, I didn't understand: ${cmd}. Try: maps, music, call [name], read, home, or S O S.`);
+      drivespeak(`Sorry, I didn't understand: ${cmd}. Try: navigate to a place, music, call a name, read, home, or S O S.`);
     }
   }
 

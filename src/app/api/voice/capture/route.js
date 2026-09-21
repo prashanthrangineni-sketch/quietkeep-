@@ -23,6 +23,7 @@ import {
   findAllMatchingContacts,
   computeFollowUp,
   buildExecutionTTS,
+  extractDestination,
 } from '@/lib/intent-executor'
 import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep } from '@/lib/geo-resolver'
 import { detectRouteIntent } from '@/lib/intent-parser'
@@ -644,7 +645,8 @@ export async function POST(request) {
   if (isAutoEligible) {
     // v10: Extract navigation destination for Maps Intent in VoiceService
     const navQuery = (['navigation', 'trip'].includes(keep.intent_type))
-      ? (keep.content || '').replace(/^(navigate to|go to|directions to|take me to)\s*/i, '').trim().slice(0, 120)
+      ? ((llmAssist?.intent === 'navigation' && llmAssist?.entities?.item)
+          || extractDestination(keep.content || '')).slice(0, 120)
       : null
 
     auto_exec = {
@@ -656,7 +658,9 @@ export async function POST(request) {
       whatsapp_phone:   keep.contact_phone || null,  // v10: for VoiceService WhatsApp Intent
       whatsapp_message: null,                         // reserved for future use
       navigation_query: navQuery,                     // v10: for VoiceService Maps Intent
-      content:          keep.content,
+      // For navigation, carry just the place so the countdown card shows it and
+      // Maps receives a clean destination even when the user spoke Telugu/Hindi.
+      content:          navQuery || keep.content,
       delay_ms:         2500,
     }
 

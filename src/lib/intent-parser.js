@@ -196,6 +196,14 @@ function classifyIntent(lower) {
   // Explicit reminder triggers take priority over generic keywords (e.g. "remind me to pay the bill")
   if (/remind|remember|don.t forget|alert me/.test(lower))              return { type: 'reminder',   conf: 0.90 };
 
+  // Going somewhere: "navigate to X", "set location to X", "take me to X".
+  // Before this rule nothing produced 'navigation', so voice navigation never
+  // auto-opened Maps (found 21 Sep 2026). Anchored to the start, and a spoken
+  // time keeps it a plan rather than an instant action.
+  if (/^(?:please\s+|hey\s+aaria\s+|aaria\s+)?(?:navigate|navigation|directions?|route to|take me|drive me|go to|get me to|set (?:the |my )?(?:location|destination)|show (?:me )?(?:the )?(?:way|route)|how (?:do i|to|can i) (?:get|reach|go))\b/.test(lower)
+      && !/\b(?:tomorrow|tonight|today|morning|evening|at \d|\d\s?(?:am|pm))\b/.test(lower))
+                                                                        return { type: 'navigation', conf: 0.90 };
+
   // v12: Business ledger patterns — MUST run before generic expense/invoice patterns
   // Only meaningful when workspace_id is set; resolver confirms the subtype.
   if (/received|paid me|collected/.test(lower) && /\d/.test(lower))

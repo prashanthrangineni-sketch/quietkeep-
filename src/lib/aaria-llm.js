@@ -57,7 +57,7 @@ function langName(code) {
 const INTENTS = [
   'reminder', 'task', 'contact', 'meeting', 'purchase',
   'expense', 'income', 'ledger_debit', 'sale', 'invoice',
-  'document', 'query', 'note',
+  'document', 'navigation', 'query', 'note',
 ];
 
 function buildPrompt({ text, language, nowISO, timezone, workspaceMode, pageLabel }) {

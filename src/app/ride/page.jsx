@@ -113,17 +113,7 @@ export default function RideSafetyPage() {
     window.addEventListener('devicemotion', onMotion);
     setTimeout(() => { if (!sawReading) setSensorOk(false); }, 4000);
 
-    if (navigator.geolocation) {
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          posRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
-          const kmh = pos.coords.speed != null ? Math.max(0, pos.coords.speed * 3.6) : null;
-          if (kmh != null) { setSpeedKmh(Math.round(kmh)); detector.feedSpeed({ kmh }); }
-        },
-        () => setStatus('Location is off, so an alert would have no map link. Crash detection still works.'),
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
-      );
-    }
+    startLocation(detector);
 
     setWatching(true);
     setRideState(detector.getState());

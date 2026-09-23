@@ -293,6 +293,12 @@ export default function DrivingPage() {
               Drive Tools
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <a href="/ride" style={{ backgroundColor: isDriving ? '#6366f1' : 'var(--bg)',
+                color: '#f1f5f9', border: '1px solid var(--border)', padding: '12px',
+                borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                textDecoration: 'none', display: 'block', textAlign: 'center' }}>
+                🛵 Ride Safety
+              </a>
               <a href="/drive" style={{ backgroundColor: isDriving ? '#6366f1' : 'var(--bg)',
                 color: '#f1f5f9', border: '1px solid var(--border)', padding: '12px',
                 borderRadius: '8px', fontSize: '13px', fontWeight: '600',

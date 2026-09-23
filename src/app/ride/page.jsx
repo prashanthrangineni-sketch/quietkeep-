@@ -344,15 +344,31 @@ export default function RideSafetyPage() {
         <div style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 14, padding: 16, marginBottom: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: 'var(--text)' }}>Emergency contacts</div>
           {contacts.length === 0 ? (
-            <div style={{ fontSize: 13, color: '#b45309' }}>
-              None saved yet. Without one, nobody can be told.{' '}
-              <a href="/emergency" style={{ color: '#2563eb', fontWeight: 600 }}>Add a contact</a>
+            <div style={{ fontSize: 13, color: '#b45309', marginBottom: 10 }}>
+              None saved yet. Without one, nobody can be told.
             </div>
           ) : (
-            <div style={{ fontSize: 13, color: '#64748b' }}>
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>
               {contacts.map(c => c.name).join(', ')} — {contacts.length} saved
             </div>
           )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={newContact.name}
+              onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+              placeholder="Name"
+              style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)', fontSize: 14, background: 'var(--bg)', color: 'var(--text)' }} />
+            <input
+              value={newContact.phone}
+              onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+              placeholder="Mobile number"
+              inputMode="numeric"
+              style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)', fontSize: 14, background: 'var(--bg)', color: 'var(--text)' }} />
+          </div>
+          <button onClick={addContact} disabled={savingContact}
+            style={{ marginTop: 8, width: '100%', padding: '10px', borderRadius: 10, border: 'none', background: '#0f172a', color: '#fff', fontWeight: 700, fontSize: 14, opacity: savingContact ? 0.6 : 1 }}>
+            {savingContact ? 'Saving…' : 'Add emergency contact'}
+          </button>
           <button onClick={runDrill}
             style={{ marginTop: 12, width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid #2563eb', background: 'transparent', color: '#2563eb', fontWeight: 700, fontSize: 15 }}>
             Test my crash detection (nothing is sent)

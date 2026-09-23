@@ -36,6 +36,9 @@ export default function RideSafetyPage() {
   const [isDrill, setIsDrill]     = useState(false);
   const [outcome, setOutcome]     = useState(null);
   const [lastEvents, setLastEvents] = useState([]);
+  const [gps, setGps]             = useState({ state: 'unknown', text: '' });
+  const [newContact, setNewContact] = useState({ name: '', phone: '' });
+  const [savingContact, setSavingContact] = useState(false);
 
   const detectorRef = useRef(null);
   const motionRef   = useRef(null);

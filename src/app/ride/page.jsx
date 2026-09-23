@@ -121,6 +121,56 @@ export default function RideSafetyPage() {
     speak('Ride safety is on. I am watching for a fall.');
   }
 
+  // ── Location ───────────────────────────────────────────────────────────────
+  // An alert without a map link is far less useful, so this says plainly WHY
+  // there is no fix and offers a retry, instead of one vague warning line.
+  function startLocation(detector) {
+    if (!navigator.geolocation) {
+      setGps({ state: 'unsupported', text: 'This phone does not offer location to the app.' });
+      return;
+    }
+    setGps({ state: 'searching', text: 'Looking for your location…' });
+
+    const onPos = (pos) => {
+      posRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+      setGps({ state: 'ready', text: `Location ready, accurate to about ${Math.round(pos.coords.accuracy)} metres.` });
+      const kmh = pos.coords.speed != null ? Math.max(0, pos.coords.speed * 3.6) : null;
+      if (kmh != null && detector) { setSpeedKmh(Math.round(kmh)); detector.feedSpeed({ kmh }); }
+    };
+    const onErr = (err) => {
+      const text = err?.code === 1
+        ? 'Location permission is off for QuietKeep, so an alert would carry no map link. Turn it on in your phone settings, then tap Retry.'
+        : err?.code === 2
+          ? 'Your phone cannot get a location fix here. Move into the open and tap Retry.'
+          : 'Still searching for a location fix. Tap Retry if this stays for long.';
+      setGps({ state: 'error', text });
+    };
+
+    // One quick fix first — a watch alone can stay silent for a long time.
+    navigator.geolocation.getCurrentPosition(onPos, onErr, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+    if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
+    watchIdRef.current = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+  }
+
+  function retryLocation() { startLocation(detectorRef.current); }
+
+  async function addContact() {
+    const name  = newContact.name.trim();
+    const digits = newContact.phone.replace(/\D/g, '');
+    if (!name)            { setStatus('Type a name for the contact.'); return; }
+    if (digits.length < 10) { setStatus('Type a 10-digit mobile number.'); return; }
+    setSavingContact(true);
+    const phone = digits.length === 10 ? `+91${digits}` : `+${digits}`;
+    const { error } = await supabase.from('emergency_contacts').insert({
+      user_id: user.id, name, phone, is_primary: contacts.length === 0,
+    });
+    setSavingContact(false);
+    if (error) { setStatus(`Could not save the contact: ${error.message}`); return; }
+    setNewContact({ name: '', phone: '' });
+    setStatus(`${name} will be told if you do not answer a check-in.`);
+    loadContacts();
+  }
+
   function stopWatch() {
     if (motionRef.current) { window.removeEventListener('devicemotion', motionRef.current); motionRef.current = null; }
     if (watchIdRef.current != null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; }

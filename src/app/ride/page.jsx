@@ -314,6 +314,17 @@ export default function RideSafetyPage() {
           {watching && speedKmh != null && (
             <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Speed {speedKmh} km/h</div>
           )}
+          {watching && gps.text && (
+            <div style={{ fontSize: 13, color: gps.state === 'ready' ? '#16a34a' : '#b45309', marginTop: 8 }}>
+              {gps.text}
+              {gps.state !== 'ready' && gps.state !== 'searching' && (
+                <button onClick={retryLocation}
+                  style={{ marginLeft: 8, padding: '4px 10px', borderRadius: 8, border: '1px solid #b45309', background: 'transparent', color: '#b45309', fontWeight: 700, fontSize: 12 }}>
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
           {watching && sensorOk === false && (
             <div style={{ fontSize: 13, color: '#b45309', marginTop: 8 }}>
               This phone is not reporting movement, so a fall cannot be detected. The SOS button still works.

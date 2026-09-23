@@ -83,6 +83,7 @@ export default function MorePage() {
       { icon: '📍', title: 'Geo Triggers',    sub: 'Location-based keep reminders',        href: '/geo' },
     ]},
     { label: 'Safety', rows: [
+      { icon: '🛵', title: 'Ride Safety',     sub: 'Fall detection & automatic SOS',       href: '/ride' },
       { icon: '🚨', title: 'Emergency',       sub: 'Contacts & SOS',                       href: '/emergency' },
       { icon: '🆘', title: 'SOS Log',         sub: 'Emergency event history',              href: '/sos' },
       { icon: '📞', title: 'Caller Context',  sub: 'Who is calling, and your history',     href: '/caller-context' },

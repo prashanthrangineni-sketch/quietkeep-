@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import NotificationBell from '@/components/NotificationBell';
 import AariaMark from '@/components/AariaMark';
 import QkIcon from '@/components/QkIcon';
+import BackButton from '@/components/BackButton';
 
 const NAV_LINKS = [
   // `icon` is a rendered element, not a string, so the JSX below can stay
@@ -97,6 +98,10 @@ export default function NavbarClient() {
       }}>
         {/* Brand row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: 50 }}>
+          {/* Back sits to the LEFT of the logo, in the row. An earlier version
+              floated it over the top-left corner, where it covered the mark. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
+          <BackButton size={32} />
           {/* Aaria's face + wordmark — matches quietkeep.com. The app used to
               show the wordmark alone, which made every internal screen look
               like a plainer product than the homepage. */}
@@ -114,6 +119,7 @@ export default function NavbarClient() {
               QuietKeep
             </span>
           </Link>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <NotificationBell />
             <Link href="/subscription" style={{

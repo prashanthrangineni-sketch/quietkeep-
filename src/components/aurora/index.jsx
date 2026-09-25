@@ -20,6 +20,7 @@
 // BOTH VERSIONS: `mode="personal" | "business"` swaps the accent ramp so the two
 // products share structure and rhythm while still reading as distinct.
 import { useEffect, useRef, useState } from 'react';
+import BackButton from '@/components/BackButton';
 
 /* ───────────────────────── Page shell ───────────────────────── */
 export function AuroraPage({ mode = 'personal', children, className = '' }) {
@@ -47,12 +48,15 @@ export function AuroraBackground() {
 }
 
 /* ───────────────────────── Building blocks ───────────────────────── */
-export function PageHeader({ title, subtitle, action }) {
+export function PageHeader({ title, subtitle, action, showBack = true }) {
   return (
     <header className="qk-head">
-      <div>
-        <h1 className="qk-h1">{title}</h1>
-        {subtitle && <p className="qk-sub">{subtitle}</p>}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0 }}>
+        {showBack && <BackButton style={{ marginTop: 2 }} />}
+        <div style={{ minWidth: 0 }}>
+          <h1 className="qk-h1">{title}</h1>
+          {subtitle && <p className="qk-sub">{subtitle}</p>}
+        </div>
       </div>
       {action && <div className="qk-head-action">{action}</div>}
     </header>

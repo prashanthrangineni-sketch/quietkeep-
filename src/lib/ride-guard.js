@@ -146,7 +146,7 @@ function createListener({ onCancelWord, onHelpWord }) {
 export function startRideGuard({ getAccessToken, onState } = {}) {
   stopRideGuard();
 
-  const detector = createCrashDetector();
+  let detector = createCrashDetector();
   const ui = makeOverlay();
   let overlayShown = false;
   let countdownTimer = null;

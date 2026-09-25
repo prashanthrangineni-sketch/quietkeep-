@@ -118,6 +118,7 @@ export default function NavbarClient() {
               QuietKeep
             </span>
           </Link>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <NotificationBell />
             <Link href="/subscription" style={{

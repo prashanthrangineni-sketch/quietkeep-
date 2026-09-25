@@ -36,6 +36,9 @@ export default function RideSafetyPage() {
   const [isDrill, setIsDrill]     = useState(false);
   const [outcome, setOutcome]     = useState(null);
   const [lastEvents, setLastEvents] = useState([]);
+  const [gps, setGps]             = useState({ state: 'unknown', text: '' });
+  const [newContact, setNewContact] = useState({ name: '', phone: '' });
+  const [savingContact, setSavingContact] = useState(false);
 
   const detectorRef = useRef(null);
   const motionRef   = useRef(null);
@@ -110,22 +113,62 @@ export default function RideSafetyPage() {
     window.addEventListener('devicemotion', onMotion);
     setTimeout(() => { if (!sawReading) setSensorOk(false); }, 4000);
 
-    if (navigator.geolocation) {
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          posRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
-          const kmh = pos.coords.speed != null ? Math.max(0, pos.coords.speed * 3.6) : null;
-          if (kmh != null) { setSpeedKmh(Math.round(kmh)); detector.feedSpeed({ kmh }); }
-        },
-        () => setStatus('Location is off, so an alert would have no map link. Crash detection still works.'),
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
-      );
-    }
+    startLocation(detector);
 
     setWatching(true);
     setRideState(detector.getState());
     setStatus('Watching this ride. Keep the phone on you or in a pocket or mount.');
     speak('Ride safety is on. I am watching for a fall.');
+  }
+
+  // ── Location ───────────────────────────────────────────────────────────────
+  // An alert without a map link is far less useful, so this says plainly WHY
+  // there is no fix and offers a retry, instead of one vague warning line.
+  function startLocation(detector) {
+    if (!navigator.geolocation) {
+      setGps({ state: 'unsupported', text: 'This phone does not offer location to the app.' });
+      return;
+    }
+    setGps({ state: 'searching', text: 'Looking for your location…' });
+
+    const onPos = (pos) => {
+      posRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+      setGps({ state: 'ready', text: `Location ready, accurate to about ${Math.round(pos.coords.accuracy)} metres.` });
+      const kmh = pos.coords.speed != null ? Math.max(0, pos.coords.speed * 3.6) : null;
+      if (kmh != null && detector) { setSpeedKmh(Math.round(kmh)); detector.feedSpeed({ kmh }); }
+    };
+    const onErr = (err) => {
+      const text = err?.code === 1
+        ? 'Location permission is off for QuietKeep, so an alert would carry no map link. Turn it on in your phone settings, then tap Retry.'
+        : err?.code === 2
+          ? 'Your phone cannot get a location fix here. Move into the open and tap Retry.'
+          : 'Still searching for a location fix. Tap Retry if this stays for long.';
+      setGps({ state: 'error', text });
+    };
+
+    // One quick fix first — a watch alone can stay silent for a long time.
+    navigator.geolocation.getCurrentPosition(onPos, onErr, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+    if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
+    watchIdRef.current = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+  }
+
+  function retryLocation() { startLocation(detectorRef.current); }
+
+  async function addContact() {
+    const name  = newContact.name.trim();
+    const digits = newContact.phone.replace(/\D/g, '');
+    if (!name)            { setStatus('Type a name for the contact.'); return; }
+    if (digits.length < 10) { setStatus('Type a 10-digit mobile number.'); return; }
+    setSavingContact(true);
+    const phone = digits.length === 10 ? `+91${digits}` : `+${digits}`;
+    const { error } = await supabase.from('emergency_contacts').insert({
+      user_id: user.id, name, phone, is_primary: contacts.length === 0,
+    });
+    setSavingContact(false);
+    if (error) { setStatus(`Could not save the contact: ${error.message}`); return; }
+    setNewContact({ name: '', phone: '' });
+    setStatus(`${name} will be told if you do not answer a check-in.`);
+    loadContacts();
   }
 
   function stopWatch() {
@@ -271,6 +314,17 @@ export default function RideSafetyPage() {
           {watching && speedKmh != null && (
             <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Speed {speedKmh} km/h</div>
           )}
+          {watching && gps.text && (
+            <div style={{ fontSize: 13, color: gps.state === 'ready' ? '#16a34a' : '#b45309', marginTop: 8 }}>
+              {gps.text}
+              {gps.state !== 'ready' && gps.state !== 'searching' && (
+                <button onClick={retryLocation}
+                  style={{ marginLeft: 8, padding: '4px 10px', borderRadius: 8, border: '1px solid #b45309', background: 'transparent', color: '#b45309', fontWeight: 700, fontSize: 12 }}>
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
           {watching && sensorOk === false && (
             <div style={{ fontSize: 13, color: '#b45309', marginTop: 8 }}>
               This phone is not reporting movement, so a fall cannot be detected. The SOS button still works.
@@ -290,15 +344,31 @@ export default function RideSafetyPage() {
         <div style={{ border: '1px solid var(--border, #e2e8f0)', borderRadius: 14, padding: 16, marginBottom: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: 'var(--text)' }}>Emergency contacts</div>
           {contacts.length === 0 ? (
-            <div style={{ fontSize: 13, color: '#b45309' }}>
-              None saved yet. Without one, nobody can be told.{' '}
-              <a href="/emergency" style={{ color: '#2563eb', fontWeight: 600 }}>Add a contact</a>
+            <div style={{ fontSize: 13, color: '#b45309', marginBottom: 10 }}>
+              None saved yet. Without one, nobody can be told.
             </div>
           ) : (
-            <div style={{ fontSize: 13, color: '#64748b' }}>
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>
               {contacts.map(c => c.name).join(', ')} — {contacts.length} saved
             </div>
           )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={newContact.name}
+              onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+              placeholder="Name"
+              style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)', fontSize: 14, background: 'var(--bg)', color: 'var(--text)' }} />
+            <input
+              value={newContact.phone}
+              onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+              placeholder="Mobile number"
+              inputMode="numeric"
+              style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)', fontSize: 14, background: 'var(--bg)', color: 'var(--text)' }} />
+          </div>
+          <button onClick={addContact} disabled={savingContact}
+            style={{ marginTop: 8, width: '100%', padding: '10px', borderRadius: 10, border: 'none', background: '#0f172a', color: '#fff', fontWeight: 700, fontSize: 14, opacity: savingContact ? 0.6 : 1 }}>
+            {savingContact ? 'Saving…' : 'Add emergency contact'}
+          </button>
           <button onClick={runDrill}
             style={{ marginTop: 12, width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid #2563eb', background: 'transparent', color: '#2563eb', fontWeight: 700, fontSize: 15 }}>
             Test my crash detection (nothing is sent)

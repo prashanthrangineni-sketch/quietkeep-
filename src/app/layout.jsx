@@ -155,7 +155,8 @@ export default async function RootLayout({ children }) {
                       a sibling here would float a live microphone button over
                       that lock screen. Nesting makes "no assistant while locked"
                       structural rather than something to remember. */}
-                  <AariaDock />
+                  <AppBackGuard />
+              <AariaDock />
                 </BiometricGate>
               </AariaProvider>
             </AuthProvider>

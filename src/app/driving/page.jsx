@@ -40,6 +40,7 @@ export default function DrivingPage() {
   const [gpsStatus, setGpsStatus] = useState(''); // 'active' | 'error' | ''
   const [statusMsg, setStatusMsg] = useState('');
   const [loading, setLoading] = useState(true);
+  const [guardState, setGuardState] = useState(''); // '' | 'watching' | 'suspected_crash' | 'alerted' | ...
 
   const geoWatchRef = useRef(null);
   const lastPosRef = useRef(null);

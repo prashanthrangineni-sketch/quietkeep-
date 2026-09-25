@@ -15,6 +15,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import NavbarClient from '@/components/NavbarClient';
 import { supabase } from '@/lib/supabase';
+import { startRideGuard, stopRideGuard, feedRideSpeed, runRideGuardTest } from '@/lib/ride-guard';
 
 // Haversine distance between two lat/lng points in km
 function haversineKm(lat1, lng1, lat2, lng2) {

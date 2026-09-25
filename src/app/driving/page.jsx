@@ -91,6 +91,11 @@ export default function DrivingPage() {
         const { latitude: lat, longitude: lng, speed } = pos.coords;
         // Speed from GPS is in m/s — convert to km/h
         if (speed !== null) setCurrentSpeed(Math.round(speed * 3.6));
+        // The crash watcher needs both: speed tells it a vehicle was moving,
+        // the position is what gets sent to the rider's contacts.
+        feedRideSpeed(speed !== null ? speed * 3.6 : null, {
+          lat, lng, accuracy: pos.coords.accuracy ?? null,
+        });
 
         if (lastPosRef.current) {
           const added = haversineKm(lastPosRef.current.lat, lastPosRef.current.lng, lat, lng);

@@ -20,6 +20,7 @@
 // BOTH VERSIONS: `mode="personal" | "business"` swaps the accent ramp so the two
 // products share structure and rhythm while still reading as distinct.
 import { useEffect, useRef, useState } from 'react';
+import BackButton from '@/components/BackButton';
 
 /* ───────────────────────── Page shell ───────────────────────── */
 export function AuroraPage({ mode = 'personal', children, className = '' }) {

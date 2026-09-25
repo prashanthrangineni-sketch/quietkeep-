@@ -19,6 +19,7 @@
 //     an extra, never the only way out.
 
 import { createCrashDetector } from '@/lib/crash-detect';
+import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
 
 const COUNTDOWN_SECONDS = 30;

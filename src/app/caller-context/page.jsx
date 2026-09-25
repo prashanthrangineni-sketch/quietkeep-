@@ -60,12 +60,57 @@ export default function CallerContextPage() {
     );
   }
 
+  // Opened from the menu rather than from a ringing call, this screen had no
+  // number to work with and showed only an error. Give it something to do.
+  if (!phone) {
+    const digits = manualPhone.replace(/\D/g, '');
+    return (
+      <AuroraPage mode="business">
+        <PageHeader
+          title="Caller Context"
+          subtitle="See dues, notes and reminders for a number before you answer"
+        />
+        <GlassCard>
+          <p className="text-sm text-gray-500 mb-3">
+            This screen normally opens by itself when a saved contact calls you.
+            To check someone now, enter their number.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="tel"
+              inputMode="tel"
+              value={manualPhone}
+              onChange={(e) => setManualPhone(e.target.value)}
+              placeholder="Phone number"
+              className="flex-1 rounded-xl border border-gray-300 px-3 py-3 text-base"
+            />
+            <button
+              type="button"
+              disabled={digits.length < 10}
+              onClick={() => router.push(`/caller-context?phone=${encodeURIComponent(digits)}`)}
+              className="rounded-xl bg-indigo-600 px-4 py-3 text-white font-semibold disabled:opacity-40"
+            >
+              Look up
+            </button>
+          </div>
+        </GlassCard>
+      </AuroraPage>
+    );
+  }
+
   if (error || !data) {
     return (
       <AuroraPage mode="business">
-        <PageHeader title="Incoming Call Context" subtitle={`Phone: ${phone || 'Unknown'}`} />
+        <PageHeader title="Incoming Call Context" subtitle={`Phone: ${phone}`} />
         <GlassCard>
           <p className="text-red-500 font-medium">{error || 'Caller context not found'}</p>
+          <button
+            type="button"
+            onClick={() => router.push('/caller-context')}
+            className="mt-3 rounded-xl border border-gray-300 px-4 py-2 font-semibold"
+          >
+            Try another number
+          </button>
         </GlassCard>
       </AuroraPage>
     );

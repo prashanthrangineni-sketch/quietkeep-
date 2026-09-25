@@ -99,6 +99,7 @@ export default function NavbarClient() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: 50 }}>
           {/* Back sits to the LEFT of the logo, in the row. An earlier version
               floated it over the top-left corner, where it covered the mark. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
           <BackButton size={32} />
           {/* Aaria's face + wordmark — matches quietkeep.com. The app used to
               show the wordmark alone, which made every internal screen look

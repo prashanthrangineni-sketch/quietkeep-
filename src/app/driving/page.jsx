@@ -15,6 +15,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import NavbarClient from '@/components/NavbarClient';
 import { supabase } from '@/lib/supabase';
+import { startRideGuard, stopRideGuard, feedRideSpeed } from '@/lib/ride-guard';
 
 // Haversine distance between two lat/lng points in km
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -39,6 +40,7 @@ export default function DrivingPage() {
   const [gpsStatus, setGpsStatus] = useState(''); // 'active' | 'error' | ''
   const [statusMsg, setStatusMsg] = useState('');
   const [loading, setLoading] = useState(true);
+  const [guardState, setGuardState] = useState(''); // '' | 'watching' | 'suspected_crash' | 'alerted' | ...
 
   const geoWatchRef = useRef(null);
   const lastPosRef = useRef(null);
@@ -54,6 +56,21 @@ export default function DrivingPage() {
     if (!isDriving) return;
     const interval = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(interval);
+  }, [isDriving]);
+
+  // Crash watching runs only while a ride is running, and stops with it.
+  // The token is read at the moment of an alert, never captured, so a
+  // refreshed session still sends.
+  const tokenRef = useRef(accessToken);
+  useEffect(() => { tokenRef.current = accessToken; }, [accessToken]);
+
+  useEffect(() => {
+    if (!isDriving) { stopRideGuard(); setGuardState(''); return; }
+    startRideGuard({
+      getAccessToken: () => tokenRef.current,
+      onState: (s) => setGuardState(s),
+    });
+    return () => stopRideGuard();
   }, [isDriving]);
 
   function stopGeoWatch() {
@@ -74,6 +91,11 @@ export default function DrivingPage() {
         const { latitude: lat, longitude: lng, speed } = pos.coords;
         // Speed from GPS is in m/s — convert to km/h
         if (speed !== null) setCurrentSpeed(Math.round(speed * 3.6));
+        // The crash watcher needs both: speed tells it a vehicle was moving,
+        // the position is what gets sent to the rider's contacts.
+        feedRideSpeed(speed !== null ? speed * 3.6 : null, {
+          lat, lng, accuracy: pos.coords.accuracy ?? null,
+        });
 
         if (lastPosRef.current) {
           const added = haversineKm(lastPosRef.current.lat, lastPosRef.current.lng, lat, lng);

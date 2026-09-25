@@ -267,6 +267,29 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   listener.start(); // so "help help help" works before any crash
   onState?.('watching', {});
 
+  // A small strip the rider can see and test with, without the driving screen
+  // needing to know anything about how crash watching works.
+  const panel = document.createElement('div');
+  panel.setAttribute('data-ride-guard-panel', 'true');
+  panel.style.cssText = [
+    'position:fixed', 'left:12px', 'right:12px', 'bottom:12px', 'z-index:9998',
+    'display:flex', 'align-items:center', 'justify-content:space-between', 'gap:12px',
+    'padding:12px 14px', 'border-radius:14px', 'background:rgba(6,78,59,.96)',
+    'color:#fff', 'font-family:system-ui,-apple-system,sans-serif', 'font-size:14px',
+  ].join(';');
+  const panelText = document.createElement('span');
+  panelText.textContent = 'Crash watch on. Say "help help help" any time.';
+  const panelBtn = document.createElement('button');
+  panelBtn.style.cssText = [
+    'flex:none', 'padding:10px 14px', 'border:1px solid rgba(255,255,255,.6)',
+    'border-radius:10px', 'background:transparent', 'color:#fff', 'font-size:13px',
+    'font-weight:600', 'cursor:pointer',
+  ].join(';');
+  panelBtn.textContent = 'Test';
+  panelBtn.addEventListener('click', () => { guard?.runTest(); });
+  panel.append(panelText, panelBtn);
+  document.body.appendChild(panel);
+
   guard = {
     stop() {
       hide();

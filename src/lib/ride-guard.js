@@ -296,6 +296,18 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   panel.append(panelText, panelContacts, panelBtn);
   document.body.appendChild(panel);
 
+  // Tell the rider plainly if a crash alert would reach nobody.
+  supabase
+    .from('emergency_contacts')
+    .select('id', { count: 'exact', head: true })
+    .then(({ count }) => {
+      if (!count) {
+        panel.style.background = 'rgba(146,64,14,.96)';
+        panelText.textContent = 'Crash watch on, but no emergency contact is saved. Tap Contacts.';
+      }
+    })
+    .catch(() => { /* offline: leave the strip as it is */ });
+
   guard = {
     stop() {
       hide();

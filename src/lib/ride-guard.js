@@ -19,6 +19,7 @@
 //     an extra, never the only way out.
 
 import { createCrashDetector } from '@/lib/crash-detect';
+import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
 
 const COUNTDOWN_SECONDS = 30;
@@ -287,8 +288,27 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   ].join(';');
   panelBtn.textContent = 'Test';
   panelBtn.addEventListener('click', () => { guard?.runTest(); });
-  panel.append(panelText, panelBtn);
+  // Crash alerts are worthless with nobody to send them to, so the screen that
+  // adds contacts is reachable from here instead of being buried in the menu.
+  const panelContacts = document.createElement('button');
+  panelContacts.style.cssText = panelBtn.style.cssText;
+  panelContacts.textContent = 'Contacts';
+  panelContacts.addEventListener('click', () => { window.location.href = '/emergency'; });
+  panel.append(panelText, panelContacts, panelBtn);
   document.body.appendChild(panel);
+
+  // Tell the rider plainly if a crash alert would reach nobody.
+  (async () => {
+    try {
+      const { count } = await supabase
+        .from('emergency_contacts')
+        .select('id', { count: 'exact', head: true });
+      if (!count) {
+        panel.style.background = 'rgba(146,64,14,.96)';
+        panelText.textContent = 'Crash watch on, but no emergency contact is saved. Tap Contacts.';
+      }
+    } catch { /* offline: leave the strip as it is */ }
+  })();
 
   guard = {
     stop() {

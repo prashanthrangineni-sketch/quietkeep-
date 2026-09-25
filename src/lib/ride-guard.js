@@ -221,6 +221,53 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     }
   }
 
+  // ── Hard braking ───────────────────────────────────────────────────────
+  // A braking spot is worth remembering only if the rider was actually moving
+  // and lost real speed quickly. The thresholds below (was doing at least
+  // 25 km/h, shed at least 18 km/h within two seconds) sit above ordinary
+  // town riding, so a normal slow-down for a turn is not recorded. A spot is
+  // logged at most once every 20 seconds, so one long braking event does not
+  // become twenty rows.
+  const BRAKE_MIN_SPEED_KMH = 25;
+  const BRAKE_MIN_DROP_KMH_PER_S = 9;   // ~18 km/h shed in two seconds
+  const BRAKE_COOLDOWN_MS = 20000;
+  let lastSpeedSample = null;
+  let lastBrakeLoggedAt = 0;
+
+  function noteBraking(kmh) {
+    const at = now();
+    const previous = lastSpeedSample;
+    lastSpeedSample = { kmh, at };
+    if (!previous) return;
+
+    const seconds = (at - previous.at) / 1000;
+    if (seconds <= 0.4 || seconds > 4) return;      // too close together, or a gap in the signal
+    if (previous.kmh < BRAKE_MIN_SPEED_KMH) return; // not really travelling
+    const dropPerSecond = (previous.kmh - kmh) / seconds;
+    if (dropPerSecond < BRAKE_MIN_DROP_KMH_PER_S) return;
+    if (at - lastBrakeLoggedAt < BRAKE_COOLDOWN_MS) return;
+    if (typeof lastFix.lat !== 'number' || typeof lastFix.lng !== 'number') return;
+
+    lastBrakeLoggedAt = at;
+    const token = getAccessToken?.();
+    fetch('/api/ride/road-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+      body: JSON.stringify({
+        kind: 'hard_brake',
+        lat: lastFix.lat,
+        lng: lastFix.lng,
+        accuracy: lastFix.accuracy ?? null,
+        speedBeforeKmh: Math.round(previous.kmh),
+        speedAfterKmh: Math.round(kmh),
+        decelKmhPerS: Math.round(dropPerSecond * 10) / 10,
+      }),
+      keepalive: true, // the ride may end moments later
+    }).catch(() => { /* offline: the spot is simply not recorded */ });
+
+    onState?.('hard_brake', { speedBeforeKmh: previous.kmh, decelKmhPerS: dropPerSecond });
+  }
+
   function trigger(detail = {}) {
     if (overlayShown) return;
     lastCrash = detail;

@@ -287,7 +287,13 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   ].join(';');
   panelBtn.textContent = 'Test';
   panelBtn.addEventListener('click', () => { guard?.runTest(); });
-  panel.append(panelText, panelBtn);
+  // Crash alerts are worthless with nobody to send them to, so the screen that
+  // adds contacts is reachable from here instead of being buried in the menu.
+  const panelContacts = document.createElement('button');
+  panelContacts.style.cssText = panelBtn.style.cssText;
+  panelContacts.textContent = 'Contacts';
+  panelContacts.addEventListener('click', () => { window.location.href = '/emergency'; });
+  panel.append(panelText, panelContacts, panelBtn);
   document.body.appendChild(panel);
 
   guard = {

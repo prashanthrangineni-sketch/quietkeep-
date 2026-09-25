@@ -167,6 +167,12 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
 
   function cancel(reason) {
     hide();
+    // A cancelled crash leaves the detector in its 'crash' state, which would
+    // make it deaf for the rest of the ride. Start it afresh so the next fall
+    // is still caught, and give the sensors a moment before arming again.
+    detector = createCrashDetector();
+    armedAt = now();
+    lastCrash = null;
     onState?.('dismissed', { reason });
     speak("Good. I'll keep watching.");
   }

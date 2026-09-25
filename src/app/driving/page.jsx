@@ -57,6 +57,21 @@ export default function DrivingPage() {
     return () => clearInterval(interval);
   }, [isDriving]);
 
+  // Crash watching runs only while a ride is running, and stops with it.
+  // The token is read at the moment of an alert, never captured, so a
+  // refreshed session still sends.
+  const tokenRef = useRef(accessToken);
+  useEffect(() => { tokenRef.current = accessToken; }, [accessToken]);
+
+  useEffect(() => {
+    if (!isDriving) { stopRideGuard(); setGuardState(''); return; }
+    startRideGuard({
+      getAccessToken: () => tokenRef.current,
+      onState: (s) => setGuardState(s),
+    });
+    return () => stopRideGuard();
+  }, [isDriving]);
+
   function stopGeoWatch() {
     if (geoWatchRef.current !== null) {
       navigator.geolocation?.clearWatch(geoWatchRef.current);

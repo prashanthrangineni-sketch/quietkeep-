@@ -294,6 +294,7 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     stop() {
       hide();
       listener.stop();
+      panel.remove();
       if (typeof window !== 'undefined') window.removeEventListener('devicemotion', onMotion);
       onState?.('stopped', {});
     },

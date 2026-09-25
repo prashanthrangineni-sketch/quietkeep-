@@ -10,6 +10,10 @@ import { AuthProvider } from '@/lib/context/auth';
 // nowhere else — the assistant existed on one page out of eighty.
 import { AariaProvider } from '@/lib/context/aaria';
 import AariaDock from '@/components/AariaDock';
+// Back belongs to the whole app, not to each page. Mounted once here so every
+// screen has a working back arrow and the hardware back never exits the app
+// from an inner screen.
+import AppBackGuard from '@/components/AppBackGuard';
 import './globals.css';
 import './design-refinements.css';
 

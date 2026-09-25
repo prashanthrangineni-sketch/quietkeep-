@@ -17,6 +17,7 @@ export default function CallerContextPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [manualPhone, setManualPhone] = useState('');
 
   useEffect(() => {
     if (authLoading) return;

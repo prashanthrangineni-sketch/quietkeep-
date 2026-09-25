@@ -320,7 +320,10 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     },
     feedSpeed(kmh, fix) {
       if (fix && typeof fix.lat === 'number') lastFix = { ...fix, at: now() };
-      if (typeof kmh === 'number') detector.feedSpeed({ kmh, at: now() });
+      if (typeof kmh === 'number') {
+        detector.feedSpeed({ kmh, at: now() });
+        noteBraking(kmh);
+      }
     },
     runTest() {
       lastCrash = { impactG: 3.2, speedBeforeKmh: null, test: true };

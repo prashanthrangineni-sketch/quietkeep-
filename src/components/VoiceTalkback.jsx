@@ -301,9 +301,39 @@ function getTimeOfDay() {
   return 'night';
 }
 
+// WHY THIS IS NO LONGER JUST user_metadata.full_name || user.email.
+//
+// Sign-in by mobile number gives the account a synthetic email —
+// "919515479595@quietkeep.com" — and user_metadata frequently carries no name
+// at all. The old two-line version fell through to that email, split it on
+// "@", and handed "919515479595" to the speech engine, which read it out as
+// "nine hundred and nineteen billion...". Every phone-OTP account was greeted
+// by its own phone number.
+//
+// src/components/dashboard/DashboardHero.jsx already carries exactly this
+// guard, for the greeting ON SCREEN, and its comment says so in plain words.
+// The SPOKEN greeting was never given the same treatment, so the bug survived
+// the fix that was supposed to kill it. It is written once, here, because this
+// module is the only place that turns a user object into a spoken name.
+function firstWord(value) {
+  return String(value || '').trim().split(/[\s@]/)[0] || '';
+}
+
+function asName(value) {
+  const word = firstWord(value);
+  if (!word) return '';
+  // Digits, plus signs and brackets: a phone number, an account id, or the
+  // local part of a synthetic email. Never a name, and never worth speaking.
+  if (/^[\d+()\-.]+$/.test(word)) return '';
+  return word;
+}
+
 function firstName(user) {
-  const name = user?.user_metadata?.full_name || user?.email || '';
-  return name.split(/[\s@]/)[0] || '';
+  return asName(user?.profile_name)                 // profiles.full_name, when the caller has it
+      || asName(user?.user_metadata?.full_name)
+      || asName(user?.user_metadata?.name)
+      || asName(user?.email)
+      || '';
 }
 
 // ── Lifecycle talkback — call these at specific app events ────────

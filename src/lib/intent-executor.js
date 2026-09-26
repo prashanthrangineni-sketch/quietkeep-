@@ -365,8 +365,22 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
     };
   }
 
-  // Meeting with no date
-  if (type === 'meeting' && !entities?.dates?.length && !entities?.times?.length) {
+  // Meeting with no date.
+  //
+  // isUsableInstant(reminderAt) is the same short-circuit the reminder branch
+  // above carries, and for the same reason: a relative offset ("in five
+  // minutes", "ఐదు నిమిషాల్లో") resolves directly to an instant and writes
+  // NOTHING into entities.dates or entities.times, so testing the entities
+  // alone cannot see a time that is plainly there.
+  //
+  // This bit me one commit ago. Releasing "call Surya Kiran in 5 minutes" from
+  // the now-or-later question dropped it straight into this branch, which asked
+  // "When is this meeting?" about an instruction that had just been given a
+  // time — one useless question traded for another.
+  if (type === 'meeting'
+      && !isUsableInstant(reminderAt)
+      && !entities?.dates?.length
+      && !entities?.times?.length) {
     return {
       follow_up:   'When is this meeting? Add a date and time.',
       action_hint: 'time_needed',

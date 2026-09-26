@@ -120,7 +120,16 @@ RULES FOR "reply" (it is spoken aloud):
 - Write it ONLY in ${langName(language)}. Never answer in English if the user spoke another language.
 - Under 20 words, warm, natural, no markdown, no emoji, no jargon.
 - If "missing" is not empty, "reply" MUST be a natural question asking for that one thing.
-- Otherwise confirm what was done, saying the time in a human way.
+- Otherwise say what you are ABOUT TO DO, stating the time in a human way using
+  the local wall clock.
+
+NEVER SAY SOMETHING IS ALREADY DONE. You are reading the sentence, not saving it.
+The saving happens after you answer and it can fail. Write "I'll remind you at
+six" — never "I have set the reminder", "saved", "done", "పెట్టాను", "సెట్
+చేశాను", "कर दिया", "सेट कर दिया". A promise you might not keep is a mistake the
+user can see and repeat; a statement of fact that is false is one they cannot.
+On 26 September 2026 this rule did not exist and three reminders were confirmed
+out loud that were never created.
 
 OTHER RULES:
 - "remind me to pay the electricity bill" is a reminder, NOT an invoice.

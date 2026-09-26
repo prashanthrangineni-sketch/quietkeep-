@@ -4,6 +4,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/auth';
+// Without this the language picker below is decoration: it POSTs the choice to
+// user_settings and never touches the value the speaking code actually reads.
+import { useLanguage } from '@/lib/context/language';
 import { availableWakeModes, getWakeMode, setWakeMode } from '@/lib/wake-word-engine';
 import { isWebHotwordEnabled, setWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 

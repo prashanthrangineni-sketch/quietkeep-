@@ -48,71 +48,7 @@ export async function findAllMatchingContacts(){return []}
 // cannot see ("రేపు ఉదయం", "कल सुबह") and writes them straight to reminderAt.
 // Testing entities alone made the app ask "When should I remind you?" on a
 // reminder it had already set and scheduled. Fixed 22 Aug 2026.
-export function computeFollowUp(parsed, contactResult = null, reminderAt = null) {
-  const { type, entities } = parsed;
-
-  // Contact / meeting: check for disambiguation or missing info
-  if (type === 'contact' || type === 'meeting') {
-    const name = entities?.names?.[0];
-
-    // Multiple contacts with same partial name → ask user to pick
-    if (contactResult?.ambiguous) {
-      const names = contactResult.multiple.map(c => c.name).join(', ');
-      return {
-        follow_up:      `Multiple contacts found for "${name}": ${names}. Which one?`,
-        action_hint:    'disambiguate_contact',
-        contacts:       contactResult.multiple,
-        suggested_name: name,
-      };
-    }
-
-    // Name found, phone available → offer call vs remind
-    if (name && contactResult?.single?.phone) {
-      return {
-        follow_up:   `Call ${name} now or set a reminder?`,
-        action_hint: 'call_or_remind',
-        contact:     contactResult.single,
-      };
-    }
-
-    // Name found, no phone in contacts
-    if (name && contactResult === null) {
-      return {
-        follow_up:      `"${name}" isn't in your contacts. Add a number to call them, or I'll save this as a reminder.`,
-        action_hint:    'add_contact',
-        suggested_name: name,
-      };
-    }
-
-    // No name extracted at all
-    if (!name) {
-      return {
-        follow_up:   'Who do you want to contact? Say their name.',
-        action_hint: 'name_needed',
-      };
-    }
-  }
-
-  // Reminder/task with no time: ask when.
-  // reminderAt short-circuits this — if a time was resolved by any route, the
-  // reminder is already scheduled and asking again is wrong.
-  if ((type === 'reminder' || type === 'task') && !reminderAt && !entities?.dates?.length && !entities?.times?.length) {
-    return {
-      follow_up:   'When should I remind you? Say a time like "at 3pm" or "tomorrow morning".',
-      action_hint: 'time_needed',
-    };
-  }
-
-  // Meeting with no date
-  if (type === 'meeting' && !entities?.dates?.length && !entities?.times?.length) {
-    return {
-      follow_up:   'When is this meeting? Add a date and time.',
-      action_hint: 'time_needed',
-    };
-  }
-
-  return null;
-}
+export function computeFollowUp(){return null}
 
 // ── DESTINATION FROM SPEECH ───────────────────────────────────────────────────
 // Riders say it many ways: "navigate to Charminar", "set location to Charminar",

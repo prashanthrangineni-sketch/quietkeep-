@@ -37,19 +37,6 @@ import {
 import { buildMemoryContext } from '@/lib/style-engine' // v15: Memory Context
 
 export async function POST(request) {
-  const authHeader = request.headers.get('Authorization') || ''
-  const accessToken = authHeader.replace(/^Bearer\s+/i, '').trim()
-  if (!accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  // Step 1: Validate user identity via anon client + Bearer token.
-  // auth.getUser() calls /auth/v1/user directly — this works regardless of PostgREST.
-  const anon = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
-  )
-  const { data: { user }, error: authError } = await anon.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Step 2: Use service role client for all DB writes.
   // PROVEN ROOT CAUSE: auth.getUser()→200 but INSERT→403 because PostgREST cannot

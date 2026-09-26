@@ -459,8 +459,8 @@ export async function POST(request) {
       reviewed_at:    new Date().toISOString(),
       idempotency_key: resolvedIdempotencyKey,
       reminder_at:    reminderAt ? reminderAt.toISOString() : null,
-      contact_name:   matchedContact?.name  || nameEntity || null,
-      contact_phone:  matchedContact?.phone || null,
+      contact_name:   resolvedContact?.name  || nameEntity || null,
+      contact_phone:  resolvedContact?.phone || null,
       follow_up:      followUp || null,
       // Geo fields — only populated when geo intent was detected and resolved
       ...(geoData ? {

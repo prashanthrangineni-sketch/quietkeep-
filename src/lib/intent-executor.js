@@ -590,6 +590,34 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
 
   const contact = contactResult?.single || null;
 
+  // A PERSON, A NUMBER, AND A TIME — nothing left to ask.
+  //
+  // "Call Surya Kiran in five minutes" used to come back as a question, which
+  // is what the founder reported on 26 September. Everything needed is known,
+  // so say what is about to happen instead.
+  //
+  // Three guards, because this must not leak:
+  //   1. the words must actually ask for a call (English, Telugu or Hindi), so
+  //      "meeting with Surya at 3pm" stays a meeting;
+  //   2. the instant must be real and in the future, so a stale value falls
+  //      through to the older wording rather than promising anything;
+  //   3. reminder and task keep their own confirmation, which reads correctly.
+  if (
+    contact?.phone
+    && isUsableInstant(reminderAt)
+    && looksLikeACall(parsed)
+    && parsed.type !== 'reminder'
+    && parsed.type !== 'task'
+  ) {
+    const dt      = new Date(reminderAt);
+    const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: DEFAULT_TZ });
+    const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: DEFAULT_TZ });
+    // An intention, not a claim of completion — and an accurate one: at that
+    // minute the alarm opens a countdown carrying this number and dials unless
+    // the countdown is cancelled.
+    return `Right — ${dateStr} at ${timeStr} I'll call ${contact.name || name}.`;
+  }
+
   if (parsed.type === 'contact' && contact?.phone) {
     return `Keep saved. ${name || 'Contact'} is in your contacts. Tap the call button to dial now.`;
   }

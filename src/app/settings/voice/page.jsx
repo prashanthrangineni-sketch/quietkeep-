@@ -52,6 +52,10 @@ export default function VoiceSettings() {
 
   async function save(patch) {
     setPrefs(p => ({ ...p, ...patch })); setSaving(true); setMsg('');
+    // Apply it to this device immediately. Deliberately before the fetch: if
+    // the save fails the user still hears the language they just chose, and
+    // the LanguageProvider startup read will reconcile on the next launch.
+    if (patch.voice_language) { try { setVoiceLang(patch.voice_language); } catch {} }
     try {
       await fetch('/api/voice/preferences', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },

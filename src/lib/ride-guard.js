@@ -422,9 +422,12 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     },
     feedSpeed(kmh, fix) {
       if (fix && typeof fix.lat === 'number') lastFix = { ...fix, at: now() };
+      if (fix && typeof fix.headingDeg === 'number') lastHeadingDeg = fix.headingDeg;
+      else if (fix && typeof fix.heading === 'number') lastHeadingDeg = fix.heading;
       if (typeof kmh === 'number') {
         detector.feedSpeed({ kmh, at: now() });
         noteBraking(kmh);
+        checkForHazardAhead(kmh);
       }
     },
     runTest() {

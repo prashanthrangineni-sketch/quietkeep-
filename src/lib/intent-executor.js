@@ -39,40 +39,8 @@ export async function scheduleReminderNudge(supabase, { userId, keepId, reminder
   return data?.id || null;
 }
 
-// ── SERVER: MATCH CONTACT BY NAME (with disambiguation support) ───────────────
-// Returns:
-//   null                → no match
-//   { single: contact } → exactly one match or clear best
-//   { multiple: contacts[], ambiguous: true } → 2+ matches, need clarification
-export async function matchContactByName(supabase, userId, name) {
-  if (!name || !userId) return null;
-  const { data: contacts } = await supabase
-    .from('contacts')
-    .select('id,name,phone,email,relation,avatar_emoji')
-    .eq('user_id', userId)
-    .ilike('name', `%${name}%`)
-    .limit(6);
-  if (!contacts?.length) return null;
-  const exact = contacts.find(c => c.name.toLowerCase() === name.toLowerCase());
-  if (exact) return { single: exact };
-  if (contacts.length === 1) return { single: contacts[0] };
-  // Multiple partial matches — return all for disambiguation
-  return { multiple: contacts, ambiguous: true };
-}
-
-// ── SERVER: FIND ALL MATCHING CONTACTS ────────────────────────────────────────
-// Returns flat array of all partial matches — used alongside matchContactByName
-// for passing to computeFollowUp and the disambiguation UI.
-export async function findAllMatchingContacts(supabase, userId, name) {
-  if (!name || !userId) return [];
-  const { data: contacts } = await supabase
-    .from('contacts')
-    .select('id,name,phone,email,relation,avatar_emoji')
-    .eq('user_id', userId)
-    .ilike('name', `%${name}%`)
-    .limit(8);
-  return contacts || [];
-}
+export async function matchContactByName(){return null}
+export async function findAllMatchingContacts(){return []}
 
 // ── FOLLOW-UP LOGIC ───────────────────────────────────────────────────────────
 // Returns follow_up object or null if intent is complete

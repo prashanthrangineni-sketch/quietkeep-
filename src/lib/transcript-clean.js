@@ -115,11 +115,20 @@ function foldAdjacentRuns(input) {
         i + size * (repeats + 1) <= words.length &&
         samePhrase(words, i + size * repeats, phrase)
       ) repeats++;
-      out.push(...phrase);
-      // Advance one word when nothing repeated, so a repeat that does not sit
-      // on a multiple of `size` is still found. The first version advanced by
-      // `size` and could only ever see block-aligned repeats.
-      i += repeats > 1 ? size * repeats : 1;
+      if (repeats > 1) {
+        // Keep one copy, step past all of them.
+        out.push(...phrase);
+        i += size * repeats;
+      } else {
+        // NOTHING REPEATED HERE. Emit ONE word and step ONE word, so a repeat
+        // that does not begin on a multiple of `size` is still found on a later
+        // pass. Emitting the whole lookahead phrase here — which is what the
+        // first version did — writes every word `size` times over and turns a
+        // stutter repair into a stutter generator. It was caught by running the
+        // function against the two real transcripts before this shipped.
+        out.push(words[i]);
+        i += 1;
+      }
     }
     words = out;
   }

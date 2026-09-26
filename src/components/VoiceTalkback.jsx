@@ -293,11 +293,20 @@ export function speakLow(text) {
 }
 
 // ── Time-aware greeting helpers ──────────────────────────────────
+// WHERE THE BANDS SIT, AND WHY THEY MOVED.
+//
+// Afternoon used to run to 17:00, so at 16:25 Aaria said "Good afternoon". It
+// was inside the band and still wrong: in India anything past four is evening —
+// sāyantram, शाम — and hearing "afternoon" at twenty-five past four is the kind
+// of small wrongness that makes an assistant feel foreign.
+//
+// 16:00 is the boundary a Telugu or Hindi speaker would draw, and the English
+// greeting follows the same line so all three languages agree.
 function getTimeOfDay() {
   const h = new Date().getHours();
-  if (h >= 5 && h < 12) return 'morning';
-  if (h >= 12 && h < 17) return 'afternoon';
-  if (h >= 17 && h < 21) return 'evening';
+  if (h >= 5  && h < 12) return 'morning';
+  if (h >= 12 && h < 16) return 'afternoon';
+  if (h >= 16 && h < 21) return 'evening';
   return 'night';
 }
 

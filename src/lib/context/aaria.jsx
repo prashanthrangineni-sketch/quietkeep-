@@ -75,6 +75,16 @@ const LANG_MAP = {
   en: 'en-IN', hi: 'hi-IN', te: 'te-IN', ta: 'ta-IN', kn: 'kn-IN',
   ml: 'ml-IN', mr: 'mr-IN', bn: 'bn-IN', gu: 'gu-IN', pa: 'pa-IN',
 };
+
+// How Aaria opens a reminder she is reading out late, so it is heard as a
+// reminder rather than as a sentence arriving from nowhere. Short on purpose:
+// the reminder itself is the content, and the Telugu and Hindi wording here has
+// not been checked by a native speaker.
+const MISSED_PREFIX = {
+  en: 'Reminder.',
+  te: 'గుర్తు చెబుతున్నాను.',
+  hi: 'याद दिला रही हूँ।',
+};
 function speechLang(lang) {
   const l = String(lang || 'en-IN');
   return LANG_MAP[l.split('-')[0]] || l;

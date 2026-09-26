@@ -46,8 +46,13 @@ export default function ContactsPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
-  const hasNativeBridge = typeof window !== 'undefined' && !!window.__QK_CONTACTS__?.getAll;
-  const hasWebPicker = typeof window !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window;
+  // 'native' | 'web' | null. Resolved after mount on purpose: on the server
+  // there is no phonebook, so answering during render would render one thing and
+  // hydrate into another.
+  const [source, setSource] = useState(null);
+  useEffect(() => { setSource(contactSource()); }, []);
+  const hasNativeBridge = source === 'native';
+  const hasWebPicker    = source === 'web';
 
   const load = useCallback(async () => {
     if (!user) return;

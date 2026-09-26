@@ -6,13 +6,21 @@
 // contacts table — but nothing bulk-populated it, so voice actions had an empty
 // phonebook for every real user. This page fills it, with explicit consent.
 //
-// SYNC PATHS (best available wins):
-//   1. NATIVE BRIDGE — window.__QK_CONTACTS__.getAll() -> [{name, phones[], emails[]}]
-//      Implemented by the Android app (Capacitor Contacts + READ_CONTACTS with
-//      Play-compliant disclosure). Full phonebook, re-syncable.
+// SYNC PATHS (best available wins), all behind src/lib/contacts-sync.js:
+//   1. NATIVE — the Capacitor ContactsPlugin, via registerPlugin(). Full
+//      phonebook, re-syncable, READ_CONTACTS with Play-compliant disclosure.
 //   2. WEB CONTACT PICKER — navigator.contacts.select (Chrome Android/PWA).
 //      User multi-selects; no permission persists. Honest partial sync.
 //   3. Neither -> explain, point at the Android app.
+//
+// FIXED 26 Sep 2026. This page used to test for `window.__QK_CONTACTS__`, a
+// plain-JavaScript bridge object that nothing in this repository or in the
+// Android project ever defines, and then fall back to navigator.contacts, which
+// a Capacitor WebView does not expose. Both checks were false inside the
+// QuietKeep Android app, so the page told the user that phonebook sync "needs
+// the QuietKeep Android app" — while they were standing in it. The contacts
+// table stayed empty for every real user, which is why "remind me to call
+// Aravind" had no number to dial and could only be read back aloud.
 //
 // SMS/call-log sync is deliberately ABSENT: Play restricts those permission
 // groups to default-handler apps. Messages reach QuietKeep via the share sheet
@@ -21,6 +29,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { supabase } from '@/lib/supabase';
+import { contactSource, syncDeviceContacts } from '@/lib/contacts-sync';
 import {
   AuroraPage, PageHeader, SectionTitle, Grid, GlassCard,
   StatTile, NudgeCard, Pill, EmptyState, SkeletonCard,

@@ -276,19 +276,41 @@ export async function POST(request) {
     }
   }
 
-  let matchedContact = null
-  let allContacts    = []
-  const nameEntity   = parsed.entities?.names?.[0]
+  // ── WHO THE USER MEANT ────────────────────────────────────────────────────
+  //
+  // ONE SHAPE. matchContactByName() returns a WRAPPER, and its own header says
+  // so: null, { single: contact }, or { multiple: [...], ambiguous: true }.
+  // computeFollowUp() and buildExecutionTTS() read `.single` correctly. This
+  // file did not — it read `matchedContact?.phone`, which on a wrapper is
+  // undefined — so keeps.contact_phone was written as null on every capture
+  // ever made, and the auto-exec gate below (`type === 'contact' &&
+  // !keep.contact_phone`) could never open. The business branch had the
+  // mirror-image bug: a flat object, invisible to the two functions that expect
+  // a wrapper. Normalised once, here, into a wrapper plus one flat object.
+  //
+  // WIDER SCOPE. Matching used to run only for contact/meeting/communication.
+  // "Remind me to call Aravind in five minutes" parses as type 'reminder', so
+  // the name was never looked up, the reminder carried no number, and at the
+  // appointed minute the phone said the sentence aloud and stopped. Looking a
+  // name up is a read: it dials nothing by itself, reminder and task remain
+  // excluded from auto-exec further down, and computeFollowUp() only asks
+  // contact questions for contact/meeting — so this adds no new questions.
+  const nameEntity = parsed.entities?.names?.[0]
+  const CONTACT_AWARE_TYPES = [
+    'contact', 'meeting', 'communication',   // as before
+    'reminder', 'task', 'call',              // "remind me to call Aravind"
+  ]
 
-  if (['contact', 'meeting', 'communication'].includes(parsed.type) && nameEntity) {
+  let matchedContact = null     // wrapper shape — for computeFollowUp + TTS
+  let allContacts    = []
+
+  if (CONTACT_AWARE_TYPES.includes(parsed.type) && nameEntity) {
     if (workspace_id) {
       const bizCust = await matchCustomer(supabase, workspace_id, nameEntity);
       if (bizCust) {
         matchedContact = {
-          id: bizCust.id,
-          name: bizCust.name,
-          phone: bizCust.phone,
-          is_business: true
+          single: { id: bizCust.id, name: bizCust.name, phone: bizCust.phone },
+          is_business: true,
         };
       }
     } else {
@@ -298,6 +320,12 @@ export async function POST(request) {
       ])
     }
   }
+
+  // The one flat contact the rest of this file reads. Null when nobody matched,
+  // and null when SEVERAL people matched and we have not asked which — a number
+  // guessed from two Ravis is worse than no number at all.
+  const resolvedContact   = matchedContact?.ambiguous ? null : (matchedContact?.single || null)
+  const isBusinessContact = matchedContact?.is_business === true
 
   const followUp = computeFollowUp(parsed, matchedContact, reminderAt)
 
@@ -431,8 +459,8 @@ export async function POST(request) {
       reviewed_at:    new Date().toISOString(),
       idempotency_key: resolvedIdempotencyKey,
       reminder_at:    reminderAt ? reminderAt.toISOString() : null,
-      contact_name:   matchedContact?.name  || nameEntity || null,
-      contact_phone:  matchedContact?.phone || null,
+      contact_name:   resolvedContact?.name  || nameEntity || null,
+      contact_phone:  resolvedContact?.phone || null,
       follow_up:      followUp || null,
       // Geo fields — only populated when geo intent was detected and resolved
       ...(geoData ? {
@@ -514,6 +542,11 @@ export async function POST(request) {
           scheduled_for: reminderAt.toISOString(),
           is_active:     true,
           space_type:    workspace_id ? 'business' : 'personal',
+          // Without these the alarm can speak the reminder and nothing else.
+          // src/lib/reminder-voice.js reads contact_phone off THIS row, not off
+          // the keep, and only attaches a call action when it finds one.
+          contact_name:  keep.contact_name  || null,
+          contact_phone: keep.contact_phone || null,
         })
         .select('*')
         .maybeSingle()
@@ -532,7 +565,7 @@ export async function POST(request) {
     service: 'voice_capture',
     details: {
       keep_id: keep.id, source, language, confidence: parsed.confidence,
-      intent_type: parsed.type, contact_matched: !!matchedContact,
+      intent_type: parsed.type, contact_matched: !!resolvedContact,
       reminder_set: !!reminderAt, follow_up_needed: !!followUp, workspace_id,
     },
   }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
@@ -562,7 +595,7 @@ export async function POST(request) {
       inputs: {
         source, language, intent_type: keep.intent_type,
         confidence: parsed.confidence, geo_detected: !!(parsed.geo?.detected),
-        contact_matched: !!matchedContact, is_multi: !!(parsed.is_multi),
+        contact_matched: !!resolvedContact, is_multi: !!(parsed.is_multi),
       },
     });
     voiceRecord.status = 'completed';
@@ -577,7 +610,7 @@ export async function POST(request) {
     user.id,
     parsed.type,
     getTimeBucket(),
-    matchedContact?.name || nameEntity || null
+    resolvedContact?.name || nameEntity || null
   ).catch(() => {});
 
   // v14: Record sequence pattern — detect A→B action chains (non-blocking)
@@ -680,7 +713,7 @@ export async function POST(request) {
         // Allowed
       } else if (parsed.type === 'contact') {
         // Only allow resolved customer (fuzzy matched in business_customers table)
-        if (!matchedContact || !matchedContact.is_business) {
+        if (!resolvedContact || !isBusinessContact) {
           console.warn(`[BIZ-POLICY] Blocked auto-exec: contact is not a resolved customer`);
           isAutoEligible = false;
         }
@@ -691,7 +724,7 @@ export async function POST(request) {
     }
   } else if (isAutoEligible && !workspace_id) {
     // Personal version specific rules: cannot call a business customer
-    if (matchedContact && matchedContact.is_business) {
+    if (resolvedContact && isBusinessContact) {
       isAutoEligible = false;
     }
   }
@@ -802,8 +835,8 @@ export async function POST(request) {
     reminder_at:       keep.reminder_at,
     reminder_nudge_id: reminderNudgeId,
     reminder:          reminderRow,
-    contact_matched:   matchedContact
-      ? { name: matchedContact.name, phone: matchedContact.phone }
+    contact_matched:   resolvedContact
+      ? { name: resolvedContact.name, phone: resolvedContact.phone }
       : null,
     follow_up:         followUp,
     // Voice Brain fields (Phase 3 Step 1)

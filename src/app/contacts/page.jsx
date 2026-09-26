@@ -6,13 +6,21 @@
 // contacts table — but nothing bulk-populated it, so voice actions had an empty
 // phonebook for every real user. This page fills it, with explicit consent.
 //
-// SYNC PATHS (best available wins):
-//   1. NATIVE BRIDGE — window.__QK_CONTACTS__.getAll() -> [{name, phones[], emails[]}]
-//      Implemented by the Android app (Capacitor Contacts + READ_CONTACTS with
-//      Play-compliant disclosure). Full phonebook, re-syncable.
+// SYNC PATHS (best available wins), all behind src/lib/contacts-sync.js:
+//   1. NATIVE — the Capacitor ContactsPlugin, via registerPlugin(). Full
+//      phonebook, re-syncable, READ_CONTACTS with Play-compliant disclosure.
 //   2. WEB CONTACT PICKER — navigator.contacts.select (Chrome Android/PWA).
 //      User multi-selects; no permission persists. Honest partial sync.
 //   3. Neither -> explain, point at the Android app.
+//
+// FIXED 26 Sep 2026. This page used to test for `window.__QK_CONTACTS__`, a
+// plain-JavaScript bridge object that nothing in this repository or in the
+// Android project ever defines, and then fall back to navigator.contacts, which
+// a Capacitor WebView does not expose. Both checks were false inside the
+// QuietKeep Android app, so the page told the user that phonebook sync "needs
+// the QuietKeep Android app" — while they were standing in it. The contacts
+// table stayed empty for every real user, which is why "remind me to call
+// Aravind" had no number to dial and could only be read back aloud.
 //
 // SMS/call-log sync is deliberately ABSENT: Play restricts those permission
 // groups to default-handler apps. Messages reach QuietKeep via the share sheet
@@ -21,6 +29,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { supabase } from '@/lib/supabase';
+import { contactSource, syncDeviceContacts } from '@/lib/contacts-sync';
 import {
   AuroraPage, PageHeader, SectionTitle, Grid, GlassCard,
   StatTile, NudgeCard, Pill, EmptyState, SkeletonCard,
@@ -37,8 +46,13 @@ export default function ContactsPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
-  const hasNativeBridge = typeof window !== 'undefined' && !!window.__QK_CONTACTS__?.getAll;
-  const hasWebPicker = typeof window !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window;
+  // 'native' | 'web' | null. Resolved after mount on purpose: on the server
+  // there is no phonebook, so answering during render would render one thing and
+  // hydrate into another.
+  const [source, setSource] = useState(null);
+  useEffect(() => { setSource(contactSource()); }, []);
+  const hasNativeBridge = source === 'native';
+  const hasWebPicker    = source === 'web';
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -56,35 +70,23 @@ export default function ContactsPage() {
     load();
   }, [user, authLoading, router, load]);
 
-  async function pullDeviceContacts() {
-    // Native bridge first — full phonebook.
-    if (hasNativeBridge) {
-      const raw = await window.__QK_CONTACTS__.getAll();
-      return (raw || []).map(c => ({
-        name: c.name, phone: c.phones?.[0] || c.phone || null, email: c.emails?.[0] || c.email || null,
-      }));
-    }
-    // Web picker — user multi-selects.
-    const picked = await navigator.contacts.select(['name', 'tel', 'email'], { multiple: true });
-    return (picked || []).map(p => ({
-      name: p.name?.[0] || null, phone: p.tel?.[0] || null, email: p.email?.[0] || null,
-    }));
-  }
-
   async function syncNow() {
     if (!consent || syncing) return;
     setSyncing(true); setError(null); setResult(null);
     try {
-      const device = await pullDeviceContacts();
-      if (!device.length) { setError('No contacts selected.'); setSyncing(false); return; }
-      const res = await fetch('/api/contacts/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ contacts: device, consent: true, source: hasNativeBridge ? 'native' : 'web' }),
-      });
-      const j = await res.json().catch(() => null);
-      if (!res.ok) setError(j?.error || `Sync failed (${res.status})`);
-      else { setResult(j); await load(); }
+      const outcome = await syncDeviceContacts({ accessToken, consent: true });
+      if (outcome.empty) {
+        // The native plugin resolves an empty list when READ_CONTACTS is
+        // declined, so this branch covers a refusal as well as an empty
+        // phonebook. Saying "no contacts selected" to someone who just tapped
+        // Deny is the app pretending it does not know what happened.
+        setError(hasNativeBridge
+          ? 'QuietKeep did not receive any contacts. If you declined the contacts permission, allow it in Settings → Apps → QuietKeep → Permissions, then try again.'
+          : 'No contacts were selected.');
+      } else {
+        setResult(outcome);
+        await load();
+      }
     } catch (e) {
       setError(e?.message || 'Could not read device contacts');
     }

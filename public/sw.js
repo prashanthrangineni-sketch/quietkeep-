@@ -67,6 +67,44 @@ function idbGetAllReminders(db) {
 // ── In-memory timer map (rebuilt from IDB on each SW activation) ─
 var _activeTimers = {};
 
+// A REMINDER IS SPOKEN. THE BANNER IS THE FALLBACK, NOT THE FEATURE.
+//
+// This worker cannot speak: speechSynthesis does not exist in a service worker,
+// and neither does an audio element. So it hands the reminder to whichever page
+// is open — src/lib/context/aaria.jsx listens for REMINDER_DUE and says it in
+// Aaria's own voice, in the user's language — and shows a notification only when
+// there is no page there to say it.
+//
+// On the Android app this path is the second string to the bow anyway: the
+// native ReminderAlarm plugin speaks with the app fully closed.
+function notifyInstead(id, text) {
+  return self.registration.showNotification('⏰ QuietKeep Reminder', {
+    body: text,
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    tag: 'reminder-' + id,
+    requireInteraction: true,
+    vibrate: [300, 100, 300],
+    // `speak` is read by the page when the notification is tapped, so a reminder
+    // that arrived as a banner is still read out once someone opens it.
+    data: { url: '/reminders', speak: text },
+  });
+}
+
+function fireReminder(id, text) {
+  return self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then(function(clientList) {
+      if (clientList && clientList.length) {
+        clientList.forEach(function(c) {
+          c.postMessage({ type: 'REMINDER_DUE', id: id, text: text });
+        });
+        return;   // a page is speaking it; a banner on top of that is noise
+      }
+      return notifyInstead(id, text);
+    })
+    .catch(function() { return notifyInstead(id, text); });
+}
+
 function scheduleReminder(db, id, text, fireAt) {
   var delay = fireAt - Date.now();
 
@@ -78,29 +116,13 @@ function scheduleReminder(db, id, text, fireAt) {
 
   if (delay <= 0) {
     // Past due — fire immediately and clean up
-    self.registration.showNotification('⏰ QuietKeep Reminder', {
-      body: text,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'reminder-' + id,
-      requireInteraction: true,
-      vibrate: [300, 100, 300],
-      data: { url: '/reminders' },
-    });
+    fireReminder(id, text);
     idbDeleteReminder(db, id).catch(function() {});
     return;
   }
 
   _activeTimers[id] = setTimeout(function() {
-    self.registration.showNotification('⏰ QuietKeep Reminder', {
-      body: text,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'reminder-' + id,
-      requireInteraction: true,
-      vibrate: [300, 100, 300],
-      data: { url: '/reminders' },
-    });
+    fireReminder(id, text);
     delete _activeTimers[id];
     openReminderDB().then(function(db2) {
       idbDeleteReminder(db2, id).catch(function() {});

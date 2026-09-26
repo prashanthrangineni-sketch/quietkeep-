@@ -127,7 +127,7 @@ export async function POST(request) {
   }
 
   let parsed = parseIntent(text)
-  let reminderAt = computeReminderAt(parsed.entities)
+  let reminderAt = computeReminderAt(parsed.entities, undefined, text)
 
   // ── Understanding brain (multilingual) ────────────────────────────────────
   // The regex parser is English-first: anything it cannot match becomes a

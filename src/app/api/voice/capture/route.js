@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse }   from 'next/server'
 import { createClient }   from '@supabase/supabase-js'
 import { parseIntent, stripWakePhrase }    from '@/lib/intent-parser'
+import { collapseRepeats } from '@/lib/transcript-clean'
 import { aariaAssist }   from '@/lib/aaria-act'
 import { aariaUnderstandLLM } from '@/lib/aaria-llm' // SOT P1: Aaria action brain for utterances regex can't parse
 import {
@@ -96,7 +97,34 @@ export async function POST(request) {
     return NextResponse.json({ error: 'transcript is required' }, { status: 400 })
   }
 
-  const rawText = transcript.trim()
+  // ── UNSTUTTER FIRST. EVERYTHING DOWNSTREAM INHERITS THIS STRING. ──────────
+  //
+  // The Android voice service does not stream. Its own header states the
+  // pipeline in full:
+  //
+  //   mic -> 3s WAV chunk -> POST /api/groq-stt -> transcript
+  //       -> POST /api/voice/capture
+  //
+  // Consecutive three-second chunks overlap, each is transcribed on its own,
+  // and the results are concatenated. So a single sentence arrives as its own
+  // growing prefixes strung together:
+  //
+  //   "remind remind me remind me to remind me to remind me to call remind me"
+  //   "ఐదు ఐదు ఐదు ఐదు ఐదు నిమిషాల్లో ఐదు నిమిషాల్లో ఐదు నిమిషాల్లో"
+  //
+  // Both were saved verbatim as the user's own note on 26 September 2026, and
+  // the second one is why "five minutes" could not be found: the words were
+  // there, buried in four copies of themselves.
+  //
+  // Cleaning it HERE rather than inside the time parser (where #108 put it)
+  // means the saved note is readable too, on every client at once, with no app
+  // build — the app is a shell around this website.
+  //
+  // THIS IS NOT THE REAL FIX. The real fix is step 11 of the plan: QuietKeep
+  // streams to the engine instead of posting chunks, and then there are no
+  // overlapping transcripts to repair. This keeps the product usable until
+  // that lands, and it is deliberately the only place it is done.
+  const rawText = collapseRepeats(transcript.trim())
   const text    = stripWakePhrase(rawText) || rawText
 
   // FIX: Idempotency check — prevent duplicate keeps from double-tap or loop re-entry.

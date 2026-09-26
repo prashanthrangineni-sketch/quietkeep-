@@ -6,7 +6,10 @@
 // The recogniser repeats its partial results into the transcript, so "ఐదు
 // నిమిషాల్లో" arrives as "ఐదు ఐదు ఐదు ఐదు ఐదు నిమిషాల్లో …". The time parser
 // below cannot see through that, so the stutter is collapsed before reading it.
-import { collapseRepeats } from '@/lib/transcript-clean'
+// Relative, with the extension, NOT the '@/lib/...' alias. That alias only
+// exists inside the Next build; the unit suite loads these modules under plain
+// Node, where it does not resolve and the import throws before any test runs.
+import { collapseRepeats } from './transcript-clean.js'
 
 // ── TIME PARSING ──────────────────────────────────────────────────────────────
 // Speech-to-text emits "10 a.m." / "5 P.M." with full stops and inconsistent
@@ -565,7 +568,28 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
   }
 
   if (parsed.type === 'reminder') {
-    const hasSpecificTime = parsed.entities?.times?.length > 0;
+    // WHAT hasSpecificTime IS ACTUALLY ASKING.
+    //
+    // It used to ask "did the parser pull a clock time out of the words?" and
+    // that has been the wrong question since #108 taught the app to understand
+    // "in five minutes". A relative offset resolves straight to an instant and
+    // never writes anything into entities.times — so this branch could hold a
+    // perfectly good reminderAt and still say:
+    //
+    //   "Got it — I'll remind you to call Surya exactly 5 minutes from now
+    //    Sat, 26 Sept. What time should I set it for?"
+    //
+    // Observed live on 26 September 2026 with reminder_at already stored as
+    // 19:02 IST and a reminders row already written. It asked for a time three
+    // lines above the line that prints that very time.
+    //
+    // The right question is "do we HAVE a time?", with one exception preserved:
+    // when the user named a DAY and no clock time ("remind me tomorrow"),
+    // computeReminderAt fills in the current time of day as a placeholder, and
+    // asking which hour they meant is genuinely the correct thing to do.
+    const dayNamedWithoutAClockTime =
+      (parsed.entities?.dates?.length > 0) && !(parsed.entities?.times?.length > 0);
+    const hasSpecificTime = isUsableInstant(reminderAt) && !dayNamedWithoutAClockTime;
     const taskContent     = (parsed.subject || '').replace(/^remind\s+(?:me\s+)?(?:to\s+)?/i, '').trim();
 
     if (reminderAt) {

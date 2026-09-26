@@ -565,7 +565,7 @@ export async function POST(request) {
     service: 'voice_capture',
     details: {
       keep_id: keep.id, source, language, confidence: parsed.confidence,
-      intent_type: parsed.type, contact_matched: !!matchedContact,
+      intent_type: parsed.type, contact_matched: !!resolvedContact,
       reminder_set: !!reminderAt, follow_up_needed: !!followUp, workspace_id,
     },
   }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
@@ -595,7 +595,7 @@ export async function POST(request) {
       inputs: {
         source, language, intent_type: keep.intent_type,
         confidence: parsed.confidence, geo_detected: !!(parsed.geo?.detected),
-        contact_matched: !!matchedContact, is_multi: !!(parsed.is_multi),
+        contact_matched: !!resolvedContact, is_multi: !!(parsed.is_multi),
       },
     });
     voiceRecord.status = 'completed';

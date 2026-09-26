@@ -91,11 +91,11 @@ async function dueBetween(supabase, userId, fromMs, toMs) {
 
   const [reminders, keeps] = await Promise.all([
     supabase.from('reminders')
-      .select('id, reminder_text, scheduled_for')
+      .select('id, reminder_text, scheduled_for, contact_name, contact_phone')
       .eq('user_id', userId).eq('is_active', true)
       .gt('scheduled_for', from).lt('scheduled_for', to),
     supabase.from('keeps')
-      .select('id, content, reminder_at')
+      .select('id, content, reminder_at, intent_type, contact_name, contact_phone')
       .eq('user_id', userId).eq('status', 'open')
       .not('reminder_at', 'is', null)
       .gt('reminder_at', from).lt('reminder_at', to),
@@ -104,13 +104,55 @@ async function dueBetween(supabase, userId, fromMs, toMs) {
   return [
     ...(reminders?.data || []).map((r) => ({
       id: `rem-${r.id}`, text: r.reminder_text, fireAt: new Date(r.scheduled_for).getTime(),
+      contactName: r.contact_name, contactPhone: r.contact_phone,
     })),
     ...(keeps?.data || []).map((k) => ({
       id: `keep-${k.id}`, text: k.content, fireAt: new Date(k.reminder_at).getTime(),
+      contactName: k.contact_name, contactPhone: k.contact_phone,
     })),
   ]
     .filter((r) => r.text && Number.isFinite(r.fireAt))
     .sort((a, b) => a.fireAt - b.fireAt);
+}
+
+// ── WHAT THE REMINDER SHOULD DO, NOT JUST SAY ────────────────────────────────
+//
+// On 26 September 2026 at 20:28 the phone said "Reminder — remind me to call
+// Arvind in 5 minutes" and stopped there. Announcing is not acting, and this
+// product is sold as an assistant that acts.
+//
+// Every piece needed is already in the installed app and none of it was being
+// used:
+//
+//   ReminderAlarmPlugin.schedule()  accepts actionType, phone, whatsappPhone,
+//                                   navigationQuery, alarmHour … and a
+//                                   display_name
+//   AlarmReceiver                   launches CountdownActivity whenever an
+//                                   action_type is present, instead of the
+//                                   plain announce-only branch
+//   ActionExecutor.execute()        "call" / "contact" -> ACTION_CALL on the
+//                                   number
+//
+// THE COUNTDOWN IS THE POINT. It is the plan's step 9 — "confirm at the moment,
+// not in advance" — already built in native code: at the due moment the phone
+// shows what it is about to do with a window to stop it, then does it. A
+// reminder that dials without that window would be a different and much worse
+// product.
+//
+// I scheduled every alarm this morning with only an id, some text and a time,
+// so every one took the announce-only branch. The action was never passed.
+//
+// A CALL NEEDS A NUMBER. When there is none the alarm still speaks and does
+// nothing else — which is the honest behaviour, not a silent failure.
+function actionFor(item) {
+  const phone = String(item.contactPhone || '').trim();
+  if (!phone) return null;
+  if (!/call|phone|ring|కాల్|ఫోన్|कॉल|फ़ोन/i.test(item.text || '')) return null;
+  return {
+    actionType: 'call',
+    phone,
+    display_name: item.contactName || undefined,
+  };
 }
 
 /**
@@ -138,8 +180,13 @@ export async function armVoiceReminders({ supabase, userId }) {
           // predate it ignore the extra option, and ReminderTTSService picks the
           // voice from the script of the text anyway — so an older app still
           // speaks the right language.
+          //
+          // The action, when there is one, is what turns "Reminder — call
+          // Arvind" into a countdown that places the call unless stopped. An
+          // alarm with no action still speaks; it simply does nothing after.
           await alarm.schedule({
             reminderId: r.id, reminderText: r.text, fireAtMs: r.fireAt,
+            ...(actionFor(r) || {}),
           });
           armed++;
         } catch { /* one bad alarm must not stop the rest */ }

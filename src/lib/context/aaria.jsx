@@ -75,6 +75,16 @@ const LANG_MAP = {
   en: 'en-IN', hi: 'hi-IN', te: 'te-IN', ta: 'ta-IN', kn: 'kn-IN',
   ml: 'ml-IN', mr: 'mr-IN', bn: 'bn-IN', gu: 'gu-IN', pa: 'pa-IN',
 };
+
+// How Aaria opens a reminder she is reading out late, so it is heard as a
+// reminder rather than as a sentence arriving from nowhere. Short on purpose:
+// the reminder itself is the content, and the Telugu and Hindi wording here has
+// not been checked by a native speaker.
+const MISSED_PREFIX = {
+  en: 'Reminder.',
+  te: 'గుర్తు చెబుతున్నాను.',
+  hi: 'याद दिला रही हूँ।',
+};
 function speechLang(lang) {
   const l = String(lang || 'en-IN');
   return LANG_MAP[l.split('-')[0]] || l;
@@ -93,6 +103,86 @@ export function AariaProvider({ children }) {
   // reply falls back to the phone's built-in voice, which is what happened
   // for the whole of the product's life until now.
   useEffect(() => { setSpeechAuthToken(accessToken); }, [accessToken]);
+
+  // ── REMINDERS THAT SPEAK ─────────────────────────────────────────────────
+  //
+  // A reminder in a voice product should be SPOKEN, not chimed. The machinery
+  // for that already existed on both sides and had no caller on either:
+  //
+  //   * Android: ReminderAlarmPlugin (registered in MainActivity) →
+  //     AlarmManager → AlarmReceiver → ReminderTTSService, which speaks the
+  //     reminder aloud with the app closed and the screen off. Present in the
+  //     installed v1.2.0-vc9 bundle. Never once asked to schedule anything.
+  //   * Web: the service worker's SCHEDULE_REMINDER handler, with IndexedDB so
+  //     a pending reminder outlives the worker being killed. Never once sent a
+  //     reminder either.
+  //
+  // Why the device and not the server: server-side reminders go out by EMAIL,
+  // and an account created by mobile OTP has a synthetic address on our own
+  // send-only domain. There is nowhere to deliver to. The device needs no email,
+  // no push service and no API key, and it works with the phone offline.
+  //
+  // Re-arming is safe on both paths: the native plugin replaces an alarm with
+  // the same reminderId, and the worker clears an existing timer before setting
+  // a new one.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+
+    async function arm() {
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { armVoiceReminders, speakMissedReminders, canSpeakWhenClosed } =
+          await import('@/lib/reminder-voice');
+        if (cancelled) return;
+
+        // Only the web path needs notification permission, and only so that it
+        // has something to fall back to when no page is open to speak. The
+        // native alarm needs none, so this prompt never appears in the app.
+        if (!canSpeakWhenClosed()
+            && typeof Notification !== 'undefined'
+            && Notification.permission === 'default') {
+          try { await Notification.requestPermission(); } catch {}
+        }
+
+        const armed = await armVoiceReminders({ supabase, userId: user.id });
+        if (cancelled) return;
+        console.log('[Aaria] reminders armed:', armed.armed, 'via', armed.channel);
+
+        // Anything that came due while the phone was in a bag is read out now,
+        // rather than being lost in silence.
+        await speakMissedReminders({
+          supabase, userId: user.id, speak,
+          prefix: MISSED_PREFIX[String(voiceLang || 'en').split('-')[0]] || MISSED_PREFIX.en,
+        });
+      } catch {
+        // Reminders on the device are an addition to delivery, never a
+        // dependency of the app working.
+      }
+    }
+
+    arm();
+    // Anything that creates or changes a reminder can dispatch this to re-arm
+    // without waiting for the next app open.
+    const onChanged = () => { arm(); };
+    window.addEventListener('qk_reminders_changed', onChanged);
+    return () => { cancelled = true; window.removeEventListener('qk_reminders_changed', onChanged); };
+  }, [user?.id, voiceLang]);
+
+  // The service worker wakes at the due moment and asks whichever page is open
+  // to say the reminder out loud. It only falls back to a silent banner when
+  // there is no page to speak — a chime is the failure case here, not the
+  // feature.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    function onWorkerMessage(event) {
+      const msg = event.data;
+      if (!msg || msg.type !== 'REMINDER_DUE' || !msg.text) return;
+      speak(String(msg.text), { priority: 'high' });
+    }
+    navigator.serviceWorker.addEventListener('message', onWorkerMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onWorkerMessage);
+  }, []);
 
   // 'idle' | 'listening' | 'thinking' | 'speaking'
   const [status,     setStatus]     = useState('idle');

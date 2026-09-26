@@ -60,10 +60,33 @@ const INTENTS = [
   'document', 'navigation', 'query', 'note',
 ];
 
+// THE CLOCK THE MODEL READS MUST BE THE USER'S.
+//
+// CURRENT TIME used to be handed over as a bare UTC ISO string with the timezone
+// named beside it, and the model was left to do the arithmetic. It did not. On
+// 26 September 2026 at 17:34 IST it resolved "in five minutes" and reported
+// 12:09 — the UTC wall clock — which the app then read out loud and then failed
+// to store, because 12:09 taken as Indian time is five and a half hours in the
+// past.
+//
+// Both the local wall clock and the absolute instant are now stated, so there is
+// nothing left to infer.
+function clockFor(nowISO, timeZone) {
+  const d = new Date(nowISO);
+  if (isNaN(d.getTime())) return String(nowISO);
+  const local = new Intl.DateTimeFormat('en-GB', {
+    timeZone, hour12: false,
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  }).format(d);
+  return `${local} local time in ${timeZone} (the same instant is ${d.toISOString()} UTC)`;
+}
+
 function buildPrompt({ text, language, nowISO, timezone, workspaceMode, pageLabel }) {
   return `You are Aaria, the voice assistant inside QuietKeep. Decide what the app should DO with what the user said.
 
-CURRENT TIME: ${nowISO} (timezone ${timezone})
+CURRENT TIME: ${clockFor(nowISO, timezone)}
+Every time you state back to the user must be the LOCAL wall clock above, never UTC.
 MODE: ${workspaceMode === 'business' ? 'Business workspace' : 'Personal'}${pageLabel ? `
 SCREEN THE USER IS LOOKING AT: ${pageLabel}
 Use this to break ties, nothing more. On Invoices, a bare amount and a name is
@@ -97,7 +120,16 @@ RULES FOR "reply" (it is spoken aloud):
 - Write it ONLY in ${langName(language)}. Never answer in English if the user spoke another language.
 - Under 20 words, warm, natural, no markdown, no emoji, no jargon.
 - If "missing" is not empty, "reply" MUST be a natural question asking for that one thing.
-- Otherwise confirm what was done, saying the time in a human way.
+- Otherwise say what you are ABOUT TO DO, stating the time in a human way using
+  the local wall clock.
+
+NEVER SAY SOMETHING IS ALREADY DONE. You are reading the sentence, not saving it.
+The saving happens after you answer and it can fail. Write "I'll remind you at
+six" — never "I have set the reminder", "saved", "done", "పెట్టాను", "సెట్
+చేశాను", "कर दिया", "सेट कर दिया". A promise you might not keep is a mistake the
+user can see and repeat; a statement of fact that is false is one they cannot.
+On 26 September 2026 this rule did not exist and three reminders were confirmed
+out loud that were never created.
 
 OTHER RULES:
 - "remind me to pay the electricity bill" is a reminder, NOT an invoice.

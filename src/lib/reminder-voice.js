@@ -180,8 +180,13 @@ export async function armVoiceReminders({ supabase, userId }) {
           // predate it ignore the extra option, and ReminderTTSService picks the
           // voice from the script of the text anyway — so an older app still
           // speaks the right language.
+          //
+          // The action, when there is one, is what turns "Reminder — call
+          // Arvind" into a countdown that places the call unless stopped. An
+          // alarm with no action still speaks; it simply does nothing after.
           await alarm.schedule({
             reminderId: r.id, reminderText: r.text, fireAtMs: r.fireAt,
+            ...(actionFor(r) || {}),
           });
           armed++;
         } catch { /* one bad alarm must not stop the rest */ }

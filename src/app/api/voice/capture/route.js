@@ -835,8 +835,8 @@ export async function POST(request) {
     reminder_at:       keep.reminder_at,
     reminder_nudge_id: reminderNudgeId,
     reminder:          reminderRow,
-    contact_matched:   matchedContact
-      ? { name: matchedContact.name, phone: matchedContact.phone }
+    contact_matched:   resolvedContact
+      ? { name: resolvedContact.name, phone: resolvedContact.phone }
       : null,
     follow_up:         followUp,
     // Voice Brain fields (Phase 3 Step 1)

@@ -6,7 +6,10 @@
 // The recogniser repeats its partial results into the transcript, so "ఐదు
 // నిమిషాల్లో" arrives as "ఐదు ఐదు ఐదు ఐదు ఐదు నిమిషాల్లో …". The time parser
 // below cannot see through that, so the stutter is collapsed before reading it.
-import { collapseRepeats } from '@/lib/transcript-clean'
+// Relative, with the extension, NOT the '@/lib/...' alias. That alias only
+// exists inside the Next build; the unit suite loads these modules under plain
+// Node, where it does not resolve and the import throws before any test runs.
+import { collapseRepeats } from './transcript-clean.js'
 
 // ── TIME PARSING ──────────────────────────────────────────────────────────────
 // Speech-to-text emits "10 a.m." / "5 P.M." with full stops and inconsistent

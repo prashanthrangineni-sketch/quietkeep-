@@ -542,6 +542,11 @@ export async function POST(request) {
           scheduled_for: reminderAt.toISOString(),
           is_active:     true,
           space_type:    workspace_id ? 'business' : 'personal',
+          // Without these the alarm can speak the reminder and nothing else.
+          // src/lib/reminder-voice.js reads contact_phone off THIS row, not off
+          // the keep, and only attaches a call action when it finds one.
+          contact_name:  keep.contact_name  || null,
+          contact_phone: keep.contact_phone || null,
         })
         .select('*')
         .maybeSingle()

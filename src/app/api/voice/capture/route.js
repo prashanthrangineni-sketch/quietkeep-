@@ -211,12 +211,38 @@ export async function POST(request) {
         // reminderAt — so without this the app saved and scheduled the
         // reminder and then still asked "When should I remind you?" and
         // showed the quick-time overlay. Fixed 22 Aug 2026.
+        //
+        // THE WALL CLOCK HERE IS THE USER'S, NOT THE SERVER'S.
+        //
+        // getFullYear/getHours/getMinutes resolve in the server's timezone, and
+        // on Vercel that is UTC. A reminder correctly resolved to 17:39 IST was
+        // written back as "12:09 pm", and every reader downstream took those
+        // strings for Indian time. Aaria read 12:09 out loud, and the re-read
+        // time landed five and a half hours in the PAST, so the reminder was
+        // thrown away — after she had already said it was set.
+        //
+        // Seen live at 17:34 IST on 26 September 2026: keep
+        // 1e426c18-b726-4cec-aed8-3530fa2ec00d, reminder_at NULL.
+        //
+        // This is the same mistake the DEFAULT_TZ comment in
+        // src/lib/intent-executor.js was written to stop, on 22 August, after
+        // every English voice reminder fired 5h30m late. A Date carries an
+        // instant; reading a wall clock off it without naming a zone asks the
+        // server where the user lives.
+        const parts = Object.fromEntries(
+          new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Asia/Kolkata', hour12: false,
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit',
+          }).formatToParts(dt)
+            .filter((x) => x.type !== 'literal')
+            .map((x) => [x.type, x.value])
+        )
+        const hh = parts.hour === '24' ? 0 : Number(parts.hour)
         parsed.entities = parsed.entities || {}
-        parsed.entities.dates = [
-          `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
-        ]
+        parsed.entities.dates = [`${parts.year}-${parts.month}-${parts.day}`]
         parsed.entities.times = [
-          `${(dt.getHours() % 12) || 12}:${String(dt.getMinutes()).padStart(2, '0')} ${dt.getHours() < 12 ? 'am' : 'pm'}`
+          `${(hh % 12) || 12}:${parts.minute} ${hh < 12 ? 'am' : 'pm'}`
         ]
       }
     }

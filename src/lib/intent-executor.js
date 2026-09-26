@@ -55,34 +55,9 @@ export function computeFollowUp(){return null}
 // "take me to Charminar please", "how do I get to Golconda fort",
 // "Charminar ki vellali". Found 21 Sep 2026: only the first worked on the main
 // mic, none worked in Drive mode, and nothing understood "set location to".
-const NAV_REQUEST = /\b(?:navigat\w*|directions?|route to|take me|drive me|go to|get me to|set (?:the |my )?(?:location|destination)|destination|show (?:me )?(?:the )?(?:way|route)|way to|how (?:do i|to|can i) (?:get|reach|go))\b|\s(?:ki|ku|ko|ka)\s+(?:vell\w*|dari\w*|jana\w*|jaana\w*|le chalo|rasta\w*|chalo)\b/i;
-
-export function isNavigationRequest(text) {
-  const s = String(text || '');
-  return NAV_REQUEST.test(s) && !/\b(?:remind|remember|don.t forget)\b/i.test(s);
-}
-
-export function extractDestination(text) {
-  let s = String(text || '').trim().replace(/[.?!,]+$/, '');
-  const roman = s.match(/^(.+?)\s+(?:ki|ku|ko|ka)\s+(?:vell\w*|dari\w*|jana\w*|jaana\w*|le chalo|rasta\w*|chalo)\b/i);
-  if (roman) {
-    s = roman[1];
-  } else {
-    const m = s.match(/\b(?:navigat\w*|directions?|route|take me|drive me|go|going|get me|get|reach|set (?:the |my )?(?:location|destination)|destination|way)\b\s*(?:to|for|till|towards|is|as)?\s+(.+)$/i);
-    if (m) s = m[1];
-  }
-  s = s
-    .replace(/^(?:to|the)\s+/i, '')
-    .replace(/\s+(?:on|in|using|with|via)\s+(?:google\s+)?maps?$/i, '')
-    .replace(/\s+please$/i, '')
-    .trim();
-  if (/^(?:google\s+)?maps?$/i.test(s)) return '';
-  return s.slice(0, 120);
-}
-
-export function navigationUrl(destination) {
-  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&dir_action=navigate&destination=${encodeURIComponent(destination)}`;
-}
+export function isNavigationRequest(){return false}
+export function extractDestination(){return ''}
+export function navigationUrl(){return ''}
 
 // ── CLIENT: EXECUTE ACTION FROM INTENTCARD ────────────────────────────────────
 // Safe browser-only actions. Called from IntentCard handleExecute().

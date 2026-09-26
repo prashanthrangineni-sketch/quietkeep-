@@ -276,19 +276,41 @@ export async function POST(request) {
     }
   }
 
-  let matchedContact = null
-  let allContacts    = []
-  const nameEntity   = parsed.entities?.names?.[0]
+  // ── WHO THE USER MEANT ────────────────────────────────────────────────────
+  //
+  // ONE SHAPE. matchContactByName() returns a WRAPPER, and its own header says
+  // so: null, { single: contact }, or { multiple: [...], ambiguous: true }.
+  // computeFollowUp() and buildExecutionTTS() read `.single` correctly. This
+  // file did not — it read `matchedContact?.phone`, which on a wrapper is
+  // undefined — so keeps.contact_phone was written as null on every capture
+  // ever made, and the auto-exec gate below (`type === 'contact' &&
+  // !keep.contact_phone`) could never open. The business branch had the
+  // mirror-image bug: a flat object, invisible to the two functions that expect
+  // a wrapper. Normalised once, here, into a wrapper plus one flat object.
+  //
+  // WIDER SCOPE. Matching used to run only for contact/meeting/communication.
+  // "Remind me to call Aravind in five minutes" parses as type 'reminder', so
+  // the name was never looked up, the reminder carried no number, and at the
+  // appointed minute the phone said the sentence aloud and stopped. Looking a
+  // name up is a read: it dials nothing by itself, reminder and task remain
+  // excluded from auto-exec further down, and computeFollowUp() only asks
+  // contact questions for contact/meeting — so this adds no new questions.
+  const nameEntity = parsed.entities?.names?.[0]
+  const CONTACT_AWARE_TYPES = [
+    'contact', 'meeting', 'communication',   // as before
+    'reminder', 'task', 'call',              // "remind me to call Aravind"
+  ]
 
-  if (['contact', 'meeting', 'communication'].includes(parsed.type) && nameEntity) {
+  let matchedContact = null     // wrapper shape — for computeFollowUp + TTS
+  let allContacts    = []
+
+  if (CONTACT_AWARE_TYPES.includes(parsed.type) && nameEntity) {
     if (workspace_id) {
       const bizCust = await matchCustomer(supabase, workspace_id, nameEntity);
       if (bizCust) {
         matchedContact = {
-          id: bizCust.id,
-          name: bizCust.name,
-          phone: bizCust.phone,
-          is_business: true
+          single: { id: bizCust.id, name: bizCust.name, phone: bizCust.phone },
+          is_business: true,
         };
       }
     } else {
@@ -298,6 +320,12 @@ export async function POST(request) {
       ])
     }
   }
+
+  // The one flat contact the rest of this file reads. Null when nobody matched,
+  // and null when SEVERAL people matched and we have not asked which — a number
+  // guessed from two Ravis is worse than no number at all.
+  const resolvedContact   = matchedContact?.ambiguous ? null : (matchedContact?.single || null)
+  const isBusinessContact = matchedContact?.is_business === true
 
   const followUp = computeFollowUp(parsed, matchedContact, reminderAt)
 

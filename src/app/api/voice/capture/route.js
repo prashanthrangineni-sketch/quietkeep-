@@ -724,7 +724,7 @@ export async function POST(request) {
     }
   } else if (isAutoEligible && !workspace_id) {
     // Personal version specific rules: cannot call a business customer
-    if (matchedContact && matchedContact.is_business) {
+    if (resolvedContact && isBusinessContact) {
       isAutoEligible = false;
     }
   }

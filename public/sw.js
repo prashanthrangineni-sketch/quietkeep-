@@ -6,7 +6,7 @@
 // load, push event, etc.), all pending reminders are re-read and timers rebuilt.
 // Reminders now survive SW suspension, page reloads, and browser restarts.
 
-const CACHE_VERSION = 'quietkeep-v4';
+const CACHE_VERSION = 'quietkeep-v5';
 const STATIC_CACHE  = CACHE_VERSION + '-static';
 const DYNAMIC_CACHE = CACHE_VERSION + '-dynamic';
 const REMINDER_DB   = 'qk-sw-reminders';

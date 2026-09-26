@@ -3,6 +3,11 @@
 // v2 adds: WhatsApp dispatch, contact disambiguation, task next-step guide,
 //          navigation intent, improved follow-up engine
 
+// The recogniser repeats its partial results into the transcript, so "ఐదు
+// నిమిషాల్లో" arrives as "ఐదు ఐదు ఐదు ఐదు ఐదు నిమిషాల్లో …". The time parser
+// below cannot see through that, so the stutter is collapsed before reading it.
+import { collapseRepeats } from '@/lib/transcript-clean'
+
 // ── TIME PARSING ──────────────────────────────────────────────────────────────
 // Speech-to-text emits "10 a.m." / "5 P.M." with full stops and inconsistent
 // spacing. Normalise those to the bare "am" / "pm" the matchers below expect,

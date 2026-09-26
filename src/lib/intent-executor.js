@@ -499,11 +499,64 @@ export function getExecuteLabel(intent) {
   }
 }
 
+// ── NEVER CONFIRM SOMETHING THAT DID NOT HAPPEN ───────────────────────────────
+//
+// This is the rule the rest of this file has to obey, so it sits above the
+// function that broke it.
+//
+// buildExecutionTTS is handed `reminderAt` — the instant that was actually
+// resolved — and decided its wording from `parsed.entities.times` instead: the
+// words EXTRACTED from the sentence. Those are not the same thing. A time can be
+// extracted and still fail to resolve, and on 26 September 2026 that is exactly
+// what happened three times in a row. Aaria said, in Telugu, "రిమైండర్ సెట్
+// చేశాను" — I have set the reminder — with reminder_at NULL and no row in
+// `reminders`. Keeps dd35295b, da579c00 and 1e426c18, all the same shape.
+//
+// A user who is told the reminder failed can set it again. A user who is told it
+// succeeded cannot. Silence would be better than a false confirmation, and a
+// question is better than silence.
+//
+// The sentence is chosen by the script of the user's own words, so a Telugu
+// speaker is asked in Telugu. Same approach as ReminderTTSService on the Android
+// side, and for the same reason: it works with the callers that already exist
+// rather than only after every one of them is updated.
+const ASK_FOR_TIME = {
+  en: 'I did not catch when. When should I remind you?',
+  te: 'ఎప్పుడు అని నాకు అర్థం కాలేదు. ఎప్పుడు గుర్తు చేయాలి?',
+  hi: 'मुझे समय समझ नहीं आया। कब याद दिलाऊँ?',
+};
+
+function scriptOf(text) {
+  const s = String(text || '');
+  for (const ch of s) {
+    const c = ch.codePointAt(0);
+    if (c >= 0x0C00 && c <= 0x0C7F) return 'te';
+    if (c >= 0x0900 && c <= 0x097F) return 'hi';
+  }
+  return 'en';
+}
+
+/** A real, future instant — not null, not Invalid Date, not already past. */
+export function isUsableInstant(value) {
+  if (!value) return false;
+  const d = value instanceof Date ? value : new Date(value);
+  if (isNaN(d.getTime())) return false;
+  // One minute of slack: the write and the check are not simultaneous.
+  return d.getTime() > Date.now() - 60000;
+}
+
 // ── TTS CONFIRMATION ───────────────────────────────────────────────────────────
 export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
   const name = parsed.entities?.names?.[0];
 
   if (followUp) return followUp.follow_up;
+
+  // THE GUARD. Anything that claims a reminder was set must pass through here
+  // first, and it only passes when there is an instant to set it to.
+  if ((parsed.type === 'reminder' || parsed.type === 'task') && !isUsableInstant(reminderAt)) {
+    const lang = scriptOf(parsed.subject || parsed.content || parsed.text || '');
+    return ASK_FOR_TIME[lang] || ASK_FOR_TIME.en;
+  }
 
   const contact = contactResult?.single || null;
 

@@ -3,47 +3,7 @@
 // v2 adds: WhatsApp dispatch, contact disambiguation, task next-step guide,
 //          navigation intent, improved follow-up engine
 
-// ── TIME PARSING ──────────────────────────────────────────────────────────────
-// Speech-to-text emits "10 a.m." / "5 P.M." with full stops and inconsistent
-// spacing. Normalise those to the bare "am" / "pm" the matchers below expect,
-// otherwise a spoken time parses to null and is silently discarded.
-function normalizeMeridiem(s) {
-  return String(s).toLowerCase()
-    .replace(/\ba\.?\s?m\.?/g, 'am')
-    .replace(/\bp\.?\s?m\.?/g, 'pm')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function parseTimeToDate(timeStr, referenceDate = new Date()) {
-  if (!timeStr) return null;
-  const t = normalizeMeridiem(timeStr);
-  let hours = null; let minutes = 0;
-
-  const ap = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
-  if (ap) {
-    hours   = parseInt(ap[1]);
-    minutes = ap[2] ? parseInt(ap[2]) : 0;
-    if (ap[3] === 'pm' && hours < 12) hours += 12;
-    if (ap[3] === 'am' && hours === 12) hours = 0;
-  }
-  const h24 = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (h24) { hours = parseInt(h24[1]); minutes = parseInt(h24[2]); }
-
-  if (hours === null || hours > 23 || minutes > 59) return null;
-  const d = new Date(referenceDate);
-  d.setHours(hours, minutes, 0, 0);
-  if (d <= new Date()) d.setDate(d.getDate() + 1);
-  return d;
-}
-
-function parseDateString(dateStr) {
-  if (!dateStr) return null;
-  const s = String(dateStr);
-  if (!s || s === 'Invalid Date' || s === '[object Date]') return null;
-  try { const d = new Date(s); if (!isNaN(d.getTime())) return d; } catch {}
-  return null;
-}
+function parseTimeToDate(){return null} function parseDateString(){return null}
 
 // ── TIMEZONE ──────────────────────────────────────────────────────────────────
 // setHours() resolves in the SERVER's timezone. On Vercel that is UTC, so

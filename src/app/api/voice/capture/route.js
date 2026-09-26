@@ -713,7 +713,7 @@ export async function POST(request) {
         // Allowed
       } else if (parsed.type === 'contact') {
         // Only allow resolved customer (fuzzy matched in business_customers table)
-        if (!matchedContact || !matchedContact.is_business) {
+        if (!resolvedContact || !isBusinessContact) {
           console.warn(`[BIZ-POLICY] Blocked auto-exec: contact is not a resolved customer`);
           isAutoEligible = false;
         }

@@ -60,6 +60,31 @@ test('MUST NOT BREAK: a day with no hour asks which hour', () => {
   assert.match(f.follow_up, /what time/i)
 })
 
+test('and is not asked "when is this meeting?" either', () => {
+  // The second question, one branch below the first. Freeing the call from
+  // "now or later?" dropped it in here until the branch learned to read the
+  // time as well. A relative offset writes nothing into entities.dates or
+  // entities.times, so only reminderAt can see it.
+  const f = computeFollowUp(callInFive, surya, inFiveMinutes())
+  assert.equal(f, null)
+
+  const alsoWithoutAContact = computeFollowUp(callInFive, null, inFiveMinutes())
+  assert.doesNotMatch(alsoWithoutAContact?.follow_up || '', /when is this meeting/i)
+})
+
+test('MUST NOT BREAK: a meeting with genuinely no time is still asked about', () => {
+  const vague = {
+    type: 'meeting',
+    subject: 'meeting with Surya Kiran',
+    entities: { names: ['Surya Kiran'], dates: [], times: [] },
+  }
+  assert.match(computeFollowUp(vague, null, null).follow_up, /isn't in your contacts|when is this meeting/i)
+  assert.match(
+    computeFollowUp({ ...vague, entities: { names: [], dates: [], times: [] } }, null, null).follow_up,
+    /who do you want to contact/i
+  )
+})
+
 test('MUST NOT BREAK: a real meeting is not turned into a phone call', () => {
   const meeting = {
     type: 'meeting',

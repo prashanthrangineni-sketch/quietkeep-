@@ -94,6 +94,94 @@ export function AariaProvider({ children }) {
   // for the whole of the product's life until now.
   useEffect(() => { setSpeechAuthToken(accessToken); }, [accessToken]);
 
+  // ── REMINDERS THAT ACTUALLY RING ─────────────────────────────────────────
+  //
+  // public/sw.js has carried a complete reminder scheduler since Sprint 2: a
+  // SCHEDULE_REMINDER message handler, IndexedDB persistence so a pending
+  // reminder outlives the worker being killed, and a rebuild of every timer on
+  // each activation. Its own comment explains why all of that was necessary.
+  //
+  // NOTHING IN THE APP EVER POSTED THAT MESSAGE. The scheduler has never been
+  // handed a single reminder. It is the same shape of defect as the wake-word
+  // engine that was imported only by the settings screen that configured it:
+  // working code with no caller.
+  //
+  // Why this is the channel worth wiring first: the server side sends reminders
+  // by EMAIL, and an account created by mobile OTP has a synthetic address on
+  // our own send-only domain — there is nowhere to deliver to. A notification
+  // raised by the device needs no push service, no API key and no email, and it
+  // works with the phone offline.
+  //
+  // Re-armed on every app open, 36 hours ahead. Re-posting a reminder the worker
+  // already holds is harmless: scheduleReminder() clears the existing timer for
+  // that id before setting the new one, and IndexedDB is keyed by id.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+
+    async function armDeviceReminders() {
+      if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+      if (typeof Notification === 'undefined') return;
+      try {
+        // Asked here rather than at app load: at load there is no session, and a
+        // permission prompt with no context is the one people refuse.
+        if (Notification.permission === 'default') {
+          try { await Notification.requestPermission(); } catch {}
+        }
+        if (Notification.permission !== 'granted') return;
+
+        const reg = await navigator.serviceWorker.ready;
+        if (cancelled || !reg?.active) return;
+
+        const { supabase } = await import('@/lib/supabase');
+        const now = Date.now();
+        const horizon = new Date(now + 36 * 60 * 60 * 1000).toISOString();
+        const from = new Date(now).toISOString();
+
+        const [remindersRes, keepsRes] = await Promise.all([
+          supabase.from('reminders')
+            .select('id, reminder_text, scheduled_for')
+            .eq('user_id', user.id).eq('is_active', true)
+            .gt('scheduled_for', from).lt('scheduled_for', horizon),
+          supabase.from('keeps')
+            .select('id, content, reminder_at')
+            .eq('user_id', user.id).eq('status', 'open')
+            .not('reminder_at', 'is', null)
+            .gt('reminder_at', from).lt('reminder_at', horizon),
+        ]);
+        if (cancelled) return;
+
+        const due = [
+          ...(remindersRes?.data || []).map((r) => ({
+            id: `rem-${r.id}`, text: r.reminder_text,
+            fireAt: new Date(r.scheduled_for).getTime(),
+          })),
+          ...(keepsRes?.data || []).map((k) => ({
+            id: `keep-${k.id}`, text: k.content,
+            fireAt: new Date(k.reminder_at).getTime(),
+          })),
+        ].filter((r) => r.text && Number.isFinite(r.fireAt) && r.fireAt > now);
+
+        for (const r of due) {
+          reg.active.postMessage({
+            type: 'SCHEDULE_REMINDER', id: r.id, text: r.text, fireAt: r.fireAt,
+          });
+        }
+        if (due.length) console.log('[Aaria] armed', due.length, 'device reminders');
+      } catch {
+        // No notifications on this device, or offline. The app is unaffected —
+        // this is an addition to reminder delivery, never a dependency of it.
+      }
+    }
+
+    armDeviceReminders();
+    // Anything that creates or changes a reminder can dispatch this to re-arm
+    // without waiting for the next app open.
+    const onChanged = () => { armDeviceReminders(); };
+    window.addEventListener('qk_reminders_changed', onChanged);
+    return () => { cancelled = true; window.removeEventListener('qk_reminders_changed', onChanged); };
+  }, [user?.id]);
+
   // 'idle' | 'listening' | 'thinking' | 'speaking'
   const [status,     setStatus]     = useState('idle');
   const [open,       setOpen]       = useState(false);

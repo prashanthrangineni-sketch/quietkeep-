@@ -301,8 +301,35 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
       };
     }
 
-    // Name found, phone available → offer call vs remind
-    if (name && contactResult?.single?.phone) {
+    // THE TIME THE USER ALREADY GAVE.
+    //
+    // "Call Surya Kiran in five minutes" answers "now or later?" before it is
+    // asked. This branch asked anyway, because it never looked at reminderAt —
+    // a parameter it has taken since 22 August. Observed on the founder's phone
+    // on 26 September 2026: the keep was stored with reminder_at 21:39 IST and
+    // a reminders row was written, and Aaria still asked which he wanted. The
+    // same sentence prefixed with "remind me to" is classified as a reminder,
+    // skips this branch entirely, and was confirmed correctly — which is why
+    // one phrasing worked and the other did not.
+    //
+    // A DAY WITH NO HOUR is the one case still worth a question, and it is a
+    // different question. computeReminderAt fills in the current time of day as
+    // a placeholder for "call Surya tomorrow", so the hour genuinely is not
+    // known yet — but "now or a reminder?" is not what is missing. The time is.
+    const dayNamedWithoutAClockTime =
+      (entities?.dates?.length > 0) && !(entities?.times?.length > 0);
+    const timeAlreadyGiven = isUsableInstant(reminderAt) && !dayNamedWithoutAClockTime;
+
+    if (name && contactResult?.single?.phone && dayNamedWithoutAClockTime) {
+      return {
+        follow_up:   `What time should I call ${name}?`,
+        action_hint: 'time_needed',
+        contact:     contactResult.single,
+      };
+    }
+
+    // Name found, phone available, and no time said → offer call vs remind
+    if (name && contactResult?.single?.phone && !timeAlreadyGiven) {
       return {
         follow_up:   `Call ${name} now or set a reminder?`,
         action_hint: 'call_or_remind',
@@ -338,8 +365,22 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
     };
   }
 
-  // Meeting with no date
-  if (type === 'meeting' && !entities?.dates?.length && !entities?.times?.length) {
+  // Meeting with no date.
+  //
+  // isUsableInstant(reminderAt) is the same short-circuit the reminder branch
+  // above carries, and for the same reason: a relative offset ("in five
+  // minutes", "ఐదు నిమిషాల్లో") resolves directly to an instant and writes
+  // NOTHING into entities.dates or entities.times, so testing the entities
+  // alone cannot see a time that is plainly there.
+  //
+  // This bit me one commit ago. Releasing "call Surya Kiran in 5 minutes" from
+  // the now-or-later question dropped it straight into this branch, which asked
+  // "When is this meeting?" about an instruction that had just been given a
+  // time — one useless question traded for another.
+  if (type === 'meeting'
+      && !isUsableInstant(reminderAt)
+      && !entities?.dates?.length
+      && !entities?.times?.length) {
     return {
       follow_up:   'When is this meeting? Add a date and time.',
       action_hint: 'time_needed',
@@ -539,6 +580,20 @@ function scriptOf(text) {
   return 'en';
 }
 
+// Does this instruction actually ask for a phone call?
+//
+// The SAME verb list that src/lib/reminder-voice.js uses when it decides
+// whether to attach a dial action to a scheduled alarm. If the two ever drift
+// apart, Aaria promises a call the alarm will not place, or the alarm places
+// one she never mentioned. They are kept identical on purpose.
+const CALL_VERB = /\b(call|phone|ring|dial)\b|కాల్|ఫోన్|कॉल|फ़ोन|फोन/i;
+
+function looksLikeACall(parsed) {
+  return CALL_VERB.test(
+    String(parsed?.subject || parsed?.content || parsed?.text || '')
+  );
+}
+
 /** A real, future instant — not null, not Invalid Date, not already past. */
 export function isUsableInstant(value) {
   if (!value) return false;
@@ -562,6 +617,34 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
   }
 
   const contact = contactResult?.single || null;
+
+  // A PERSON, A NUMBER, AND A TIME — nothing left to ask.
+  //
+  // "Call Surya Kiran in five minutes" used to come back as a question, which
+  // is what the founder reported on 26 September. Everything needed is known,
+  // so say what is about to happen instead.
+  //
+  // Three guards, because this must not leak:
+  //   1. the words must actually ask for a call (English, Telugu or Hindi), so
+  //      "meeting with Surya at 3pm" stays a meeting;
+  //   2. the instant must be real and in the future, so a stale value falls
+  //      through to the older wording rather than promising anything;
+  //   3. reminder and task keep their own confirmation, which reads correctly.
+  if (
+    contact?.phone
+    && isUsableInstant(reminderAt)
+    && looksLikeACall(parsed)
+    && parsed.type !== 'reminder'
+    && parsed.type !== 'task'
+  ) {
+    const dt      = new Date(reminderAt);
+    const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: DEFAULT_TZ });
+    const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: DEFAULT_TZ });
+    // An intention, not a claim of completion — and an accurate one: at that
+    // minute the alarm opens a countdown carrying this number and dials unless
+    // the countdown is cancelled.
+    return `Right — ${dateStr} at ${timeStr} I'll call ${contact.name || name}.`;
+  }
 
   if (parsed.type === 'contact' && contact?.phone) {
     return `Keep saved. ${name || 'Contact'} is in your contacts. Tap the call button to dial now.`;

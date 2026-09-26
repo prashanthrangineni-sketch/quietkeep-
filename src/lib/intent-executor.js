@@ -86,10 +86,94 @@ function zonedDateParts(date, timeZone) {
   return { y: +p.year, mo: +p.month - 1, d: +p.day };
 }
 
+// ── RELATIVE TIMES: "in five minutes", "ఐదు నిమిషాల్లో", "दस मिनट में" ────────
+//
+// computeReminderAt below understands two things: a calendar DATE and a clock
+// TIME. "In five minutes" is neither. So it returned null, reminder_at was left
+// empty, no reminders row was written — and Aaria said out loud "రిమైండర్ సెట్
+// చేశాను", I have set the reminder.
+//
+// Observed live at 17:08 IST on 26 September 2026: keep
+// da579c00-cccb-4fec-b387-1df2fc5a7b0b, reminder_at NULL, no reminders row, and
+// a spoken confirmation that it was done. Telling someone their reminder is set
+// when it is not is the worst failure this product can have, and the immediate
+// cause was that the commonest phrasing in the language was not parsed at all.
+//
+// Note the numbers are WORDS, not digits. Speech recognition writes "ఐదు", not
+// "5", so digit-only matching would have missed every spoken reminder in Telugu.
+const NUMBER_WORDS = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
+  nine: 9, ten: 10, eleven: 11, twelve: 12, fifteen: 15, twenty: 20,
+  thirty: 30, forty: 40, fortyfive: 45, sixty: 60, ninety: 90, a: 1, an: 1,
+  // Telugu
+  'ఒకటి': 1, 'ఒక': 1, 'రెండు': 2, 'మూడు': 3, 'నాలుగు': 4, 'ఐదు': 5, 'అయిదు': 5,
+  'ఆరు': 6, 'ఏడు': 7, 'ఎనిమిది': 8, 'తొమ్మిది': 9, 'పది': 10, 'పదిహేను': 15,
+  'ఇరవై': 20, 'ముప్పై': 30, 'నలభై': 40, 'అరవై': 60,
+  // Hindi
+  'एक': 1, 'दो': 2, 'तीन': 3, 'चार': 4, 'पांच': 5, 'पाँच': 5, 'छह': 6, 'सात': 7,
+  'आठ': 8, 'नौ': 9, 'दस': 10, 'पंद्रह': 15, 'बीस': 20, 'तीस': 30, 'चालीस': 40,
+};
+
+// Prefix match, because Telugu and Hindi inflect the unit: నిమిషం, నిమిషాలు,
+// నిమిషాల్లో; मिनट, मिनटों. A whole-word list would miss the forms people
+// actually say.
+const MINUTE_UNIT = ['minute', 'minutes', 'min', 'mins', 'నిమిష', 'मिनट'];
+const HOUR_UNIT   = ['hour', 'hours', 'hr', 'hrs', 'గంట', 'घंट'];
+
+function unitOf(word) {
+  const w = String(word || '').toLowerCase().replace(/[.,!?;:]+$/, '');
+  if (MINUTE_UNIT.some((u) => w.startsWith(u))) return 'minute';
+  if (HOUR_UNIT.some((u) => w.startsWith(u)))   return 'hour';
+  return null;
+}
+
+function numberOf(word) {
+  const w = String(word || '').toLowerCase().replace(/[.,!?;:]+$/, '');
+  if (/^\d{1,3}$/.test(w)) return parseInt(w, 10);
+  return Object.prototype.hasOwnProperty.call(NUMBER_WORDS, w) ? NUMBER_WORDS[w] : null;
+}
+
+/**
+ * Minutes from now that this utterance asks for, or null.
+ *
+ * Scans for a minute/hour word and looks back up to three words for the count,
+ * which survives the filler that sits between them in every language here
+ * ("in five more minutes", "ఐదు నిమిషాల్లో", "दस मिनट के बाद").
+ */
+export function relativeMinutesFromText(rawText) {
+  const text = collapseRepeats(String(rawText || ''));
+  if (!text.trim()) return null;
+
+  if (/half an hour|అరగంట|आधा घंटा/i.test(text)) return 30;
+
+  const words = text.trim().split(/\s+/);
+  for (let i = 0; i < words.length; i++) {
+    const unit = unitOf(words[i]);
+    if (!unit) continue;
+    for (let back = 1; back <= 3 && i - back >= 0; back++) {
+      const n = numberOf(words[i - back]);
+      if (n === null) continue;
+      const minutes = unit === 'hour' ? n * 60 : n;
+      // A sane window. Anything beyond two days is a date, not an offset, and
+      // treating it as one would move a reminder to the wrong week.
+      if (minutes > 0 && minutes <= 48 * 60) return minutes;
+      break;
+    }
+  }
+  return null;
+}
+
 // ── COMPUTE reminder_at FROM ENTITIES ─────────────────────────────────────────
-export function computeReminderAt(entities, timeZone = DEFAULT_TZ) {
-  if (!entities) return null;
-  const { dates = [], times = [] } = entities;
+export function computeReminderAt(entities, timeZone = DEFAULT_TZ, rawText = '') {
+  if (!entities && !rawText) return null;
+  const { dates = [], times = [] } = entities || {};
+
+  // A relative offset is checked FIRST and only when no date or time was
+  // extracted, so "tomorrow at ten" keeps its existing behaviour exactly.
+  if (!dates.length && !times.length && rawText) {
+    const mins = relativeMinutesFromText(rawText);
+    if (mins !== null) return new Date(Date.now() + mins * 60000);
+  }
 
   let baseDate = null;
   for (const d of dates) { const p = parseDateString(d); if (p) { baseDate = p; break; } }

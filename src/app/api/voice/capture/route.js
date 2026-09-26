@@ -49,73 +49,9 @@ export async function POST(request) {
   const rawText = transcript.trim()
   const text    = stripWakePhrase(rawText) || rawText
 
-  // FIX: Idempotency check — prevent duplicate keeps from double-tap or loop re-entry.
-  // Auto-generate a key if none supplied: SHA-256 of (userId + text + 60s window).
-  // This means identical text from the same user within 60 seconds is deduplicated.
-  let resolvedIdempotencyKey = idempotency_key || null;
-  if (!resolvedIdempotencyKey) {
-    const windowMin = Math.floor(Date.now() / 60000); // 60-second dedup window
-    resolvedIdempotencyKey = `${user.id}:${text.slice(0, 80)}:${windowMin}`;
-  }
-
-  // Check if this keep was already saved in this dedup window
-  const { data: existingKeep } = await supabase
-    .from('keeps')
-    .select('id,content,intent_type,status,created_at')
-    .eq('user_id', user.id)
-    .eq('idempotency_key', resolvedIdempotencyKey)
-    .maybeSingle();
-
-  if (existingKeep) {
-    // Return the already-saved keep without re-inserting
-    return NextResponse.json({
-      keep:          existingKeep,
-      intent:        existingKeep,
-      tts_response:  'Already saved.',
-      deduplicated:  true,
-    }, { status: 200 });
-  }
-
   let parsed = parseIntent(text)
   let reminderAt = computeReminderAt(parsed.entities)
-
-  // ── Understanding brain (multilingual) ────────────────────────────────────
-  // The regex parser is English-first: anything it cannot match becomes a
-  // generic 'note' and nothing happens. Run the LLM whenever the regex result
-  // is weak OR the user did not speak English, then upgrade the parse.
-  // Entirely fail-safe: if the brain is unavailable we keep the regex result.
-  const langBase = String(language || 'en').split('-')[0]
-  const regexWeak = parsed.type === 'unknown' || parsed.type === 'note' || (parsed.confidence ?? 0) < 0.7
-
-    // The regex parser is CONFIDENTLY WRONG about money direction — measured
-    // 13 Aug 2026: "Ramesh se paanch sau rupaye aaye" (money RECEIVED) came back
-    // as `expense` at 0.95 confidence, so a confidence gate alone never rescues
-    // it. Anything money-shaped, or anything written in romanised Hindi/Telugu
-    // (which arrives tagged en-IN), must go to the brain.
-    const MONEY_TYPES = new Set(['expense', 'income', 'purchase', 'sale', 'invoice', 'ledger_credit', 'ledger_debit'])
-    const ROMAN_INDIC = /\b(se|ko|ka|ki|ke|liye|diye|diya|aaye|aaya|mile|mila|rupaye|rupay|rupees|hazaar|hajaar|sau|lakh|kal|aaj|parso|subah|shaam|raat|baje|yaad|dilana|karna|chahiye|nahi|gurthu|repu|nenu|meeru|cheyyi|kavali|ivvu|vachindi|ravali)\b/i
   let llmAssist = null
-
-  const needsBrain =
-      regexWeak ||
-      langBase !== 'en' ||
-      MONEY_TYPES.has(parsed.type) ||
-      ROMAN_INDIC.test(text) ||
-      ((parsed.type === 'reminder' || parsed.type === 'task') && !reminderAt)
-
-    if (needsBrain) {
-    llmAssist = await aariaUnderstandLLM(text, {
-      language,
-      nowISO: new Date().toISOString(),
-      timezone: 'Asia/Kolkata',
-      workspaceMode: workspace_id ? 'business' : 'personal',
-      // Trimmed hard: this goes into a prompt, and an unbounded client string
-      // in a prompt is how injection gets in. A screen label is never long.
-      pageLabel: typeof page_context?.label === 'string'
-        ? page_context.label.replace(/[^\w &/-]/g, '').slice(0, 40)
-        : null,
-    }).catch(() => null)
-  }
 
   if (llmAssist && llmAssist.confidence >= 0.55) {
     // Map the brain's vocabulary onto the intent types this app executes.

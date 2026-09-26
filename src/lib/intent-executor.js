@@ -62,70 +62,10 @@ export function navigationUrl(){return ''}
 // ── CLIENT: EXECUTE ACTION FROM INTENTCARD ────────────────────────────────────
 // Safe browser-only actions. Called from IntentCard handleExecute().
 // Returns { executed, action_taken, url? }
-export function executeClientAction(intent) {
-  const type    = intent.intent_type;
-  const content = intent.content || '';
-  const phone   = intent.contact_phone || null;
-  const name    = intent.contact_name  || null;
-
-  switch (type) {
-
-    case 'contact': {
-      if (phone) {
-        window.location.href = `tel:${phone}`;
-        return { executed: true, action_taken: `Calling ${name || phone}` };
-      }
-      // No phone — open WhatsApp with name pre-filled if possible
-      return { executed: false, action_taken: 'No phone number — add contact first' };
-    }
-
-
-    default:
-      return { executed: false, action_taken: null };
-  }
-}
-
-// ── CLIENT: WHATSAPP DISPATCH ──────────────────────────────────────────────────
-// Opens WhatsApp with pre-filled message. Phone must be E.164 without '+'.
-export function openWhatsApp(phone, message = '') {
-  if (!phone) return false;
-  const cleaned = phone.replace(/\D/g, '');
-  const url = message
-    ? `https://wa.me/${cleaned}?text=${encodeURIComponent(message)}`
-    : `https://wa.me/${cleaned}`;
-  window.open(url, '_blank');
-  return true;
-}
-
-// ── EXECUTABLE_TYPES ───────────────────────────────────────────────────────────
-// Set of intent types that have a meaningful client-side execute action.
-// Used by IntentCard to decide whether to show the execute button.
-export const EXECUTABLE_TYPES = new Set([
-  'contact',
-  'meeting',
-  'trip',
-  'navigation',
-  'purchase',
-  'document',
-]);
-
-// ── GET EXECUTE LABEL ──────────────────────────────────────────────────────────
-// Returns the label string for the execute button, or null if not applicable.
-// Used by IntentCard.
-export function getExecuteLabel(intent) {
-  const type  = intent.intent_type;
-  const phone = intent.contact_phone;
-  const name  = intent.contact_name;
-  switch (type) {
-    case 'contact':    return phone ? `📞 Call ${name || ''}`.trim() : '📞 Call';
-    case 'meeting':    return '📅 Calendar';
-    case 'trip':
-    case 'navigation': return '🗺️ Maps';
-    case 'purchase':   return '🛒 Shop';
-    case 'document':   return '📎 Scan';
-    default:           return null;
-  }
-}
+export function executeClientAction(){return {executed:false,action_taken:null}}
+export function openWhatsApp(){return false}
+export const EXECUTABLE_TYPES = new Set([]);
+export function getExecuteLabel(){return null}
 
 // ── TTS CONFIRMATION ───────────────────────────────────────────────────────────
 export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {

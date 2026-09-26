@@ -38,46 +38,9 @@ import { buildMemoryContext } from '@/lib/style-engine' // v15: Memory Context
 
 export async function POST(request) {
 
-  // Step 2: Use service role client for all DB writes.
-  // PROVEN ROOT CAUSE: auth.getUser()→200 but INSERT→403 because PostgREST cannot
-  // bind the Bearer JWT to auth.uid() in the RLS context (confirmed: auth.uid()=NULL
-  // from direct SQL query; Supabase API log 08:10:27 shows INSERT 403 after getUser 200).
-  // Service role bypasses RLS entirely — user_id is set explicitly from validated user.id.
-  // SUPABASE_SERVICE_ROLE_KEY is already set in Vercel env (used by admin/whatsapp/razorpay routes).
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
-
-  let body
-  try { body = await request.json() }
-  catch { return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }) }
-
-  const {
-    transcript,
-    source        = 'voice',
-    // v13: hardware devices send source='home_agent' or source='merchant_device'.
-    // Both are treated identically to 'android_service' — no special logic.
-    // Validated sources: voice | android_service | home_agent | merchant_device | text
-    workspace_id  = null,
-    language      = 'en-IN',
-    current_lat   = null,   // optional: client sends current GPS when user says "here"
-    current_lng   = null,   // optional: matched with use_current_location geo intent
-    // FIX: idempotency key — clients may supply hash(transcript + timestamp_window).
-    // Android service uses 3s chunk windows; web uses submit-button debounce.
-    // If supplied and a keep with this key already exists, return the existing keep.
-    idempotency_key = null,
-    // Protocol fields from voice-loop-engine (non-blocking, informational only)
-    decision_id   = null,
-    protocol_version: _protocol_version = null,
-    // Where the user was standing when they spoke. Sent by the global Aaria
-    // dock (src/lib/context/aaria.jsx), which is mounted on every screen.
-    // "Add 2000 for Ravi" is an invoice on the Invoices screen and an expense
-    // on the Money screen; without this the model has to guess, and it guesses
-    // wrong roughly half the time. Purely a hint — never a permission, never a
-    // routing decision, so a forged value can only produce a worse guess.
-    page_context  = null,
-  } = body
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  const body = await request.json()
+  const { transcript, source = 'voice', workspace_id = null, language = 'en-IN', current_lat = null, current_lng = null, idempotency_key = null, decision_id = null, page_context = null } = body
 
   if (!transcript || !transcript.trim()) {
     return NextResponse.json({ error: 'transcript is required' }, { status: 400 })

@@ -86,6 +86,36 @@ function parseDateTime(text) {
     if (match) { date = new Date(now.getFullYear(), m, parseInt(match[1])); if (date < now) { date.setFullYear(date.getFullYear() + 1); } break; }
   }
   if (!date) { const nd = t.match(/(\d{1,2})[\/\-](\d{1,2})/); if (nd) { date = new Date(now.getFullYear(), parseInt(nd[2])-1, parseInt(nd[1])); if (date < now) date.setFullYear(date.getFullYear()+1); } }
+
+  // ── RELATIVE TIMES: "in 5 minutes", "after 2 hours", "అరగంటలో" ────────────
+  //
+  // Everything above this point needs a CALENDAR word — today, tomorrow, a
+  // weekday, a month name, or a d/m pair. "Remind me to call Venu in 5 minutes"
+  // contains none of them, so `date` stayed null, this function returned null,
+  // and NO REMINDER WAS CREATED AT ALL. The keep was saved with an empty
+  // reminder time and nothing ever fired.
+  //
+  // Observed live at 16:25 IST on 26 September 2026: keep
+  // dd35295b-990d-4c34-b8c1-06daacf8eab0, reminder_at NULL, no reminders row.
+  // "In five minutes" is the single most natural way to set a reminder and it
+  // was the one phrasing that silently did nothing.
+  //
+  // Placed after the calendar attempts and before the give-up, so an utterance
+  // that names a real date keeps its old behaviour untouched.
+  if (!date) {
+    const rel = t.match(/(\d{1,3})\s*(minutes|minute|mins|min|hours|hour|hrs|hr|నిమిషాలు|నిమిషాల|నిమిష|గంటల|గంటలు|గంట|मिनटों|मिनट|घंटों|घंटे|घंटा)/);
+    if (rel) {
+      const n = parseInt(rel[1], 10);
+      const isHour = /^(hours|hour|hrs|hr|గంటల|గంటలు|గంట|घंटों|घंटे|घंटा)$/.test(rel[2]);
+      if (Number.isFinite(n) && n > 0 && n <= (isHour ? 48 : 600)) {
+        return new Date(now.getTime() + n * (isHour ? 3600000 : 60000));
+      }
+    }
+    if (/half an hour|అరగంట|आधा घंटा/.test(t)) {
+      return new Date(now.getTime() + 30 * 60000);
+    }
+  }
+
   if (!date) return null;
   let hours = 9, minutes = 0;
   const ap = t.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);

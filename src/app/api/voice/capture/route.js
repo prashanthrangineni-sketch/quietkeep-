@@ -610,7 +610,7 @@ export async function POST(request) {
     user.id,
     parsed.type,
     getTimeBucket(),
-    matchedContact?.name || nameEntity || null
+    resolvedContact?.name || nameEntity || null
   ).catch(() => {});
 
   // v14: Record sequence pattern — detect A→B action chains (non-blocking)

@@ -31,6 +31,23 @@ const FONT_IMPORT_URL = {
 
 const DISPLAY_LOCALE = { 'hi-IN': 'hi', 'te-IN': 'te' }
 
+// WHO PUT THE LANGUAGE IN BROWSER STORAGE.
+//
+// This matters more than it looks. qk_voice_lang is written in two completely
+// different situations: because the user picked a language, and because this
+// provider applied whatever it already had while setting the font. Those two
+// must not carry the same authority.
+//
+// Yesterday's fix — adopt the account's saved language when the device has none
+// — was defeated by exactly that confusion. Every device that had ever opened
+// the app already held 'en-IN', written by the app itself, so "the device has
+// none" was never true and the account was never consulted. An account set to
+// te-IN still spoke English after the deploy, which is what the founder heard.
+//
+// So a choice is now recorded as a choice.
+const SOURCE_KEY = 'qk_voice_lang_source'
+const CHOSEN_BY_USER = 'user'
+
 const LanguageContext = createContext({
   voiceLang: 'en-IN', setVoiceLang: () => {},
   fontFamily: FONT_MAP['en-IN'], isNonEnglish: false, displayLocale: 'en',
@@ -50,7 +67,15 @@ export function LanguageProvider({ children, initialLang = 'en-IN' }) {
     return initialLang;
   })
 
-  const setVoiceLang = useCallback((lang) => {
+  /**
+   * Apply a language to this device.
+   *
+   * `chosen` says whether a human picked it. Settings screens leave it at the
+   * default of true; anything applying a value the app already had, or one read
+   * back from the account, passes false. Only a chosen value is allowed to
+   * outrank the account later.
+   */
+  const setVoiceLang = useCallback((lang, { chosen = true } = {}) => {
     _setVoiceLang(lang)
     const font = FONT_MAP[lang] || FONT_MAP['en-IN']
     // Apply font immediately to document root so body inherits via CSS var
@@ -66,13 +91,18 @@ export function LanguageProvider({ children, initialLang = 'en-IN' }) {
     }
     const locale = DISPLAY_LOCALE[lang] || 'en'
     document.cookie = `qk_display_lang=${locale};path=/;max-age=31536000;SameSite=Lax`
-    try { localStorage.setItem('qk_voice_lang', lang) } catch {}
+    try {
+      localStorage.setItem('qk_voice_lang', lang)
+      if (chosen) localStorage.setItem(SOURCE_KEY, CHOSEN_BY_USER)
+    } catch {}
   }, [])
 
   useEffect(() => {
     try {
       const s = localStorage.getItem('qk_voice_lang');
-      if (s && s !== voiceLang) setVoiceLang(s)
+      // chosen:false — re-applying a value we already had is not a decision, and
+      // marking it as one is precisely the bug this file was changed to fix.
+      if (s && s !== voiceLang) setVoiceLang(s, { chosen: false })
       else if (voiceLang) {
         // Apply font immediately on mount even if lang hasn't changed
         const font = FONT_MAP[voiceLang] || FONT_MAP['en-IN']
@@ -84,27 +114,27 @@ export function LanguageProvider({ children, initialLang = 'en-IN' }) {
 
   // ── THE LANGUAGE THE USER ACTUALLY CHOSE ────────────────────────────────
   //
-  // Everything above this point reads the language from THIS DEVICE — the
-  // qk_voice_lang key in browser storage, or the qk_display_lang cookie that
-  // src/app/layout.jsx turns into initialLang. Both are empty on a fresh
-  // install, on a new device, and in the Android WebView after its storage is
-  // cleared, and the fallback in every one of those paths is 'en-IN'.
+  // The three places that decide the spoken language — src/app/layout.jsx, this
+  // file, and getCurrentLang() in VoiceTalkback.jsx — all read this device and
+  // fall back to 'en-IN'. The user's actual choice is saved on the account, in
+  // user_settings.voice_language, by /settings/voice and /api/voice/preferences.
   //
-  // Meanwhile /settings/voice and /api/voice/preferences save the user's choice
-  // to user_settings.voice_language. NOTHING READ IT BACK. A user whose account
-  // said te-IN was spoken to in English, changing the setting appeared to do
-  // nothing, and closing and reopening the app could not help — the app was
-  // never asking the account in the first place.
+  // The account is read once at startup, and it wins UNLESS this device holds a
+  // language the user picked here. So:
   //
-  // One read, once, at startup, and only when the device has no choice of its
-  // own: a language picked on the device always wins, so this can never
-  // override something the user just chose.
+  //   * fresh install, new device, cleared storage  → account decides
+  //   * device holds 'en-IN' the app wrote itself   → account decides
+  //   * user picked Telugu on this device           → Telugu stands
+  //
+  // A language chosen on the device is never overridden. Everything else is no
+  // longer allowed to masquerade as a choice.
   useEffect(() => {
     let cancelled = false
 
     async function adoptSavedLanguage() {
       try {
-        if (localStorage.getItem('qk_voice_lang')) return   // the device has a choice
+        const chosenHere = localStorage.getItem(SOURCE_KEY) === CHOSEN_BY_USER
+        if (chosenHere) return            // the user picked this, leave it alone
       } catch { /* storage blocked — fall through and ask the account */ }
 
       try {
@@ -120,7 +150,9 @@ export function LanguageProvider({ children, initialLang = 'en-IN' }) {
         // so both candidates are checked against FONT_MAP instead of trusted.
         const saved = [data?.voice_language, data?.preferred_language]
           .find((code) => code && FONT_MAP[code])
-        if (saved && !cancelled) setVoiceLang(saved)
+        // chosen:false — this came from the account, not from a tap on this
+        // device, so it must not start outranking the account on the next load.
+        if (saved && !cancelled) setVoiceLang(saved, { chosen: false })
       } catch { /* offline, signed out, or blocked: English stands */ }
     }
 

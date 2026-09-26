@@ -79,57 +79,6 @@ export function executeClientAction(intent) {
       return { executed: false, action_taken: 'No phone number — add contact first' };
     }
 
-    case 'meeting': {
-      // Prefill Google Calendar event with content as title
-      const start = new Date();
-      const end   = new Date(start.getTime() + 3_600_000);
-      const fmt   = (d) => d.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
-      const url   = `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(content)}&dates=${fmt(start)}/${fmt(end)}`;
-      window.open(url, '_blank');
-      return { executed: true, action_taken: 'Opened Google Calendar' };
-    }
-
-    case 'trip':
-    case 'navigation': {
-      // Extract destination from content
-      const query = extractDestination(content) || content;
-      window.open(navigationUrl(query), '_blank');
-      return { executed: true, action_taken: `Opened Maps: ${query.slice(0, 40)}` };
-    }
-
-    case 'purchase': {
-      // Detect platform from content
-      const lower = content.toLowerCase();
-      let url;
-      if (lower.includes('flipkart'))      url = `https://www.flipkart.com/search?q=${encodeURIComponent(content)}`;
-      else if (lower.includes('swiggy'))   url = `https://www.swiggy.com`;
-      else if (lower.includes('zomato'))   url = `https://www.zomato.com`;
-      else if (lower.includes('blinkit') || lower.includes('grocery')) url = `https://blinkit.com`;
-      else                                 url = `https://www.amazon.in/s?k=${encodeURIComponent(content)}`;
-      window.open(url, '_blank');
-      return { executed: true, action_taken: `Opened shopping: ${content.slice(0, 40)}` };
-    }
-
-    case 'document': {
-      if (typeof document !== 'undefined') {
-        const inp    = document.createElement('input');
-        inp.type     = 'file';
-        inp.accept   = 'application/pdf,image/*';
-        inp.capture  = 'environment';
-        inp.click();
-        return { executed: true, action_taken: 'Opened camera/file picker' };
-      }
-      return { executed: false, action_taken: 'File picker unavailable' };
-    }
-
-    case 'task': {
-      // Tasks don't auto-execute but return a guide for next step
-      return {
-        executed:     false,
-        action_taken: null,
-        guide:        `Next step for: "${content.slice(0, 60)}"`,
-      };
-    }
 
     default:
       return { executed: false, action_taken: null };

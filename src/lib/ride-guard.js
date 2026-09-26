@@ -269,6 +269,60 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     onState?.('hard_brake', { speedBeforeKmh: previous.kmh, decelKmhPerS: dropPerSecond });
   }
 
+  // ── Warnings about spots ahead ─────────────────────────────────────────
+  // The braking spots collected above are only worth collecting if they come
+  // back out as a warning in time to matter. The quiet rules live in
+  // hazard-alerts.js; this part only fetches the spots near the rider and
+  // speaks what comes back. Spots are refetched when the rider has moved a
+  // kilometre, or every five minutes, so one ride is a handful of requests.
+  const SPOTS_REFRESH_MS = 5 * 60 * 1000;
+  const SPOTS_REFRESH_METRES = 1000;
+  const warner = createHazardWarner();
+  let spots = [];
+  let spotsFetchedAt = 0;
+  let spotsFetchedNear = null;
+  let fetchingSpots = false;
+  let lastHeadingDeg = null;
+
+  async function refreshSpots(at) {
+    if (fetchingSpots) return;
+    if (typeof lastFix.lat !== 'number') return;
+    const stale = at - spotsFetchedAt > SPOTS_REFRESH_MS;
+    const moved = !spotsFetchedNear || metresBetween(lastFix, spotsFetchedNear) > SPOTS_REFRESH_METRES;
+    if (!stale && !moved) return;
+
+    fetchingSpots = true;
+    try {
+      const token = getAccessToken?.();
+      const res = await fetch('/api/ride/hazards-near', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+        body: JSON.stringify({ lat: lastFix.lat, lng: lastFix.lng, radiusMetres: 3000 }),
+      });
+      const data = await res.json();
+      if (Array.isArray(data?.spots)) {
+        spots = data.spots;
+        spotsFetchedAt = at;
+        spotsFetchedNear = { lat: lastFix.lat, lng: lastFix.lng };
+      }
+    } catch { /* offline: the ride simply goes unwarned */ }
+    fetchingSpots = false;
+  }
+
+  function checkForHazardAhead(kmh) {
+    const at = now();
+    refreshSpots(at);
+    if (!spots.length || typeof lastFix.lat !== 'number') return;
+    if (overlayShown) return; // a crash check-in is on screen; nothing else speaks
+    const warning = warner.update(
+      { lat: lastFix.lat, lng: lastFix.lng, headingDeg: lastHeadingDeg, speedKmh: kmh, at },
+      spots
+    );
+    if (!warning) return;
+    speak(warning.phrase);
+    onState?.('hazard_warning', warning);
+  }
+
   function trigger(detail = {}) {
     if (overlayShown) return;
     lastCrash = detail;

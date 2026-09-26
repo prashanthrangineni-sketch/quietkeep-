@@ -301,41 +301,146 @@ function getTimeOfDay() {
   return 'night';
 }
 
+// WHY THIS IS NO LONGER JUST user_metadata.full_name || user.email.
+//
+// Sign-in by mobile number gives the account a synthetic email —
+// "919515479595@quietkeep.com" — and user_metadata frequently carries no name
+// at all. The old two-line version fell through to that email, split it on
+// "@", and handed "919515479595" to the speech engine, which read it out as
+// "nine hundred and nineteen billion...". Every phone-OTP account was greeted
+// by its own phone number.
+//
+// src/components/dashboard/DashboardHero.jsx already carries exactly this
+// guard, for the greeting ON SCREEN, and its comment says so in plain words.
+// The SPOKEN greeting was never given the same treatment, so the bug survived
+// the fix that was supposed to kill it. It is written once, here, because this
+// module is the only place that turns a user object into a spoken name.
+function firstWord(value) {
+  return String(value || '').trim().split(/[\s@]/)[0] || '';
+}
+
+function asName(value) {
+  const word = firstWord(value);
+  if (!word) return '';
+  // Digits, plus signs and brackets: a phone number, an account id, or the
+  // local part of a synthetic email. Never a name, and never worth speaking.
+  if (/^[\d+()\-.]+$/.test(word)) return '';
+  return word;
+}
+
 function firstName(user) {
-  const name = user?.user_metadata?.full_name || user?.email || '';
-  return name.split(/[\s@]/)[0] || '';
+  return asName(user?.profile_name)                 // profiles.full_name, when the caller has it
+      || asName(user?.user_metadata?.full_name)
+      || asName(user?.user_metadata?.name)
+      || asName(user?.email)
+      || '';
 }
 
 // ── Lifecycle talkback — call these at specific app events ────────
 
+// THE GREETING IS SPOKEN IN THE USER'S LANGUAGE, NOT IN ENGLISH.
+//
+// Everything Aaria says goes out at getCurrentLang(). Leaving these strings in
+// English meant that the moment the language plumbing was fixed, an Indic
+// voice would be handed English words — which is worse, not better. So the
+// words exist per language for the three the product actually claims (English,
+// Telugu, Hindi) and fall back to English for the rest.
+//
+// The Telugu and Hindi wording here is NEW and has not been checked by a
+// native speaker. It is deliberately short for that reason.
+const GREETING_WORDS = {
+  en: {
+    morning: 'Good morning', afternoon: 'Good afternoon',
+    evening: 'Good evening', night: 'Late night',
+    reminders: (n) => `${n} reminder${n === 1 ? '' : 's'} today.`,
+    keeps:     (n) => `${n} open keep${n === 1 ? '' : 's'}.`,
+    nothing:   'How can I help?',
+  },
+  te: {
+    morning: 'శుభోదయం', afternoon: 'నమస్కారం',
+    evening: 'శుభ సాయంత్రం', night: 'శుభ రాత్రి',
+    reminders: (n) => `ఈ రోజు ${n} రిమైండర్లు ఉన్నాయి.`,
+    keeps:     (n) => `${n} keeps పెండింగ్‌లో ఉన్నాయి.`,
+    nothing:   'ఏం సహాయం చేయాలి?',
+  },
+  hi: {
+    morning: 'सुप्रभात', afternoon: 'नमस्ते',
+    evening: 'शुभ संध्या', night: 'शुभ रात्रि',
+    reminders: (n) => `आज ${n} रिमाइंडर हैं।`,
+    keeps:     (n) => `${n} keeps बाकी हैं।`,
+    nothing:   'मैं क्या मदद करूँ?',
+  },
+};
+
+function greetingWords() {
+  const code = String(getCurrentLang() || 'en-IN').split('-')[0];
+  return GREETING_WORDS[code] || GREETING_WORDS.en;
+}
+
+// A NUMBER IN THE GREETING MUST BE REAL OR ABSENT.
+//
+// keepCount and reminderCount used to default to 0, and the afternoon variant
+// read the keep count out unconditionally — so a caller that had not finished
+// loading the counts, or never passed them at all, made Aaria announce "zero
+// open keeps" to an account holding fifty-three of them. Speaking a confident
+// wrong number is worse than speaking none: it tells the user their data is
+// gone.
+//
+// So: a count that was not supplied is looked up here, once, behind the same
+// session guard that stops the greeting repeating. If the lookup fails the
+// greeting mentions no number rather than inventing a zero.
+async function countsFor(userId) {
+  try {
+    const { supabase } = await import('@/lib/supabase');
+    const [keeps, reminders] = await Promise.all([
+      supabase.from('keeps').select('id', { count: 'exact', head: true })
+        .eq('user_id', userId).eq('status', 'open').is('archived_at', null),
+      supabase.from('reminders').select('id', { count: 'exact', head: true })
+        .eq('user_id', userId).eq('is_active', true),
+    ]);
+    return {
+      keepCount:     Number.isFinite(keeps?.count)     ? keeps.count     : null,
+      reminderCount: Number.isFinite(reminders?.count) ? reminders.count : null,
+    };
+  } catch {
+    return { keepCount: null, reminderCount: null };
+  }
+}
+
 // A. Call from dashboard useEffect when session first loads
-export function greetOnLogin(user, keepCount = 0, reminderCount = 0) {
+export function greetOnLogin(user, keepCount, reminderCount) {
   if (hasGreetedThisSession()) return; // sessionStorage guard — reliable across SPA nav
   markGreetedThisSession();
   if (!voiceEnabled) return;
-  const tod = getTimeOfDay();
-  const name = firstName(user);
-  const greetings = {
-    morning: [
-      `Good morning${name ? ', ' + name : ''}. ${reminderCount > 0 ? `You have ${reminderCount} reminder${reminderCount > 1 ? 's' : ''} today.` : 'Ready to keep?'}`,
-      `Morning${name ? ', ' + name : ''}. ${keepCount > 0 ? `${keepCount} open keep${keepCount > 1 ? 's' : ''} waiting.` : 'A fresh start.'}`,
-    ],
-    afternoon: [
-      `Good afternoon${name ? ', ' + name : ''}. ${reminderCount > 0 ? `${reminderCount} reminder${reminderCount > 1 ? 's' : ''} due.` : 'How can I help?'}`,
-      `Hey${name ? ' ' + name : ''}. Afternoon check-in — ${keepCount} open keep${keepCount !== 1 ? 's' : ''}.`,
-    ],
-    evening: [
-      `Good evening${name ? ', ' + name : ''}. ${reminderCount > 0 ? `${reminderCount} item${reminderCount > 1 ? 's' : ''} still pending.` : 'Winding down?'}`,
-      `Evening${name ? ', ' + name : ''}. ${keepCount > 0 ? `${keepCount} keep${keepCount > 1 ? 's' : ''} open.` : 'All clear today.'}`,
-    ],
-    night: [
-      `Late night${name ? ', ' + name : ''}. ${keepCount > 0 ? `Still ${keepCount} open keep${keepCount > 1 ? 's' : ''}.` : "You're all caught up."}`,
-      `Hey${name ? ' ' + name : ''}. Night owl mode.`,
-    ],
+
+  const words = greetingWords();
+  const lang  = getCurrentLang();
+  const name  = firstName(user);
+  const tod   = getTimeOfDay();
+
+  function utter(counts) {
+    const hello  = name ? `${words[tod]}, ${name}.` : `${words[tod]}.`;
+    const detail =
+      counts.reminderCount ? words.reminders(counts.reminderCount) :
+      counts.keepCount     ? words.keeps(counts.keepCount) :
+      words.nothing;
+    speak(`${hello} ${detail}`.trim(), { rate: 0.88, lang });
+  }
+
+  const supplied = {
+    keepCount:     Number.isFinite(keepCount)     ? keepCount     : null,
+    reminderCount: Number.isFinite(reminderCount) ? reminderCount : null,
   };
-  const options = greetings[tod];
-  const msg = options[Math.floor(Math.random() * options.length)];
-  speak(msg, { rate: 0.88 });
+  if (supplied.keepCount !== null || supplied.reminderCount !== null) {
+    utter(supplied);
+    return;
+  }
+
+  const id = user?.id;
+  if (!id) { utter({ keepCount: null, reminderCount: null }); return; }
+  countsFor(id)
+    .then(utter)
+    .catch(() => utter({ keepCount: null, reminderCount: null }));
 }
 
 // B. Call from dashboard when user returns after inactivity (>30 min)

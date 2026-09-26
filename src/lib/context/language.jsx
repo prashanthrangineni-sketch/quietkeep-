@@ -82,6 +82,52 @@ export function LanguageProvider({ children, initialLang = 'en-IN' }) {
     } catch {}
   }, []) // eslint-disable-line
 
+  // ── THE LANGUAGE THE USER ACTUALLY CHOSE ────────────────────────────────
+  //
+  // Everything above this point reads the language from THIS DEVICE — the
+  // qk_voice_lang key in browser storage, or the qk_display_lang cookie that
+  // src/app/layout.jsx turns into initialLang. Both are empty on a fresh
+  // install, on a new device, and in the Android WebView after its storage is
+  // cleared, and the fallback in every one of those paths is 'en-IN'.
+  //
+  // Meanwhile /settings/voice and /api/voice/preferences save the user's choice
+  // to user_settings.voice_language. NOTHING READ IT BACK. A user whose account
+  // said te-IN was spoken to in English, changing the setting appeared to do
+  // nothing, and closing and reopening the app could not help — the app was
+  // never asking the account in the first place.
+  //
+  // One read, once, at startup, and only when the device has no choice of its
+  // own: a language picked on the device always wins, so this can never
+  // override something the user just chose.
+  useEffect(() => {
+    let cancelled = false
+
+    async function adoptSavedLanguage() {
+      try {
+        if (localStorage.getItem('qk_voice_lang')) return   // the device has a choice
+      } catch { /* storage blocked — fall through and ask the account */ }
+
+      try {
+        const { supabase } = await import('@/lib/supabase')
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user || cancelled) return
+        const { data } = await supabase
+          .from('user_settings')
+          .select('voice_language,preferred_language')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        // preferred_language is sometimes a bare 'en' rather than a full code,
+        // so both candidates are checked against FONT_MAP instead of trusted.
+        const saved = [data?.voice_language, data?.preferred_language]
+          .find((code) => code && FONT_MAP[code])
+        if (saved && !cancelled) setVoiceLang(saved)
+      } catch { /* offline, signed out, or blocked: English stands */ }
+    }
+
+    adoptSavedLanguage()
+    return () => { cancelled = true }
+  }, [setVoiceLang])
+
   return (
     <LanguageContext.Provider value={{
       voiceLang, setVoiceLang,

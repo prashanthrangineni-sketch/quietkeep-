@@ -4,6 +4,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/auth';
+// Without this the language picker below is decoration: it POSTs the choice to
+// user_settings and never touches the value the speaking code actually reads.
+import { useLanguage } from '@/lib/context/language';
 import { availableWakeModes, getWakeMode, setWakeMode } from '@/lib/wake-word-engine';
 import { isWebHotwordEnabled, setWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 
@@ -20,6 +23,7 @@ const SAMPLE_LINE = 'Hello, I am setting up my QuietKeep voice. Please remind me
 
 export default function VoiceSettings() {
   const { accessToken } = useAuth();
+  const { setVoiceLang } = useLanguage();
   const [prefs, setPrefs] = useState(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -48,6 +52,10 @@ export default function VoiceSettings() {
 
   async function save(patch) {
     setPrefs(p => ({ ...p, ...patch })); setSaving(true); setMsg('');
+    // Apply it to this device immediately. Deliberately before the fetch: if
+    // the save fails the user still hears the language they just chose, and
+    // the LanguageProvider startup read will reconcile on the next launch.
+    if (patch.voice_language) { try { setVoiceLang(patch.voice_language); } catch {} }
     try {
       await fetch('/api/voice/preferences', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },

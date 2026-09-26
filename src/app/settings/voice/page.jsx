@@ -23,6 +23,7 @@ const SAMPLE_LINE = 'Hello, I am setting up my QuietKeep voice. Please remind me
 
 export default function VoiceSettings() {
   const { accessToken } = useAuth();
+  const { setVoiceLang } = useLanguage();
   const [prefs, setPrefs] = useState(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');

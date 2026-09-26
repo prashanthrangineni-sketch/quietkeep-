@@ -94,93 +94,85 @@ export function AariaProvider({ children }) {
   // for the whole of the product's life until now.
   useEffect(() => { setSpeechAuthToken(accessToken); }, [accessToken]);
 
-  // ── REMINDERS THAT ACTUALLY RING ─────────────────────────────────────────
+  // ── REMINDERS THAT SPEAK ─────────────────────────────────────────────────
   //
-  // public/sw.js has carried a complete reminder scheduler since Sprint 2: a
-  // SCHEDULE_REMINDER message handler, IndexedDB persistence so a pending
-  // reminder outlives the worker being killed, and a rebuild of every timer on
-  // each activation. Its own comment explains why all of that was necessary.
+  // A reminder in a voice product should be SPOKEN, not chimed. The machinery
+  // for that already existed on both sides and had no caller on either:
   //
-  // NOTHING IN THE APP EVER POSTED THAT MESSAGE. The scheduler has never been
-  // handed a single reminder. It is the same shape of defect as the wake-word
-  // engine that was imported only by the settings screen that configured it:
-  // working code with no caller.
+  //   * Android: ReminderAlarmPlugin (registered in MainActivity) →
+  //     AlarmManager → AlarmReceiver → ReminderTTSService, which speaks the
+  //     reminder aloud with the app closed and the screen off. Present in the
+  //     installed v1.2.0-vc9 bundle. Never once asked to schedule anything.
+  //   * Web: the service worker's SCHEDULE_REMINDER handler, with IndexedDB so
+  //     a pending reminder outlives the worker being killed. Never once sent a
+  //     reminder either.
   //
-  // Why this is the channel worth wiring first: the server side sends reminders
-  // by EMAIL, and an account created by mobile OTP has a synthetic address on
-  // our own send-only domain — there is nowhere to deliver to. A notification
-  // raised by the device needs no push service, no API key and no email, and it
-  // works with the phone offline.
+  // Why the device and not the server: server-side reminders go out by EMAIL,
+  // and an account created by mobile OTP has a synthetic address on our own
+  // send-only domain. There is nowhere to deliver to. The device needs no email,
+  // no push service and no API key, and it works with the phone offline.
   //
-  // Re-armed on every app open, 36 hours ahead. Re-posting a reminder the worker
-  // already holds is harmless: scheduleReminder() clears the existing timer for
-  // that id before setting the new one, and IndexedDB is keyed by id.
+  // Re-arming is safe on both paths: the native plugin replaces an alarm with
+  // the same reminderId, and the worker clears an existing timer before setting
+  // a new one.
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
 
-    async function armDeviceReminders() {
-      if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
-      if (typeof Notification === 'undefined') return;
+    async function arm() {
       try {
-        // Asked here rather than at app load: at load there is no session, and a
-        // permission prompt with no context is the one people refuse.
-        if (Notification.permission === 'default') {
-          try { await Notification.requestPermission(); } catch {}
-        }
-        if (Notification.permission !== 'granted') return;
-
-        const reg = await navigator.serviceWorker.ready;
-        if (cancelled || !reg?.active) return;
-
         const { supabase } = await import('@/lib/supabase');
-        const now = Date.now();
-        const horizon = new Date(now + 36 * 60 * 60 * 1000).toISOString();
-        const from = new Date(now).toISOString();
-
-        const [remindersRes, keepsRes] = await Promise.all([
-          supabase.from('reminders')
-            .select('id, reminder_text, scheduled_for')
-            .eq('user_id', user.id).eq('is_active', true)
-            .gt('scheduled_for', from).lt('scheduled_for', horizon),
-          supabase.from('keeps')
-            .select('id, content, reminder_at')
-            .eq('user_id', user.id).eq('status', 'open')
-            .not('reminder_at', 'is', null)
-            .gt('reminder_at', from).lt('reminder_at', horizon),
-        ]);
+        const { armVoiceReminders, speakMissedReminders, canSpeakWhenClosed } =
+          await import('@/lib/reminder-voice');
         if (cancelled) return;
 
-        const due = [
-          ...(remindersRes?.data || []).map((r) => ({
-            id: `rem-${r.id}`, text: r.reminder_text,
-            fireAt: new Date(r.scheduled_for).getTime(),
-          })),
-          ...(keepsRes?.data || []).map((k) => ({
-            id: `keep-${k.id}`, text: k.content,
-            fireAt: new Date(k.reminder_at).getTime(),
-          })),
-        ].filter((r) => r.text && Number.isFinite(r.fireAt) && r.fireAt > now);
-
-        for (const r of due) {
-          reg.active.postMessage({
-            type: 'SCHEDULE_REMINDER', id: r.id, text: r.text, fireAt: r.fireAt,
-          });
+        // Only the web path needs notification permission, and only so that it
+        // has something to fall back to when no page is open to speak. The
+        // native alarm needs none, so this prompt never appears in the app.
+        if (!canSpeakWhenClosed()
+            && typeof Notification !== 'undefined'
+            && Notification.permission === 'default') {
+          try { await Notification.requestPermission(); } catch {}
         }
-        if (due.length) console.log('[Aaria] armed', due.length, 'device reminders');
+
+        const armed = await armVoiceReminders({ supabase, userId: user.id });
+        if (cancelled) return;
+        console.log('[Aaria] reminders armed:', armed.armed, 'via', armed.channel);
+
+        // Anything that came due while the phone was in a bag is read out now,
+        // rather than being lost in silence.
+        await speakMissedReminders({
+          supabase, userId: user.id, speak,
+          prefix: MISSED_PREFIX[String(voiceLang || 'en').split('-')[0]] || MISSED_PREFIX.en,
+        });
       } catch {
-        // No notifications on this device, or offline. The app is unaffected —
-        // this is an addition to reminder delivery, never a dependency of it.
+        // Reminders on the device are an addition to delivery, never a
+        // dependency of the app working.
       }
     }
 
-    armDeviceReminders();
+    arm();
     // Anything that creates or changes a reminder can dispatch this to re-arm
     // without waiting for the next app open.
-    const onChanged = () => { armDeviceReminders(); };
+    const onChanged = () => { arm(); };
     window.addEventListener('qk_reminders_changed', onChanged);
     return () => { cancelled = true; window.removeEventListener('qk_reminders_changed', onChanged); };
-  }, [user?.id]);
+  }, [user?.id, voiceLang]);
+
+  // The service worker wakes at the due moment and asks whichever page is open
+  // to say the reminder out loud. It only falls back to a silent banner when
+  // there is no page to speak — a chime is the failure case here, not the
+  // feature.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    function onWorkerMessage(event) {
+      const msg = event.data;
+      if (!msg || msg.type !== 'REMINDER_DUE' || !msg.text) return;
+      speak(String(msg.text), { priority: 'high' });
+    }
+    navigator.serviceWorker.addEventListener('message', onWorkerMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onWorkerMessage);
+  }, []);
 
   // 'idle' | 'listening' | 'thinking' | 'speaking'
   const [status,     setStatus]     = useState('idle');

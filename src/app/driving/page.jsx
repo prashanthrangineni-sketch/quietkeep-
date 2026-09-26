@@ -95,6 +95,11 @@ export default function DrivingPage() {
         // the position is what gets sent to the rider's contacts.
         feedRideSpeed(speed !== null ? speed * 3.6 : null, {
           lat, lng, accuracy: pos.coords.accuracy ?? null,
+          // Which way the rider is pointing, so a warning is only spoken for
+          // spots actually ahead — not ones across the divider or behind.
+          headingDeg: typeof pos.coords.heading === 'number' && !isNaN(pos.coords.heading)
+            ? pos.coords.heading
+            : null,
         });
 
         if (lastPosRef.current) {

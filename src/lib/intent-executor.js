@@ -566,6 +566,20 @@ function scriptOf(text) {
   return 'en';
 }
 
+// Does this instruction actually ask for a phone call?
+//
+// The SAME verb list that src/lib/reminder-voice.js uses when it decides
+// whether to attach a dial action to a scheduled alarm. If the two ever drift
+// apart, Aaria promises a call the alarm will not place, or the alarm places
+// one she never mentioned. They are kept identical on purpose.
+const CALL_VERB = /\b(call|phone|ring|dial)\b|కాల్|ఫోన్|कॉल|फ़ोन|फोन/i;
+
+function looksLikeACall(parsed) {
+  return CALL_VERB.test(
+    String(parsed?.subject || parsed?.content || parsed?.text || '')
+  );
+}
+
 /** A real, future instant — not null, not Invalid Date, not already past. */
 export function isUsableInstant(value) {
   if (!value) return false;

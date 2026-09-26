@@ -301,8 +301,35 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
       };
     }
 
-    // Name found, phone available → offer call vs remind
-    if (name && contactResult?.single?.phone) {
+    // THE TIME THE USER ALREADY GAVE.
+    //
+    // "Call Surya Kiran in five minutes" answers "now or later?" before it is
+    // asked. This branch asked anyway, because it never looked at reminderAt —
+    // a parameter it has taken since 22 August. Observed on the founder's phone
+    // on 26 September 2026: the keep was stored with reminder_at 21:39 IST and
+    // a reminders row was written, and Aaria still asked which he wanted. The
+    // same sentence prefixed with "remind me to" is classified as a reminder,
+    // skips this branch entirely, and was confirmed correctly — which is why
+    // one phrasing worked and the other did not.
+    //
+    // A DAY WITH NO HOUR is the one case still worth a question, and it is a
+    // different question. computeReminderAt fills in the current time of day as
+    // a placeholder for "call Surya tomorrow", so the hour genuinely is not
+    // known yet — but "now or a reminder?" is not what is missing. The time is.
+    const dayNamedWithoutAClockTime =
+      (entities?.dates?.length > 0) && !(entities?.times?.length > 0);
+    const timeAlreadyGiven = isUsableInstant(reminderAt) && !dayNamedWithoutAClockTime;
+
+    if (name && contactResult?.single?.phone && dayNamedWithoutAClockTime) {
+      return {
+        follow_up:   `What time should I call ${name}?`,
+        action_hint: 'time_needed',
+        contact:     contactResult.single,
+      };
+    }
+
+    // Name found, phone available, and no time said → offer call vs remind
+    if (name && contactResult?.single?.phone && !timeAlreadyGiven) {
       return {
         follow_up:   `Call ${name} now or set a reminder?`,
         action_hint: 'call_or_remind',

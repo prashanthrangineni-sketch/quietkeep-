@@ -46,6 +46,10 @@ public class MainActivity extends BridgeActivity {
     private android.webkit.ValueCallback<android.net.Uri[]> mFilePathCallback;
     private PermissionRequest mPendingAudioPermissionRequest = null;
 
+    /** When back was last pressed with nowhere left to go. See onBackPressed(). */
+    private long mLastBackPressAt = 0L;
+    private static final long EXIT_CONFIRM_WINDOW_MS = 2000L;
+
     // Server URL baked in at build time — always the production API host.
     private static final String SERVER_URL = "https://quietkeep.com";
 

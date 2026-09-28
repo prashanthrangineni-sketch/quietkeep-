@@ -878,8 +878,13 @@ export default function Dashboard() {
     try { await apiPost(`/api/keeps/${id}/feedback`, { outcome, latency_seconds: null }, accessToken); } catch {}
   }
 
-  const openIntents = intents.filter(i => i.status !== 'closed');
-  const closedIntents = intents.filter(i => i.status === 'closed');
+  // BOTH of these end a keep. The transition RPC accepts either, and the valid
+  // -state list in src/app/api/keeps/[id]/transition/route.js carries both -
+  // but these two lines only knew about 'closed', so a keep finished as 'done'
+  // was counted as still Open and the Done tile stayed at zero.
+  const TERMINAL = new Set(['closed', 'done']);
+  const openIntents = intents.filter(i => !TERMINAL.has(i.status));
+  const closedIntents = intents.filter(i => TERMINAL.has(i.status));
   const filterIntents = (list) => {
     if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();

@@ -44,8 +44,31 @@ const HOMOPHONES = {
   lotus: ['lotus', 'notice', 'lotto'],
 };
 
+/**
+ * Are we inside the Capacitor Android shell rather than a browser?
+ *
+ * Read off window.Capacitor, which the shell injects, rather than by importing
+ * @capacitor/core — this module is loaded by tests/aaria-hotword.test.mjs under
+ * plain node, where that import does not resolve and would take the whole suite
+ * down before a single assertion ran.
+ */
+function isNativeShell() {
+  if (typeof window === 'undefined') return false;
+  const cap = window.Capacitor;
+  if (!cap) return false;
+  try {
+    if (typeof cap.isNativePlatform === 'function') return !!cap.isNativePlatform();
+  } catch { /* fall through */ }
+  return !!cap.isNative;
+}
+
 export function isHotwordSupported() {
   if (typeof window === 'undefined') return false;
+  // NOT IN THE APP. See the commit that added this line: in the Capacitor
+  // WebView the Web Speech API exists but has no service behind it, so the
+  // recogniser restarts forever and beeps on every start. The app has a real
+  // native voice path; this module is for a browser on a propped-up phone.
+  if (isNativeShell()) return false;
   return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
@@ -114,6 +137,14 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
   let lastFireAt = 0;
   let armed = false;   // named, waiting to see if a command follows
 
+  // A cycle that starts and ends without hearing one syllable did not work,
+  // however cleanly it reported starting. Counting those is the only way to
+  // tell "quiet room" from "this device cannot do speech recognition at all",
+  // and the second one must not be retried forever.
+  let heardAnything = false;
+  let deadStarts    = 0;
+  const MAX_DEAD_STARTS = 5;
+
   function clearTimer() {
     if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
   }
@@ -121,6 +152,13 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
   function scheduleRestart() {
     clearTimer();
     if (stopped || suspended) return;
+    if (deadStarts >= MAX_DEAD_STARTS) {
+      // Five consecutive starts, nothing heard on any of them. This device
+      // cannot do continuous recognition; retrying only makes noise.
+      stopped = true;
+      try { onError?.('speech-recognition-unavailable'); } catch {}
+      return;
+    }
     restartTimer = setTimeout(() => { spin(); }, backoff);
     // Grow the gap on repeated immediate failures so a permanently denied
     // microphone cannot become a busy loop. Reset on any successful start.
@@ -137,7 +175,11 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
     rec.interimResults = true;   // fire on the interim, so she responds mid-sentence
     rec.lang           = lang;
 
-    rec.onstart = () => { backoff = 400; };
+    // Deliberately NOT resetting the backoff here. A recogniser that starts and
+    // dies satisfies onstart every time, which is how the brake below came to
+    // be released on every cycle and never engage. The reset lives in onresult,
+    // where something was actually heard.
+    rec.onstart = () => { heardAnything = false; };
 
     rec.onresult = (ev) => {
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
@@ -158,6 +200,11 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
         // which the Web Speech API cannot give us and the streaming rebuild
         // (W11) will.
         if (heard) {
+          // Proof the microphone and the speech service are both real. This is
+          // the only place the retry brake may be released.
+          heardAnything = true;
+          deadStarts    = 0;
+          backoff       = 400;
           try { considerUserSpeech(heard, !!hit); } catch {}
         }
 
@@ -215,7 +262,10 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
       // recognition, not failures. Let onend restart us.
     };
 
-    rec.onend = () => { scheduleRestart(); };
+    rec.onend = () => {
+      if (!heardAnything) deadStarts += 1;
+      scheduleRestart();
+    };
 
     try { rec.start(); }
     catch { scheduleRestart(); }

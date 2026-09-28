@@ -12,6 +12,14 @@ name: Android Build
 # reminder voice - are native code that has been in this repository, building
 # green, and going in the bin on every run.
 #
+# WHY THE PATH IS A WILDCARD
+# The first version of this file looked for one APK at
+# app/build/outputs/apk/debug/app-debug.apk. This project has two product
+# flavours, so Gradle writes app/build/outputs/apk/personal/debug/ and
+# app/build/outputs/apk/business/debug/ instead, and the check failed on a
+# build that had in fact succeeded. Matching the tree rather than one guessed
+# filename means adding or renaming a flavour cannot break this again.
+#
 # WHY workflow_dispatch
 # The triggers below only fire when android/ or package.json changes. Most of
 # what now needs to reach the phone is Java that merged weeks ago, so there is
@@ -62,19 +70,22 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Where did it land
-        # Printed on purpose. The output path has moved between Gradle versions
-        # before, and a silently-missing file is exactly how the upload below
-        # would come to "succeed" while uploading nothing.
+      - name: What did it build
+        # Listed on purpose, and checked on presence rather than on a path.
+        # A silently-missing file is exactly how the upload below would come to
+        # "succeed" while uploading nothing - which is the defect this whole
+        # file exists to end.
         run: |
+          echo "APKs produced:"
           find android -name '*.apk' -type f -print -exec ls -lh {} \;
-          test -f android/app/build/outputs/apk/debug/app-debug.apk \
-            || { echo "no APK at the expected path - failing rather than uploading nothing" >&2; exit 1; }
+          test -n "$(find android -name '*.apk' -type f -print -quit)" \
+            || { echo "the build reported success and produced no APK - failing rather than uploading nothing" >&2; exit 1; }
 
-      - name: Keep the APK
+      - name: Keep the APKs
         uses: actions/upload-artifact@v4
         with:
           name: quietkeep-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          # Both flavours. app-personal-debug.apk is QuietKeep Personal.
+          path: android/app/build/outputs/apk/**/debug/*.apk
           if-no-files-found: error
           retention-days: 30

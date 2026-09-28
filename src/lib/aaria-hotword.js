@@ -152,6 +152,13 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
   function scheduleRestart() {
     clearTimer();
     if (stopped || suspended) return;
+    if (deadStarts >= MAX_DEAD_STARTS) {
+      // Five consecutive starts, nothing heard on any of them. This device
+      // cannot do continuous recognition; retrying only makes noise.
+      stopped = true;
+      try { onError?.('speech-recognition-unavailable'); } catch {}
+      return;
+    }
     restartTimer = setTimeout(() => { spin(); }, backoff);
     // Grow the gap on repeated immediate failures so a permanently denied
     // microphone cannot become a busy loop. Reset on any successful start.

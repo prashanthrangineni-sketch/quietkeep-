@@ -137,6 +137,14 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
   let lastFireAt = 0;
   let armed = false;   // named, waiting to see if a command follows
 
+  // A cycle that starts and ends without hearing one syllable did not work,
+  // however cleanly it reported starting. Counting those is the only way to
+  // tell "quiet room" from "this device cannot do speech recognition at all",
+  // and the second one must not be retried forever.
+  let heardAnything = false;
+  let deadStarts    = 0;
+  const MAX_DEAD_STARTS = 5;
+
   function clearTimer() {
     if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
   }

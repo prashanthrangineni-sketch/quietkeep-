@@ -200,6 +200,11 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
         // which the Web Speech API cannot give us and the streaming rebuild
         // (W11) will.
         if (heard) {
+          // Proof the microphone and the speech service are both real. This is
+          // the only place the retry brake may be released.
+          heardAnything = true;
+          deadStarts    = 0;
+          backoff       = 400;
           try { considerUserSpeech(heard, !!hit); } catch {}
         }
 

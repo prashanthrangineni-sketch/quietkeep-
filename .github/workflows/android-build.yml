@@ -1,6 +1,24 @@
-name: Android Build Verification
+name: Android Build
+
+# WHY THIS UPLOADS THE APK
+# It did not, for the whole life of this file. The job compiled a working
+# debug APK on every push that touched android/, and then the runner was
+# destroyed and the file with it. It was named "Build Verification" and that
+# is exactly all it did: prove the code compiles, to nobody's benefit.
+#
+# The cost was not theoretical. The app on the founder's phone is the 22
+# August bundle. Three things reported for days - reminders that speak and
+# dial with the screen locked, the back button exiting the app, and the Telugu
+# reminder voice - are native code that has been in this repository, building
+# green, and going in the bin on every run.
+#
+# WHY workflow_dispatch
+# The triggers below only fire when android/ or package.json changes. Most of
+# what now needs to reach the phone is Java that merged weeks ago, so there is
+# nothing left to change to make a build happen. It has to be startable by hand.
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'android/**'
@@ -17,9 +35,10 @@ jobs:
   android-build:
     name: Build Android Debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -42,3 +61,20 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
+
+      - name: Where did it land
+        # Printed on purpose. The output path has moved between Gradle versions
+        # before, and a silently-missing file is exactly how the upload below
+        # would come to "succeed" while uploading nothing.
+        run: |
+          find android -name '*.apk' -type f -print -exec ls -lh {} \;
+          test -f android/app/build/outputs/apk/debug/app-debug.apk \
+            || { echo "no APK at the expected path - failing rather than uploading nothing" >&2; exit 1; }
+
+      - name: Keep the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: quietkeep-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30

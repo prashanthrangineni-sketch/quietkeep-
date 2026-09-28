@@ -132,8 +132,19 @@ export function AariaProvider({ children }) {
     async function arm() {
       try {
         const { supabase } = await import('@/lib/supabase');
-        const { armVoiceReminders, speakMissedReminders, canSpeakWhenClosed } =
+        const { armVoiceReminders, speakMissedReminders, canSpeakWhenClosed,
+                retireExpiredReminders } =
           await import('@/lib/reminder-voice');
+        if (cancelled) return;
+
+        // FIRST, retire what is past saying. Nothing in this product has ever
+        // marked a reminder done, so they accumulated: twelve of them on 28
+        // September, every one overdue, all still counted in Today's Brief as
+        // work outstanding. Doing this before arming means the arming below
+        // never considers a reminder from two days ago, and the count on the
+        // home screen is right from the moment the app opens.
+        const retired = await retireExpiredReminders({ supabase, userId: user.id });
+        if (retired) console.log('[Aaria] retired', retired, 'expired reminders');
         if (cancelled) return;
 
         // Only the web path needs notification permission, and only so that it

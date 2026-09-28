@@ -44,8 +44,31 @@ const HOMOPHONES = {
   lotus: ['lotus', 'notice', 'lotto'],
 };
 
+/**
+ * Are we inside the Capacitor Android shell rather than a browser?
+ *
+ * Read off window.Capacitor, which the shell injects, rather than by importing
+ * @capacitor/core — this module is loaded by tests/aaria-hotword.test.mjs under
+ * plain node, where that import does not resolve and would take the whole suite
+ * down before a single assertion ran.
+ */
+function isNativeShell() {
+  if (typeof window === 'undefined') return false;
+  const cap = window.Capacitor;
+  if (!cap) return false;
+  try {
+    if (typeof cap.isNativePlatform === 'function') return !!cap.isNativePlatform();
+  } catch { /* fall through */ }
+  return !!cap.isNative;
+}
+
 export function isHotwordSupported() {
   if (typeof window === 'undefined') return false;
+  // NOT IN THE APP. See the commit that added this line: in the Capacitor
+  // WebView the Web Speech API exists but has no service behind it, so the
+  // recogniser restarts forever and beeps on every start. The app has a real
+  // native voice path; this module is for a browser on a propped-up phone.
+  if (isNativeShell()) return false;
   return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 

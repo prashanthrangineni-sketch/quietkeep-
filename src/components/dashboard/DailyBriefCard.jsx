@@ -38,7 +38,10 @@ export default function DailyBriefCard({ userId, tier, isBeta }) {
         .eq('user_id', userId).eq('is_active', true);
       const { count: keepCount } = await supabase.from('keeps')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId).eq('status', 'open');
+        // Archived keeps are not open work. The dashboard tiles above this
+        // card filter the same way; two counts on one screen that disagree
+        // about what they are counting is worse than either being wrong alone.
+        .eq('user_id', userId).eq('status', 'open').is('archived_at', null);
       setBrief({ reminders: remCount || 0, openKeeps: keepCount || 0 });
     } catch {}
   }

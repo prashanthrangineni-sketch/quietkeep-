@@ -175,7 +175,11 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
     rec.interimResults = true;   // fire on the interim, so she responds mid-sentence
     rec.lang           = lang;
 
-    rec.onstart = () => { backoff = 400; };
+    // Deliberately NOT resetting the backoff here. A recogniser that starts and
+    // dies satisfies onstart every time, which is how the brake below came to
+    // be released on every cycle and never engage. The reset lives in onresult,
+    // where something was actually heard.
+    rec.onstart = () => { heardAnything = false; };
 
     rec.onresult = (ev) => {
       for (let i = ev.resultIndex; i < ev.results.length; i++) {

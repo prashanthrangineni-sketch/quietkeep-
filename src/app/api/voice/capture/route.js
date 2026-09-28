@@ -15,6 +15,7 @@ import { NextResponse }   from 'next/server'
 import { createClient }   from '@supabase/supabase-js'
 import { parseIntent, stripWakePhrase }    from '@/lib/intent-parser'
 import { collapseRepeats } from '@/lib/transcript-clean'
+import { impossibleSequences } from '@/lib/script-sanity'
 import { aariaAssist }   from '@/lib/aaria-act'
 import { aariaUnderstandLLM } from '@/lib/aaria-llm' // SOT P1: Aaria action brain for utterances regex can't parse
 import {
@@ -126,6 +127,57 @@ export async function POST(request) {
   // that lands, and it is deliberately the only place it is done.
   const rawText = collapseRepeats(transcript.trim())
   const text    = stripWakePhrase(rawText) || rawText
+
+  // ── IS THIS SOMETHING A PERSON SAID? ─────────────────────────────────────
+  //
+  // Everything below this line assumed so. Nothing had ever asked.
+  //
+  // On 28 September 2026 three notes reached the founder's own account:
+  //
+  //     ాకంగడండు
+  //     ప్ిరా నగటాయారాగిడిా.
+  //     ప్ని పగానామారాిరాం ండు గ్ామారాం చిలామ్రాిండాా.
+  //
+  // Not words, not sentences, not even misspellings. An always-on microphone
+  // heard room noise, the recogniser returned its best guess, and this route
+  // filed each guess as his writing. His open keeps went from 69 to 71 while
+  // he was not speaking, and the "stale, unresolved" banner on his home screen
+  // counted them as work he had left undone.
+  //
+  // The check is orthographic, never editorial: it looks for sequences that
+  // cannot occur in written Telugu or Devanagari at all. It does NOT ask
+  // whether the text seems sensible. A shopping list looks like nonsense and a
+  // name looks like a typo, and discarding one of someone's real notes is a far
+  // worse failure than storing one line of noise.
+  //
+  // Placed before the idempotency key and before every write, so noise costs
+  // one cheap scan and touches nothing.
+  const noiseReasons = impossibleSequences(text)
+  if (noiseReasons.length) {
+    console.warn('[capture] refused transcription noise:', noiseReasons[0], JSON.stringify(text.slice(0, 80)))
+    supabase.from('audit_log').insert({
+      user_id: user.id,
+      action:  'transcript_rejected_as_noise',
+      service: 'voice_capture',
+      details: { reason: noiseReasons[0], sample: text.slice(0, 120), source, language },
+    }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) })
+
+    // Answer, rather than going quiet. An assistant that heard nothing usable
+    // should say so, in the language it was spoken to in.
+    const DIDNT_CATCH = {
+      en: "Sorry, I didn't catch that. Could you say it again?",
+      te: 'క్షమించండి, నాకు అర్థం కాలేదు. మళ్ళీ చెప్పగలరా?',
+      hi: 'माफ़ कीजिए, मैं समझ नहीं पाई। फिर से कहिए?',
+    }
+    const lang = String(language || 'en-IN').split('-')[0]
+    return NextResponse.json({
+      ok: false,
+      not_saved: true,
+      reason: 'transcription_noise',
+      detail: noiseReasons[0],
+      tts_response: DIDNT_CATCH[lang] || DIDNT_CATCH.en,
+    })
+  }
 
   // FIX: Idempotency check — prevent duplicate keeps from double-tap or loop re-entry.
   // Auto-generate a key if none supplied: SHA-256 of (userId + text + 60s window).

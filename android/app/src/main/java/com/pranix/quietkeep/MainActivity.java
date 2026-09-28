@@ -96,6 +96,57 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
+     * BACK GOES BACK.
+     *
+     * There was no handling here at all, so Capacitor's default applied: the
+     * moment the WebView has no history entry to pop, the activity finishes and
+     * the app is gone. Every screen in QuietKeep is loaded from quietkeep.com,
+     * so that state is reached constantly - and the founder reported the
+     * symptom for days. One press, and an assistant he was mid-sentence with
+     * disappeared.
+     *
+     * Three steps, in order:
+     *   1. Somewhere to go back to -> go there.
+     *   2. Nowhere to go, first press -> say so, and wait.
+     *   3. Second press inside the window -> leave.
+     *
+     * Deliberately NOT a silent exit on the second press either: the toast is
+     * what turns an accident into a choice. Two seconds is long enough to read
+     * and short enough not to trap someone who does want out.
+     */
+    @Override
+    public void onBackPressed() {
+        WebView webView = null;
+        try {
+            if (getBridge() != null) webView = getBridge().getWebView();
+        } catch (Exception e) {
+            Log.w(TAG, "onBackPressed: no bridge yet - " + e.getMessage());
+        }
+
+        if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - mLastBackPressAt < EXIT_CONFIRM_WINDOW_MS) {
+            super.onBackPressed();
+            return;
+        }
+
+        mLastBackPressAt = now;
+        try {
+            android.widget.Toast.makeText(
+                this, "Press back again to close QuietKeep",
+                android.widget.Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            // A toast that cannot be shown must never become a reason the app
+            // can no longer be closed.
+            Log.w(TAG, "onBackPressed: toast failed - " + e.getMessage());
+        }
+    }
+
+    /**
      * P0 Fix: Handle SDK 35+ forced edge-to-edge window insets on Android 15+.
      * Padds the content view by systemBars() and displayCutout() so the app header
      * is completely clear of the status bar clock/battery/notification icons.

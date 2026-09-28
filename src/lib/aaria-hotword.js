@@ -262,7 +262,10 @@ export function startWebHotword({ wakeWord = 'aaria', lang = 'en-IN', onWake, on
       // recognition, not failures. Let onend restart us.
     };
 
-    rec.onend = () => { scheduleRestart(); };
+    rec.onend = () => {
+      if (!heardAnything) deadStarts += 1;
+      scheduleRestart();
+    };
 
     try { rec.start(); }
     catch { scheduleRestart(); }

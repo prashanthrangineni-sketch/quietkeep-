@@ -46,6 +46,10 @@ public class MainActivity extends BridgeActivity {
     private android.webkit.ValueCallback<android.net.Uri[]> mFilePathCallback;
     private PermissionRequest mPendingAudioPermissionRequest = null;
 
+    /** When back was last pressed with nowhere left to go. See onBackPressed(). */
+    private long mLastBackPressAt = 0L;
+    private static final long EXIT_CONFIRM_WINDOW_MS = 2000L;
+
     // Server URL baked in at build time — always the production API host.
     private static final String SERVER_URL = "https://quietkeep.com";
 
@@ -89,6 +93,57 @@ public class MainActivity extends BridgeActivity {
 
         // Apply system bar insets and status bar color padding
         applySystemBarInsets();
+    }
+
+    /**
+     * BACK GOES BACK.
+     *
+     * There was no handling here at all, so Capacitor's default applied: the
+     * moment the WebView has no history entry to pop, the activity finishes and
+     * the app is gone. Every screen in QuietKeep is loaded from quietkeep.com,
+     * so that state is reached constantly - and the founder reported the
+     * symptom for days. One press, and an assistant he was mid-sentence with
+     * disappeared.
+     *
+     * Three steps, in order:
+     *   1. Somewhere to go back to -> go there.
+     *   2. Nowhere to go, first press -> say so, and wait.
+     *   3. Second press inside the window -> leave.
+     *
+     * Deliberately NOT a silent exit on the second press either: the toast is
+     * what turns an accident into a choice. Two seconds is long enough to read
+     * and short enough not to trap someone who does want out.
+     */
+    @Override
+    public void onBackPressed() {
+        WebView webView = null;
+        try {
+            if (getBridge() != null) webView = getBridge().getWebView();
+        } catch (Exception e) {
+            Log.w(TAG, "onBackPressed: no bridge yet - " + e.getMessage());
+        }
+
+        if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - mLastBackPressAt < EXIT_CONFIRM_WINDOW_MS) {
+            super.onBackPressed();
+            return;
+        }
+
+        mLastBackPressAt = now;
+        try {
+            android.widget.Toast.makeText(
+                this, "Press back again to close QuietKeep",
+                android.widget.Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            // A toast that cannot be shown must never become a reason the app
+            // can no longer be closed.
+            Log.w(TAG, "onBackPressed: toast failed - " + e.getMessage());
+        }
     }
 
     /**

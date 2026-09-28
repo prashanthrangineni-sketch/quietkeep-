@@ -217,6 +217,66 @@ export async function armVoiceReminders({ supabase, userId }) {
  * `speak` is injected rather than imported so that this module has no dependency
  * on the speech layer, and so a test can hand in a recorder.
  */
+/**
+ * Mark reminders finished.
+ *
+ * REMINDERS ONLY, NEVER KEEPS. A keep is the user's own note. One that happens
+ * to carry a time is still their note, and retiring it would be this module
+ * deciding their writing is finished with - which is not its business. The ids
+ * this module produces are prefixed, so the distinction is enforced rather than
+ * remembered.
+ *
+ * Best effort. A reminder that stays active one hour longer is a small fault;
+ * a thrown error here would stop the arming that follows, which is a large one.
+ */
+async function retire(supabase, ids) {
+  const rows = ids
+    .filter((id) => String(id).startsWith('rem-'))
+    .map((id) => String(id).slice(4));
+  if (!rows.length) return 0;
+  try {
+    await supabase.from('reminders')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .in('id', rows);
+    return rows.length;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Retire reminders that are past the point of being worth saying.
+ *
+ * WHY THIS HAD TO BE WRITTEN
+ * Nothing in this product has ever marked a reminder done. is_active was set
+ * true on creation and never set back, so on 28 September 2026 the founder had
+ * twelve reminders, every single one overdue, the oldest from two days before -
+ * permanently "due", counted in Today's Brief, and re-read on every app open.
+ * The pile only ever grew.
+ *
+ * It was hidden by the local list of already-spoken ids: a reminder read out
+ * once is not read again ON THIS DEVICE. Clear the browser storage, or sign in
+ * on a second phone, and all twelve arrive at once - because the record of
+ * delivery was a fact about the reminder being stored on one device.
+ *
+ * Past the catch-up window a reminder is not news. Reading it out would be
+ * noise, and leaving it marked due is the app telling its owner they have
+ * unfinished business that it invented.
+ */
+export async function retireExpiredReminders({ supabase, userId }) {
+  try {
+    const cutoff = new Date(Date.now() - CATCH_UP_HOURS * 3600e3).toISOString();
+    const { data } = await supabase.from('reminders')
+      .select('id')
+      .eq('user_id', userId).eq('is_active', true)
+      .lt('scheduled_for', cutoff);
+    if (!data?.length) return 0;
+    return await retire(supabase, data.map((r) => `rem-${r.id}`));
+  } catch {
+    return 0;
+  }
+}
+
 export async function speakMissedReminders({ supabase, userId, speak, prefix = '' }) {
   try {
     const now = Date.now();
@@ -231,6 +291,12 @@ export async function speakMissedReminders({ supabase, userId, speak, prefix = '
       speak(`${prefix}${prefix ? ' ' : ''}${r.text}`, { priority: 'low' });
     }
     rememberSpoken(toSay.map((r) => r.id));
+
+    // SAYING IT IS DELIVERING IT. The local list above stops a repeat on this
+    // device; this stops it on every other one, and takes the reminder out of
+    // Today's Brief where it has been sitting as work still to do.
+    await retire(supabase, toSay.map((r) => r.id));
+
     return toSay.length;
   } catch {
     return 0;

@@ -554,7 +554,11 @@ export default function Dashboard() {
   const loadIntents = useCallback(async (uid) => {
     const { data, error } = await supabase.from('keeps')
       .select('id,content,intent_type,status,loop_state,stale_at,nudge_count,created_at,reminder_at,tags,contact_name,contact_phone,color,is_pinned,show_on_brief,space_type,ai_summary,workspace_id,is_prediction,prediction_id')
-      .eq('user_id', uid).order('created_at', { ascending: false }).limit(200);
+      // An archived keep is off the home screen. Without this, archiving is a
+      // timestamp nothing looks at: no read path in this app filtered
+      // archived_at, so the column existed and did nothing.
+      .eq('user_id', uid).is('archived_at', null)
+      .order('created_at', { ascending: false }).limit(200);
     if (!error && data) setIntents(data);
     fetch('/api/keeps/loop-count', { headers: { 'Authorization': `Bearer ${accessToken || ''}` } })
       .then(r => r.json()).then(d => setOpenLoopCount(d.count || 0)).catch(() => {});
@@ -878,8 +882,13 @@ export default function Dashboard() {
     try { await apiPost(`/api/keeps/${id}/feedback`, { outcome, latency_seconds: null }, accessToken); } catch {}
   }
 
-  const openIntents = intents.filter(i => i.status !== 'closed');
-  const closedIntents = intents.filter(i => i.status === 'closed');
+  // BOTH of these end a keep. The transition RPC accepts either, and the valid
+  // -state list in src/app/api/keeps/[id]/transition/route.js carries both -
+  // but these two lines only knew about 'closed', so a keep finished as 'done'
+  // was counted as still Open and the Done tile stayed at zero.
+  const TERMINAL = new Set(['closed', 'done']);
+  const openIntents = intents.filter(i => !TERMINAL.has(i.status));
+  const closedIntents = intents.filter(i => TERMINAL.has(i.status));
   const filterIntents = (list) => {
     if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();

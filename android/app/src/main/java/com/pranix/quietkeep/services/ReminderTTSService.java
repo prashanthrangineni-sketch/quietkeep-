@@ -148,9 +148,23 @@ public class ReminderTTSService extends Service implements TextToSpeech.OnInitLi
                 }
             }
             tts.setSpeechRate(0.95f);
-            String phrase = spokenPrefix + textToSpeak;
-            Log.d(TAG, "Speaking reminder out loud: " + phrase);
-            tts.speak(phrase, TextToSpeech.QUEUE_FLUSH, null, "reminder_tts_id");
+
+            // THE GREETING, in the language the user chose.
+            Log.d(TAG, "Speaking prefix in " + spokenLocale + ": " + spokenPrefix);
+            tts.speak(spokenPrefix, TextToSpeech.QUEUE_FLUSH, null, "reminder_tts_prefix");
+
+            // THEIR WORDS, in the alphabet those words are written in. Switching
+            // the locale between the two queued utterances is the whole point:
+            // one voice cannot read "గుర్తు" and "call Surya Kiran" both well.
+            int contentResult = tts.setLanguage(contentLocale);
+            if (contentResult == TextToSpeech.LANG_MISSING_DATA
+                    || contentResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e(TAG, "NO VOICE DATA for " + contentLocale
+                        + " — the reminder text cannot be spoken correctly on this device");
+                tts.setLanguage(new Locale("en", "IN"));
+            }
+            Log.d(TAG, "Speaking reminder in " + contentLocale + ": " + textToSpeak);
+            tts.speak(textToSpeak, TextToSpeech.QUEUE_ADD, null, "reminder_tts_id");
 
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                 if (tts != null) {

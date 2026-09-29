@@ -17,6 +17,11 @@ public class ReminderAlarmPlugin extends Plugin {
         String reminderId   = call.getString("reminderId");
         String reminderText = call.getString("reminderText", "");
         Long   fireAtMs     = call.getLong("fireAtMs");
+        // The user's chosen language. Null when the caller does not know, which
+        // leaves ReminderTTSService judging the script of the text - right when
+        // the transcript comes back in Telugu, wrong when the same sentence is
+        // transcribed into English letters, which is what happens in practice.
+        String language     = call.getString("language");
         boolean isAlarm     = Boolean.TRUE.equals(call.getBoolean("isAlarmType", false));
 
         if (reminderId == null || fireAtMs == null) {

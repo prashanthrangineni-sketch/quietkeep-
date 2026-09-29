@@ -40,8 +40,20 @@ public class ReminderTTSService extends Service implements TextToSpeech.OnInitLi
 
     private TextToSpeech tts;
     private String textToSpeak;
-    private Locale spokenLocale = new Locale("en", "IN");
+    private Locale spokenLocale = new Locale("en", "IN");   // the greeting
+    private Locale contentLocale = new Locale("en", "IN");  // the user's words
     private String spokenPrefix = "Reminder — ";
+
+    private static Locale localeFor(String code) {
+        switch (code) {
+            case "te": return new Locale("te", "IN");
+            case "hi": return new Locale("hi", "IN");
+            case "ta": return new Locale("ta", "IN");
+            case "kn": return new Locale("kn", "IN");
+            case "ml": return new Locale("ml", "IN");
+            default:   return new Locale("en", "IN");
+        }
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -66,6 +78,12 @@ public class ReminderTTSService extends Service implements TextToSpeech.OnInitLi
         String code = (language != null && language.length() >= 2)
                 ? language.substring(0, 2).toLowerCase(Locale.ROOT)
                 : scriptOf(text);
+
+        // The words themselves are read in the alphabet they are written in.
+        // A Telugu voice handed Latin characters produces nonsense, and a
+        // sentence transcribed into English letters is the common case, not the
+        // rare one. The prefix below still follows the user's choice.
+        contentLocale = localeFor(scriptOf(text));
 
         switch (code) {
             case "te":
@@ -130,9 +148,23 @@ public class ReminderTTSService extends Service implements TextToSpeech.OnInitLi
                 }
             }
             tts.setSpeechRate(0.95f);
-            String phrase = spokenPrefix + textToSpeak;
-            Log.d(TAG, "Speaking reminder out loud: " + phrase);
-            tts.speak(phrase, TextToSpeech.QUEUE_FLUSH, null, "reminder_tts_id");
+
+            // THE GREETING, in the language the user chose.
+            Log.d(TAG, "Speaking prefix in " + spokenLocale + ": " + spokenPrefix);
+            tts.speak(spokenPrefix, TextToSpeech.QUEUE_FLUSH, null, "reminder_tts_prefix");
+
+            // THEIR WORDS, in the alphabet those words are written in. Switching
+            // the locale between the two queued utterances is the whole point:
+            // one voice cannot read "గుర్తు" and "call Surya Kiran" both well.
+            int contentResult = tts.setLanguage(contentLocale);
+            if (contentResult == TextToSpeech.LANG_MISSING_DATA
+                    || contentResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e(TAG, "NO VOICE DATA for " + contentLocale
+                        + " — the reminder text cannot be spoken correctly on this device");
+                tts.setLanguage(new Locale("en", "IN"));
+            }
+            Log.d(TAG, "Speaking reminder in " + contentLocale + ": " + textToSpeak);
+            tts.speak(textToSpeak, TextToSpeech.QUEUE_ADD, null, "reminder_tts_id");
 
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                 if (tts != null) {

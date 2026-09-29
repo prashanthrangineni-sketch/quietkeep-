@@ -165,12 +165,29 @@ function actionFor(item) {
  * Returns { channel, armed } so a caller can log what actually happened rather
  * than assume. Never throws.
  */
+/**
+ * The language the user chose, as a two-letter code, or null.
+ *
+ * Read at arming time from the same place the rest of the app reads it. Null
+ * rather than a guess: the alarm falls back to judging the script of the text,
+ * which is the right behaviour when we genuinely do not know.
+ */
+function chosenLanguage() {
+  try {
+    const raw = localStorage.getItem('qk_voice_lang');
+    if (!raw) return null;
+    const code = String(raw).trim().slice(0, 2).toLowerCase();
+    return /^[a-z]{2}$/.test(code) ? code : null;
+  } catch { return null; }
+}
+
 export async function armVoiceReminders({ supabase, userId }) {
   try {
     const now = Date.now();
     const upcoming = await dueBetween(supabase, userId, now, now + HORIZON_HOURS * 3600e3);
     if (!upcoming.length) return { channel: canSpeakWhenClosed() ? 'native-voice' : 'page-voice', armed: 0 };
 
+    const lang = chosenLanguage();
     const alarm = nativeAlarm();
     if (alarm) {
       let armed = 0;
@@ -186,6 +203,10 @@ export async function armVoiceReminders({ supabase, userId }) {
           // alarm with no action still speaks; it simply does nothing after.
           await alarm.schedule({
             reminderId: r.id, reminderText: r.text, fireAtMs: r.fireAt,
+            // The user's choice, not the alphabet the transcript arrived in.
+            // Omitted when unknown, so the alarm falls back to judging the
+            // script rather than being told something wrong.
+            ...(lang ? { language: lang } : {}),
             ...(actionFor(r) || {}),
           });
           armed++;

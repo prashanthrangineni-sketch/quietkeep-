@@ -20,6 +20,19 @@ public class ReminderAlarmManager {
     }
 
     public static void scheduleReminder(Context context, String reminderId, String text, long fireAtMs, boolean isAlarm, ActionSpec actionSpec) {
+        scheduleReminder(context, reminderId, text, fireAtMs, isAlarm, actionSpec, null);
+    }
+
+    /**
+     * @param language the user's chosen language as a two-letter code, or null.
+     *                 Null is not a failure: ReminderTTSService then judges the
+     *                 script of the text, which is the correct fallback when
+     *                 nobody actually knows. What was wrong before was that
+     *                 EVERY caller was null, so the fallback was the only path
+     *                 and a Telugu sentence transcribed into English letters
+     *                 was spoken in English.
+     */
+    public static void scheduleReminder(Context context, String reminderId, String text, long fireAtMs, boolean isAlarm, ActionSpec actionSpec, String language) {
         if (fireAtMs <= System.currentTimeMillis()) {
             Log.w(TAG, "scheduleReminder: fireAtMs is in the past, skipping: " + reminderId);
             return;
@@ -40,6 +53,9 @@ public class ReminderAlarmManager {
         editor.putString("alarm_text_" + reminderId, text);
         editor.putLong("alarm_fire_at_" + reminderId, fireAtMs);
         editor.putBoolean("alarm_is_alarm_" + reminderId, isAlarm);
+        // Kept with the reminder so one restored after a reboot still knows
+        // which voice to speak it in.
+        editor.putString("alarm_language_" + reminderId, language);
         
         if (actionSpec != null) {
             editor.putString("alarm_action_type_" + reminderId, actionSpec.type);
@@ -62,10 +78,10 @@ public class ReminderAlarmManager {
         editor.apply();
 
         // Schedule in the system AlarmManager
-        scheduleReminderInSystem(context, reminderId, text, fireAtMs, isAlarm, actionSpec);
+        scheduleReminderInSystem(context, reminderId, text, fireAtMs, isAlarm, actionSpec, language);
     }
 
-    private static void scheduleReminderInSystem(Context context, String reminderId, String text, long fireAtMs, boolean isAlarm, ActionSpec actionSpec) {
+    private static void scheduleReminderInSystem(Context context, String reminderId, String text, long fireAtMs, boolean isAlarm, ActionSpec actionSpec, String language) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
 
@@ -73,6 +89,7 @@ public class ReminderAlarmManager {
         intent.putExtra("reminder_id",   reminderId);
         intent.putExtra("reminder_text", text);
         intent.putExtra("is_alarm_type", isAlarm);
+        intent.putExtra("language",      language);
 
         if (actionSpec != null) {
             intent.putExtra("action_type", actionSpec.type);
@@ -137,6 +154,10 @@ public class ReminderAlarmManager {
         editor.remove("alarm_text_" + reminderId);
         editor.remove("alarm_fire_at_" + reminderId);
         editor.remove("alarm_is_alarm_" + reminderId);
+        // Written beside the rest of the alarm, so it is cleared beside them.
+        // A key that is stored on every schedule and removed on none grows
+        // once per reminder and is never read again.
+        editor.remove("alarm_language_" + reminderId);
         editor.remove("alarm_action_type_" + reminderId);
         editor.remove("alarm_phone_" + reminderId);
         editor.remove("alarm_whatsapp_phone_" + reminderId);
@@ -218,7 +239,19 @@ public class ReminderAlarmManager {
                 if (prefs.contains("alarm_volume_direction_" + id)) spec.volumeDirection = prefs.getInt("alarm_volume_direction_" + id, 0);
             }
             
-            scheduleReminderInSystem(context, id, text, fireAtMs, isAlarm, spec);
+            // The language this reminder was scheduled with, read back out of
+            // the same preferences the rest of this alarm came from.
+            //
+            // Missing it is not a cosmetic loss. A reminder scheduled in
+            // Telugu and restored after a reboot would come back with no
+            // language at all, ReminderTTSService would fall back to guessing
+            // from the script, and the script is Latin because the recogniser
+            // writes Telugu in Latin letters. It would speak English - the
+            // precise failure this whole branch exists to end, reappearing
+            // after the first restart.
+            String language = prefs.getString("alarm_language_" + id, null);
+
+            scheduleReminderInSystem(context, id, text, fireAtMs, isAlarm, spec, language);
         }
         
         if (!toRemove.isEmpty()) {
@@ -230,6 +263,7 @@ public class ReminderAlarmManager {
                 editor.remove("alarm_text_" + id);
                 editor.remove("alarm_fire_at_" + id);
                 editor.remove("alarm_is_alarm_" + id);
+                editor.remove("alarm_language_" + id);
                 editor.remove("alarm_action_type_" + id);
                 editor.remove("alarm_phone_" + id);
                 editor.remove("alarm_whatsapp_phone_" + id);

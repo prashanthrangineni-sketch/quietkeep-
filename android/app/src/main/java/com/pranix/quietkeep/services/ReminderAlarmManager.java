@@ -154,6 +154,10 @@ public class ReminderAlarmManager {
         editor.remove("alarm_text_" + reminderId);
         editor.remove("alarm_fire_at_" + reminderId);
         editor.remove("alarm_is_alarm_" + reminderId);
+        // Written beside the rest of the alarm, so it is cleared beside them.
+        // A key that is stored on every schedule and removed on none grows
+        // once per reminder and is never read again.
+        editor.remove("alarm_language_" + reminderId);
         editor.remove("alarm_action_type_" + reminderId);
         editor.remove("alarm_phone_" + reminderId);
         editor.remove("alarm_whatsapp_phone_" + reminderId);

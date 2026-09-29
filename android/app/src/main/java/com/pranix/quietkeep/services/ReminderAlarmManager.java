@@ -20,6 +20,19 @@ public class ReminderAlarmManager {
     }
 
     public static void scheduleReminder(Context context, String reminderId, String text, long fireAtMs, boolean isAlarm, ActionSpec actionSpec) {
+        scheduleReminder(context, reminderId, text, fireAtMs, isAlarm, actionSpec, null);
+    }
+
+    /**
+     * @param language the user's chosen language as a two-letter code, or null.
+     *                 Null is not a failure: ReminderTTSService then judges the
+     *                 script of the text, which is the correct fallback when
+     *                 nobody actually knows. What was wrong before was that
+     *                 EVERY caller was null, so the fallback was the only path
+     *                 and a Telugu sentence transcribed into English letters
+     *                 was spoken in English.
+     */
+    public static void scheduleReminder(Context context, String reminderId, String text, long fireAtMs, boolean isAlarm, ActionSpec actionSpec, String language) {
         if (fireAtMs <= System.currentTimeMillis()) {
             Log.w(TAG, "scheduleReminder: fireAtMs is in the past, skipping: " + reminderId);
             return;

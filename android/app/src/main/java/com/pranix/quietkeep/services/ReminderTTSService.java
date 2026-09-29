@@ -67,6 +67,12 @@ public class ReminderTTSService extends Service implements TextToSpeech.OnInitLi
                 ? language.substring(0, 2).toLowerCase(Locale.ROOT)
                 : scriptOf(text);
 
+        // The words themselves are read in the alphabet they are written in.
+        // A Telugu voice handed Latin characters produces nonsense, and a
+        // sentence transcribed into English letters is the common case, not the
+        // rare one. The prefix below still follows the user's choice.
+        contentLocale = localeFor(scriptOf(text));
+
         switch (code) {
             case "te":
                 spokenLocale = new Locale("te", "IN");

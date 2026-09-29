@@ -52,7 +52,7 @@ public class ReminderAlarmPlugin extends Plugin {
         }
 
         ReminderAlarmManager.scheduleReminder(
-            getContext(), reminderId, reminderText, fireAtMs, isAlarm, spec
+            getContext(), reminderId, reminderText, fireAtMs, isAlarm, spec, language
         );
 
         JSObject result = new JSObject();

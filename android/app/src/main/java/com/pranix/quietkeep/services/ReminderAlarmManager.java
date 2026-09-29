@@ -235,7 +235,19 @@ public class ReminderAlarmManager {
                 if (prefs.contains("alarm_volume_direction_" + id)) spec.volumeDirection = prefs.getInt("alarm_volume_direction_" + id, 0);
             }
             
-            scheduleReminderInSystem(context, id, text, fireAtMs, isAlarm, spec);
+            // The language this reminder was scheduled with, read back out of
+            // the same preferences the rest of this alarm came from.
+            //
+            // Missing it is not a cosmetic loss. A reminder scheduled in
+            // Telugu and restored after a reboot would come back with no
+            // language at all, ReminderTTSService would fall back to guessing
+            // from the script, and the script is Latin because the recogniser
+            // writes Telugu in Latin letters. It would speak English - the
+            // precise failure this whole branch exists to end, reappearing
+            // after the first restart.
+            String language = prefs.getString("alarm_language_" + id, null);
+
+            scheduleReminderInSystem(context, id, text, fireAtMs, isAlarm, spec, language);
         }
         
         if (!toRemove.isEmpty()) {

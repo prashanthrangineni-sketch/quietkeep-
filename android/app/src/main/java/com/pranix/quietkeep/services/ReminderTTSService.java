@@ -40,8 +40,20 @@ public class ReminderTTSService extends Service implements TextToSpeech.OnInitLi
 
     private TextToSpeech tts;
     private String textToSpeak;
-    private Locale spokenLocale = new Locale("en", "IN");
+    private Locale spokenLocale = new Locale("en", "IN");   // the greeting
+    private Locale contentLocale = new Locale("en", "IN");  // the user's words
     private String spokenPrefix = "Reminder — ";
+
+    private static Locale localeFor(String code) {
+        switch (code) {
+            case "te": return new Locale("te", "IN");
+            case "hi": return new Locale("hi", "IN");
+            case "ta": return new Locale("ta", "IN");
+            case "kn": return new Locale("kn", "IN");
+            case "ml": return new Locale("ml", "IN");
+            default:   return new Locale("en", "IN");
+        }
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {

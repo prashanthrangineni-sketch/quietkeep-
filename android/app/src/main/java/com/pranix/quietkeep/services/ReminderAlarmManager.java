@@ -78,10 +78,10 @@ public class ReminderAlarmManager {
         editor.apply();
 
         // Schedule in the system AlarmManager
-        scheduleReminderInSystem(context, reminderId, text, fireAtMs, isAlarm, actionSpec);
+        scheduleReminderInSystem(context, reminderId, text, fireAtMs, isAlarm, actionSpec, language);
     }
 
-    private static void scheduleReminderInSystem(Context context, String reminderId, String text, long fireAtMs, boolean isAlarm, ActionSpec actionSpec) {
+    private static void scheduleReminderInSystem(Context context, String reminderId, String text, long fireAtMs, boolean isAlarm, ActionSpec actionSpec, String language) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
 

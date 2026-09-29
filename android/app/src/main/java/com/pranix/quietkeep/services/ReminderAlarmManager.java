@@ -263,6 +263,7 @@ public class ReminderAlarmManager {
                 editor.remove("alarm_text_" + id);
                 editor.remove("alarm_fire_at_" + id);
                 editor.remove("alarm_is_alarm_" + id);
+                editor.remove("alarm_language_" + id);
                 editor.remove("alarm_action_type_" + id);
                 editor.remove("alarm_phone_" + id);
                 editor.remove("alarm_whatsapp_phone_" + id);

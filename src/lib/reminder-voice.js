@@ -187,6 +187,7 @@ export async function armVoiceReminders({ supabase, userId }) {
     const upcoming = await dueBetween(supabase, userId, now, now + HORIZON_HOURS * 3600e3);
     if (!upcoming.length) return { channel: canSpeakWhenClosed() ? 'native-voice' : 'page-voice', armed: 0 };
 
+    const lang = chosenLanguage();
     const alarm = nativeAlarm();
     if (alarm) {
       let armed = 0;

@@ -89,6 +89,7 @@ public class ReminderAlarmManager {
         intent.putExtra("reminder_id",   reminderId);
         intent.putExtra("reminder_text", text);
         intent.putExtra("is_alarm_type", isAlarm);
+        intent.putExtra("language",      language);
 
         if (actionSpec != null) {
             intent.putExtra("action_type", actionSpec.type);

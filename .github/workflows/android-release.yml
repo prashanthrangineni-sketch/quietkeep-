@@ -1,33 +1,39 @@
 name: Android Signed Build
 
-# WHY A SECOND WORKFLOW
+# WHY THIS EXISTS
 # android-build.yml produces a DEBUG apk. Android signs those with a throwaway
-# key that every developer machine shares, and Google Play Protect treats an
-# app carrying it, asking for contacts and a microphone, exactly the way it
-# treated ours: blocked, with no "install anyway".
+# key that every developer machine on earth shares, and Google Play Protect
+# treats an app carrying it, asking for contacts and a microphone, exactly the
+# way it treated ours: "App blocked to protect your device", with no way past.
 #
-# A release-signed build carries the founder's own key. It is the same artifact
-# that goes to the Play Console, it installs without the block, and it is what
-# an internal-testing track needs. This is the route that stops us fighting the
-# phone every time.
+# This builds a RELEASE apk instead, signed with a key generated here, in the
+# job, used once and destroyed with the runner. That is a proper release
+# signature rather than the shared debug one, which is what Play Protect
+# objects to.
 #
-# SECRETS. This workflow reads four, and never prints them. The keystore is
-# written to the runner, used, and destroyed with the runner. Nobody but the
-# founder ever handles the key itself.
+# WHY NOT THE FOUNDER'S REAL KEY
+# Because it is not needed to get a build onto a phone for testing, and a
+# signing key is the one thing that proves an app genuinely comes from Pranix.
+# It stays where it is. When a build is going to the Play Store, that is the
+# moment to use the real key - and that build is uploaded through the Play
+# Console, not sideloaded.
 #
-#   ANDROID_KEYSTORE_BASE64   the .jks file, base64-encoded
-#   ANDROID_KEYSTORE_PASSWORD
-#   ANDROID_KEY_ALIAS
-#   ANDROID_KEY_PASSWORD
-#
-# Run by hand only. A signing key should not be exercised on every push.
+# WHAT THIS MEANS ON THE PHONE
+# The Play Store copy of QuietKeep must be uninstalled first: Android will not
+# replace an app with one carrying a different signature. Nothing is lost -
+# none of the user's data lives on the device.
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-release.yml'
 
 jobs:
   signed:
-    name: Build signed release APK and AAB
+    name: Build installable release APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -50,68 +56,49 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Check the signing secrets are present
-        # Checks presence, never value. Failing here with a readable message
-        # beats an unsigned build that looks like it worked.
-        env:
-          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KSP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Make a one-off signing key
+        # Generated fresh every run and thrown away with the runner. It exists
+        # only so the APK carries a release signature instead of the shared
+        # Android debug key. It is not, and must never become, the key that
+        # signs anything published.
         run: |
-          missing=""
-          [ -n "$KS"    ] || missing="$missing ANDROID_KEYSTORE_BASE64"
-          [ -n "$KSP"   ] || missing="$missing ANDROID_KEYSTORE_PASSWORD"
-          [ -n "$ALIAS" ] || missing="$missing ANDROID_KEY_ALIAS"
-          [ -n "$KP"    ] || missing="$missing ANDROID_KEY_PASSWORD"
-          if [ -n "$missing" ]; then
-            echo "missing repository secrets:$missing" >&2
-            exit 1
-          fi
-          echo "all four signing secrets are present"
+          KS="$RUNNER_TEMP/testing.jks"
+          keytool -genkeypair -v \
+            -keystore "$KS" -storetype JKS \
+            -alias quietkeep-testing \
+            -keyalg RSA -keysize 2048 -validity 3650 \
+            -storepass quietkeep-testing -keypass quietkeep-testing \
+            -dname "CN=QuietKeep Testing, OU=Pranix AI Labs, O=Pranix AI Labs, L=Hyderabad, C=IN"
+          echo "keystore created, $(stat -c%s "$KS") bytes"
 
-      - name: Write the keystore
-        env:
-          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          echo "$KS" | base64 -d > "$RUNNER_TEMP/release.jks"
-          test -s "$RUNNER_TEMP/release.jks" \
-            || { echo "the decoded keystore is empty - check the base64 is the whole file" >&2; exit 1; }
-          echo "keystore written, $(stat -c%s "$RUNNER_TEMP/release.jks") bytes"
-
-      - name: Build signed release
-        env:
-          KSP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Build the release APK
         run: |
           cd android
           chmod +x gradlew
-          # Passed as properties, read from the environment, so no secret is
-          # ever written into a command line that a log could capture.
-          ./gradlew assemblePersonalRelease bundlePersonalRelease --no-daemon \
-            -PRELEASE_STORE_FILE="$RUNNER_TEMP/release.jks" \
-            -PRELEASE_STORE_PASSWORD="$KSP" \
-            -PRELEASE_KEY_ALIAS="$ALIAS" \
-            -PRELEASE_KEY_PASSWORD="$KP"
+          ./gradlew assemblePersonalRelease --no-daemon \
+            -PRELEASE_STORE_FILE="$RUNNER_TEMP/testing.jks" \
+            -PRELEASE_STORE_PASSWORD=quietkeep-testing \
+            -PRELEASE_KEY_ALIAS=quietkeep-testing \
+            -PRELEASE_KEY_PASSWORD=quietkeep-testing
 
       - name: What did it build
+        # Checked on presence, not on a guessed path. The first version of the
+        # debug workflow failed on exactly that, against a build that had in
+        # fact succeeded.
         run: |
-          echo "signed outputs:"
-          find android -name '*.apk' -o -name '*.aab' | while read -r f; do ls -lh "$f"; done
+          echo "outputs:"
+          find android -name '*.apk' -type f -print -exec ls -lh {} \;
           test -n "$(find android -name '*-release.apk' -type f -print -quit)" \
             || { echo "no release APK produced - failing rather than uploading nothing" >&2; exit 1; }
 
-      - name: Keep them
+      - name: Keep the APK
         uses: actions/upload-artifact@v4
         with:
-          name: quietkeep-signed-release
-          path: |
-            android/app/build/outputs/apk/**/release/*.apk
-            android/app/build/outputs/bundle/**/*.aab
+          name: quietkeep-installable-apk
+          path: android/app/build/outputs/apk/**/release/*.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: Destroy the keystore
+      - name: Destroy the key
         if: always()
-        run: rm -f "$RUNNER_TEMP/release.jks"
+        run: rm -f "$RUNNER_TEMP/testing.jks"

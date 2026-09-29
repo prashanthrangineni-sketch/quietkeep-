@@ -83,6 +83,10 @@ public class AlarmReceiver extends BroadcastReceiver {
         try {
             Intent ttsIntent = new Intent(context, com.pranix.quietkeep.services.ReminderTTSService.class);
             ttsIntent.putExtra("text_to_speak", reminderText);
+            // The user's chosen language, carried all the way from the app.
+            // The service prefers this over judging the script of the text -
+            // it just never received one, because this line did not exist.
+            ttsIntent.putExtra("language", intent.getStringExtra("language"));
             context.startService(ttsIntent);
         } catch (Exception e) {
             Log.w(TAG, "Failed to start ReminderTTSService: " + e.getMessage());

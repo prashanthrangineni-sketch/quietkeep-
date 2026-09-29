@@ -165,6 +165,22 @@ function actionFor(item) {
  * Returns { channel, armed } so a caller can log what actually happened rather
  * than assume. Never throws.
  */
+/**
+ * The language the user chose, as a two-letter code, or null.
+ *
+ * Read at arming time from the same place the rest of the app reads it. Null
+ * rather than a guess: the alarm falls back to judging the script of the text,
+ * which is the right behaviour when we genuinely do not know.
+ */
+function chosenLanguage() {
+  try {
+    const raw = localStorage.getItem('qk_voice_lang');
+    if (!raw) return null;
+    const code = String(raw).trim().slice(0, 2).toLowerCase();
+    return /^[a-z]{2}$/.test(code) ? code : null;
+  } catch { return null; }
+}
+
 export async function armVoiceReminders({ supabase, userId }) {
   try {
     const now = Date.now();

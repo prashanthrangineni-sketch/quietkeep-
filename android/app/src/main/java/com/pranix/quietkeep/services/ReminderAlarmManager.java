@@ -53,6 +53,9 @@ public class ReminderAlarmManager {
         editor.putString("alarm_text_" + reminderId, text);
         editor.putLong("alarm_fire_at_" + reminderId, fireAtMs);
         editor.putBoolean("alarm_is_alarm_" + reminderId, isAlarm);
+        // Kept with the reminder so one restored after a reboot still knows
+        // which voice to speak it in.
+        editor.putString("alarm_language_" + reminderId, language);
         
         if (actionSpec != null) {
             editor.putString("alarm_action_type_" + reminderId, actionSpec.type);

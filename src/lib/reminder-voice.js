@@ -202,6 +202,10 @@ export async function armVoiceReminders({ supabase, userId }) {
           // alarm with no action still speaks; it simply does nothing after.
           await alarm.schedule({
             reminderId: r.id, reminderText: r.text, fireAtMs: r.fireAt,
+            // The user's choice, not the alphabet the transcript arrived in.
+            // Omitted when unknown, so the alarm falls back to judging the
+            // script rather than being told something wrong.
+            ...(lang ? { language: lang } : {}),
             ...(actionFor(r) || {}),
           });
           armed++;

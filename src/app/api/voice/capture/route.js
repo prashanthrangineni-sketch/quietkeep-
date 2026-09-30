@@ -27,6 +27,7 @@ import {
   buildExecutionTTS,
   extractDestination,
 } from '@/lib/intent-executor'
+import { readAnswer, answerConfirmation } from '@/lib/follow-up-answer'
 import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep } from '@/lib/geo-resolver'
 import { detectRouteIntent } from '@/lib/intent-parser'
 import { recordVoiceGeoIntent, getTimeBucket } from '@/lib/behavior-engine'
@@ -204,6 +205,102 @@ export async function POST(request) {
       tts_response:  'Already saved.',
       deduplicated:  true,
     }, { status: 200 });
+  }
+
+  // ── IS THIS THE ANSWER TO THE QUESTION WE JUST ASKED? ────────────────────
+  //
+  // Aaria asks "When should I remind you to call Surya Kiran?" and then, when
+  // the user taps speak and says "five minutes", parses those two words from
+  // scratch as a brand-new instruction. The question is never answered and the
+  // user is left tapping into a void.
+  //
+  // This looks for a question opened in the last five minutes and applies the
+  // answer to THAT keep.
+  //
+  // WHY THIS IS SAFE TO PUT AHEAD OF THE PARSER
+  // readAnswer() returns null for anything at all doubtful - no recent
+  // question, a long sentence, words that do not resolve to a time. On null,
+  // execution falls through to exactly the code that ran before, unchanged.
+  // The only way to enter this branch is a short utterance that resolves to a
+  // moment while a question is genuinely open.
+  //
+  // The guard that matters is length: a long sentence is a new instruction
+  // even when a question is outstanding. Swallowing one would lose a note the
+  // user believed they had saved, and nothing would show them why.
+  const { data: openQuestion } = await supabase
+    .from('keeps')
+    .select('id,content,voice_text,contact_name,contact_phone,follow_up,reminder_at,created_at,space_type,workspace_id')
+    .eq('user_id', user.id)
+    .not('follow_up', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const answer = openQuestion ? readAnswer(openQuestion, text) : null
+
+  if (answer) {
+    const patch = { follow_up: null, updated_at: new Date().toISOString() }
+    if (answer.kind === 'time') patch.reminder_at = answer.reminderAt.toISOString()
+
+    const { data: resolvedKeep } = await supabase
+      .from('keeps')
+      .update(patch)
+      .eq('id', openQuestion.id)
+      .eq('user_id', user.id)
+      .select('*')
+      .maybeSingle()
+
+    let answeredReminder = null
+    if (answer.kind === 'time') {
+      // Written the same way and with the same fields as the main path below.
+      // contact_phone especially: src/lib/reminder-voice.js reads it off THIS
+      // row, not off the keep, and only attaches a call action when it is here.
+      try {
+        const { data: rem } = await supabase
+          .from('reminders')
+          .insert({
+            user_id:       user.id,
+            keep_id:       openQuestion.id,
+            reminder_text: openQuestion.voice_text || openQuestion.content || text,
+            scheduled_for: answer.reminderAt.toISOString(),
+            is_active:     true,
+            space_type:    openQuestion.space_type || 'personal',
+            contact_name:  openQuestion.contact_name  || null,
+            contact_phone: openQuestion.contact_phone || null,
+          })
+          .select('*')
+          .maybeSingle()
+        answeredReminder = rem
+      } catch (remErr) {
+        console.error('[capture] answered-question reminder insert failed:', remErr)
+      }
+    }
+
+    supabase.from('audit_log').insert({
+      user_id: user.id,
+      action:  'keep.follow_up_answered',
+      service: 'voice_capture',
+      details: {
+        keep_id: openQuestion.id,
+        action_hint: openQuestion.follow_up?.action_hint || null,
+        answer_kind: answer.kind,
+        answer_text: text,
+      },
+    }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+
+    return NextResponse.json({
+      keep:              resolvedKeep || openQuestion,
+      intent:            resolvedKeep || openQuestion,
+      answered_question: true,
+      answer_kind:       answer.kind,
+      reminder:          answeredReminder,
+      reminder_at:       answer.kind === 'time' ? answer.reminderAt.toISOString() : null,
+      call_now:          answer.kind === 'now',
+      contact_matched:   openQuestion.contact_phone
+        ? { name: openQuestion.contact_name, phone: openQuestion.contact_phone }
+        : null,
+      tts_response:      answerConfirmation(answer, openQuestion),
+    }, { status: 200 })
   }
 
   let parsed = parseIntent(text)

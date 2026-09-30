@@ -106,7 +106,7 @@ waiting for you to speak, so emit only what you actually know:
   "confidence": number 0-1,
   "language_detected": BCP-47 code of the language the USER spoke, e.g. "te-IN",
   "entities": {
-    "person": string,
+    "person": the person's name in ENGLISH LETTERS only (write "Surya Kiran", never "సూర్య కిరణ్" or "सूर्य किरण"; the phone's contact list is in English letters and a name in another script matches nobody),
     "datetime_iso": absolute ISO 8601 datetime, if a time is stated or implied,
     "amount": number,
     "direction": "in" if money received, "out" if money spent/paid/given,

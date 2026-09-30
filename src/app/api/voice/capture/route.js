@@ -721,6 +721,8 @@ export async function POST(request) {
       keep_id: keep.id, source, language, confidence: parsed.confidence,
       intent_type: parsed.type, contact_matched: !!resolvedContact,
       reminder_set: !!reminderAt, follow_up_needed: !!followUp, workspace_id,
+      // Why "when?" was asked, answerable from the row itself from now on.
+      understanding,
     },
   }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
 

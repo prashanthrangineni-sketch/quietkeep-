@@ -833,19 +833,33 @@ export default function Dashboard() {
   // Outbox badge now tracks transitions alongside edits.
   // SW reminder scheduling still fires inline after optimistic UI update.
   async function updateState(id, state) {
+    // THE KEEP, FROM WHAT WE ALREADY HAVE ON SCREEN.
+    //
+    // This used to read `result?.keep?.reminder_at` off the return value of
+    // keepsStore.transition(). That function is declared Promise<void>: it
+    // writes to IndexedDB and flushes in the background, on purpose, because
+    // the store is offline-first and the network write may happen much later.
+    // It has never returned a keep.
+    //
+    // So the condition was undefined on every single call and the block was
+    // dead from the commit that added it. A deferred keep's reminder was never
+    // re-armed, and a keep marked done kept a live alarm that would still fire.
+    //
+    // Read before the optimistic update below, so `status` is the OLD one and
+    // the object is the one the user is looking at.
+    const keepBefore = intents.find(k => k.id === id) || null;
+
     // Optimistic UI update immediately — don't wait for server
     setIntents(prev => prev.map(k => k.id === id ? { ...k, status: state } : k));
     showToast(state === 'closed' ? '✓ Marked done!' : 'Moved to ' + state);
 
+    // Arm or cancel the local notification from local data. No network, no
+    // response required, and it works with the phone offline — which is the
+    // whole reason the store is shaped the way it is.
+    syncReminderTimer(keepBefore, state);
+
     try {
-      const result = await keepsStore.transition(id, state);
-      // Schedule local SW reminder notification if keep has reminder_at
-      if (result?.keep?.reminder_at) {
-        const fireAt = new Date(result.keep.reminder_at).getTime();
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({ type: 'SCHEDULE_REMINDER', id: result.keep.id, text: result.keep.content || '', fireAt });
-        }
-      }
+      await keepsStore.transition(id, state);
       // P0.4 FIX: reload from server after success to reconfirm server state.
       // Optimistic update may differ from server if: RPC rejected, prior offline
       // writes created conflict, or multi-device state diverged.

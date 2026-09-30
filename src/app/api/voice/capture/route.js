@@ -821,7 +821,9 @@ export async function POST(request) {
   const keepSnippet = text.length > 40 ? text.slice(0, 40) + '…' : text;
   if (parsed.route?.detected && routeData?.destLoc) {
     tts_response = `Got it. When you're near ${routeData.destLoc.name}, I'll remind you: ${keepSnippet}`;
-  } else if (geoData?.detected && geoData?.geo_trigger_enabled) {
+  } else if (geoData?.geo_trigger_enabled) {
+    // (was `geoData?.detected && ...` - geoData has no `detected` field, so
+    // this branch never ran and a geo reminder was confirmed as a plain note)
     const locLabel = geoData.location_name || 'this location';
     const geoType  = parsed.geo?.type;
     if (geoType === 'current') {

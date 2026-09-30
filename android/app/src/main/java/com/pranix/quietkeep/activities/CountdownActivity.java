@@ -173,8 +173,37 @@ public class CountdownActivity extends Activity {
 
         setContentView(root);
 
+        // ASK FOR THE ONE PERMISSION THE CALL NEEDS, WHILE THE COUNTDOWN RUNS.
+        //
+        // 30 September 2026: this screen appeared on the locked phone, counted
+        // ten, nine ... zero, and placed no call. CALL_PHONE was declared in the
+        // manifest and had never once been requested, so ACTION_CALL threw and
+        // the executor's catch swallowed it. Asking here, on the first call this
+        // phone ever tries, is the natural moment: the user is looking at
+        // "Calling Surya Kiran" and the system dialog says why. If they refuse,
+        // ActionExecutor opens the dialler with the number filled in instead.
+        if (("call".equals(actionSpec.type) || "contact".equals(actionSpec.type))
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && checkSelfPermission(android.Manifest.permission.CALL_PHONE)
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            Log.d("QK_COUNTDOWN", "CALL_PHONE not granted - asking during the countdown");
+            requestPermissions(new String[]{android.Manifest.permission.CALL_PHONE}, REQ_CALL_PHONE);
+        }
+
         // Start 10-second countdown
         startCountdown();
+    }
+
+    private static final int REQ_CALL_PHONE = 4101;
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_CALL_PHONE) {
+            boolean granted = grantResults.length > 0
+                    && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            Log.d("QK_COUNTDOWN", "CALL_PHONE " + (granted ? "granted" : "refused - will open the dialler"));
+        }
     }
 
     private void startCountdown() {

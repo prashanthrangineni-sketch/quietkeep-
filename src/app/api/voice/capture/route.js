@@ -29,6 +29,7 @@ import {
 } from '@/lib/intent-executor'
 import { readAnswer, answerConfirmation } from '@/lib/follow-up-answer'
 import { whyBrainRun, describeUnderstanding } from '@/lib/understanding-record'
+import { geocodePlace, cleanPlaceName } from '@/lib/geocode'
 import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep } from '@/lib/geo-resolver'
 import { detectRouteIntent } from '@/lib/intent-parser'
 import { recordVoiceGeoIntent, getTimeBucket } from '@/lib/behavior-engine'
@@ -507,9 +508,34 @@ export async function POST(request) {
         geo_trigger_enabled: true,
       };
     } else if (parsed.geo.location_name) {
+      // "chintal kunta today" is not a place; "chintal kunta" is.
+      parsed.geo.location_name = cleanPlaceName(parsed.geo.location_name) || parsed.geo.location_name;
       // Try to resolve from user's saved locations (e.g. "home", "office")
       const saved = await resolveLocation(supabase, user.id, parsed.geo.location_name);
-      if (saved) {
+      if (!saved) {
+        // NOT SAVED YET - PUT IT ON THE MAP OURSELVES.
+        // 30 Sep 2026: "pick beers near chintal kunta" was stored with a name
+        // and no coordinates, geo_trigger_enabled=false, and could never
+        // fire. A name is enough to geocode. Null on any failure, and then
+        // the old "saved for later, tap Save here" path runs unchanged.
+        const pin = await geocodePlace(parsed.geo.location_name, {
+          nearLat: typeof current_lat === 'number' ? current_lat : null,
+          nearLng: typeof current_lng === 'number' ? current_lng : null,
+        });
+        if (pin) {
+          console.log('[GEO] geocoded:', { name: parsed.geo.location_name, lat: pin.latitude, lng: pin.longitude });
+          geoData = {
+            latitude: pin.latitude,
+            longitude: pin.longitude,
+            radius_meters: 300,
+            location_name: parsed.geo.location_name,
+            geo_trigger_enabled: true,
+          };
+        }
+      }
+      if (geoData) {
+        // geocoded above
+      } else if (saved) {
         console.log('[GEO] resolveLocation: HIT', { name: saved.name, lat: saved.latitude, lng: saved.longitude });
         geoData = {
           latitude: saved.latitude,
@@ -795,7 +821,9 @@ export async function POST(request) {
   const keepSnippet = text.length > 40 ? text.slice(0, 40) + '…' : text;
   if (parsed.route?.detected && routeData?.destLoc) {
     tts_response = `Got it. When you're near ${routeData.destLoc.name}, I'll remind you: ${keepSnippet}`;
-  } else if (geoData?.detected && geoData?.geo_trigger_enabled) {
+  } else if (geoData?.geo_trigger_enabled) {
+    // (was `geoData?.detected && ...` - geoData has no `detected` field, so
+    // this branch never ran and a geo reminder was confirmed as a plain note)
     const locLabel = geoData.location_name || 'this location';
     const geoType  = parsed.geo?.type;
     if (geoType === 'current') {

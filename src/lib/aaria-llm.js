@@ -325,7 +325,8 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       title: parsed.title || null,
       entities: {
         person: ents.person ?? null,
-        datetimeISO: ents.datetime_iso ?? null,
+        datetimeISO,
+        relativeMinutes: Number.isFinite(relMin) && relMin > 0 ? Math.round(relMin) : null,
         amount: typeof ents.amount === 'number' ? ents.amount : null,
         direction: ents.direction ?? null,
         item: ents.item ?? null,

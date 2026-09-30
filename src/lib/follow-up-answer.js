@@ -151,7 +151,7 @@ export function readAnswer(keep, rawText, nowMs = Date.now()) {
 
   // A clock time - "at six", "6:30 pm", "tomorrow at ten".
   const at = computeReminderAt({ dates: [], times: [text] }, undefined, text)
-  if (isUsableInstant(at)) return { kind: 'time', reminderAt: new Date(at) }
+  if (isFutureInstant(at, nowMs)) return { kind: 'time', reminderAt: new Date(at) }
 
   return null
 }

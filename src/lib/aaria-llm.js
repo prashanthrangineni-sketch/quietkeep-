@@ -320,8 +320,9 @@ export async function aariaUnderstandLLM(text, opts = {}) {
   } catch (err) {
     if (err?.name !== 'AbortError') {
       console.error('[aaria-llm] error:', err?.message || String(err));
+      return fail('threw');
     }
-    return null;
+    return fail('timeout');
   } finally {
     clearTimeout(timer);
   }

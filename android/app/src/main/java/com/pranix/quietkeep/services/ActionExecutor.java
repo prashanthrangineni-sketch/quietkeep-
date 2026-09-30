@@ -56,7 +56,8 @@ public class ActionExecutor {
                         // countdown; if it is still not granted here, open the
                         // dialler with the number filled in (no permission needed)
                         // rather than do nothing - one tap beats silence.
-                        boolean canCall = context.checkSelfPermission(android.Manifest.permission.CALL_PHONE)
+                        boolean canCall = androidx.core.content.ContextCompat.checkSelfPermission(
+                                context, android.Manifest.permission.CALL_PHONE)
                                 == PackageManager.PERMISSION_GRANTED;
                         Intent intent = new Intent(canCall ? Intent.ACTION_CALL : Intent.ACTION_DIAL,
                                 Uri.parse("tel:" + spec.phone));

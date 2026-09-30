@@ -819,6 +819,40 @@ export default function Dashboard() {
         if (data.needs_followup && data.clarification && !data.follow_up) setClarificationData({ question: data.clarification, human_type: data.human_type, confidence: data.keep?.confidence });
         if (data.sub_keeps?.length > 0) { const labels = data.sub_keeps.map(k => k.intent_type).join(', '); setSubKeepsToast(`✓ ${data.sub_keeps.length + 1} keeps saved: ${labels}`); setTimeout(() => setSubKeepsToast(null), 4000); }
         if (data.auto_exec && !data.follow_up) launchAutoExec(data.auto_exec);
+
+        // ARM THE ALARM NOW, NOT AT THE NEXT APP OPEN.
+        //
+        // armVoiceReminders() walks the next 36 hours and hands each reminder
+        // to the native alarm, which is what lets the phone speak and dial
+        // with the screen locked. Its own comment says it is "re-armed on
+        // every app open, so this only has to cover the gap between two
+        // opens."
+        //
+        // Nothing called it from here. So a reminder created while the app was
+        // ALREADY OPEN — which is every reminder anyone actually speaks — was
+        // written to the database and never armed. The alarm for it simply did
+        // not exist.
+        //
+        // Measured on the founder's phone, 30 September 2026: three reminders
+        // saved correctly at 14:13, 14:15 and 14:23 with the right contact and
+        // number. Not one of them made a sound. Two were later swept up as
+        // expired by the catch-up pass, which is the app tidying away evidence
+        // of its own silence.
+        //
+        // That is the seventh time in this codebase that finished machinery
+        // turned out to have no caller. reminder-voice.js lists the first six
+        // at the top of the file.
+        //
+        // Re-arming is explicitly safe: the native plugin replaces an alarm
+        // with the same reminderId and the service worker clears the timer for
+        // an id before setting a new one. It never throws, and it reports what
+        // it did rather than assuming.
+        if (data.reminder_at || data.keep?.reminder_at || data.reminder) {
+          armVoiceReminders({ supabase, userId: user.id })
+            .then(r => console.log('[reminder] armed after capture:', r))
+            .catch(() => {});
+        }
+
         setContent(''); setRemindAt(''); setContactInfo(''); setReminderType('app'); setSuggestions([]); setAutoDetected(null);
         if (data.suggest_save && data.keep?.location_name) showToast(`📍 Save "${data.keep.location_name}" to activate geo reminder`);
         else { showToast('✓ Kept!'); setTalkResponse({ show: true, type: saved.intent_type === 'reminder' ? 'reminder' : saved.intent_type === 'expense' ? 'expense' : 'saved', language: voiceLang || 'en-IN', params: { time: saved.reminder_at || '', amount: saved.content?.match(/\d+/)?.[0] || '' } }); }

@@ -507,9 +507,34 @@ export async function POST(request) {
         geo_trigger_enabled: true,
       };
     } else if (parsed.geo.location_name) {
+      // "chintal kunta today" is not a place; "chintal kunta" is.
+      parsed.geo.location_name = cleanPlaceName(parsed.geo.location_name) || parsed.geo.location_name;
       // Try to resolve from user's saved locations (e.g. "home", "office")
       const saved = await resolveLocation(supabase, user.id, parsed.geo.location_name);
-      if (saved) {
+      if (!saved) {
+        // NOT SAVED YET - PUT IT ON THE MAP OURSELVES.
+        // 30 Sep 2026: "pick beers near chintal kunta" was stored with a name
+        // and no coordinates, geo_trigger_enabled=false, and could never
+        // fire. A name is enough to geocode. Null on any failure, and then
+        // the old "saved for later, tap Save here" path runs unchanged.
+        const pin = await geocodePlace(parsed.geo.location_name, {
+          nearLat: typeof current_lat === 'number' ? current_lat : null,
+          nearLng: typeof current_lng === 'number' ? current_lng : null,
+        });
+        if (pin) {
+          console.log('[GEO] geocoded:', { name: parsed.geo.location_name, lat: pin.latitude, lng: pin.longitude });
+          geoData = {
+            latitude: pin.latitude,
+            longitude: pin.longitude,
+            radius_meters: 300,
+            location_name: parsed.geo.location_name,
+            geo_trigger_enabled: true,
+          };
+        }
+      }
+      if (geoData) {
+        // geocoded above
+      } else if (saved) {
         console.log('[GEO] resolveLocation: HIT', { name: saved.name, lat: saved.latitude, lng: saved.longitude });
         geoData = {
           latitude: saved.latitude,

@@ -145,7 +145,7 @@ async function transcribeGroq({ buffer, name, lang, names = [] }) {
 }
 
 // ── Aaria (Indic primary) ───────────────────────────────────────────────────
-async function transcribeAaria({ base64, lang }) {
+async function transcribeAaria({ base64, lang, names = [] }) {
   const res = await fetch(`${AARIA_BASE_URL}/api/voice/listen`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -154,6 +154,9 @@ async function transcribeAaria({ base64, lang }) {
       lang_hint: toIso639(lang) || 'en',
       product: 'QuietKeep',
       quality_tier: 'standard',
+      // The names this user says, for saaras:v4's boost list. Omitted when
+      // empty so the request is identical to before for anonymous callers.
+      ...(names.length ? { keyterms: names } : {}),
     }),
   });
   if (!res.ok) {

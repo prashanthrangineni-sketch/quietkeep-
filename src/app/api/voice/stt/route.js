@@ -109,7 +109,7 @@ async function readAudio(req) {
 }
 
 // ── Groq Whisper (fallback + English primary) ───────────────────────────────
-async function transcribeGroq({ buffer, name, lang }) {
+async function transcribeGroq({ buffer, name, lang, names = [] }) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return { ok: false, error: 'GROQ_API_KEY not configured' };
 
@@ -119,6 +119,11 @@ async function transcribeGroq({ buffer, name, lang }) {
   form.append('model', GROQ_MODEL);
   if (iso) form.append('language', iso);
   form.append('response_format', 'json');
+  // Whisper's documented way to spell rare names: hand them over as the
+  // "preceding text". Absent when there is nothing to say, so the English
+  // path without a signed-in caller is unchanged.
+  const prompt = namesAsWhisperPrompt(names);
+  if (prompt) form.append('prompt', prompt);
 
   const res = await fetch(GROQ_ENDPOINT, {
     method: 'POST',

@@ -53,6 +53,7 @@ import { executeClientAction } from '@/lib/intent-executor';
 // updateState → keepsStore.transition() (PR #9, this commit)
 // storeOutboxCount tracks ALL pending writes (edits + transitions) for the badge.
 import { keepsStore } from '@/lib/keeps/store';
+import { syncReminderTimer } from '@/lib/reminder-timer';
 
 const TYPE_EMOJI = {
   note: '📝', reminder: '⏰', contact: '📞', task: '✅',

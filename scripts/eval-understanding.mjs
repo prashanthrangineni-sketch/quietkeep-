@@ -43,6 +43,10 @@ function check(expect, got) {
   if (!got) return ['brain returned nothing']
   if (expect.intent && got.intent !== expect.intent) fails.push(`intent ${got.intent} != ${expect.intent}`)
   if (expect.person === true && !got.entities?.person) fails.push('no person')
+  // Contacts are stored in English letters. A name returned in Telugu or
+  // Devanagari script matches nobody, and the reminder then speaks but does
+  // not dial. Seen on production 30 Sep 2026 for the native-script sentence.
+  if (got.entities?.person && /[^\x00-\x7F]/.test(got.entities.person)) fails.push(`person not in English letters: ${got.entities.person}`)
   if (expect.time === true && !got.entities?.datetimeISO) fails.push('no time')
   if (expect.time === false && got.entities?.datetimeISO) fails.push('invented a time')
   if (expect.missing && !(got.missing || []).includes(expect.missing)) fails.push(`did not ask for ${expect.missing}`)

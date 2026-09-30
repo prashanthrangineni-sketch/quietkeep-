@@ -21,8 +21,43 @@
 //   Aaria fails  → Groq fallback, ALWAYS
 // So this endpoint is never worse than the one it supersedes.
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { recentSpokenNames, namesAsWhisperPrompt } from '@/lib/spoken-names';
 
 export const dynamic = 'force-dynamic';
+
+// ── WHO IS SPEAKING, AND WHICH NAMES THEY SAY ───────────────────────────────
+//
+// "Surya Kiran" → "Surya Korean" (30 Sep 2026). The fix is not a word list in
+// the parser; it is telling the recogniser the names this user says BEFORE it
+// writes the text. Sarvam saaras:v4 takes them as `keyterms` (pranix-aaria
+// #158); Groq Whisper takes them as `prompt`.
+//
+// The Android service already sends Authorization: Bearer on this call
+// (VoiceService.java sendChunk). The web dock may not. No token, or any error
+// at all, means an empty list - and an empty list means the request the
+// recogniser gets is byte-for-byte what it got yesterday.
+async function namesForCaller(req) {
+  try {
+    const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
+    if (!token) return [];
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !anonKey || !serviceKey) return [];
+
+    const anon = createClient(url, anonKey, { global: { headers: { Authorization: `Bearer ${token}` } } });
+    const { data: { user } = {}, error } = await anon.auth.getUser();
+    if (error || !user?.id) return [];
+
+    // Same pattern as /api/voice/capture: identity from the token, reads via
+    // the service role scoped explicitly to that user's id.
+    const service = createClient(url, serviceKey);
+    return await recentSpokenNames(service, user.id);
+  } catch {
+    return [];
+  }
+}
 
 const AARIA_BASE_URL = process.env.AARIA_BASE_URL || 'https://pranix-aaria.onrender.com';
 const GROQ_ENDPOINT  = 'https://api.groq.com/openai/v1/audio/transcriptions';

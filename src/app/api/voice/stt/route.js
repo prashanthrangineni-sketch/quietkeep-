@@ -195,7 +195,7 @@ export async function POST(req) {
     }
 
     const viaGroq = await transcribeGroq(audio);
-    if (viaGroq.ok) return NextResponse.json(viaGroq, { status: 200 });
+    if (viaGroq.ok) return NextResponse.json({ ...viaGroq, names_sent: audio.names.length }, { status: 200 });
 
     // Groq failed too. If we haven't tried Aaria yet (English path), try it now
     // rather than giving up — any transcript beats none.

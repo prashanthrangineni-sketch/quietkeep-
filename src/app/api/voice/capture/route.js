@@ -311,26 +311,19 @@ export async function POST(request) {
   // generic 'note' and nothing happens. Run the LLM whenever the regex result
   // is weak OR the user did not speak English, then upgrade the parse.
   // Entirely fail-safe: if the brain is unavailable we keep the regex result.
-  const langBase = String(language || 'en').split('-')[0]
-  const regexWeak = parsed.type === 'unknown' || parsed.type === 'note' || (parsed.confidence ?? 0) < 0.7
-
-    // The regex parser is CONFIDENTLY WRONG about money direction — measured
-    // 13 Aug 2026: "Ramesh se paanch sau rupaye aaye" (money RECEIVED) came back
-    // as `expense` at 0.95 confidence, so a confidence gate alone never rescues
-    // it. Anything money-shaped, or anything written in romanised Hindi/Telugu
-    // (which arrives tagged en-IN), must go to the brain.
-    const MONEY_TYPES = new Set(['expense', 'income', 'purchase', 'sale', 'invoice', 'ledger_credit', 'ledger_debit'])
-    const ROMAN_INDIC = /\b(se|ko|ka|ki|ke|liye|diye|diya|aaye|aaya|mile|mila|rupaye|rupay|rupees|hazaar|hajaar|sau|lakh|kal|aaj|parso|subah|shaam|raat|baje|yaad|dilana|karna|chahiye|nahi|gurthu|repu|nenu|meeru|cheyyi|kavali|ivvu|vachindi|ravali)\b/i
+  // The decision and its reasons live in src/lib/understanding-record.js so
+  // the audit row can carry WHY the brain ran (or did not). The rules are the
+  // ones that used to sit inline here: regex weak, non-English, money-shaped
+  // (the regex is confidently wrong about money direction - measured 13 Aug
+  // 2026), romanised Hindi/Telugu arriving tagged en-IN, or a reminder the
+  // regex found no time for.
+  const brainDecision = whyBrainRun({ parsed, text, language, reminderAt })
   let llmAssist = null
+  let brainLatencyMs = null
+  let brainFailure = null
 
-  const needsBrain =
-      regexWeak ||
-      langBase !== 'en' ||
-      MONEY_TYPES.has(parsed.type) ||
-      ROMAN_INDIC.test(text) ||
-      ((parsed.type === 'reminder' || parsed.type === 'task') && !reminderAt)
-
-    if (needsBrain) {
+  if (brainDecision.run) {
+    const t0 = Date.now()
     llmAssist = await aariaUnderstandLLM(text, {
       language,
       nowISO: new Date().toISOString(),
@@ -341,8 +334,18 @@ export async function POST(request) {
       pageLabel: typeof page_context?.label === 'string'
         ? page_context.label.replace(/[^\w &/-]/g, '').slice(0, 40)
         : null,
-    }).catch(() => null)
+    }).catch((err) => { brainFailure = err?.name === 'AbortError' ? 'timeout' : 'threw'; return null })
+    brainLatencyMs = Date.now() - t0
   }
+
+  // What happened in the understanding step, in a shape safe to store forever:
+  // no prompt, no key, no raw model text. This is the field that was missing
+  // on 30 September when "5 నిమిషాల్లో సూర్య కిరణ్‌కి కాల్ చెయ్యి" drew "when?"
+  // and nothing on record could say whether the brain ran, timed out, or ran
+  // and simply saw no time in a garbled transcript.
+  const understanding = describeUnderstanding({
+    decision: brainDecision, llmAssist, latencyMs: brainLatencyMs, failure: brainFailure, threshold: 0.55,
+  })
 
   if (llmAssist && llmAssist.confidence >= 0.55) {
     // Map the brain's vocabulary onto the intent types this app executes.

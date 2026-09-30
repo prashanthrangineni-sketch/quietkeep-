@@ -107,7 +107,8 @@ waiting for you to speak, so emit only what you actually know:
   "language_detected": BCP-47 code of the language the USER spoke, e.g. "te-IN",
   "entities": {
     "person": the person's name in ENGLISH LETTERS only (write "Surya Kiran", never "సూర్య కిరణ్" or "सूर्य किरण"; the phone's contact list is in English letters and a name in another script matches nobody),
-    "datetime_iso": absolute ISO 8601 datetime, if a time is stated or implied,
+    "relative_minutes": number - when the user gave a DURATION FROM NOW ("in five minutes", "ek minute ke baad", "ఐదు నిమిషాల్లో", "in two hours" = 120). Give ONLY this and omit datetime_iso; the app adds it to the clock itself,
+    "datetime_iso": absolute ISO 8601 datetime, ONLY when the user named a clock time or a day ("at ten", "tomorrow morning", "kal subah"),
     "amount": number,
     "direction": "in" if money received, "out" if money spent/paid/given,
     "item": string
@@ -120,8 +121,12 @@ RULES FOR "reply" (it is spoken aloud):
 - Write it ONLY in ${langName(language)}. Never answer in English if the user spoke another language.
 - Under 20 words, warm, natural, no markdown, no emoji, no jargon.
 - If "missing" is not empty, "reply" MUST be a natural question asking for that one thing.
-- Otherwise say what you are ABOUT TO DO, stating the time in a human way using
-  the local wall clock.
+- Otherwise say what you are ABOUT TO DO. State the time THE WAY THE USER SAID
+  IT: "in one minute", "tomorrow morning", "at ten". Never convert a relative
+  time into a clock time in the reply - on 30 September 2026 "ek minute ke
+  baad" was confirmed aloud as "in one minute at a quarter to eight" while the
+  reminder was correctly stored for 8:09 pm. The stored datetime_iso is where
+  the arithmetic goes; the spoken sentence only echoes what was asked.
 
 NEVER SAY SOMETHING IS ALREADY DONE. You are reading the sentence, not saving it.
 The saving happens after you answer and it can fail. Write "I'll remind you at
@@ -300,6 +305,18 @@ export async function aariaUnderstandLLM(text, opts = {}) {
     if (!parsed || typeof parsed !== 'object' || !parsed.intent) return fail('no_intent');
 
     const ents = parsed.entities || {};
+
+    // A DURATION IS ADDED HERE, BY CODE, NOT BY THE MODEL.
+    // relative_minutes wins over datetime_iso when both arrive: the number is
+    // what the user said; the clock time is the model's arithmetic, and on
+    // 30 September 2026 that arithmetic put "1 minute" thirty minutes out.
+    const now = new Date(opts.nowISO || Date.now());
+    const relMin = Number(ents.relative_minutes);
+    let datetimeISO = ents.datetime_iso ?? null;
+    if (Number.isFinite(relMin) && relMin > 0 && relMin <= 60 * 24 * 366 && !isNaN(now.getTime())) {
+      datetimeISO = new Date(now.getTime() + Math.round(relMin) * 60_000).toISOString();
+    }
+
     return {
       intent: INTENTS.includes(parsed.intent) ? parsed.intent : 'note',
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.7,
@@ -308,7 +325,8 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       title: parsed.title || null,
       entities: {
         person: ents.person ?? null,
-        datetimeISO: ents.datetime_iso ?? null,
+        datetimeISO,
+        relativeMinutes: Number.isFinite(relMin) && relMin > 0 ? Math.round(relMin) : null,
         amount: typeof ents.amount === 'number' ? ents.amount : null,
         direction: ents.direction ?? null,
         item: ents.item ?? null,

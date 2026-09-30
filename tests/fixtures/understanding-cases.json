@@ -72,6 +72,19 @@
     "expect": { "intent": "navigation", "item": true }
   },
   {
+    "id": "hi-roman-1-minut-as-transcribed-30-sep",
+    "text": "Surya Kiran ko 1 minut ke bad mein call karo",
+    "language": "en-IN",
+    "note": "Stored for +30 minutes on 30 Sep 19:39 IST, confirmed aloud as 'a quarter to eight'. Duration must come back as a number, not as clock arithmetic.",
+    "expect": { "intent": "reminder", "person": true, "time": true, "minutes_from_now": 1 }
+  },
+  {
+    "id": "hi-roman-ek-minute-ke-baad",
+    "text": "ek minute ke baad surya kiran ko call karo",
+    "language": "hi-IN",
+    "expect": { "intent": "reminder", "person": true, "time": true, "minutes_from_now": 1 }
+  },
+  {
     "id": "stt-garble-from-30-sep",
     "text": "Inshallah Surya Kiran ki call chahiye",
     "language": "te-IN",

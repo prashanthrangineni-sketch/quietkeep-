@@ -289,11 +289,33 @@ export function AariaProvider({ children }) {
       const spoken = json.tts_response || json.assistant?.reply || 'Saved.';
       say(spoken);
       setTranscript('');
+
+      // ARM THE ALARM FROM HERE TOO.
+      //
+      // 30 September 2026, 8:08 pm: the founder tapped THIS microphone, said
+      // "ek minute ke baad Surya Kiran ko call karo", the keep was saved with
+      // the right name and 8:09 pm, Aaria confirmed it aloud - and at 8:09
+      // nothing happened. #127 had taught the home-screen capture box to hand
+      // a new reminder to the native alarm the moment it is saved; this dock
+      // is a second entry point to the same brain and was never taught the
+      // same thing. Two microphones, one of which set alarms.
+      //
+      // Same call, same guard, same safety as the dashboard: re-arming
+      // replaces an alarm with the same id, never throws, reports what it did.
+      if (json.reminder_at || json.keep?.reminder_at || json.reminder) {
+        try {
+          const { supabase } = await import('@/lib/supabase');
+          const { armVoiceReminders } = await import('@/lib/reminder-voice');
+          armVoiceReminders({ supabase, userId: user?.id })
+            .then((r) => console.log('[Aaria] armed after capture:', r))
+            .catch(() => {});
+        } catch { /* arming is best-effort; the keep is already saved */ }
+      }
     } catch {
       setError('Network problem. Nothing was lost — try again.');
       setStatus('idle');
     }
-  }, [signedIn, accessToken, voiceLang, pathname, here, say]);
+  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id]);
 
   // ── the single entry point for everything Aaria hears or is typed ──────────
   const submit = useCallback(async (raw) => {

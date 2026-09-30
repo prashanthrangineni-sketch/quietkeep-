@@ -100,7 +100,7 @@ export function isPendingQuestion(keep, nowMs = Date.now()) {
   const hint = keep.follow_up.action_hint
   if (!TIME_HINTS.has(hint)) return false
 
-  if (isUsableInstant(keep.reminder_at)) return false
+  if (isFutureInstant(keep.reminder_at, nowMs)) return false
 
   const createdMs = Date.parse(keep.created_at || '')
   if (!Number.isFinite(createdMs)) return false

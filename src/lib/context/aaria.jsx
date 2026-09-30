@@ -315,7 +315,7 @@ export function AariaProvider({ children }) {
       setError('Network problem. Nothing was lost — try again.');
       setStatus('idle');
     }
-  }, [signedIn, accessToken, voiceLang, pathname, here, say]);
+  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id]);
 
   // ── the single entry point for everything Aaria hears or is typed ──────────
   const submit = useCallback(async (raw) => {

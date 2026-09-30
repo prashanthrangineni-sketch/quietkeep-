@@ -293,11 +293,11 @@ export async function aariaUnderstandLLM(text, opts = {}) {
     try { parsed = JSON.parse(jsonText); }
     catch {
       const m = jsonText.match(/\{[\s\S]*\}/);
-      if (!m) return null;
-      try { parsed = JSON.parse(m[0]); } catch { return null; }
+      if (!m) return fail('no_json');
+      try { parsed = JSON.parse(m[0]); } catch { return fail('no_json'); }
     }
 
-    if (!parsed || typeof parsed !== 'object' || !parsed.intent) return null;
+    if (!parsed || typeof parsed !== 'object' || !parsed.intent) return fail('no_intent');
 
     const ents = parsed.entities || {};
     return {

@@ -334,7 +334,8 @@ export async function POST(request) {
       pageLabel: typeof page_context?.label === 'string'
         ? page_context.label.replace(/[^\w &/-]/g, '').slice(0, 40)
         : null,
-    }).catch((err) => { brainFailure = err?.name === 'AbortError' ? 'timeout' : 'threw'; return null })
+      onFailure: (reason) => { brainFailure = reason },
+    }).catch((err) => { brainFailure = brainFailure || (err?.name === 'AbortError' ? 'timeout' : 'threw'); return null })
     brainLatencyMs = Date.now() - t0
   }
 

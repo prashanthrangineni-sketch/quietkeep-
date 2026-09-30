@@ -106,7 +106,7 @@ waiting for you to speak, so emit only what you actually know:
   "confidence": number 0-1,
   "language_detected": BCP-47 code of the language the USER spoke, e.g. "te-IN",
   "entities": {
-    "person": string,
+    "person": the person's name in ENGLISH LETTERS only (write "Surya Kiran", never "సూర్య కిరణ్" or "सूर्य किरण"; the phone's contact list is in English letters and a name in another script matches nobody),
     "datetime_iso": absolute ISO 8601 datetime, if a time is stated or implied,
     "amount": number,
     "direction": "in" if money received, "out" if money spent/paid/given,
@@ -229,8 +229,14 @@ export async function aariaUnderstandLLM(text, opts = {}) {
   const clean = (text || '').trim();
   if (!clean) return null;
 
+  // Every "return null" below names its reason through opts.onFailure, so the
+  // capture route can record WHY there was no answer (no key, HTTP error, no
+  // JSON, timeout) instead of only that there was none. Optional: callers
+  // that do not pass it behave exactly as before.
+  const fail = (reason) => { try { opts.onFailure?.(reason); } catch { /* never throw from a report */ } return null; };
+
   const apiKey = process.env.SARVAM_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return fail('no_key');
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -275,7 +281,7 @@ export async function aariaUnderstandLLM(text, opts = {}) {
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       console.error('[aaria-llm] sarvam HTTP', res.status, errText.slice(0, 200));
-      return null;
+      return fail(`http_${res.status}`);
     }
 
     const raw = (!STREAM_DISABLED && res.body)
@@ -287,11 +293,11 @@ export async function aariaUnderstandLLM(text, opts = {}) {
     try { parsed = JSON.parse(jsonText); }
     catch {
       const m = jsonText.match(/\{[\s\S]*\}/);
-      if (!m) return null;
-      try { parsed = JSON.parse(m[0]); } catch { return null; }
+      if (!m) return fail('no_json');
+      try { parsed = JSON.parse(m[0]); } catch { return fail('no_json'); }
     }
 
-    if (!parsed || typeof parsed !== 'object' || !parsed.intent) return null;
+    if (!parsed || typeof parsed !== 'object' || !parsed.intent) return fail('no_intent');
 
     const ents = parsed.entities || {};
     return {
@@ -314,8 +320,9 @@ export async function aariaUnderstandLLM(text, opts = {}) {
   } catch (err) {
     if (err?.name !== 'AbortError') {
       console.error('[aaria-llm] error:', err?.message || String(err));
+      return fail('threw');
     }
-    return null;
+    return fail('timeout');
   } finally {
     clearTimeout(timer);
   }

@@ -1,0 +1,81 @@
+[
+  {
+    "id": "te-native-call-5min",
+    "text": "ఐదు నిమిషాల్లో సూర్య కిరణ్‌కి కాల్ చెయ్యి",
+    "language": "te-IN",
+    "expect": { "intent": "reminder", "person": true, "time": true, "minutes_from_now": 5 }
+  },
+  {
+    "id": "te-digit-call-5min",
+    "text": "5 నిమిషాల్లో సూర్య కిరణ్‌కి కాల్ చెయ్యి",
+    "language": "te-IN",
+    "expect": { "intent": "reminder", "person": true, "time": true, "minutes_from_now": 5 }
+  },
+  {
+    "id": "te-roman-call-5min",
+    "text": "aidu nimishallo Surya Kiran ki call chey",
+    "language": "en-IN",
+    "expect": { "intent": "reminder", "person": true, "time": true, "minutes_from_now": 5 }
+  },
+  {
+    "id": "hi-roman-call-5min",
+    "text": "Surya Kiran ko paanch minute mein call karo",
+    "language": "en-IN",
+    "expect": { "intent": "reminder", "person": true, "time": true, "minutes_from_now": 5 }
+  },
+  {
+    "id": "en-call-5min",
+    "text": "call Surya Kiran in five minutes",
+    "language": "en-IN",
+    "expect": { "intent": "reminder", "person": true, "time": true, "minutes_from_now": 5 }
+  },
+  {
+    "id": "hi-native-tomorrow-morning-bill",
+    "text": "कल सुबह दस बजे बिजली का बिल भरने की याद दिलाना",
+    "language": "hi-IN",
+    "expect": { "intent": "reminder", "time": true }
+  },
+  {
+    "id": "te-native-tomorrow-morning-call",
+    "text": "గౌతమ్ కి రేపు ఉదయం కాల్ చేయమని గుర్తు చెయ్",
+    "language": "te-IN",
+    "expect": { "intent": "reminder", "person": true, "time": true }
+  },
+  {
+    "id": "en-reminder-no-time-must-ask",
+    "text": "remind me to call Surya Kiran",
+    "language": "en-IN",
+    "expect": { "intent": "reminder", "person": true, "time": false, "missing": "datetime" }
+  },
+  {
+    "id": "hi-roman-money-received",
+    "text": "Ramesh se paanch sau rupaye aaye",
+    "language": "en-IN",
+    "expect": { "intent": "income", "direction": "in", "amount": 500 }
+  },
+  {
+    "id": "hi-roman-money-paid",
+    "text": "Ramesh ko paanch sau rupaye diye",
+    "language": "en-IN",
+    "expect": { "intent": "expense", "direction": "out", "amount": 500 }
+  },
+  {
+    "id": "te-navigation",
+    "text": "చార్మినార్ కి వెళ్ళాలి",
+    "language": "te-IN",
+    "expect": { "intent": "navigation", "item": true }
+  },
+  {
+    "id": "hi-native-navigation",
+    "text": "चारमीनार ले चलो",
+    "language": "hi-IN",
+    "expect": { "intent": "navigation", "item": true }
+  },
+  {
+    "id": "stt-garble-from-30-sep",
+    "text": "Inshallah Surya Kiran ki call chahiye",
+    "language": "te-IN",
+    "note": "What the recogniser actually returned on 30 Sep. The brain cannot invent a time; the right answer is to ask.",
+    "expect": { "person": true, "time": false }
+  }
+]

@@ -46,8 +46,22 @@ public class ActionExecutor {
                 case "contact":
                 case "call":
                     if (spec.phone != null && !spec.phone.isEmpty()) {
-                        Intent intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + spec.phone));
+                        // ACTION_CALL places the call itself and needs the CALL_PHONE
+                        // runtime permission. The manifest has declared it since the
+                        // beginning; nothing in this app ever ASKED the user for it.
+                        // So on 30 September 2026 the reminder fired on a locked
+                        // phone, the countdown reached zero, ACTION_CALL threw
+                        // SecurityException, the catch below logged it, and the
+                        // screen went dark. CountdownActivity now asks during the
+                        // countdown; if it is still not granted here, open the
+                        // dialler with the number filled in (no permission needed)
+                        // rather than do nothing - one tap beats silence.
+                        boolean canCall = context.checkSelfPermission(android.Manifest.permission.CALL_PHONE)
+                                == PackageManager.PERMISSION_GRANTED;
+                        Intent intent = new Intent(canCall ? Intent.ACTION_CALL : Intent.ACTION_DIAL,
+                                Uri.parse("tel:" + spec.phone));
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        Log.d(TAG, canCall ? "placing call" : "CALL_PHONE not granted - opening dialler instead");
                         context.startActivity(intent);
                     }
                     break;

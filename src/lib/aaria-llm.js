@@ -305,6 +305,18 @@ export async function aariaUnderstandLLM(text, opts = {}) {
     if (!parsed || typeof parsed !== 'object' || !parsed.intent) return fail('no_intent');
 
     const ents = parsed.entities || {};
+
+    // A DURATION IS ADDED HERE, BY CODE, NOT BY THE MODEL.
+    // relative_minutes wins over datetime_iso when both arrive: the number is
+    // what the user said; the clock time is the model's arithmetic, and on
+    // 30 September 2026 that arithmetic put "1 minute" thirty minutes out.
+    const now = new Date(opts.nowISO || Date.now());
+    const relMin = Number(ents.relative_minutes);
+    let datetimeISO = ents.datetime_iso ?? null;
+    if (Number.isFinite(relMin) && relMin > 0 && relMin <= 60 * 24 * 366 && !isNaN(now.getTime())) {
+      datetimeISO = new Date(now.getTime() + Math.round(relMin) * 60_000).toISOString();
+    }
+
     return {
       intent: INTENTS.includes(parsed.intent) ? parsed.intent : 'note',
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.7,

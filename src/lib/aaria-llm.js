@@ -281,7 +281,7 @@ export async function aariaUnderstandLLM(text, opts = {}) {
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       console.error('[aaria-llm] sarvam HTTP', res.status, errText.slice(0, 200));
-      return null;
+      return fail(`http_${res.status}`);
     }
 
     const raw = (!STREAM_DISABLED && res.body)

@@ -30,7 +30,10 @@
 // instruction swallowed as an answer to an old question is a note the user
 // never gets, and they will not know why.
 
-import { relativeMinutesFromText, computeReminderAt, isUsableInstant } from '@/lib/intent-executor'
+// Relative, not '@/lib/...', on purpose. The node test suite loads these files
+// directly and the bundler alias does not exist there - which is why
+// contacts-flatten.js was written dependency-free for the same reason.
+import { relativeMinutesFromText, computeReminderAt, isUsableInstant } from './intent-executor.js'
 
 // How long a question stays open.
 //

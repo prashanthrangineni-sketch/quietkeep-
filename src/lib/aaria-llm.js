@@ -229,8 +229,14 @@ export async function aariaUnderstandLLM(text, opts = {}) {
   const clean = (text || '').trim();
   if (!clean) return null;
 
+  // Every "return null" below names its reason through opts.onFailure, so the
+  // capture route can record WHY there was no answer (no key, HTTP error, no
+  // JSON, timeout) instead of only that there was none. Optional: callers
+  // that do not pass it behave exactly as before.
+  const fail = (reason) => { try { opts.onFailure?.(reason); } catch { /* never throw from a report */ } return null; };
+
   const apiKey = process.env.SARVAM_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return fail('no_key');
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);

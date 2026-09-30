@@ -985,6 +985,7 @@ export async function POST(request) {
             entities: parsed?.entities || {},
             reply: null,
           },
+    understanding,     // same record as the audit row: engine, reasons, outcome, latency
     time_ambiguous:    timeAmbiguous,
     quick_time_options: timeAmbiguous ? ['9:00 AM', '12:00 PM', '5:00 PM', '8:00 PM'] : null,
     needs_reminder_prompt: needsReminderPrompt,

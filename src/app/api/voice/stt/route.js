@@ -190,7 +190,7 @@ export async function POST(req) {
 
     if (preferAaria) {
       const viaAaria = await transcribeAaria(audio);
-      if (viaAaria.ok) return NextResponse.json(viaAaria, { status: 200 });
+      if (viaAaria.ok) return NextResponse.json({ ...viaAaria, names_sent: audio.names.length }, { status: 200 });
       console.warn('[voice-stt] Aaria unavailable, falling back to Groq:', viaAaria.error);
     }
 

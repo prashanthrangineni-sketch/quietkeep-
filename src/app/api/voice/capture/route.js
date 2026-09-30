@@ -27,6 +27,7 @@ import {
   buildExecutionTTS,
   extractDestination,
 } from '@/lib/intent-executor'
+import { readAnswer, answerConfirmation } from '@/lib/follow-up-answer'
 import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep } from '@/lib/geo-resolver'
 import { detectRouteIntent } from '@/lib/intent-parser'
 import { recordVoiceGeoIntent, getTimeBucket } from '@/lib/behavior-engine'

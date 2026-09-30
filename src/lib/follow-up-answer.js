@@ -33,7 +33,29 @@
 // Relative, not '@/lib/...', on purpose. The node test suite loads these files
 // directly and the bundler alias does not exist there - which is why
 // contacts-flatten.js was written dependency-free for the same reason.
-import { relativeMinutesFromText, computeReminderAt, isUsableInstant } from './intent-executor.js'
+import { relativeMinutesFromText, computeReminderAt } from './intent-executor.js'
+
+// ONE CLOCK.
+//
+// isUsableInstant() in intent-executor.js is the right check in the right
+// place, and it reads the real wall clock. Every decision in THIS file is made
+// against an injected `nowMs` so it can be tested at a fixed moment.
+//
+// Mixing the two is not a testing inconvenience, it is a defect: a keep that
+// already carried a time was judged against a different instant than the
+// question's age was, so the "do not re-open an answered question" guard
+// silently stopped firing once real time moved past the keep's reminder. CI
+// caught it on the first run.
+//
+// Same one-minute slack as isUsableInstant, for the same reason: the write and
+// the check are never simultaneous.
+const SLACK_MS = 60_000
+
+function isFutureInstant(value, nowMs) {
+  if (!value) return false
+  const t = value instanceof Date ? value.getTime() : Date.parse(String(value))
+  return Number.isFinite(t) && t > nowMs - SLACK_MS
+}
 
 // How long a question stays open.
 //

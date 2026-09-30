@@ -181,6 +181,11 @@ export async function POST(req) {
     const audio = await readAudio(req);
     if (audio.error) return NextResponse.json({ fallback: true, error: audio.error }, { status: 400 });
 
+    // Looked up once per request and handed to whichever recogniser serves
+    // it, including the fallback - so a name is spelled the same way on
+    // every path. [] for anonymous callers or on any failure.
+    audio.names = await namesForCaller(req);
+
     const preferAaria = isIndic(audio.lang);
 
     if (preferAaria) {

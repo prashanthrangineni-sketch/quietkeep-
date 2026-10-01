@@ -243,6 +243,19 @@ export async function POST(request) {
   if (answer) {
     const patch = { follow_up: null, updated_at: new Date().toISOString() }
     if (answer.kind === 'time') patch.reminder_at = answer.reminderAt.toISOString()
+    if (answer.kind === 'contact') {
+      patch.contact_name  = answer.contact.name
+      patch.contact_phone = answer.contact.phone || null
+      // The reminders row is what the native alarm reads the number from
+      // (src/lib/reminder-voice.js). Without this the keep would know who to
+      // call and the alarm still would not.
+      await supabase
+        .from('reminders')
+        .update({ contact_name: answer.contact.name, contact_phone: answer.contact.phone || null })
+        .eq('keep_id', openQuestion.id)
+        .eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error('[capture] reminder contact update:', error.message) })
+    }
 
     const { data: resolvedKeep } = await supabase
       .from('keeps')

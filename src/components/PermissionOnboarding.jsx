@@ -114,10 +114,16 @@ export default function PermissionOnboarding({ onComplete, onSkip }) {
             await cap.Plugins.Geolocation.requestPermissions();
             granted = true;
           } else if (navigator.geolocation) {
-            await new Promise((res, rej) =>
-              navigator.geolocation.getCurrentPosition(() => res(true), rej, { timeout: 6000 })
+            // Only error code 1 (PERMISSION_DENIED) means the person said no.
+            // A timeout or "position unavailable" indoors means permission was
+            // GIVEN and the GPS is simply slow - that used to show "Denied" too.
+            granted = await new Promise((res) =>
+              navigator.geolocation.getCurrentPosition(
+                () => res(true),
+                (err) => res(!(err && err.code === 1)),
+                { timeout: 15000, maximumAge: 600000 }
+              )
             );
-            granted = true;
           }
         } catch { granted = false; }
       }

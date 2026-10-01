@@ -546,7 +546,7 @@ export function parseVoiceIntent(rawText: string): IntentResult {
     return {
       handled: true,
       intentType: 'control_wake_mode',
-      response: 'Wake word mode is now on. Say Lotus to activate.',
+      response: 'Wake word mode is now on. Say Aaria to activate.',
       actionKey: 'wake_mode:on',
       entities: {},
     };

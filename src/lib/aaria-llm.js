@@ -338,8 +338,13 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.7,
       language: parsed.language_detected || opts.language || 'en-IN',
       cleanText: parsed.clean_text || clean,
+      // Only what the MODEL rewrote - null when it sent none, so callers can
+      // tell "cleaned" from "the raw words echoed back".
+      modelCleanText: typeof parsed.clean_text === 'string' && parsed.clean_text.trim()
+        ? parsed.clean_text.trim().slice(0, 1000) : null,
       title: parsed.title || null,
       entities: {
+        place,
         person: ents.person ?? null,
         datetimeISO,
         relativeMinutes: Number.isFinite(relMin) && relMin > 0 ? Math.round(relMin) : null,

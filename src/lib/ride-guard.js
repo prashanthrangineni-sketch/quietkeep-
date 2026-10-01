@@ -504,6 +504,9 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
         checkStayAwake(kmh);
       }
     },
+    lastKnownFix() {
+      return typeof lastFix.lat === 'number' ? { lat: lastFix.lat, lng: lastFix.lng } : null;
+    },
     runTest() {
       lastCrash = { impactG: 3.2, speedBeforeKmh: null, test: true };
       speak('This is a test. Nobody will be contacted.');

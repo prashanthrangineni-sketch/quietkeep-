@@ -640,6 +640,18 @@ public class MainActivity extends BridgeActivity {
                 mPendingAudioPermissionRequest = null;
             }
         }
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE && mPendingGeoCallback != null) {
+            boolean allowed = false;
+            for (int r : grantResults) {
+                if (r == PackageManager.PERMISSION_GRANTED) { allowed = true; break; }
+            }
+            Log.d(TAG, "geolocation: person " + (allowed ? "allowed" : "refused") + " location");
+            // retain=false: ask Android again next time rather than caching a
+            // refusal inside the WebView where Settings cannot undo it.
+            mPendingGeoCallback.invoke(mPendingGeoOrigin, allowed, false);
+            mPendingGeoCallback = null;
+            mPendingGeoOrigin = null;
+        }
     }
 
     @Override

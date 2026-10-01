@@ -64,6 +64,31 @@ android {
     }
 }
 
+// Checked, not assumed: after the release manifest is merged, read it back. If
+// notification access survived, fail the build rather than hand over an APK
+// the phone will refuse.
+afterEvaluate {
+    def phoneTest = project.hasProperty('RELEASE_KEY_ALIAS') &&
+        project.property('RELEASE_KEY_ALIAS') == 'quietkeep-testing'
+    if (!phoneTest) return
+    tasks.matching { it.name ==~ /process.*ReleaseMainManifest/ }.all { t ->
+        t.doLast {
+            def merged = fileTree(dir: "${buildDir}/intermediates/merged_manifest",
+                                  include: '**/AndroidManifest.xml').files
+            if (merged.isEmpty()) {
+                logger.warn("phone-test check: no merged manifest found to verify")
+            }
+            merged.each { f ->
+                if (f.text.contains('PaymentNotificationListener') ||
+                        f.text.contains('BIND_NOTIFICATION_LISTENER_SERVICE')) {
+                    throw new GradleException("phone-test build still asks for notification access: ${f}")
+                }
+                logger.lifecycle("phone-test check: no notification access in ${f.name} (${f.parentFile.name}) - verified")
+            }
+        }
+    }
+}
+
 repositories {
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'

@@ -79,6 +79,17 @@ afterEvaluate {
                 logger.warn("phone-test check: no merged manifest found to verify")
             }
             merged.each { f ->
+                // THE OVERLAY ALONE DID NOT DO IT. Build #5/#6 on 1 Oct 2026
+                // merged src/phonetest/AndroidManifest.xml and the service was
+                // still in the result - the check below caught it and failed
+                // the build, as it was written to. So the merged file is now
+                // edited directly: the one <service> block is cut out, and the
+                // check then proves it is gone. Packaging reads this file next.
+                def text = f.text
+                if (text.contains('PaymentNotificationListener')) {
+                    f.text = text.replaceAll(/(?s)<service[^>]*?PaymentNotificationListener.*?<\/service>/, '')
+                    logger.lifecycle("phone-test: removed PaymentNotificationListener from ${f.parentFile.name}")
+                }
                 if (f.text.contains('PaymentNotificationListener') ||
                         f.text.contains('BIND_NOTIFICATION_LISTENER_SERVICE')) {
                     throw new GradleException("phone-test build still asks for notification access: ${f}")

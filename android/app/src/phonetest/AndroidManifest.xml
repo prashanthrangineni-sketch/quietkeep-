@@ -21,7 +21,7 @@
     xmlns:tools="http://schemas.android.com/tools">
     <application>
         <service
-            android:name=".services.PaymentNotificationListener"
+            android:name="com.pranix.quietkeep.services.PaymentNotificationListener"
             tools:node="remove" />
     </application>
 </manifest>

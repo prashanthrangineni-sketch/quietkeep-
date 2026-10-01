@@ -501,6 +501,7 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
         detector.feedSpeed({ kmh, at: now() });
         noteBraking(kmh);
         checkForHazardAhead(kmh);
+        checkStayAwake(kmh);
       }
     },
     runTest() {

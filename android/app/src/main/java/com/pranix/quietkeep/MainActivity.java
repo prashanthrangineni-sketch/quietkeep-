@@ -100,6 +100,48 @@ public class MainActivity extends BridgeActivity {
 
         // Apply system bar insets and status bar color padding
         applySystemBarInsets();
+
+        // Opened by the widget from cold: the page is not there yet, so only
+        // remember it. onPageFinished delivers it.
+        if (isMicTap(getIntent())) mPendingMicWake = true;
+    }
+
+    /** The widget tapped while the app was already running. */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (isMicTap(intent)) {
+            mPendingMicWake = true;
+            deliverMicWake();
+        }
+    }
+
+    private static boolean isMicTap(Intent intent) {
+        return intent != null && ACTION_VOICE_MIC_TAP.equals(intent.getAction());
+    }
+
+    /**
+     * Tell the page the person wants to talk. The page's wake engine
+     * (src/lib/wake-word-engine.js registerNativeWake) defines
+     * window.__qkOnWake once the app has booted and the person is signed in,
+     * and Aaria starts listening on it. That can be a few seconds after the
+     * page itself loads, so the call retries for up to ten seconds rather than
+     * firing once into a page that is not ready and being lost.
+     */
+    private void deliverMicWake() {
+        if (!mPendingMicWake) return;
+        WebView webView = null;
+        try { webView = getBridge() != null ? getBridge().getWebView() : null; } catch (Exception ignored) {}
+        if (webView == null) return;
+        mPendingMicWake = false;
+        final String js = "(function f(n){"
+            + "if (typeof window.__qkOnWake === 'function') { window.__qkOnWake('widget'); return; }"
+            + "if (n > 0) setTimeout(function(){ f(n - 1); }, 250);"
+            + "})(40);";
+        final WebView target = webView;
+        target.post(() -> target.evaluateJavascript(js, null));
+        Log.d(TAG, "widget mic tap delivered to the page");
     }
 
     /**

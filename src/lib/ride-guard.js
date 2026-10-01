@@ -20,6 +20,7 @@
 
 import { createCrashDetector } from '@/lib/crash-detect';
 import { createHazardWarner, metresBetween } from '@/lib/hazard-alerts';
+import { createStayAwakeCompanion } from '@/lib/ride-care';
 import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
 

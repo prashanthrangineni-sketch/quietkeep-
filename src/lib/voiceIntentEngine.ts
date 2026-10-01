@@ -128,7 +128,7 @@ export function normalise(text: string): string {
  *
  * Case-insensitive. Returns original if no match (caller handles that case).
  */
-export function stripWakeVariants(text: string, wakeWord = 'lotus'): {
+export function stripWakeVariants(text: string, wakeWord = 'aaria'): {
   stripped: boolean;
   command: string;
 } {

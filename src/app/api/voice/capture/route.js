@@ -243,6 +243,19 @@ export async function POST(request) {
   if (answer) {
     const patch = { follow_up: null, updated_at: new Date().toISOString() }
     if (answer.kind === 'time') patch.reminder_at = answer.reminderAt.toISOString()
+    if (answer.kind === 'contact') {
+      patch.contact_name  = answer.contact.name
+      patch.contact_phone = answer.contact.phone || null
+      // The reminders row is what the native alarm reads the number from
+      // (src/lib/reminder-voice.js). Without this the keep would know who to
+      // call and the alarm still would not.
+      await supabase
+        .from('reminders')
+        .update({ contact_name: answer.contact.name, contact_phone: answer.contact.phone || null })
+        .eq('keep_id', openQuestion.id)
+        .eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error('[capture] reminder contact update:', error.message) })
+    }
 
     const { data: resolvedKeep } = await supabase
       .from('keeps')
@@ -296,11 +309,17 @@ export async function POST(request) {
       answered_question: true,
       answer_kind:       answer.kind,
       reminder:          answeredReminder,
-      reminder_at:       answer.kind === 'time' ? answer.reminderAt.toISOString() : null,
+      // A resolved contact keeps the reminder's existing time - returned so
+      // the client re-arms the native alarm with the number now attached.
+      reminder_at:       answer.kind === 'time' ? answer.reminderAt.toISOString()
+                       : answer.kind === 'contact' ? (openQuestion.reminder_at || null)
+                       : null,
       call_now:          answer.kind === 'now',
-      contact_matched:   openQuestion.contact_phone
-        ? { name: openQuestion.contact_name, phone: openQuestion.contact_phone }
-        : null,
+      contact_matched:   answer.kind === 'contact'
+        ? { name: answer.contact.name, phone: answer.contact.phone || null }
+        : openQuestion.contact_phone
+          ? { name: openQuestion.contact_name, phone: openQuestion.contact_phone }
+          : null,
       tts_response:      answerConfirmation(answer, openQuestion),
     }, { status: 200 })
   }
@@ -481,6 +500,11 @@ export async function POST(request) {
   // guessed from two Ravis is worse than no number at all.
   const resolvedContact   = matchedContact?.ambiguous ? null : (matchedContact?.single || null)
   const isBusinessContact = matchedContact?.is_business === true
+
+  // Did the user ask to CALL this person, as opposed to merely naming them?
+  // "Remind me to buy Venu a gift" names Venu and must not ask which Venu to
+  // dial. Read off the user's own words, in the scripts they actually use.
+  parsed.wants_call = /\b(call|ring|dial|phone)\b|కాల్|ఫోన్|कॉल|काल|फ़ोन|फोन/i.test(text)
 
   const followUp = computeFollowUp(parsed, matchedContact, reminderAt)
 
@@ -815,6 +839,12 @@ export async function POST(request) {
   // The brain replies in the language the user actually spoke — reading English
   // back to a Telugu or Hindi speaker is the same as not answering at all.
   if (llmAssist?.reply) tts_response = llmAssist.reply
+  // ...except when we have to ask WHO. The brain wrote "I'll call Venu Yadav
+  // in two minutes" before the contact lookup ran; saying it while no number
+  // is attached is the false promise the brain's own prompt forbids.
+  if (followUp?.action_hint === 'disambiguate_contact' || followUp?.action_hint === 'add_contact') {
+    tts_response = followUp.follow_up
+  }
   // v12: business TTS overrides generic TTS when resolver produced a confirmation
   if (bizPayload?.tts_response) tts_response = bizPayload.tts_response;
   // Feature 7: Contextual TalkBack — mentions both location and keep content

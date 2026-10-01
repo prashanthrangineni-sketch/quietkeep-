@@ -34,6 +34,12 @@
 // directly and the bundler alias does not exist there - which is why
 // contacts-flatten.js was written dependency-free for the same reason.
 import { relativeMinutesFromText, computeReminderAt } from './intent-executor.js'
+import { pickContactFromAnswer } from './contact-match.js'
+
+// "Which Venu?" - answered with a name, or "the first one". Unlike the time
+// questions, this one is asked about a keep that ALREADY has its time, so the
+// "already has a usable time" guard below must not close it.
+const CONTACT_HINTS = new Set(['disambiguate_contact'])
 
 // ONE CLOCK.
 //
@@ -98,9 +104,9 @@ export function isPendingQuestion(keep, nowMs = Date.now()) {
   if (!keep || !keep.follow_up) return false
 
   const hint = keep.follow_up.action_hint
-  if (!TIME_HINTS.has(hint)) return false
+  if (!TIME_HINTS.has(hint) && !CONTACT_HINTS.has(hint)) return false
 
-  if (isFutureInstant(keep.reminder_at, nowMs)) return false
+  if (TIME_HINTS.has(hint) && isFutureInstant(keep.reminder_at, nowMs)) return false
 
   const createdMs = Date.parse(keep.created_at || '')
   if (!Number.isFinite(createdMs)) return false
@@ -135,6 +141,12 @@ export function readAnswer(keep, rawText, nowMs = Date.now()) {
   if (words.length > MAX_ANSWER_WORDS) return null
 
   if (NOT_NOW_WORDS.test(text)) return { kind: 'declined' }
+
+  // "Which Venu?" -> "Venu Reddy" / "the second one".
+  if (CONTACT_HINTS.has(keep.follow_up.action_hint)) {
+    const contact = pickContactFromAnswer(text, keep.follow_up.contacts)
+    return contact ? { kind: 'contact', contact } : null
+  }
 
   // "Now" only means anything for a question that offered it.
   if (keep.follow_up.action_hint === 'call_or_remind' && NOW_WORDS.test(text)) {
@@ -174,6 +186,14 @@ export function answerConfirmation(answer, keep, timeZone = 'Asia/Kolkata') {
 
   if (answer.kind === 'now') {
     return who ? `Calling ${who} now.` : 'Calling now.'
+  }
+
+  if (answer.kind === 'contact') {
+    const name = answer.contact?.name || 'them'
+    if (!keep?.reminder_at) return `Got it — ${name}.`
+    const t = new Date(keep.reminder_at)
+    const timeStr = t.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone })
+    return `Got it — I'll call ${name} at ${timeStr}.`
   }
 
   const dt = answer.reminderAt

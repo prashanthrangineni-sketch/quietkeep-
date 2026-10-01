@@ -10,6 +10,7 @@
 // exists inside the Next build; the unit suite loads these modules under plain
 // Node, where it does not resolve and the import throws before any test runs.
 import { collapseRepeats } from './transcript-clean.js'
+import { nameTokens, rankContactsForName } from './contact-match.js'
 
 // ── TIME PARSING ──────────────────────────────────────────────────────────────
 // Speech-to-text emits "10 a.m." / "5 P.M." with full stops and inconsistent
@@ -255,12 +256,29 @@ export async function matchContactByName(supabase, userId, name) {
     .eq('user_id', userId)
     .ilike('name', `%${name}%`)
     .limit(6);
-  if (!contacts?.length) return null;
-  const exact = contacts.find(c => c.name.toLowerCase() === name.toLowerCase());
-  if (exact) return { single: exact };
-  if (contacts.length === 1) return { single: contacts[0] };
-  // Multiple partial matches — return all for disambiguation
-  return { multiple: contacts, ambiguous: true };
+  if (contacts?.length) {
+    const exact = contacts.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (exact) return { single: exact };
+    if (contacts.length === 1) return { single: contacts[0] };
+    // Multiple partial matches — return all for disambiguation
+    return { multiple: contacts, ambiguous: true };
+  }
+
+  // NOTHING UNDER THE WHOLE STRING - TRY THE WORDS.
+  // 1 Oct 2026: "Venu Yadav" matched nothing among 1,920 contacts, the
+  // reminder was saved with no number, and nobody was told. There are nine
+  // Venus. Fetch everyone sharing any word of the name, then let
+  // rankContactsForName decide: one contact with every word is a match;
+  // anything else is a question, never a guess.
+  const words = nameTokens(name).filter((w) => /^[\p{L}\p{M}]+$/u.test(w)).slice(0, 3);
+  if (!words.length) return null;
+  const { data: near } = await supabase
+    .from('contacts')
+    .select('id,name,phone,email,relation,avatar_emoji')
+    .eq('user_id', userId)
+    .or(words.map((w) => `name.ilike.%${w}%`).join(','))
+    .limit(60);
+  return rankContactsForName(name, near || []);
 }
 
 // ── SERVER: FIND ALL MATCHING CONTACTS ────────────────────────────────────────
@@ -351,6 +369,35 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
       return {
         follow_up:   'Who do you want to contact? Say their name.',
         action_hint: 'name_needed',
+      };
+    }
+  }
+
+  // A REMINDER TO CALL SOMEONE WE CANNOT DIAL.
+  //
+  // The contact/meeting branch above has always asked "which one?" and "not in
+  // your contacts". A reminder never did: "call Venu Yadav in two minutes" is
+  // classified as a reminder, so it skipped both questions and was saved with
+  // no number (1 Oct 2026). The time is already set; the question is who.
+  if ((type === 'reminder' || type === 'task') && parsed.wants_call) {
+    const name = entities?.names?.[0];
+    if (name && contactResult?.ambiguous) {
+      const list = contactResult.multiple.map(c => c.name);
+      const lead = contactResult.partial
+        ? `I couldn't find "${name}" exactly.`
+        : `Several contacts match "${name}".`;
+      return {
+        follow_up:      `${lead} Which one: ${list.join(', ')}?`,
+        action_hint:    'disambiguate_contact',
+        contacts:       contactResult.multiple,
+        suggested_name: name,
+      };
+    }
+    if (name && contactResult === null) {
+      return {
+        follow_up:      `"${name}" isn't in your contacts, so I can remind you but can't dial. Add their number to QuietKeep to have me call.`,
+        action_hint:    'add_contact',
+        suggested_name: name,
       };
     }
   }

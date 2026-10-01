@@ -28,7 +28,7 @@ const PRESETS = [['aaria_f', 'Aaria (female)'], ['aaria_m', 'Arjun (male)'], ['c
 const WAKE_LABELS = { manual: 'Tap to talk', invoke: 'Home-screen mic button', counter: 'Always-on “Aaria” (counter)' };
 const WAKE_HINTS = {
   manual: 'Tap the mic in the app, then speak.',
-  invoke: 'Add the “Talk to Aaria” widget: long-press your home screen → Widgets → QuietKeep. One tap and Aaria is listening.',
+  invoke: 'Add the “Talk to Aaria” widget: tap the button below, or long-press your home screen → Widgets → “QuietKeep Personal”. One tap and Aaria is listening.',
 };
 const SAMPLE_LINE = 'Hello, I am setting up my QuietKeep voice. Please remind me and read my day out loud in my own voice.';
 

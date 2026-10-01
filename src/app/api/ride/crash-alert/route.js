@@ -97,11 +97,37 @@ export async function POST(request) {
     });
   }
 
+  // The nearest hospital, if it can be found in a few seconds. The people
+  // receiving this message are usually far away and have to decide where to
+  // drive; a location alone leaves them guessing. The lookup never blocks the
+  // alert: if it is slow or fails, the message goes without it.
+  let hospitalLine = null;
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    try {
+      const origin = new URL(req.url).origin;
+      const controller = new AbortController();
+      const cut = setTimeout(() => controller.abort(), 5000);
+      const hres = await fetch(`${origin}/api/ride/nearest-hospital`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng }),
+        signal: controller.signal,
+      });
+      clearTimeout(cut);
+      const hdata = await hres.json();
+      if (hdata?.hospital?.name) {
+        const km = Math.round(hdata.hospital.metres / 100) / 10;
+        hospitalLine = `Nearest hospital: ${hdata.hospital.name}, about ${km} km away (${mapsLink(hdata.hospital.lat, hdata.hospital.lng)}).`;
+      }
+    } catch { /* no hospital line this time; the alert still goes */ }
+  }
+
   const text = [
     '🚨 QuietKeep crash alert',
     'A possible accident was detected and there was no response to the check-in.',
     link ? `Last known location: ${link}` : 'Location was not available.',
     accuracy != null ? `Accuracy about ${accuracy} metres.` : null,
+    hospitalLine,
     `Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,
     'Please try calling. If you cannot reach them, call 112.',
   ].filter(Boolean).join('\n');

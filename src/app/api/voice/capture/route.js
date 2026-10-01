@@ -877,6 +877,11 @@ export async function POST(request) {
   const keepSnippet = text.length > 40 ? text.slice(0, 40) + '…' : text;
   if (parsed.route?.detected && routeData?.destLoc) {
     tts_response = `Got it. When you're near ${routeData.destLoc.name}, I'll remind you: ${keepSnippet}`;
+  } else if (geoData?.geo_trigger_enabled && brainPlace && llmAssist?.reply) {
+    // The brain already said "I'll remind you when you reach Chintal Kunta"
+    // in the language the user spoke; the English template below would
+    // answer a Telugu speaker in English.
+    tts_response = llmAssist.reply
   } else if (geoData?.geo_trigger_enabled) {
     // (was `geoData?.detected && ...` - geoData has no `detected` field, so
     // this branch never ran and a geo reminder was confirmed as a plain note)

@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/context/auth';
 import { useLanguage } from '@/lib/context/language';
 import { availableWakeModes, getWakeMode, setWakeMode } from '@/lib/wake-word-engine';
 import { isWebHotwordEnabled, setWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
+import { listenStreamWanted, setListenStreamWanted, readLastListen } from '@/lib/listen-stream';
 
 const P = '#6366f1';
 const LANGS = [

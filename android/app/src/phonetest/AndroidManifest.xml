@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PHONE-TEST BUILDS ONLY. Merged over the main manifest by android/app/build.gradle
+  when the build is signed with the throwaway "quietkeep-testing" key, which only
+  .github/workflows/android-release.yml (the downloadable test APK) uses. Play
+  Store builds never see this file.
+
+  WHY: on 1 October 2026 the founder downloaded the test APK and Android said
+  "App blocked". That is Google Play Protect's enhanced fraud protection, live in
+  India: any app installed from a browser, messaging app or file manager that
+  asks for RECEIVE_SMS, READ_SMS, notification access or accessibility is
+  refused, with no way past for the person. QuietKeep asks for exactly one of
+  those - notification access, for PaymentNotificationListener (logging UPI
+  payments as expenses). Nothing else in the manifest is on the list.
+
+  So the test build leaves that one service out. Expense auto-capture is the
+  only thing a phone-test build cannot do. An app installed from Google Play is
+  not subject to the block, so the Play build keeps it.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <service
+            android:name=".services.PaymentNotificationListener"
+            tools:node="remove" />
+    </application>
+</manifest>

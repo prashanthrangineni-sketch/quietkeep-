@@ -284,7 +284,9 @@ export default function VoiceSettings() {
   );
 }
 
-const wrap = { minHeight: '100dvh', maxWidth: 560, margin: '0 auto', padding: 16, fontFamily: "'Inter',-apple-system,sans-serif", position: 'relative', background: 'radial-gradient(900px 500px at 90% -10%,#eef1ff 0,transparent 55%),linear-gradient(180deg,#f7f8ff,#f1f3fb)' };
+// paddingBottom clears Aaria's floating mic (about 64px plus its margin): on
+// 1 October it sat on top of the wake-word note and cut the sentence in half.
+const wrap = { minHeight: '100dvh', maxWidth: 560, margin: '0 auto', padding: 16, paddingBottom: 120, fontFamily: "'Inter',-apple-system,sans-serif", position: 'relative', background: 'radial-gradient(900px 500px at 90% -10%,#eef1ff 0,transparent 55%),linear-gradient(180deg,#f7f8ff,#f1f3fb)' };
 function blob(c, top, bottom, b2, right) { return { position: 'absolute', width: 340, height: 340, borderRadius: '50%', filter: 'blur(60px)', opacity: .45, background: `radial-gradient(circle,${c},transparent 65%)`, top, bottom, right }; }
 const card = { background: 'rgba(255,255,255,.85)', backdropFilter: 'blur(8px)', border: '1px solid #fff', borderRadius: 18, padding: 16, marginBottom: 14, boxShadow: '0 10px 26px rgba(80,90,160,.1)' };
 const h3 = { fontSize: 15, fontWeight: 800, margin: '0 0 12px' };

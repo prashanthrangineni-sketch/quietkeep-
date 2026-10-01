@@ -450,6 +450,28 @@ export async function POST(request) {
     }
   }
 
+  // ── A PLACE THE BRAIN HEARD ───────────────────────────────────────────────
+  //
+  // The geo detector below is the English regex in intent-parser. On 1 Oct
+  // 2026 "remind me to pick up beer when I reach Chintal Kunta" arrived as
+  // Telugu letters (speech-to-text was set to Telugu), the regex saw no
+  // "when I reach", and the reminder was saved as an alarm 30-60 minutes out
+  // with no location - while Aaria read the moment he spoke back as the time.
+  // The brain reads any language and script; when it names a place, that is
+  // the trigger.
+  const brainPlace = (llmAssist && llmAssist.confidence >= 0.55) ? llmAssist.entities?.place : null
+  if (brainPlace && !parsed.geo?.detected) {
+    parsed.geo = { detected: true, location_name: brainPlace, type: 'place', source: 'brain' }
+    if (!['reminder', 'task'].includes(parsed.type)) parsed.type = 'reminder'
+    // No clock time unless the user said one.
+    if (!llmAssist.entities.datetimeISO) reminderAt = null
+    // "Chintal Kunta" is somewhere to be, not someone to call.
+    const p = brainPlace.toLowerCase()
+    parsed.entities = parsed.entities || {}
+    parsed.entities.names = (parsed.entities.names || []).filter(
+      (n) => n && !p.includes(String(n).toLowerCase()) && !String(n).toLowerCase().includes(p))
+  }
+
   // ── WHO THE USER MEANT ────────────────────────────────────────────────────
   //
   // ONE SHAPE. matchContactByName() returns a WRAPPER, and its own header says

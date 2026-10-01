@@ -43,6 +43,8 @@ export default function VoiceSettings() {
   const [wake, setWake] = useState('manual');
   const [webWake, setWebWake] = useState(false);
   const [webWakePossible, setWebWakePossible] = useState(false);
+  const [streamOn, setStreamOn] = useState(true);
+  const [lastListen, setLastListen] = useState(null);
 
   // recording state
   const [consent, setConsent] = useState(false);

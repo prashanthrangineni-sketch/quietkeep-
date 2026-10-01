@@ -373,6 +373,35 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
     }
   }
 
+  // A REMINDER TO CALL SOMEONE WE CANNOT DIAL.
+  //
+  // The contact/meeting branch above has always asked "which one?" and "not in
+  // your contacts". A reminder never did: "call Venu Yadav in two minutes" is
+  // classified as a reminder, so it skipped both questions and was saved with
+  // no number (1 Oct 2026). The time is already set; the question is who.
+  if ((type === 'reminder' || type === 'task') && parsed.wants_call) {
+    const name = entities?.names?.[0];
+    if (name && contactResult?.ambiguous) {
+      const list = contactResult.multiple.map(c => c.name);
+      const lead = contactResult.partial
+        ? `I couldn't find "${name}" exactly.`
+        : `Several contacts match "${name}".`;
+      return {
+        follow_up:      `${lead} Which one: ${list.join(', ')}?`,
+        action_hint:    'disambiguate_contact',
+        contacts:       contactResult.multiple,
+        suggested_name: name,
+      };
+    }
+    if (name && contactResult === null) {
+      return {
+        follow_up:      `"${name}" isn't in your contacts, so I can remind you but can't dial. Add their number to QuietKeep to have me call.`,
+        action_hint:    'add_contact',
+        suggested_name: name,
+      };
+    }
+  }
+
   // Reminder/task with no time: ask when.
   // reminderAt short-circuits this — if a time was resolved by any route, the
   // reminder is already scheduled and asking again is wrong.

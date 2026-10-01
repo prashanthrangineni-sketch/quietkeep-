@@ -45,6 +45,23 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    // PHONE-TEST BUILD: the downloadable APK made by android-release.yml, the
+    // only build signed with the throwaway "quietkeep-testing" key. Play
+    // Protect blocks a downloaded APK that asks for notification access, so
+    // this build merges src/phonetest/AndroidManifest.xml, which removes the
+    // one service that asks for it. Any other build - including anything
+    // signed with the real key for Google Play - is untouched.
+    def phoneTestBuild = project.hasProperty('RELEASE_KEY_ALIAS') &&
+        project.property('RELEASE_KEY_ALIAS') == 'quietkeep-testing'
+    if (phoneTestBuild) {
+        sourceSets {
+            release {
+                manifest.srcFile 'src/phonetest/AndroidManifest.xml'
+            }
+        }
+        logger.lifecycle("QuietKeep phone-test build: notification access left out (Play Protect sideload block)")
+    }
 }
 
 repositories {

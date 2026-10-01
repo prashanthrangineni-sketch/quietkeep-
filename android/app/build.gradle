@@ -67,14 +67,24 @@ android {
 // Checked, not assumed: after the release manifest is merged, read it back. If
 // notification access survived, fail the build rather than hand over an APK
 // the phone will refuse.
+//
+// WHICH BUILDS: every DEBUG build (those are only ever installed by download,
+// never published), and the RELEASE build only when it carries the throwaway
+// testing key. Debug is included for a second reason too: the Android Build
+// check on every pull request is a debug build, so this code now runs - and
+// must pass - BEFORE a merge, instead of being discovered after one.
 afterEvaluate {
     def phoneTest = project.hasProperty('RELEASE_KEY_ALIAS') &&
         project.property('RELEASE_KEY_ALIAS') == 'quietkeep-testing'
-    if (!phoneTest) return
-    tasks.matching { it.name ==~ /process.*ReleaseMainManifest/ }.all { t ->
+    tasks.matching {
+        it.name ==~ /process.*DebugMainManifest/ ||
+            (phoneTest && it.name ==~ /process.*ReleaseMainManifest/)
+    }.all { t ->
         t.doLast {
+            // Only this task's own output, not every variant's.
             def merged = fileTree(dir: "${buildDir}/intermediates/merged_manifest",
                                   include: '**/AndroidManifest.xml').files
+                .findAll { it.path.contains(t.name) }
             if (merged.isEmpty()) {
                 logger.warn("phone-test check: no merged manifest found to verify")
             }
@@ -87,12 +97,26 @@ afterEvaluate {
                 // check then proves it is gone. Packaging reads this file next.
                 def text = f.text
                 if (text.contains('PaymentNotificationListener')) {
-                    f.text = text.replaceAll(/(?s)<service[^>]*?PaymentNotificationListener.*?<\/service>/, '')
+                    text = text.replaceAll(/(?s)<service[^>]*?PaymentNotificationListener.*?<\/service>/, '')
+                    // The merger keeps XML comments, and the one above this
+                    // service names it. Build #7 removed the service and then
+                    // failed on that comment. Drop it too.
+                    text = text.replaceAll(/<!--[^>]*?PaymentNotificationListener[^>]*?-->/, '')
+                    f.text = text
                     logger.lifecycle("phone-test: removed PaymentNotificationListener from ${f.parentFile.name}")
                 }
-                if (f.text.contains('PaymentNotificationListener') ||
-                        f.text.contains('BIND_NOTIFICATION_LISTENER_SERVICE')) {
-                    throw new GradleException("phone-test build still asks for notification access: ${f}")
+                // What Play Protect actually looks at: the permission that
+                // guards a notification listener, and the listener action.
+                // Checking for those - not for our class name - means the
+                // check fails only on the real thing, and also catches a
+                // listener added by any library.
+                def offending = f.readLines().findAll {
+                    it.contains('BIND_NOTIFICATION_LISTENER_SERVICE') ||
+                    it.contains('android.service.notification.NotificationListenerService')
+                }
+                if (!offending.isEmpty()) {
+                    throw new GradleException("phone-test build still asks for notification access in ${f}:\n" +
+                        offending.collect { '    ' + it.trim() }.join('\n'))
                 }
                 logger.lifecycle("phone-test check: no notification access in ${f.name} (${f.parentFile.name}) - verified")
             }

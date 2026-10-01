@@ -188,6 +188,14 @@ export function answerConfirmation(answer, keep, timeZone = 'Asia/Kolkata') {
     return who ? `Calling ${who} now.` : 'Calling now.'
   }
 
+  if (answer.kind === 'contact') {
+    const name = answer.contact?.name || 'them'
+    if (!keep?.reminder_at) return `Got it — ${name}.`
+    const t = new Date(keep.reminder_at)
+    const timeStr = t.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone })
+    return `Got it — I'll call ${name} at ${timeStr}.`
+  }
+
   const dt = answer.reminderAt
   const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone })
   const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone })

@@ -771,7 +771,7 @@ export default function Dashboard() {
         if (isQueryIntent(intent.intentType)) resolveVoiceCommand(commandText, { supabase, user, accessToken, router, speak }).catch(() => {});
         recordIntent(intent.intentType, intent.entities, commandText);
         if (intent.intentType === 'query_bills') speakFollowUp("Do you want to open the bills page for details?");
-        else if (intent.intentType === 'query_reminders' && intent.entities?.date === 'today') speakFollowUp("Say: Lotus open reminders — to see the full list.");
+        else if (intent.intentType === 'query_reminders' && intent.entities?.date === 'today') speakFollowUp("Say: Aaria open reminders — to see the full list.");
         try { const aiProv = selectAIProvider({ tier: tier || 'free' }); if (aiProv.id !== 'default') sessionStorage.setItem('qk_ai_provider', aiProv.id); } catch (_) {}
         setContent(''); setSaving(false); savingRef.current = false; return;
       }

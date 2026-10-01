@@ -166,6 +166,28 @@ export default function VoiceSettings() {
           <p style={hint}>Aaria will listen and reply in this language across the app.</p>
         </div>
 
+        {/* How Aaria hears you */}
+        <div style={card}>
+          <h3 style={h3}>👂 Listen while I speak</h3>
+          <label style={{ ...opt, borderColor: streamOn ? P : 'rgba(0,0,0,.1)' }}>
+            <input type="checkbox" checked={streamOn}
+              onChange={e => { setStreamOn(e.target.checked); setListenStreamWanted(e.target.checked); }} />
+            <span><b style={{ fontSize: 14 }}>Hear me through Aaria (recommended)</b>
+              <small style={{ display: 'block', color: '#64748b', fontSize: 12 }}>
+                Aaria hears your words as you say them, knows the names you use, and is ready about half a second after you stop.
+                If it cannot connect, your phone&apos;s own listener takes over automatically.
+              </small></span>
+          </label>
+          <p style={hint}>
+            {!lastListen ? 'Last time: not used yet on this phone.'
+              : lastListen.path === 'engine'
+                ? `Last time: heard through Aaria${lastListen.finaliseMs != null ? ` · ready ${(lastListen.finaliseMs / 1000).toFixed(1)} s after you stopped` : ''}${lastListen.keyterms ? ` · ${lastListen.keyterms} names known` : ''}.`
+                : lastListen.path === 'phone'
+                  ? `Last time: your phone's own listener was used (${lastListen.reason}).`
+                  : `Last time: nothing was sent (${lastListen.reason}).`}
+          </p>
+        </div>
+
         {/* Talk-back voice */}
         <div style={card}>
           <h3 style={h3}>🗣️ Talk-back voice</h3>

@@ -218,11 +218,22 @@ export default function VoiceSettings() {
           {wakeModes.map(m => (
             <label key={m} style={{ ...opt, borderColor: wake === m ? P : 'rgba(0,0,0,.1)' }}>
               <input type="radio" name="wake" checked={wake === m} onChange={() => applyWake(m)} />
-              <span><b style={{ fontSize: 14 }}>{WAKE_LABELS[m] || m}</b></span>
+              <span>
+                <b style={{ fontSize: 14 }}>{WAKE_LABELS[m] || m}</b>
+                {WAKE_HINTS[m] && <small style={{ display: 'block', color: '#64748b', fontSize: 12, lineHeight: 1.5 }}>{WAKE_HINTS[m]}</small>}
+              </span>
             </label>
           ))}
+          {/* This line used to say always-on "Aaria" was available in the
+              Android app. It was not - the detector is a placeholder - and
+              the founder read that promise inside the Android app itself. */}
           {!wakeModes.includes('counter') && (
-            <p style={hint}>Always-on “Aaria” (works with the screen locked) is available in the Android app.</p>
+            <p style={hint}>
+              Saying “Aaria” with the screen locked is not ready yet — it is being built.
+              {wakeModes.includes('invoke')
+                ? ' Until then, the home-screen mic button is the fastest way in.'
+                : ' Until then, tap the mic, or use the home-screen mic button in the Android app.'}
+            </p>
           )}
 
           {/* Browser wake word — the propped-up counter phone.

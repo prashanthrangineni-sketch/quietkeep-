@@ -810,7 +810,7 @@ export function WakeModeToggle({ onChange }) {
     setOn(next);
     setWakeMode(next);
     if (onChange) onChange(next);
-    speak(next ? `Wake word mode on. Say ${getWakeWord()} to activate.` : 'Wake word mode off. All voice input will be processed.');
+    speak(next ? `Wake word mode on. Say ${displayWakeWord(getWakeWord())} to activate.` : 'Wake word mode off. All voice input will be processed.');
   }
 
   function saveWord() {

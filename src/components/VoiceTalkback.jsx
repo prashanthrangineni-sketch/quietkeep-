@@ -14,6 +14,7 @@ import {
   registerStopper, BARGE_IN_REASON,
 } from '@/lib/barge-in';
 import { shouldUseAaria } from '@/lib/aaria-audio';
+import { DEFAULT_WAKE_WORD, readWakeWord, acceptedWakeWords, displayWakeWord } from '@/lib/assistant-name';
 
 // ── Aaria's voice ───────────────────────────────────────────────────────────
 // Until now every reply was spoken by the phone's built-in voice, which is

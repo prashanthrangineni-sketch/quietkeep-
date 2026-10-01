@@ -523,6 +523,37 @@ export function feedRideSpeed(kmh, fix) {
   guard?.feedSpeed(kmh, fix);
 }
 
+/**
+ * Nearest hospital to where the rider is now. Speaks it and hands back the
+ * place, so the caller can open it in maps. Used by the voice command and,
+ * later, by the crash alert so the family knows where to go.
+ */
+export async function nearestHospitalNow() {
+  const fix = guard?.lastKnownFix?.();
+  if (!fix || typeof fix.lat !== 'number') {
+    speak('I do not have your location yet. Start driving mode and try again.');
+    return null;
+  }
+  try {
+    const res = await fetch('/api/ride/nearest-hospital', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat: fix.lat, lng: fix.lng }),
+    });
+    const data = await res.json();
+    if (!data?.hospital) {
+      speak('I could not find a hospital nearby right now.');
+      return null;
+    }
+    const km = Math.round(data.hospital.metres / 100) / 10;
+    speak(`Nearest hospital is ${data.hospital.name}, about ${km} kilometres away.`);
+    return data.hospital;
+  } catch {
+    speak('I could not look that up right now.');
+    return null;
+  }
+}
+
 /** The "test my crash detection" button. Records a drill, messages nobody. */
 export function runRideGuardTest() {
   if (!guard) { makeToast('Start driving mode first, then run the test.'); return; }

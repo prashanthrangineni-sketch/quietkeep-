@@ -497,6 +497,93 @@ export function AariaProvider({ children }) {
     catch { setError('Could not start the microphone.'); setStatus('idle'); }
   }, [voiceLang, submit]);
 
+  // ── listening, path A: through Aaria's engine while the person speaks ─────
+  // src/lib/listen-stream.js has the why. Sarvam saaras:v4 with this user's
+  // names, words on screen as they are heard, the same per-language silence
+  // wait. Any failure before a word is heard drops to path B above, so the
+  // worst case is exactly what the app did yesterday.
+  const namesRef = useRef({ names: [], at: 0 });
+  const refreshNames = useCallback(async () => {
+    if (!accessToken) return namesRef.current.names;
+    if (Date.now() - namesRef.current.at < 10 * 60 * 1000) return namesRef.current.names;
+    try {
+      const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const kill = setTimeout(() => ctl?.abort(), 1500);
+      const res = await fetch('/api/voice/spoken-names', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: ctl?.signal,
+      });
+      clearTimeout(kill);
+      const json = await res.json().catch(() => null);
+      if (Array.isArray(json?.names)) namesRef.current = { names: json.names, at: Date.now() };
+    } catch {}
+    return namesRef.current.names;
+  }, [accessToken]);
+
+  // Wake the engine and fetch the names before the first tap, not during it.
+  useEffect(() => {
+    if (silent || !signedIn) return;
+    warmEngine();
+    refreshNames();
+  }, [silent, signedIn, refreshNames]);
+
+  const startListening = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (listeningRef.current) return;
+    if (!listenStreamWanted() || !streamingSupported(window)) {
+      recordLastListen({ path: 'phone', reason: listenStreamWanted() ? 'not supported here' : 'switched off' });
+      startBrowserListening();
+      return;
+    }
+
+    try { hotwordRef.current?.suspend(); } catch {}
+    try { cancelSpeech(); } catch {}
+    setError('');
+    setTranscript('');
+    setInterim('');
+    setReply(null);
+    setOpen(true);
+    listeningRef.current = true;
+    setStatus('listening');
+
+    const lang = speechLang(voiceLang);
+    const session = startListenStream({
+      lang,
+      keyterms: namesRef.current.names,
+      silenceMs: endpointSilenceMsFor(lang),
+      maxMs: MAX_LISTEN_MS,
+      onPartial: (text) => setInterim(text),
+    });
+    // stopAll() calls .stop() on whatever is here: for this path that means
+    // "finish now and keep what was said", exactly like the browser path.
+    recognitionRef.current = { stop: session.stop };
+
+    session.result.then(
+      ({ text, firstWordsMs, finaliseMs, keyterms }) => {
+        if (recognitionRef.current?.stop === session.stop) recognitionRef.current = null;
+        listeningRef.current = false;
+        recordLastListen({ path: 'engine', firstWordsMs, finaliseMs, keyterms, chars: text.length });
+        setInterim('');
+        setStatus((st) => (st === 'listening' ? 'idle' : st));
+        if (text) { setTranscript(text); submit(text); }
+        if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);
+      },
+      (err) => {
+        if (recognitionRef.current?.stop === session.stop) recognitionRef.current = null;
+        listeningRef.current = false;
+        setInterim('');
+        recordLastListen({ path: err?.fallback ? 'phone' : 'none', reason: err?.reason || 'unknown' });
+        if (err?.fallback) {
+          startBrowserListening();
+          if (err.lostSpeech) setError('Say that again, please.');
+          return;
+        }
+        setStatus((st) => (st === 'listening' ? 'idle' : st));
+        if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);
+      },
+    );
+  }, [voiceLang, submit, startBrowserListening]);
+
   const toggleListening = useCallback(() => {
     if (listeningRef.current || status === 'speaking') stopAll();
     else startListening();

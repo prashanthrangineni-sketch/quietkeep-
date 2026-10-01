@@ -773,13 +773,19 @@ export function processWithWakeWord(transcript) {
     .toLowerCase()
     .replace(/^[^a-z]+/, ''); // strip leading non-alpha (e.g. "!" before "lotus")
 
-  // Phase 3: variant patterns in priority order
-  const variants = [
-    new RegExp(`^hey\s+${wakeWord}[,!?\s]+`, 'i'),
-    new RegExp(`^${wakeWord}\s+please[,!?\s]+`, 'i'),
-    new RegExp(`^${wakeWord}[,!?\s]+`, 'i'),
-    new RegExp(`^${wakeWord}$`, 'i'),  // bare wake word alone
-  ];
+  // Phase 3: variant patterns in priority order, for every accepted form of
+  // the wake word ("aaria", and the retired "lotus" while aaria is default).
+  //
+  // THE DOUBLE BACKSLASHES ARE THE FIX, NOT STYLE. Inside a template literal
+  // `\s` is just "s", so the old patterns were /^heys+lotus[,!?s]+/ - which
+  // never matched "lotus buy milk" (a space is not in [,!?s]). Wake mode could
+  // only ever trigger on the bare word. `\\s` reaches RegExp as \s.
+  const variants = acceptedWakeWords(wakeWord).flatMap((w) => [
+    new RegExp(`^hey\\s+${w}[,!?\\s]+`, 'i'),
+    new RegExp(`^${w}\\s+please[,!?\\s]+`, 'i'),
+    new RegExp(`^${w}[,!?\\s]+`, 'i'),
+    new RegExp(`^${w}$`, 'i'),  // bare wake word alone
+  ]);
 
   for (const re of variants) {
     if (re.test(lower)) {

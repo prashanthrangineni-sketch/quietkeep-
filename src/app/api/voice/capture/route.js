@@ -482,6 +482,11 @@ export async function POST(request) {
   const resolvedContact   = matchedContact?.ambiguous ? null : (matchedContact?.single || null)
   const isBusinessContact = matchedContact?.is_business === true
 
+  // Did the user ask to CALL this person, as opposed to merely naming them?
+  // "Remind me to buy Venu a gift" names Venu and must not ask which Venu to
+  // dial. Read off the user's own words, in the scripts they actually use.
+  parsed.wants_call = /\b(call|ring|dial|phone)\b|కాల్|ఫోన్|कॉल|काल|फ़ोन|फोन/i.test(text)
+
   const followUp = computeFollowUp(parsed, matchedContact, reminderAt)
 
   // ── Voice Brain: confidence scoring + clarification ──────────────────────

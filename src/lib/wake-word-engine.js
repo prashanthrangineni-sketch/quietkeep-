@@ -135,7 +135,9 @@ export function availableWakeModes() {
 // ── mode persistence, with honest degradation (the core stub bug) ────────────
 export function getWakeWord() {
   if (!isBrowser()) return DEFAULT_WAKE_WORD;
-  return (localStorage.getItem(LS_WAKE_WORD) || DEFAULT_WAKE_WORD).toLowerCase();
+  // One reader for the value both wake-word modules share, so a phone that
+  // stored the prototype's "lotus" says Aaria here too. See assistant-name.js.
+  return readWakeWord();
 }
 export function setWakeWord(word) {
   if (!isBrowser() || !word) return;

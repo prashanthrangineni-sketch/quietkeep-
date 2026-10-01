@@ -820,6 +820,12 @@ export async function POST(request) {
   // The brain replies in the language the user actually spoke — reading English
   // back to a Telugu or Hindi speaker is the same as not answering at all.
   if (llmAssist?.reply) tts_response = llmAssist.reply
+  // ...except when we have to ask WHO. The brain wrote "I'll call Venu Yadav
+  // in two minutes" before the contact lookup ran; saying it while no number
+  // is attached is the false promise the brain's own prompt forbids.
+  if (followUp?.action_hint === 'disambiguate_contact' || followUp?.action_hint === 'add_contact') {
+    tts_response = followUp.follow_up
+  }
   // v12: business TTS overrides generic TTS when resolver produced a confirmation
   if (bizPayload?.tts_response) tts_response = bizPayload.tts_response;
   // Feature 7: Contextual TalkBack — mentions both location and keep content

@@ -469,10 +469,11 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
       listener.stop();
       panel.remove();
       if (typeof window !== 'undefined') window.removeEventListener('devicemotion', onMotion);
+      reportRideDistance();
       onState?.('stopped', {});
     },
     feedSpeed(kmh, fix) {
-      if (fix && typeof fix.lat === 'number') lastFix = { ...fix, at: now() };
+      if (fix && typeof fix.lat === 'number') { addDistance(fix); lastFix = { ...fix, at: now() }; }
       if (fix && typeof fix.headingDeg === 'number') lastHeadingDeg = fix.headingDeg;
       else if (fix && typeof fix.heading === 'number') lastHeadingDeg = fix.heading;
       if (typeof kmh === 'number') {

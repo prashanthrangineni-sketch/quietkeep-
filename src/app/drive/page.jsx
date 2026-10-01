@@ -1,5 +1,6 @@
 'use client';
 import useAndroidBack from '@/lib/useAndroidBack';
+import BackButton from '@/components/BackButton';
 import { useAuth } from '@/lib/context/auth';
 import { speak, cancelSpeech } from '@/components/VoiceTalkback';
 // src/app/drive/page.jsx — Drive Mode UI (voice-first, big-button layout)
@@ -227,7 +228,11 @@ export default function DriveModePage() {
     }}>
       {/* Header */}
       <div style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Drive Mode draws its own header rather than using the shared navbar,
+            so it was the one screen left without a visible way back. The arrow
+            sits in the row beside the title, never floating over it. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <BackButton size={34} />
           <span style={{ fontSize: 18 }}>🛣️</span>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Drive Mode</span>
         </div>

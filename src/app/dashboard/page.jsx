@@ -1223,7 +1223,7 @@ export default function Dashboard() {
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#a5b4fc' }}>🎙 Voice Commands</span>
                   <button onClick={() => setShowVoiceHelp(false)} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 14 }}>×</button>
                 </div>
-                {[{ cat: '📋 Tasks', cmds: ['Add task buy groceries', 'Lotus add task call Suresh'] }, { cat: '⏰ Reminders', cmds: ['Lotus remind me at 5pm', 'Lotus show reminders'] }, { cat: '💰 Finance', cmds: ['Lotus pending bills', 'Lotus show expenses'] }, { cat: '🧭 Navigate', cmds: ['Lotus open calendar', 'Lotus open settings'] }].map(({ cat, cmds }) => (
+                {[{ cat: '📋 Tasks', cmds: ['Add task buy groceries', 'Aaria add task call Suresh'] }, { cat: '⏰ Reminders', cmds: ['Aaria remind me at 5pm', 'Aaria show reminders'] }, { cat: '💰 Finance', cmds: ['Aaria pending bills', 'Aaria show expenses'] }, { cat: '🧭 Navigate', cmds: ['Aaria open calendar', 'Aaria open settings'] }].map(({ cat, cmds }) => (
                   <div key={cat} style={{ marginBottom: 6 }}>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{cat}</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>

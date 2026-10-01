@@ -87,12 +87,26 @@ afterEvaluate {
                 // check then proves it is gone. Packaging reads this file next.
                 def text = f.text
                 if (text.contains('PaymentNotificationListener')) {
-                    f.text = text.replaceAll(/(?s)<service[^>]*?PaymentNotificationListener.*?<\/service>/, '')
+                    text = text.replaceAll(/(?s)<service[^>]*?PaymentNotificationListener.*?<\/service>/, '')
+                    // The merger keeps XML comments, and the one above this
+                    // service names it. Build #7 removed the service and then
+                    // failed on that comment. Drop it too.
+                    text = text.replaceAll(/<!--[^>]*?PaymentNotificationListener[^>]*?-->/, '')
+                    f.text = text
                     logger.lifecycle("phone-test: removed PaymentNotificationListener from ${f.parentFile.name}")
                 }
-                if (f.text.contains('PaymentNotificationListener') ||
-                        f.text.contains('BIND_NOTIFICATION_LISTENER_SERVICE')) {
-                    throw new GradleException("phone-test build still asks for notification access: ${f}")
+                // What Play Protect actually looks at: the permission that
+                // guards a notification listener, and the listener action.
+                // Checking for those - not for our class name - means the
+                // check fails only on the real thing, and also catches a
+                // listener added by any library.
+                def offending = f.readLines().findAll {
+                    it.contains('BIND_NOTIFICATION_LISTENER_SERVICE') ||
+                    it.contains('android.service.notification.NotificationListenerService')
+                }
+                if (!offending.isEmpty()) {
+                    throw new GradleException("phone-test build still asks for notification access in ${f}:\n" +
+                        offending.collect { '    ' + it.trim() }.join('\n'))
                 }
                 logger.lifecycle("phone-test check: no notification access in ${f.name} (${f.parentFile.name}) - verified")
             }

@@ -101,7 +101,9 @@ test('a keep carrying no question is never touched', () => {
 })
 
 test('a question shape we do not understand falls through', () => {
-  const unknown = pending({ follow_up: { action_hint: 'disambiguate_contact' } })
+  // (was 'disambiguate_contact', which this file now understands - see
+  // tests/contact-match.test.mjs. 'add_contact' has no spoken answer.)
+  const unknown = pending({ follow_up: { action_hint: 'add_contact' } })
   assert.equal(readAnswer(unknown, 'five minutes', NOW), null)
 })
 

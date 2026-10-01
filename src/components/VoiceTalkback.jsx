@@ -889,7 +889,7 @@ export function WakeModeToggle({ onChange }) {
             <>
               <div>
                 <div style={{ fontSize: 12, color: 'var(--text-subtle)' }}>Current wake word</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)', textTransform: 'capitalize' }}>{word}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)', textTransform: 'capitalize' }}>{displayWakeWord(word)}</div>
               </div>
               <button onClick={() => { setDraft(word); setEditing(true); }} style={{
                 background: 'var(--surface-hover)', border: '1px solid var(--border)',

@@ -1199,7 +1199,7 @@ export default function Dashboard() {
             {listening && isWakeMode() && !autoDetected && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, padding: '8px 12px' }}>
                 <span style={{ width: 7, height: 7, background: '#10b981', borderRadius: '50%', display: 'inline-block', animation: 'qk-pulse 1.2s ease infinite', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#10b981' }}>Listening for "Lotus"…</span>
+                <span style={{ fontSize: 12, color: '#10b981' }}>Listening for "Aaria"…</span>
               </div>
             )}
             {autoDetected && (

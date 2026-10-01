@@ -45,6 +45,48 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    // PHONE-TEST BUILD: the downloadable APK made by android-release.yml, the
+    // only build signed with the throwaway "quietkeep-testing" key. Play
+    // Protect blocks a downloaded APK that asks for notification access, so
+    // this build merges src/phonetest/AndroidManifest.xml, which removes the
+    // one service that asks for it. Any other build - including anything
+    // signed with the real key for Google Play - is untouched.
+    def phoneTestBuild = project.hasProperty('RELEASE_KEY_ALIAS') &&
+        project.property('RELEASE_KEY_ALIAS') == 'quietkeep-testing'
+    if (phoneTestBuild) {
+        sourceSets {
+            release {
+                manifest.srcFile 'src/phonetest/AndroidManifest.xml'
+            }
+        }
+        logger.lifecycle("QuietKeep phone-test build: notification access left out (Play Protect sideload block)")
+    }
+}
+
+// Checked, not assumed: after the release manifest is merged, read it back. If
+// notification access survived, fail the build rather than hand over an APK
+// the phone will refuse.
+afterEvaluate {
+    def phoneTest = project.hasProperty('RELEASE_KEY_ALIAS') &&
+        project.property('RELEASE_KEY_ALIAS') == 'quietkeep-testing'
+    if (!phoneTest) return
+    tasks.matching { it.name ==~ /process.*ReleaseMainManifest/ }.all { t ->
+        t.doLast {
+            def merged = fileTree(dir: "${buildDir}/intermediates/merged_manifest",
+                                  include: '**/AndroidManifest.xml').files
+            if (merged.isEmpty()) {
+                logger.warn("phone-test check: no merged manifest found to verify")
+            }
+            merged.each { f ->
+                if (f.text.contains('PaymentNotificationListener') ||
+                        f.text.contains('BIND_NOTIFICATION_LISTENER_SERVICE')) {
+                    throw new GradleException("phone-test build still asks for notification access: ${f}")
+                }
+                logger.lifecycle("phone-test check: no notification access in ${f.name} (${f.parentFile.name}) - verified")
+            }
+        }
+    }
 }
 
 repositories {

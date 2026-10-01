@@ -678,7 +678,10 @@ export async function POST(request) {
       // production (found by QA acting as a real user, 30 Jul 2026).
       intent_type:    parsed.type !== 'unknown' ? parsed.type : 'note',
       confidence:     parsed.confidence,
-      parsing_method: 'rule',
+      // Was hard-coded 'rule', so every keep the Sarvam brain understood was
+      // labelled as the regex's work - which sent the 1 Oct investigation
+      // down the wrong path first. (The column has no constraint.)
+      parsing_method: (llmAssist && llmAssist.confidence >= 0.55) ? 'llm' : 'rule',
       status:         'open',
       loop_state:     'open',
       space_type:     workspace_id ? 'business' : 'personal',

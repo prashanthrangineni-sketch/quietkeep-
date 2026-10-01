@@ -443,8 +443,9 @@ function scoreTeluguIntent(norm: string): { intentType: IntentType; score: numbe
 const CANCEL_PATTERNS = [
   /\bcancel\b/, /\bstop\b/, /\bnever mind\b/, /\bforget it\b/, /\bignore\b/,
 ];
-const WAKE_MODE_ON_PATTERNS  = [/\bturn on\s+(?:wake\s+)?lotus\b/, /\benable\s+(?:wake\s+)?lotus\b/, /\blotus\s+on\b/];
-const WAKE_MODE_OFF_PATTERNS = [/\bturn off\s+(?:wake\s+)?lotus\b/, /\bdisable\s+(?:wake\s+)?lotus\b/, /\blotus\s+off\b/];
+// The assistant is Aaria; "lotus" (the prototype's name) is still understood.
+const WAKE_MODE_ON_PATTERNS  = [/\bturn on\s+(?:wake\s+)?(?:aaria|lotus)\b/, /\benable\s+(?:wake\s+)?(?:aaria|lotus)\b/, /\b(?:aaria|lotus)\s+on\b/];
+const WAKE_MODE_OFF_PATTERNS = [/\bturn off\s+(?:wake\s+)?(?:aaria|lotus)\b/, /\bdisable\s+(?:wake\s+)?(?:aaria|lotus)\b/, /\b(?:aaria|lotus)\s+off\b/];
 
 // ── Explicit create-keep patterns ─────────────────────────────────────────
 // "note: buy milk" / "remind me to buy milk" → create_keep

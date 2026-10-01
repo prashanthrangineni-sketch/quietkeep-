@@ -255,12 +255,29 @@ export async function matchContactByName(supabase, userId, name) {
     .eq('user_id', userId)
     .ilike('name', `%${name}%`)
     .limit(6);
-  if (!contacts?.length) return null;
-  const exact = contacts.find(c => c.name.toLowerCase() === name.toLowerCase());
-  if (exact) return { single: exact };
-  if (contacts.length === 1) return { single: contacts[0] };
-  // Multiple partial matches — return all for disambiguation
-  return { multiple: contacts, ambiguous: true };
+  if (contacts?.length) {
+    const exact = contacts.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (exact) return { single: exact };
+    if (contacts.length === 1) return { single: contacts[0] };
+    // Multiple partial matches — return all for disambiguation
+    return { multiple: contacts, ambiguous: true };
+  }
+
+  // NOTHING UNDER THE WHOLE STRING - TRY THE WORDS.
+  // 1 Oct 2026: "Venu Yadav" matched nothing among 1,920 contacts, the
+  // reminder was saved with no number, and nobody was told. There are nine
+  // Venus. Fetch everyone sharing any word of the name, then let
+  // rankContactsForName decide: one contact with every word is a match;
+  // anything else is a question, never a guess.
+  const words = nameTokens(name).filter((w) => /^[\p{L}\p{M}]+$/u.test(w)).slice(0, 3);
+  if (!words.length) return null;
+  const { data: near } = await supabase
+    .from('contacts')
+    .select('id,name,phone,email,relation,avatar_emoji')
+    .eq('user_id', userId)
+    .or(words.map((w) => `name.ilike.%${w}%`).join(','))
+    .limit(60);
+  return rankContactsForName(name, near || []);
 }
 
 // ── SERVER: FIND ALL MATCHING CONTACTS ────────────────────────────────────────

@@ -779,7 +779,7 @@ export default function Dashboard() {
     if (listening && commandText && commandText === content.trim()) {
       const lower = commandText.toLowerCase().trim();
       if (/\bwhat\s+can\s+you\s+do\b|\bhelp\b|\bcommands?\b|\bshow\s+help\b/i.test(lower)) {
-        speak("Here is what I can do. Tasks: say Lotus add task, or just speak any task. Reminders: say Lotus remind me, or Lotus show reminders. Finance: say Lotus pending bills, Lotus show expenses, or Lotus subscriptions. Navigation: say Lotus open calendar, open reminders, open finance, or open settings. Keeps: say Lotus how many keeps, or just speak a note to save it. Voice control: say Lotus confirm for sensitive actions, or Lotus unlock followed by your PIN.");
+        speak("Here is what I can do. Tasks: say Aaria add task, or just speak any task. Reminders: say Aaria remind me, or Aaria show reminders. Finance: say Aaria pending bills, Aaria show expenses, or Aaria subscriptions. Navigation: say Aaria open calendar, open reminders, open finance, or open settings. Keeps: say Aaria how many keeps, or just speak a note to save it. Voice control: say Aaria confirm for sensitive actions, or Aaria unlock followed by your PIN.");
         setShowVoiceHelp(true); setTimeout(() => setShowVoiceHelp(false), 8000); setContent(''); setSaving(false); savingRef.current = false; return;
       }
       const lowerCmd = commandText.toLowerCase();

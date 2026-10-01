@@ -1211,7 +1211,7 @@ export default function Dashboard() {
             {!listening && !content && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ fontSize: 10, color: 'var(--text-muted)', marginRight: 2 }}>Try:</span>
-                {[{ label: 'Lotus show reminders', cmd: 'Lotus show reminders' }, { label: 'Lotus pending bills', cmd: 'Lotus pending bills' }, { label: 'What can you do?', cmd: 'what can you do' }].map(h => (
+                {[{ label: 'Aaria show reminders', cmd: 'Aaria show reminders' }, { label: 'Aaria pending bills', cmd: 'Aaria pending bills' }, { label: 'What can you do?', cmd: 'what can you do' }].map(h => (
                   <button key={h.label} onClick={() => { setContent(h.cmd); textareaRef.current?.focus(); }} style={{ fontSize: 10, padding: '3px 9px', borderRadius: 99, cursor: 'pointer', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: '#a5b4fc', fontFamily: 'inherit' }}>{h.label}</button>
                 ))}
               </div>

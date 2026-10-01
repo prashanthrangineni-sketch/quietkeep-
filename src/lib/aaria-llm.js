@@ -323,6 +323,16 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       datetimeISO = new Date(now.getTime() + Math.round(relMin) * 60_000).toISOString();
     }
 
+    // A PLACE REMINDER HAS NO CLOCK TIME UNLESS ONE WAS SAID. If the model
+    // still sent a datetime within two minutes of now, that is "the moment
+    // you spoke", not a time the user asked for - drop it.
+    const place = typeof ents.place === 'string' && ents.place.trim()
+      ? ents.place.trim().slice(0, 80) : null;
+    if (place && datetimeISO && !(Number.isFinite(relMin) && relMin > 0)) {
+      const dt = new Date(datetimeISO);
+      if (!isNaN(dt.getTime()) && Math.abs(dt.getTime() - now.getTime()) < 2 * 60_000) datetimeISO = null;
+    }
+
     return {
       intent: INTENTS.includes(parsed.intent) ? parsed.intent : 'note',
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.7,

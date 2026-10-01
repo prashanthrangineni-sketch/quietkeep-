@@ -818,7 +818,7 @@ export function WakeModeToggle({ onChange }) {
     setWord(w);
     setWakeWord(w);
     setEditing(false);
-    speak(`Wake word changed to ${w}.`);
+    speak(`Wake word changed to ${displayWakeWord(w)}.`);
   }
 
   return (

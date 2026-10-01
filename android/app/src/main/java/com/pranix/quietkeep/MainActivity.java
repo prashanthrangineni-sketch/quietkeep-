@@ -43,6 +43,18 @@ public class MainActivity extends BridgeActivity {
     private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
     private static final int AUDIO_PERMISSION_REQUEST_CODE = 1002;
 
+    // LOCATION FOR THE PAGE. The app is a WebView, and a WebView answers a
+    // page's location request through WebChromeClient.onGeolocationPermissionsShowPrompt.
+    // Nothing here implemented it, and the default answer is NO - so every
+    // location request from quietkeep.com was refused, whatever the person
+    // tapped. The founder saw it on 1 Oct 2026: allowed location in onboarding,
+    // got "Denied". The same refusal sat under the "remind me at Chintal Kunta"
+    // reminders and SOS location. Android's own location permission was never
+    // even asked for. Both are handled now, the same way the microphone is.
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1003;
+    private String mPendingGeoOrigin = null;
+    private android.webkit.GeolocationPermissions.Callback mPendingGeoCallback = null;
+
     private android.webkit.ValueCallback<android.net.Uri[]> mFilePathCallback;
     private PermissionRequest mPendingAudioPermissionRequest = null;
 

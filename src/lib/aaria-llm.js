@@ -105,7 +105,9 @@ waiting for you to speak, so emit only what you actually know:
   "intent": one of ${JSON.stringify(INTENTS)},
   "confidence": number 0-1,
   "language_detected": BCP-47 code of the language the USER spoke, e.g. "te-IN",
+  "clean_text": the same sentence, written the way the user meant it - words they spoke in English written in ENGLISH LETTERS, Telugu/Hindi/other words kept in their own script. Do not translate, do not add words. (Speech-to-text set to Telugu writes English as Telugu letters: "రిమాండ్ మీ టు పిక్ అప్ బియర్" is "Remind me to pick up beer"),
   "entities": {
+    "place": ONLY when the reminder should fire on ARRIVING at, reaching, passing or being near a place ("when I reach Chintal Kunta", "when I'm at office", "on the way home near the bakery", "చింతల్ కుంట కి వెళ్ళినప్పుడు", "दफ्तर पहुंचूं तो") - the place name in ENGLISH LETTERS, nothing else ("Chintal Kunta"). A place is never a person. When you give a place, OMIT relative_minutes and datetime_iso unless the user ALSO named a time,
     "person": the person's name in ENGLISH LETTERS only (write "Surya Kiran", never "సూర్య కిరణ్" or "सूर्य किरण"; the phone's contact list is in English letters and a name in another script matches nobody),
     "relative_minutes": number - when the user gave a DURATION FROM NOW ("in five minutes", "ek minute ke baad", "ఐదు నిమిషాల్లో", "in two hours" = 120). Give ONLY this and omit datetime_iso; the app adds it to the clock itself,
     "datetime_iso": absolute ISO 8601 datetime, ONLY when the user named a clock time or a day ("at ten", "tomorrow morning", "kal subah"),

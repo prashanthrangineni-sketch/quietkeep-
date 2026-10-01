@@ -61,6 +61,7 @@ export default function VoiceSettings() {
       } catch {}
       try { setWakeModes(availableWakeModes()); setWake(getWakeMode()); } catch {}
       try { setWebWakePossible(isHotwordSupported()); setWebWake(isWebHotwordEnabled()); } catch {}
+      try { setStreamOn(listenStreamWanted()); setLastListen(readLastListen()); } catch {}
     })();
   }, [accessToken]);
 

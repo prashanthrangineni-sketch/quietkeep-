@@ -67,14 +67,24 @@ android {
 // Checked, not assumed: after the release manifest is merged, read it back. If
 // notification access survived, fail the build rather than hand over an APK
 // the phone will refuse.
+//
+// WHICH BUILDS: every DEBUG build (those are only ever installed by download,
+// never published), and the RELEASE build only when it carries the throwaway
+// testing key. Debug is included for a second reason too: the Android Build
+// check on every pull request is a debug build, so this code now runs - and
+// must pass - BEFORE a merge, instead of being discovered after one.
 afterEvaluate {
     def phoneTest = project.hasProperty('RELEASE_KEY_ALIAS') &&
         project.property('RELEASE_KEY_ALIAS') == 'quietkeep-testing'
-    if (!phoneTest) return
-    tasks.matching { it.name ==~ /process.*ReleaseMainManifest/ }.all { t ->
+    tasks.matching {
+        it.name ==~ /process.*DebugMainManifest/ ||
+            (phoneTest && it.name ==~ /process.*ReleaseMainManifest/)
+    }.all { t ->
         t.doLast {
+            // Only this task's own output, not every variant's.
             def merged = fileTree(dir: "${buildDir}/intermediates/merged_manifest",
                                   include: '**/AndroidManifest.xml').files
+                .findAll { it.path.contains(t.name) }
             if (merged.isEmpty()) {
                 logger.warn("phone-test check: no merged manifest found to verify")
             }

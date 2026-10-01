@@ -531,10 +531,24 @@ export function feedRideSpeed(kmh, fix) {
  * place, so the caller can open it in maps. Used by the voice command and,
  * later, by the crash alert so the family knows where to go.
  */
+function currentPosition() {
+  // Used when the ride guard is not running — the Drive Mode screen can ask
+  // for a hospital without a ride having been started.
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  });
+}
+
 export async function nearestHospitalNow() {
-  const fix = guard?.lastKnownFix?.();
+  let fix = guard?.lastKnownFix?.();
+  if (!fix || typeof fix.lat !== 'number') fix = await currentPosition();
   if (!fix || typeof fix.lat !== 'number') {
-    speak('I do not have your location yet. Start driving mode and try again.');
+    speak('I cannot get your location. Please allow location and try again.');
     return null;
   }
   try {

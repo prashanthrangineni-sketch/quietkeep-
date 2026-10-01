@@ -1,6 +1,7 @@
 'use client';
 import useAndroidBack from '@/lib/useAndroidBack';
 import BackButton from '@/components/BackButton';
+import { nearestHospitalNow } from '@/lib/ride-guard';
 import { useAuth } from '@/lib/context/auth';
 import { speak, cancelSpeech } from '@/components/VoiceTalkback';
 // src/app/drive/page.jsx — Drive Mode UI (voice-first, big-button layout)
@@ -170,6 +171,22 @@ export default function DriveModePage() {
     } else if (cmd.includes('whatsapp')) {
       const text = encodeURIComponent("I'm driving — will reply later. Sent via QuietKeep 🚗");
       drivespeak('Sending WhatsApp message.', () => window.open(`https://wa.me/?text=${text}`, '_blank'));
+    } else if (cmd.includes('hospital') || cmd.includes('emergency room') || cmd.includes('casualty')) {
+      // Spoken aloud and then opened in maps, so a rider who is shaken does
+      // not have to read, type or search for it.
+      nearestHospitalNow().then((hospital) => {
+        if (hospital) {
+          window.open(`https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lng}`, '_blank');
+        }
+      });
+    } else if (/(fill|filled|filling|petrol|fuel|diesel)/.test(cmd) && /\d/.test(cmd)) {
+      // "filled three litres", "petrol 200 rupees". Numbers spoken as words are
+      // already turned into digits by the phone's speech recognition.
+      const litres = Number((cmd.match(/([\d.]+)\s*(?:litre|liter|l\b)/) || [])[1]);
+      const rupees = Number((cmd.match(/([\d.]+)\s*(?:rupee|rs|rupees)/) || [])[1]);
+      recordUpkeep({ event: 'fuel', litres: litres || null, amountRupees: rupees || null });
+    } else if (/(service|serviced|servicing)/.test(cmd) && /(done|finished|complete|over)/.test(cmd)) {
+      recordUpkeep({ event: 'service' });
     } else if (cmd.includes('sos')) {
       drivespeak('S O S activated.', () => { window.location.href = '/emergency'; });
     } else if (cmd.includes('home') || cmd.includes('dashboard')) {
@@ -177,7 +194,24 @@ export default function DriveModePage() {
     } else if (cmd.includes('keep') || cmd.includes('read')) {
       readNextKeep();
     } else {
-      drivespeak(`Sorry, I didn't understand: ${cmd}. Try: navigate to a place, music, call a name, read, home, or S O S.`);
+      drivespeak(`Sorry, I didn't understand: ${cmd}. Try: navigate to a place, music, call a name, read, nearest hospital, home, or S O S.`);
+    }
+  }
+
+  // Fuel fills and services, recorded by voice while the rider is still on the
+  // bike. The reply is spoken because the point of the whole feature is that
+  // nobody looks at the screen.
+  async function recordUpkeep(payload) {
+    try {
+      const res = await fetch('/api/ride/upkeep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken || ''}` },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      drivespeak(data?.spoken || 'Noted.');
+    } catch {
+      drivespeak('I could not save that right now. It will need doing later.');
     }
   }
 

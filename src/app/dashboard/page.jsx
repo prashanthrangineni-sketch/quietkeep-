@@ -744,7 +744,7 @@ export default function Dashboard() {
             if (result.success) { markVoiceVerified(); speak('Voice PIN accepted. You are verified.'); }
             else if (result.reason === 'locked_out') speak(`Too many attempts. Try again in ${result.lockoutSeconds} seconds.`);
             else if (result.reason === 'incorrect') speak(`Incorrect PIN. ${result.attemptsRemaining} attempt${result.attemptsRemaining !== 1 ? 's' : ''} remaining.`);
-            else if (result.reason === 'no_digits') speak('Please say your PIN number clearly. For example: Lotus unlock 1 2 3 4.');
+            else if (result.reason === 'no_digits') speak('Please say your PIN number clearly. For example: Aaria unlock 1 2 3 4.');
             setContent(''); setSaving(false); savingRef.current = false; return;
           }
         } catch {}
@@ -761,7 +761,7 @@ export default function Dashboard() {
           const trust = getSessionTrust();
           if (!trust.voice_verified && !trust.biometric_verified) {
             const confirmed = requireVoiceConfirmation(commandText);
-            if (!confirmed) { speak("This action needs confirmation. Say 'Lotus confirm' or 'Yes proceed' to continue."); setContent(''); setSaving(false); savingRef.current = false; return; }
+            if (!confirmed) { speak("This action needs confirmation. Say 'Aaria confirm' or 'Yes proceed' to continue."); setContent(''); setSaving(false); savingRef.current = false; return; }
           }
           markVoiceVerified();
         }
@@ -771,7 +771,7 @@ export default function Dashboard() {
         if (isQueryIntent(intent.intentType)) resolveVoiceCommand(commandText, { supabase, user, accessToken, router, speak }).catch(() => {});
         recordIntent(intent.intentType, intent.entities, commandText);
         if (intent.intentType === 'query_bills') speakFollowUp("Do you want to open the bills page for details?");
-        else if (intent.intentType === 'query_reminders' && intent.entities?.date === 'today') speakFollowUp("Say: Lotus open reminders — to see the full list.");
+        else if (intent.intentType === 'query_reminders' && intent.entities?.date === 'today') speakFollowUp("Say: Aaria open reminders — to see the full list.");
         try { const aiProv = selectAIProvider({ tier: tier || 'free' }); if (aiProv.id !== 'default') sessionStorage.setItem('qk_ai_provider', aiProv.id); } catch (_) {}
         setContent(''); setSaving(false); savingRef.current = false; return;
       }
@@ -779,11 +779,11 @@ export default function Dashboard() {
     if (listening && commandText && commandText === content.trim()) {
       const lower = commandText.toLowerCase().trim();
       if (/\bwhat\s+can\s+you\s+do\b|\bhelp\b|\bcommands?\b|\bshow\s+help\b/i.test(lower)) {
-        speak("Here is what I can do. Tasks: say Lotus add task, or just speak any task. Reminders: say Lotus remind me, or Lotus show reminders. Finance: say Lotus pending bills, Lotus show expenses, or Lotus subscriptions. Navigation: say Lotus open calendar, open reminders, open finance, or open settings. Keeps: say Lotus how many keeps, or just speak a note to save it. Voice control: say Lotus confirm for sensitive actions, or Lotus unlock followed by your PIN.");
+        speak("Here is what I can do. Tasks: say Aaria add task, or just speak any task. Reminders: say Aaria remind me, or Aaria show reminders. Finance: say Aaria pending bills, Aaria show expenses, or Aaria subscriptions. Navigation: say Aaria open calendar, open reminders, open finance, or open settings. Keeps: say Aaria how many keeps, or just speak a note to save it. Voice control: say Aaria confirm for sensitive actions, or Aaria unlock followed by your PIN.");
         setShowVoiceHelp(true); setTimeout(() => setShowVoiceHelp(false), 8000); setContent(''); setSaving(false); savingRef.current = false; return;
       }
       const lowerCmd = commandText.toLowerCase();
-      if (lowerCmd.includes('lotus') || lowerCmd.includes('add') || lowerCmd.includes('set')) speak("I heard you, but could not match a command. Try saying: Lotus help for a full list.");
+      if (lowerCmd.includes('aaria') || lowerCmd.includes('lotus') || lowerCmd.includes('add') || lowerCmd.includes('set')) speak("I heard you, but could not match a command. Try saying: Aaria help for a full list.");
       else speakError();
     }
     const profile = await supabase.from('profiles').select('subscription_tier, is_beta').eq('user_id', user.id).maybeSingle();
@@ -1180,7 +1180,7 @@ export default function Dashboard() {
             </div>
 
             <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-              {[{ key: 'manual', label: '🎙️ Manual', desc: 'Tap to speak' }, { key: 'wake', label: '🌸 Wake Word', desc: 'Say Lotus first' }].map(m => {
+              {[{ key: 'manual', label: '🎙️ Manual', desc: 'Tap to speak' }, { key: 'wake', label: '🌸 Wake Word', desc: 'Say Aaria first' }].map(m => {
                 const active = getVoiceMode() === m.key;
                 return (
                   <button key={m.key} onClick={() => setVoiceMode(m.key, 'ui_toggle')} title={m.desc} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 99, cursor: 'pointer', background: active ? 'rgba(99,102,241,0.18)' : 'transparent', border: `1px solid ${active ? 'rgba(99,102,241,0.5)' : 'var(--border)'}`, color: active ? '#a5b4fc' : 'var(--text-muted)', fontWeight: active ? 600 : 400 }}>
@@ -1192,14 +1192,14 @@ export default function Dashboard() {
 
             {isWakeMode() && !nativeVoiceActive && isNativeVoiceAvailable() && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8, padding: '7px 12px' }}>
-                <span style={{ fontSize: 11, color: '#f59e0b' }}>💡 Enable Always-On to use "Lotus" wake word hands-free</span>
+                <span style={{ fontSize: 11, color: '#f59e0b' }}>💡 Enable Always-On to use "Aaria" wake word hands-free</span>
               </div>
             )}
 
             {listening && isWakeMode() && !autoDetected && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, padding: '8px 12px' }}>
                 <span style={{ width: 7, height: 7, background: '#10b981', borderRadius: '50%', display: 'inline-block', animation: 'qk-pulse 1.2s ease infinite', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#10b981' }}>Listening for "Lotus"…</span>
+                <span style={{ fontSize: 12, color: '#10b981' }}>Listening for "Aaria"…</span>
               </div>
             )}
             {autoDetected && (
@@ -1211,7 +1211,7 @@ export default function Dashboard() {
             {!listening && !content && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ fontSize: 10, color: 'var(--text-muted)', marginRight: 2 }}>Try:</span>
-                {[{ label: 'Lotus show reminders', cmd: 'Lotus show reminders' }, { label: 'Lotus pending bills', cmd: 'Lotus pending bills' }, { label: 'What can you do?', cmd: 'what can you do' }].map(h => (
+                {[{ label: 'Aaria show reminders', cmd: 'Aaria show reminders' }, { label: 'Aaria pending bills', cmd: 'Aaria pending bills' }, { label: 'What can you do?', cmd: 'what can you do' }].map(h => (
                   <button key={h.label} onClick={() => { setContent(h.cmd); textareaRef.current?.focus(); }} style={{ fontSize: 10, padding: '3px 9px', borderRadius: 99, cursor: 'pointer', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: '#a5b4fc', fontFamily: 'inherit' }}>{h.label}</button>
                 ))}
               </div>
@@ -1223,7 +1223,7 @@ export default function Dashboard() {
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#a5b4fc' }}>🎙 Voice Commands</span>
                   <button onClick={() => setShowVoiceHelp(false)} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', fontSize: 14 }}>×</button>
                 </div>
-                {[{ cat: '📋 Tasks', cmds: ['Add task buy groceries', 'Lotus add task call Suresh'] }, { cat: '⏰ Reminders', cmds: ['Lotus remind me at 5pm', 'Lotus show reminders'] }, { cat: '💰 Finance', cmds: ['Lotus pending bills', 'Lotus show expenses'] }, { cat: '🧭 Navigate', cmds: ['Lotus open calendar', 'Lotus open settings'] }].map(({ cat, cmds }) => (
+                {[{ cat: '📋 Tasks', cmds: ['Add task buy groceries', 'Aaria add task call Suresh'] }, { cat: '⏰ Reminders', cmds: ['Aaria remind me at 5pm', 'Aaria show reminders'] }, { cat: '💰 Finance', cmds: ['Aaria pending bills', 'Aaria show expenses'] }, { cat: '🧭 Navigate', cmds: ['Aaria open calendar', 'Aaria open settings'] }].map(({ cat, cmds }) => (
                   <div key={cat} style={{ marginBottom: 6 }}>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{cat}</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>

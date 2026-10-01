@@ -14,6 +14,7 @@ import {
   registerStopper, BARGE_IN_REASON,
 } from '@/lib/barge-in';
 import { shouldUseAaria } from '@/lib/aaria-audio';
+import { DEFAULT_WAKE_WORD, readWakeWord, acceptedWakeWords, displayWakeWord } from '@/lib/assistant-name';
 
 // ── Aaria's voice ───────────────────────────────────────────────────────────
 // Until now every reply was spoken by the phone's built-in voice, which is
@@ -115,7 +116,7 @@ const DEBOUNCE_MS  = 100;
 let   _debounce    = null;
 
 // Step 5: Standard error response — spoken when no intent matches.
-export const NOT_UNDERSTOOD = "I couldn't catch that. Say: Lotus help — to see what I can do.";
+export const NOT_UNDERSTOOD = "I couldn't catch that. Say: Aaria help — to see what I can do.";
 
 /**
  * speakError()
@@ -685,7 +686,10 @@ export default function VoiceTalkbackToggle({ onChange }) {
 }
 
 // ── WAKE WORD SYSTEM ──────────────────────────────────────────────────────────
-// Default wake word is "lotus". Stored in localStorage('qk_wake_word').
+// Default wake word is "aaria" (src/lib/assistant-name.js - the assistant was
+// called "Lotus" in the first prototype; a stored "lotus" is rewritten to
+// "aaria" on first read, and still accepted when spoken). Stored in
+// localStorage('qk_wake_word').
 // Wake mode can be toggled on/off via localStorage('qk_wake_mode').
 //
 // Usage in voice pipeline (dashboard/page.jsx handleCapture):
@@ -694,11 +698,8 @@ export default function VoiceTalkbackToggle({ onChange }) {
 //   if (!result.triggered) return; // ignore — no wake word
 //   const command = result.command; // transcript with wake word stripped
 
-const DEFAULT_WAKE_WORD = 'lotus';
-
 export function getWakeWord() {
-  try { return (localStorage.getItem('qk_wake_word') || DEFAULT_WAKE_WORD).toLowerCase().trim(); }
-  catch { return DEFAULT_WAKE_WORD; }
+  return readWakeWord();
 }
 
 export function setWakeWord(word) {
@@ -772,13 +773,19 @@ export function processWithWakeWord(transcript) {
     .toLowerCase()
     .replace(/^[^a-z]+/, ''); // strip leading non-alpha (e.g. "!" before "lotus")
 
-  // Phase 3: variant patterns in priority order
-  const variants = [
-    new RegExp(`^hey\s+${wakeWord}[,!?\s]+`, 'i'),
-    new RegExp(`^${wakeWord}\s+please[,!?\s]+`, 'i'),
-    new RegExp(`^${wakeWord}[,!?\s]+`, 'i'),
-    new RegExp(`^${wakeWord}$`, 'i'),  // bare wake word alone
-  ];
+  // Phase 3: variant patterns in priority order, for every accepted form of
+  // the wake word ("aaria", and the retired "lotus" while aaria is default).
+  //
+  // THE DOUBLE BACKSLASHES ARE THE FIX, NOT STYLE. Inside a template literal
+  // `\s` is just "s", so the old patterns were /^heys+lotus[,!?s]+/ - which
+  // never matched "lotus buy milk" (a space is not in [,!?s]). Wake mode could
+  // only ever trigger on the bare word. `\\s` reaches RegExp as \s.
+  const variants = acceptedWakeWords(wakeWord).flatMap((w) => [
+    new RegExp(`^hey\\s+${w}[,!?\\s]+`, 'i'),
+    new RegExp(`^${w}\\s+please[,!?\\s]+`, 'i'),
+    new RegExp(`^${w}[,!?\\s]+`, 'i'),
+    new RegExp(`^${w}$`, 'i'),  // bare wake word alone
+  ]);
 
   for (const re of variants) {
     if (re.test(lower)) {
@@ -809,7 +816,7 @@ export function WakeModeToggle({ onChange }) {
     setOn(next);
     setWakeMode(next);
     if (onChange) onChange(next);
-    speak(next ? `Wake word mode on. Say ${getWakeWord()} to activate.` : 'Wake word mode off. All voice input will be processed.');
+    speak(next ? `Wake word mode on. Say ${displayWakeWord(getWakeWord())} to activate.` : 'Wake word mode off. All voice input will be processed.');
   }
 
   function saveWord() {
@@ -817,7 +824,7 @@ export function WakeModeToggle({ onChange }) {
     setWord(w);
     setWakeWord(w);
     setEditing(false);
-    speak(`Wake word changed to ${w}.`);
+    speak(`Wake word changed to ${displayWakeWord(w)}.`);
   }
 
   return (
@@ -831,7 +838,7 @@ export function WakeModeToggle({ onChange }) {
         <div>
           <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>🌸 Wake Word Mode</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            {on ? `Say "${word}" before any command` : 'All voice input processed directly'}
+            {on ? `Say "${displayWakeWord(word)}" before any command` : 'All voice input processed directly'}
           </div>
         </div>
         <div style={{
@@ -882,7 +889,7 @@ export function WakeModeToggle({ onChange }) {
             <>
               <div>
                 <div style={{ fontSize: 12, color: 'var(--text-subtle)' }}>Current wake word</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)', textTransform: 'capitalize' }}>{word}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)', textTransform: 'capitalize' }}>{displayWakeWord(word)}</div>
               </div>
               <button onClick={() => { setDraft(word); setEditing(true); }} style={{
                 background: 'var(--surface-hover)', border: '1px solid var(--border)',

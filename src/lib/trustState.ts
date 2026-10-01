@@ -67,7 +67,8 @@ const SENSITIVE_COMMAND_PATTERNS = [
 // ── Voice confirmation phrases ─────────────────────────────────────────────
 
 const CONFIRMATION_PHRASES = [
-  /\blotus\s+confirm\b/i,
+  /\b(?:aaria|aria|arya)\s+confirm\b/i,   // the assistant is Aaria (prompts now say "Aaria confirm")
+  /\blotus\s+confirm\b/i,                 // the prototype's name, still honoured
   /\byes\s+proceed\b/i,
   /\bconfirm\s+this\b/i,
   /\byes\s+do\s+it\b/i,

@@ -34,6 +34,12 @@
 // directly and the bundler alias does not exist there - which is why
 // contacts-flatten.js was written dependency-free for the same reason.
 import { relativeMinutesFromText, computeReminderAt } from './intent-executor.js'
+import { pickContactFromAnswer } from './contact-match.js'
+
+// "Which Venu?" - answered with a name, or "the first one". Unlike the time
+// questions, this one is asked about a keep that ALREADY has its time, so the
+// "already has a usable time" guard below must not close it.
+const CONTACT_HINTS = new Set(['disambiguate_contact'])
 
 // ONE CLOCK.
 //

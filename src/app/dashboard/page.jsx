@@ -744,7 +744,7 @@ export default function Dashboard() {
             if (result.success) { markVoiceVerified(); speak('Voice PIN accepted. You are verified.'); }
             else if (result.reason === 'locked_out') speak(`Too many attempts. Try again in ${result.lockoutSeconds} seconds.`);
             else if (result.reason === 'incorrect') speak(`Incorrect PIN. ${result.attemptsRemaining} attempt${result.attemptsRemaining !== 1 ? 's' : ''} remaining.`);
-            else if (result.reason === 'no_digits') speak('Please say your PIN number clearly. For example: Lotus unlock 1 2 3 4.');
+            else if (result.reason === 'no_digits') speak('Please say your PIN number clearly. For example: Aaria unlock 1 2 3 4.');
             setContent(''); setSaving(false); savingRef.current = false; return;
           }
         } catch {}

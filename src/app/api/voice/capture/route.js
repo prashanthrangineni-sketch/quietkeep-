@@ -450,6 +450,28 @@ export async function POST(request) {
     }
   }
 
+  // ── A PLACE THE BRAIN HEARD ───────────────────────────────────────────────
+  //
+  // The geo detector below is the English regex in intent-parser. On 1 Oct
+  // 2026 "remind me to pick up beer when I reach Chintal Kunta" arrived as
+  // Telugu letters (speech-to-text was set to Telugu), the regex saw no
+  // "when I reach", and the reminder was saved as an alarm 30-60 minutes out
+  // with no location - while Aaria read the moment he spoke back as the time.
+  // The brain reads any language and script; when it names a place, that is
+  // the trigger.
+  const brainPlace = (llmAssist && llmAssist.confidence >= 0.55) ? llmAssist.entities?.place : null
+  if (brainPlace && !parsed.geo?.detected) {
+    parsed.geo = { detected: true, location_name: brainPlace, type: 'place', source: 'brain' }
+    if (!['reminder', 'task'].includes(parsed.type)) parsed.type = 'reminder'
+    // No clock time unless the user said one.
+    if (!llmAssist.entities.datetimeISO) reminderAt = null
+    // "Chintal Kunta" is somewhere to be, not someone to call.
+    const p = brainPlace.toLowerCase()
+    parsed.entities = parsed.entities || {}
+    parsed.entities.names = (parsed.entities.names || []).filter(
+      (n) => n && !p.includes(String(n).toLowerCase()) && !String(n).toLowerCase().includes(p))
+  }
+
   // ── WHO THE USER MEANT ────────────────────────────────────────────────────
   //
   // ONE SHAPE. matchContactByName() returns a WRAPPER, and its own header says
@@ -645,14 +667,21 @@ export async function POST(request) {
     .from('keeps')
     .insert({
       user_id:        user.id,
-      content:        text,
+      // What the person MEANT, written readably: the brain's clean_text when it
+      // gave one ("Remind me to pick up beer when I reach Chintal Kunta"),
+      // otherwise exactly what was heard. voice_text always keeps the raw
+      // recognition, so nothing the person said is ever lost to a rewrite.
+      content:        (llmAssist && llmAssist.confidence >= 0.55 && llmAssist.modelCleanText) || text,
       voice_text:     text,
       // NOTE: keeps has NO ai_provider column — inserting it made PostgREST
       // reject the whole insert, so EVERY voice capture returned 500 in
       // production (found by QA acting as a real user, 30 Jul 2026).
       intent_type:    parsed.type !== 'unknown' ? parsed.type : 'note',
       confidence:     parsed.confidence,
-      parsing_method: 'rule',
+      // Was hard-coded 'rule', so every keep the Sarvam brain understood was
+      // labelled as the regex's work - which sent the 1 Oct investigation
+      // down the wrong path first. (The column has no constraint.)
+      parsing_method: (llmAssist && llmAssist.confidence >= 0.55) ? 'llm' : 'rule',
       status:         'open',
       loop_state:     'open',
       space_type:     workspace_id ? 'business' : 'personal',
@@ -851,6 +880,11 @@ export async function POST(request) {
   const keepSnippet = text.length > 40 ? text.slice(0, 40) + '…' : text;
   if (parsed.route?.detected && routeData?.destLoc) {
     tts_response = `Got it. When you're near ${routeData.destLoc.name}, I'll remind you: ${keepSnippet}`;
+  } else if (geoData?.geo_trigger_enabled && brainPlace && llmAssist?.reply) {
+    // The brain already said "I'll remind you when you reach Chintal Kunta"
+    // in the language the user spoke; the English template below would
+    // answer a Telugu speaker in English.
+    tts_response = llmAssist.reply
   } else if (geoData?.geo_trigger_enabled) {
     // (was `geoData?.detected && ...` - geoData has no `detected` field, so
     // this branch never ran and a geo reminder was confirmed as a plain note)

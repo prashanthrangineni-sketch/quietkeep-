@@ -94,7 +94,11 @@ export default function AariaDock() {
             right: 16,
             bottom: 'calc(150px + env(safe-area-inset-bottom, 0px))',
             width: 'min(370px, calc(100vw - 32px))',
-            background: 'var(--surface)',
+            // SOLID, NOT --surface. --surface is a translucent glass tint in the
+            // light theme, so the dashboard's text showed straight through the
+            // panel and made Aaria's reply hard to read (founder's screenshot,
+            // 1 Oct 2026). --bg is the page's own opaque colour in both themes.
+            background: 'var(--bg)',
             border: '1px solid var(--border)',
             borderRadius: 16,
             boxShadow: '0 18px 44px rgba(0,0,0,.17)',

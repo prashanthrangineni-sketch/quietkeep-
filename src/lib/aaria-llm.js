@@ -105,7 +105,9 @@ waiting for you to speak, so emit only what you actually know:
   "intent": one of ${JSON.stringify(INTENTS)},
   "confidence": number 0-1,
   "language_detected": BCP-47 code of the language the USER spoke, e.g. "te-IN",
+  "clean_text": the same sentence, written the way the user meant it - words they spoke in English written in ENGLISH LETTERS, Telugu/Hindi/other words kept in their own script. Do not translate, do not add words. (Speech-to-text set to Telugu writes English as Telugu letters: "రిమాండ్ మీ టు పిక్ అప్ బియర్" is "Remind me to pick up beer"),
   "entities": {
+    "place": ONLY when the reminder should fire on ARRIVING at, reaching, passing or being near a place ("when I reach Chintal Kunta", "when I'm at office", "on the way home near the bakery", "చింతల్ కుంట కి వెళ్ళినప్పుడు", "दफ्तर पहुंचूं तो") - the place name in ENGLISH LETTERS, nothing else ("Chintal Kunta"). A place is never a person. When you give a place, OMIT relative_minutes and datetime_iso unless the user ALSO named a time,
     "person": the person's name in ENGLISH LETTERS only (write "Surya Kiran", never "సూర్య కిరణ్" or "सूर्य किरण"; the phone's contact list is in English letters and a name in another script matches nobody),
     "relative_minutes": number - when the user gave a DURATION FROM NOW ("in five minutes", "ek minute ke baad", "ఐదు నిమిషాల్లో", "in two hours" = 120). Give ONLY this and omit datetime_iso; the app adds it to the clock itself,
     "datetime_iso": absolute ISO 8601 datetime, ONLY when the user named a clock time or a day ("at ten", "tomorrow morning", "kal subah"),
@@ -141,7 +143,11 @@ OTHER RULES:
 - Money RECEIVED (aaye / received / వచ్చాయి / मिले) = "income", direction "in".
   Money PAID (diye / spent / కట్టాను / दिए) = "expense", direction "out". Never swap these.
 - Resolve relative time against CURRENT TIME. "tomorrow morning" → next day 09:00 local.
-- For a reminder with no usable time, put "datetime" in "missing" and ASK.
+- For a reminder with no usable time AND no place, put "datetime" in "missing" and ASK.
+- A reminder with a "place" is complete: do NOT ask for a time, and in "reply" say
+  it will remind them WHEN THEY REACH that place - never state a clock time. On
+  1 October 2026 "remind me to pick up beer when I reach Chintal Kunta" was
+  answered "I'll remind you at 5:34 pm" - the moment he spoke - and saved as an alarm.
 - If the user wants to go somewhere or get directions ("set location to Charminar",
   "చార్మినార్ కి వెళ్ళాలి", "चारमीनार ले चलो"), intent = "navigation" and
   entities.item = ONLY the place name, in English letters. Reply that you are starting navigation.
@@ -271,7 +277,11 @@ export async function aariaUnderstandLLM(text, opts = {}) {
         // biggest component of voice latency (measured 13 Aug 2026: ~9s of a
         // ~12s round trip is Sarvam generating this JSON). Everything the app
         // actually acts on fits comfortably in 300.
-        max_tokens: 300,
+        // 300 -> 450 on 1 Oct 2026: clean_text repeats the sentence, and a
+        // Telugu sentence is token-heavy. Cut short, the JSON never closes and
+        // the whole answer is lost to the regex fallback. The stream still
+        // stops at the closing brace, so unused room costs nothing.
+        max_tokens: 450,
         // Streaming does not make the model faster. It makes US faster: a
         // non-streamed request cannot be read until the server has finished,
         // so we also pay for whatever the model emits AFTER the closing brace
@@ -317,13 +327,28 @@ export async function aariaUnderstandLLM(text, opts = {}) {
       datetimeISO = new Date(now.getTime() + Math.round(relMin) * 60_000).toISOString();
     }
 
+    // A PLACE REMINDER HAS NO CLOCK TIME UNLESS ONE WAS SAID. If the model
+    // still sent a datetime within two minutes of now, that is "the moment
+    // you spoke", not a time the user asked for - drop it.
+    const place = typeof ents.place === 'string' && ents.place.trim()
+      ? ents.place.trim().slice(0, 80) : null;
+    if (place && datetimeISO && !(Number.isFinite(relMin) && relMin > 0)) {
+      const dt = new Date(datetimeISO);
+      if (!isNaN(dt.getTime()) && Math.abs(dt.getTime() - now.getTime()) < 2 * 60_000) datetimeISO = null;
+    }
+
     return {
       intent: INTENTS.includes(parsed.intent) ? parsed.intent : 'note',
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.7,
       language: parsed.language_detected || opts.language || 'en-IN',
       cleanText: parsed.clean_text || clean,
+      // Only what the MODEL rewrote - null when it sent none, so callers can
+      // tell "cleaned" from "the raw words echoed back".
+      modelCleanText: typeof parsed.clean_text === 'string' && parsed.clean_text.trim()
+        ? parsed.clean_text.trim().slice(0, 1000) : null,
       title: parsed.title || null,
       entities: {
+        place,
         person: ents.person ?? null,
         datetimeISO,
         relativeMinutes: Number.isFinite(relMin) && relMin > 0 ? Math.round(relMin) : null,

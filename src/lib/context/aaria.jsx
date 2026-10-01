@@ -577,6 +577,34 @@ export function AariaProvider({ children }) {
     };
   }, [silent, signedIn, accessToken]);
 
+  // ── place reminders ────────────────────────────────────────────────────────
+  // "Remind me to pick up beer when I reach Chintal Kunta." Nothing used to
+  // watch for the arrival at all (see src/lib/geo.js). Started for any
+  // signed-in user, on every screen INCLUDING the silent ones - Drive mode is
+  // exactly where arriving somewhere happens. Unlike the watcher above, this
+  // DOES speak unprompted: the person asked to be told on arrival, the same
+  // way an alarm they set rings.
+  const tokenRef = useRef(accessToken);
+  useEffect(() => { tokenRef.current = accessToken; }, [accessToken]);
+  useEffect(() => {
+    if (!signedIn) return;
+    let stopped = false;
+    import('@/lib/geo').then(({ startGeoFencing }) => {
+      if (stopped) return;
+      startGeoFencing((keep) => {
+        const where = keep?.location_name || 'your place';
+        const what  = String(keep?.content || keep?.subject || '').slice(0, 120);
+        const line  = what ? `You're at ${where}. ${what}` : `You're at ${where}.`;
+        if (silent) { try { speak(line, { priority: 'high' }); } catch {} }
+        else { setOpen(true); say(line); }
+      }, () => tokenRef.current);
+    }).catch(() => {});
+    return () => {
+      stopped = true;
+      import('@/lib/geo').then(({ stopGeoFencing }) => stopGeoFencing()).catch(() => {});
+    };
+  }, [signedIn, silent, say]);
+
   // Opening the panel is consent to hear it. Speaking it here — and only here —
   // is what keeps rule 1 in aaria-watch.js true.
   useEffect(() => {

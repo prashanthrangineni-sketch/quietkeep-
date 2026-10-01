@@ -1,6 +1,7 @@
 'use client';
 import useAndroidBack from '@/lib/useAndroidBack';
 import BackButton from '@/components/BackButton';
+import { nearestHospitalNow } from '@/lib/ride-guard';
 import { useAuth } from '@/lib/context/auth';
 import { speak, cancelSpeech } from '@/components/VoiceTalkback';
 // src/app/drive/page.jsx — Drive Mode UI (voice-first, big-button layout)

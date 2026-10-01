@@ -53,6 +53,13 @@ public class MainActivity extends BridgeActivity {
     // Server URL baked in at build time — always the production API host.
     private static final String SERVER_URL = "https://quietkeep.com";
 
+    // "Talk to Aaria" widget. QuickMicWidget has opened this activity with this
+    // action since Track A3, but nothing here ever looked at it - so a tap
+    // launched the app and stopped. A tap that arrives before the page has
+    // loaded (cold start) is held here and delivered in onPageFinished.
+    private static final String ACTION_VOICE_MIC_TAP = "ACTION_VOICE_MIC_TAP";
+    private volatile boolean mPendingMicWake = false;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // Must run BEFORE super.onCreate() — prevents OplusHansManager (ColorOS) from

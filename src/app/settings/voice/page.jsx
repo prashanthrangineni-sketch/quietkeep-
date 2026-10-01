@@ -18,7 +18,18 @@ const LANGS = [
 ];
 const TONES = [['warm', '☺️ Warm'], ['formal', '🎩 Formal'], ['energetic', '⚡ Energetic']];
 const PRESETS = [['aaria_f', 'Aaria (female)'], ['aaria_m', 'Arjun (male)'], ['calm', 'Calm']];
-const WAKE_LABELS = { manual: 'Tap to talk', invoke: 'Instant (power / widget)', counter: 'Always-on “Aaria” (counter)' };
+// What each option ACTUALLY does on this build - checked against the Android
+// code on 1 October 2026, not against what the option was meant to become:
+//   invoke  - the home-screen mic widget. The power-button / default-assistant
+//             half was never finished (no session service, nothing in
+//             MainActivity handled it), so "power" is no longer promised.
+//   counter - saying "Aaria" with the screen locked. The on-phone detector is
+//             still a placeholder, so this option is never offered yet.
+const WAKE_LABELS = { manual: 'Tap to talk', invoke: 'Home-screen mic button', counter: 'Always-on “Aaria” (counter)' };
+const WAKE_HINTS = {
+  manual: 'Tap the mic in the app, then speak.',
+  invoke: 'Add the “Talk to Aaria” widget: long-press your home screen → Widgets → QuietKeep. One tap and Aaria is listening.',
+};
 const SAMPLE_LINE = 'Hello, I am setting up my QuietKeep voice. Please remind me and read my day out loud in my own voice.';
 
 export default function VoiceSettings() {
@@ -207,11 +218,22 @@ export default function VoiceSettings() {
           {wakeModes.map(m => (
             <label key={m} style={{ ...opt, borderColor: wake === m ? P : 'rgba(0,0,0,.1)' }}>
               <input type="radio" name="wake" checked={wake === m} onChange={() => applyWake(m)} />
-              <span><b style={{ fontSize: 14 }}>{WAKE_LABELS[m] || m}</b></span>
+              <span>
+                <b style={{ fontSize: 14 }}>{WAKE_LABELS[m] || m}</b>
+                {WAKE_HINTS[m] && <small style={{ display: 'block', color: '#64748b', fontSize: 12, lineHeight: 1.5 }}>{WAKE_HINTS[m]}</small>}
+              </span>
             </label>
           ))}
+          {/* This line used to say always-on "Aaria" was available in the
+              Android app. It was not - the detector is a placeholder - and
+              the founder read that promise inside the Android app itself. */}
           {!wakeModes.includes('counter') && (
-            <p style={hint}>Always-on “Aaria” (works with the screen locked) is available in the Android app.</p>
+            <p style={hint}>
+              Saying “Aaria” with the screen locked is not ready yet — it is being built.
+              {wakeModes.includes('invoke')
+                ? ' Until then, the home-screen mic button is the fastest way in.'
+                : ' Until then, tap the mic, or use the home-screen mic button in the Android app.'}
+            </p>
           )}
 
           {/* Browser wake word — the propped-up counter phone.
@@ -262,7 +284,9 @@ export default function VoiceSettings() {
   );
 }
 
-const wrap = { minHeight: '100dvh', maxWidth: 560, margin: '0 auto', padding: 16, fontFamily: "'Inter',-apple-system,sans-serif", position: 'relative', background: 'radial-gradient(900px 500px at 90% -10%,#eef1ff 0,transparent 55%),linear-gradient(180deg,#f7f8ff,#f1f3fb)' };
+// paddingBottom clears Aaria's floating mic (about 64px plus its margin): on
+// 1 October it sat on top of the wake-word note and cut the sentence in half.
+const wrap = { minHeight: '100dvh', maxWidth: 560, margin: '0 auto', padding: 16, paddingBottom: 120, fontFamily: "'Inter',-apple-system,sans-serif", position: 'relative', background: 'radial-gradient(900px 500px at 90% -10%,#eef1ff 0,transparent 55%),linear-gradient(180deg,#f7f8ff,#f1f3fb)' };
 function blob(c, top, bottom, b2, right) { return { position: 'absolute', width: 340, height: 340, borderRadius: '50%', filter: 'blur(60px)', opacity: .45, background: `radial-gradient(circle,${c},transparent 65%)`, top, bottom, right }; }
 const card = { background: 'rgba(255,255,255,.85)', backdropFilter: 'blur(8px)', border: '1px solid #fff', borderRadius: 18, padding: 16, marginBottom: 14, boxShadow: '0 10px 26px rgba(80,90,160,.1)' };
 const h3 = { fontSize: 15, fontWeight: 800, margin: '0 0 12px' };

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Talk to Aaria" home-screen widget.
+     QuickMicWidget.java looked this layout up by name (widget_quick_mic) and
+     its button by id (btn_quick_mic) since Track A3, but neither existed, so
+     the widget had nothing to draw and its tap went nowhere. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="4dp">
+
+    <ImageButton
+        android:id="@+id/btn_quick_mic"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center"
+        android:background="@drawable/widget_mic_bg"
+        android:src="@android:drawable/ic_btn_speak_now"
+        android:scaleType="centerInside"
+        android:contentDescription="Talk to Aaria" />
+</FrameLayout>

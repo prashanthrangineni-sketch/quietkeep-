@@ -306,6 +306,8 @@ public class MainActivity extends BridgeActivity {
                         super.onPageFinished(view, url);
                     }
                     injectRuntimeJS(view);
+                    // A widget tap that arrived before this page existed.
+                    deliverMicWake();
                 }
 
                 @Override

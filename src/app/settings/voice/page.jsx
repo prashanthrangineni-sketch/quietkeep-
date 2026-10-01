@@ -76,6 +76,21 @@ export default function VoiceSettings() {
     } catch { setMsg('Could not save'); } finally { setSaving(false); }
   }
 
+  // Ask Android to place the widget itself - no hunting through the launcher's
+  // widget list, which files it under "QuietKeep Personal".
+  function pinWidget() {
+    setMsg('');
+    const cap = typeof window !== 'undefined' ? window.Capacitor : null;
+    if (!cap?.toNative) { setMsg('Open this in the QuietKeep Android app to add the button.'); return; }
+    cap.toNative('WakeWordPlugin', 'pinWidget', {}, {
+      resolve: (r) => {
+        if (r?.requested) setMsg('Your phone will ask to place the button — tap “Add”.');
+        else setMsg('This phone can’t place it automatically. Long-press the home screen → Widgets → “QuietKeep Personal” → “Talk to Aaria”.');
+      },
+      reject: () => setMsg('Could not ask the phone. Long-press the home screen → Widgets → “QuietKeep Personal” → “Talk to Aaria”.'),
+    });
+  }
+
   function applyWake(m) { try { const applied = setWakeMode(m); setWake(applied); } catch { setWake(m); } }
 
   // ── own-voice recording ──

@@ -310,6 +310,10 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     fetchingSpots = false;
   }
 
+  // Everything that speaks during a ride records when it did, so the others
+  // can stay out of the way. One voice, one thing at a time.
+  let lastSpokeAt = 0;
+
   function checkForHazardAhead(kmh) {
     const at = now();
     refreshSpots(at);
@@ -321,7 +325,23 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     );
     if (!warning) return;
     speak(warning.phrase);
+    lastSpokeAt = at;
     onState?.('hazard_warning', warning);
+  }
+
+  // ── Staying awake on a long or late ride ───────────────────────────────
+  // A hazard warning is about the road ahead; this is about the rider. It
+  // speaks rarely, and every line points at stopping rather than at talking.
+  const companion = createStayAwakeCompanion();
+
+  function checkStayAwake(kmh) {
+    if (overlayShown) return;
+    const at = now();
+    const nudge = companion.update({ at, speedKmh: kmh, somethingElseSpokeAt: lastSpokeAt });
+    if (!nudge) return;
+    speak(nudge.phrase);
+    lastSpokeAt = at;
+    onState?.('stay_awake', nudge);
   }
 
   function trigger(detail = {}) {

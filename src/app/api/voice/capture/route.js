@@ -667,7 +667,11 @@ export async function POST(request) {
     .from('keeps')
     .insert({
       user_id:        user.id,
-      content:        text,
+      // What the person MEANT, written readably: the brain's clean_text when it
+      // gave one ("Remind me to pick up beer when I reach Chintal Kunta"),
+      // otherwise exactly what was heard. voice_text always keeps the raw
+      // recognition, so nothing the person said is ever lost to a rewrite.
+      content:        (llmAssist && llmAssist.confidence >= 0.55 && llmAssist.modelCleanText) || text,
       voice_text:     text,
       // NOTE: keeps has NO ai_provider column — inserting it made PostgREST
       // reject the whole insert, so EVERY voice capture returned 500 in

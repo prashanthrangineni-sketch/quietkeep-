@@ -24,8 +24,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LS_WAKE_MODE = 'qk_wake_mode_v2';   // 'manual' | 'invoke' | 'counter'
-const LS_WAKE_WORD = 'qk_wake_word';      // customizable, default 'aaria'
-const DEFAULT_WAKE_WORD = 'aaria';
+import { DEFAULT_WAKE_WORD, WAKE_WORD_KEY, readWakeWord } from './assistant-name.js';
+
+const LS_WAKE_WORD = WAKE_WORD_KEY;       // customizable, default 'aaria'
 
 // openWakeWord model — NOT SHIPPED YET. This URL currently resolves to a 404.
 //

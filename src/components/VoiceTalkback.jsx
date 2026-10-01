@@ -116,7 +116,7 @@ const DEBOUNCE_MS  = 100;
 let   _debounce    = null;
 
 // Step 5: Standard error response — spoken when no intent matches.
-export const NOT_UNDERSTOOD = "I couldn't catch that. Say: Lotus help — to see what I can do.";
+export const NOT_UNDERSTOOD = "I couldn't catch that. Say: Aaria help — to see what I can do.";
 
 /**
  * speakError()

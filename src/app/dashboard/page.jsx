@@ -761,7 +761,7 @@ export default function Dashboard() {
           const trust = getSessionTrust();
           if (!trust.voice_verified && !trust.biometric_verified) {
             const confirmed = requireVoiceConfirmation(commandText);
-            if (!confirmed) { speak("This action needs confirmation. Say 'Lotus confirm' or 'Yes proceed' to continue."); setContent(''); setSaving(false); savingRef.current = false; return; }
+            if (!confirmed) { speak("This action needs confirmation. Say 'Aaria confirm' or 'Yes proceed' to continue."); setContent(''); setSaving(false); savingRef.current = false; return; }
           }
           markVoiceVerified();
         }

@@ -277,7 +277,11 @@ export async function aariaUnderstandLLM(text, opts = {}) {
         // biggest component of voice latency (measured 13 Aug 2026: ~9s of a
         // ~12s round trip is Sarvam generating this JSON). Everything the app
         // actually acts on fits comfortably in 300.
-        max_tokens: 300,
+        // 300 -> 450 on 1 Oct 2026: clean_text repeats the sentence, and a
+        // Telugu sentence is token-heavy. Cut short, the JSON never closes and
+        // the whole answer is lost to the regex fallback. The stream still
+        // stops at the closing brace, so unused room costs nothing.
+        max_tokens: 450,
         // Streaming does not make the model faster. It makes US faster: a
         // non-streamed request cannot be read until the server has finished,
         // so we also pay for whatever the model emits AFTER the closing brace

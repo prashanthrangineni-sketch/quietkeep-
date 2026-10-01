@@ -142,6 +142,12 @@ export function readAnswer(keep, rawText, nowMs = Date.now()) {
 
   if (NOT_NOW_WORDS.test(text)) return { kind: 'declined' }
 
+  // "Which Venu?" -> "Venu Reddy" / "the second one".
+  if (CONTACT_HINTS.has(keep.follow_up.action_hint)) {
+    const contact = pickContactFromAnswer(text, keep.follow_up.contacts)
+    return contact ? { kind: 'contact', contact } : null
+  }
+
   // "Now" only means anything for a question that offered it.
   if (keep.follow_up.action_hint === 'call_or_remind' && NOW_WORDS.test(text)) {
     return { kind: 'now' }

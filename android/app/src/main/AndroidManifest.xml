@@ -227,7 +227,7 @@
         <!-- QuickMicWidget: Track A3 Home Screen Mic Tap Target -->
         <receiver
             android:name=".widgets.QuickMicWidget"
-            android:label="QuietKeep Mic"
+            android:label="Talk to Aaria"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

@@ -686,7 +686,10 @@ export default function VoiceTalkbackToggle({ onChange }) {
 }
 
 // ── WAKE WORD SYSTEM ──────────────────────────────────────────────────────────
-// Default wake word is "lotus". Stored in localStorage('qk_wake_word').
+// Default wake word is "aaria" (src/lib/assistant-name.js - the assistant was
+// called "Lotus" in the first prototype; a stored "lotus" is rewritten to
+// "aaria" on first read, and still accepted when spoken). Stored in
+// localStorage('qk_wake_word').
 // Wake mode can be toggled on/off via localStorage('qk_wake_mode').
 //
 // Usage in voice pipeline (dashboard/page.jsx handleCapture):

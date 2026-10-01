@@ -88,7 +88,7 @@ export function pickContactFromAnswer(answer, candidates) {
   const ORDINALS = [
     /\b(first|1st|one|okati|modatidi|pehla|pehli)\b|మొదటి|ఒకటి|पहला|पहली/i,
     /\b(second|2nd|two|rendu|rendo|doosra|dusra)\b|రెండో|రెండు|दूसरा/i,
-    /\b(third|3rd|three|moodu|teesra)\b|మూడో|मूडु|तीसरा/i,
+    /\b(third|3rd|three|moodu|teesra)\b|మూడో|మూడు|तीसरा/i,
   ]
   for (let i = 0; i < ORDINALS.length && i < list.length; i++) {
     if (ORDINALS[i].test(String(answer))) return list[i]

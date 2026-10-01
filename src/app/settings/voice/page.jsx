@@ -18,7 +18,18 @@ const LANGS = [
 ];
 const TONES = [['warm', '☺️ Warm'], ['formal', '🎩 Formal'], ['energetic', '⚡ Energetic']];
 const PRESETS = [['aaria_f', 'Aaria (female)'], ['aaria_m', 'Arjun (male)'], ['calm', 'Calm']];
-const WAKE_LABELS = { manual: 'Tap to talk', invoke: 'Instant (power / widget)', counter: 'Always-on “Aaria” (counter)' };
+// What each option ACTUALLY does on this build - checked against the Android
+// code on 1 October 2026, not against what the option was meant to become:
+//   invoke  - the home-screen mic widget. The power-button / default-assistant
+//             half was never finished (no session service, nothing in
+//             MainActivity handled it), so "power" is no longer promised.
+//   counter - saying "Aaria" with the screen locked. The on-phone detector is
+//             still a placeholder, so this option is never offered yet.
+const WAKE_LABELS = { manual: 'Tap to talk', invoke: 'Home-screen mic button', counter: 'Always-on “Aaria” (counter)' };
+const WAKE_HINTS = {
+  manual: 'Tap the mic in the app, then speak.',
+  invoke: 'Add the “Talk to Aaria” widget: long-press your home screen → Widgets → QuietKeep. One tap and Aaria is listening.',
+};
 const SAMPLE_LINE = 'Hello, I am setting up my QuietKeep voice. Please remind me and read my day out loud in my own voice.';
 
 export default function VoiceSettings() {

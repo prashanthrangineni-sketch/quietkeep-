@@ -698,11 +698,8 @@ export default function VoiceTalkbackToggle({ onChange }) {
 //   if (!result.triggered) return; // ignore — no wake word
 //   const command = result.command; // transcript with wake word stripped
 
-const DEFAULT_WAKE_WORD = 'lotus';
-
 export function getWakeWord() {
-  try { return (localStorage.getItem('qk_wake_word') || DEFAULT_WAKE_WORD).toLowerCase().trim(); }
-  catch { return DEFAULT_WAKE_WORD; }
+  return readWakeWord();
 }
 
 export function setWakeWord(word) {

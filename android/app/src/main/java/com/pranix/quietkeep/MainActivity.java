@@ -389,6 +389,32 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @Override
+                public void onGeolocationPermissionsShowPrompt(
+                        String origin,
+                        android.webkit.GeolocationPermissions.Callback callback) {
+                    boolean fine = ContextCompat.checkSelfPermission(MainActivity.this,
+                        android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                    boolean coarse = ContextCompat.checkSelfPermission(MainActivity.this,
+                        android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                    if (fine || coarse) {
+                        Log.d(TAG, "geolocation: Android permission held -> allowing " + origin);
+                        callback.invoke(origin, true, false);
+                        return;
+                    }
+                    Log.d(TAG, "geolocation: asking Android for location on behalf of " + origin);
+                    mPendingGeoOrigin = origin;
+                    mPendingGeoCallback = callback;
+                    ActivityCompat.requestPermissions(
+                        MainActivity.this,
+                        new String[]{
+                            android.Manifest.permission.ACCESS_FINE_LOCATION,
+                            android.Manifest.permission.ACCESS_COARSE_LOCATION
+                        },
+                        LOCATION_PERMISSION_REQUEST_CODE
+                    );
+                }
+
+                @Override
                 public void onPermissionRequestCanceled(PermissionRequest request) {
                     if (request == mPendingAudioPermissionRequest) {
                         mPendingAudioPermissionRequest = null;

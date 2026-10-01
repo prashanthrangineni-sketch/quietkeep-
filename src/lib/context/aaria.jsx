@@ -362,8 +362,9 @@ export function AariaProvider({ children }) {
     }
   }, [here, pathname, router, say, stopAll, askBrain]);
 
-  // ── listening (browser SpeechRecognition) ──────────────────────────────────
-  const startListening = useCallback(() => {
+  // ── listening, path B: the phone's own recogniser (browser SpeechRecognition)
+  // The fallback since step 11 part 3. Unchanged otherwise.
+  const startBrowserListening = useCallback(() => {
     if (typeof window === 'undefined') return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {

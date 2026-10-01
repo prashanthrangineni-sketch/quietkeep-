@@ -1180,7 +1180,7 @@ export default function Dashboard() {
             </div>
 
             <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-              {[{ key: 'manual', label: '🎙️ Manual', desc: 'Tap to speak' }, { key: 'wake', label: '🌸 Wake Word', desc: 'Say Lotus first' }].map(m => {
+              {[{ key: 'manual', label: '🎙️ Manual', desc: 'Tap to speak' }, { key: 'wake', label: '🌸 Wake Word', desc: 'Say Aaria first' }].map(m => {
                 const active = getVoiceMode() === m.key;
                 return (
                   <button key={m.key} onClick={() => setVoiceMode(m.key, 'ui_toggle')} title={m.desc} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 99, cursor: 'pointer', background: active ? 'rgba(99,102,241,0.18)' : 'transparent', border: `1px solid ${active ? 'rgba(99,102,241,0.5)' : 'var(--border)'}`, color: active ? '#a5b4fc' : 'var(--text-muted)', fontWeight: active ? 600 : 400 }}>

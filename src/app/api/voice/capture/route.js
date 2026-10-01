@@ -309,11 +309,17 @@ export async function POST(request) {
       answered_question: true,
       answer_kind:       answer.kind,
       reminder:          answeredReminder,
-      reminder_at:       answer.kind === 'time' ? answer.reminderAt.toISOString() : null,
+      // A resolved contact keeps the reminder's existing time - returned so
+      // the client re-arms the native alarm with the number now attached.
+      reminder_at:       answer.kind === 'time' ? answer.reminderAt.toISOString()
+                       : answer.kind === 'contact' ? (openQuestion.reminder_at || null)
+                       : null,
       call_now:          answer.kind === 'now',
-      contact_matched:   openQuestion.contact_phone
-        ? { name: openQuestion.contact_name, phone: openQuestion.contact_phone }
-        : null,
+      contact_matched:   answer.kind === 'contact'
+        ? { name: answer.contact.name, phone: answer.contact.phone || null }
+        : openQuestion.contact_phone
+          ? { name: openQuestion.contact_name, phone: openQuestion.contact_phone }
+          : null,
       tts_response:      answerConfirmation(answer, openQuestion),
     }, { status: 200 })
   }

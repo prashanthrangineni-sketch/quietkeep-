@@ -224,6 +224,11 @@ export default function VoiceSettings() {
               </span>
             </label>
           ))}
+          {wakeModes.includes('invoke') && (
+            <button onClick={pinWidget} style={{ ...btn, width: '100%', marginTop: 4 }}>
+              ➕ Add “Talk to Aaria” to my home screen
+            </button>
+          )}
           {/* This line used to say always-on "Aaria" was available in the
               Android app. It was not - the detector is a placeholder - and
               the founder read that promise inside the Android app itself. */}

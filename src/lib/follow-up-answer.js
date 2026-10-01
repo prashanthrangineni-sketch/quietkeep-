@@ -104,9 +104,9 @@ export function isPendingQuestion(keep, nowMs = Date.now()) {
   if (!keep || !keep.follow_up) return false
 
   const hint = keep.follow_up.action_hint
-  if (!TIME_HINTS.has(hint)) return false
+  if (!TIME_HINTS.has(hint) && !CONTACT_HINTS.has(hint)) return false
 
-  if (isFutureInstant(keep.reminder_at, nowMs)) return false
+  if (TIME_HINTS.has(hint) && isFutureInstant(keep.reminder_at, nowMs)) return false
 
   const createdMs = Date.parse(keep.created_at || '')
   if (!Number.isFinite(createdMs)) return false

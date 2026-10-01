@@ -399,6 +399,57 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   panel.append(panelText, panelContacts, panelBtn);
   document.body.appendChild(panel);
 
+  // ── Distance, service and fuel ─────────────────────────────────────────
+  // Rides were timed but never measured, so nothing could say how far the
+  // vehicle had gone since its last service. Distance is added up from the
+  // same location fixes the rest of this file already uses: no extra sensor,
+  // no extra permission, no second trail of where the rider went.
+  let distanceMetres = 0;
+  let lastDistanceFix = null;
+
+  function addDistance(fix) {
+    if (!fix || typeof fix.lat !== 'number') return;
+    if (lastDistanceFix) {
+      const step = metresBetween(lastDistanceFix, fix);
+      // Ignore jumps: a parked phone drifts a few metres, and a lost signal
+      // comes back hundreds of metres away. Neither is distance ridden.
+      if (step > 8 && step < 400) distanceMetres += step;
+    }
+    lastDistanceFix = { lat: fix.lat, lng: fix.lng };
+  }
+
+  async function reportRideDistance() {
+    const km = Math.round((distanceMetres / 1000) * 100) / 100;
+    if (km < 0.3) return; // too short to be a ride
+    try {
+      const token = getAccessToken?.();
+      await fetch('/api/ride/upkeep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+        body: JSON.stringify({ event: 'ride', distanceKm: km }),
+        keepalive: true, // the screen is closing as this is sent
+      });
+    } catch { /* offline: the ride's distance is simply not counted */ }
+  }
+
+  // At the start of a ride, say at most ONE thing, and only when it is worth
+  // hearing: fuel running low, or a service due. Said once, at a standstill,
+  // before the rider has pulled away — never mid-ride competing with a
+  // hazard warning or a crash check-in.
+  (async () => {
+    try {
+      const token = getAccessToken?.();
+      const res = await fetch('/api/ride/upkeep', {
+        headers: { Authorization: `Bearer ${token || ''}` },
+      });
+      const status = await res.json();
+      if (status?.spoken && !overlayShown) {
+        setTimeout(() => { if (!overlayShown) speak(status.spoken); }, 2500);
+        onState?.('upkeep', status);
+      }
+    } catch { /* offline: no reminder this ride */ }
+  })();
+
   // Tell the rider plainly if a crash alert would reach nobody.
   (async () => {
     try {
@@ -418,10 +469,11 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
       listener.stop();
       panel.remove();
       if (typeof window !== 'undefined') window.removeEventListener('devicemotion', onMotion);
+      reportRideDistance();
       onState?.('stopped', {});
     },
     feedSpeed(kmh, fix) {
-      if (fix && typeof fix.lat === 'number') lastFix = { ...fix, at: now() };
+      if (fix && typeof fix.lat === 'number') { addDistance(fix); lastFix = { ...fix, at: now() }; }
       if (fix && typeof fix.headingDeg === 'number') lastHeadingDeg = fix.headingDeg;
       else if (fix && typeof fix.heading === 'number') lastHeadingDeg = fix.heading;
       if (typeof kmh === 'number') {

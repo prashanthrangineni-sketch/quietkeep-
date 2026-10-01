@@ -832,7 +832,7 @@ export function WakeModeToggle({ onChange }) {
         <div>
           <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>🌸 Wake Word Mode</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            {on ? `Say "${word}" before any command` : 'All voice input processed directly'}
+            {on ? `Say "${displayWakeWord(word)}" before any command` : 'All voice input processed directly'}
           </div>
         </div>
         <div style={{

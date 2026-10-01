@@ -20,6 +20,7 @@
 
 import { createCrashDetector } from '@/lib/crash-detect';
 import { createHazardWarner, metresBetween } from '@/lib/hazard-alerts';
+import { createStayAwakeCompanion } from '@/lib/ride-care';
 import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
 
@@ -309,6 +310,10 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     fetchingSpots = false;
   }
 
+  // Everything that speaks during a ride records when it did, so the others
+  // can stay out of the way. One voice, one thing at a time.
+  let lastSpokeAt = 0;
+
   function checkForHazardAhead(kmh) {
     const at = now();
     refreshSpots(at);
@@ -320,7 +325,23 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     );
     if (!warning) return;
     speak(warning.phrase);
+    lastSpokeAt = at;
     onState?.('hazard_warning', warning);
+  }
+
+  // ── Staying awake on a long or late ride ───────────────────────────────
+  // A hazard warning is about the road ahead; this is about the rider. It
+  // speaks rarely, and every line points at stopping rather than at talking.
+  const companion = createStayAwakeCompanion();
+
+  function checkStayAwake(kmh) {
+    if (overlayShown) return;
+    const at = now();
+    const nudge = companion.update({ at, speedKmh: kmh, somethingElseSpokeAt: lastSpokeAt });
+    if (!nudge) return;
+    speak(nudge.phrase);
+    lastSpokeAt = at;
+    onState?.('stay_awake', nudge);
   }
 
   function trigger(detail = {}) {
@@ -480,7 +501,11 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
         detector.feedSpeed({ kmh, at: now() });
         noteBraking(kmh);
         checkForHazardAhead(kmh);
+        checkStayAwake(kmh);
       }
+    },
+    lastKnownFix() {
+      return typeof lastFix.lat === 'number' ? { lat: lastFix.lat, lng: lastFix.lng } : null;
     },
     runTest() {
       lastCrash = { impactG: 3.2, speedBeforeKmh: null, test: true };
@@ -499,6 +524,37 @@ export function stopRideGuard() {
 /** The driving screen calls this from its GPS watcher. */
 export function feedRideSpeed(kmh, fix) {
   guard?.feedSpeed(kmh, fix);
+}
+
+/**
+ * Nearest hospital to where the rider is now. Speaks it and hands back the
+ * place, so the caller can open it in maps. Used by the voice command and,
+ * later, by the crash alert so the family knows where to go.
+ */
+export async function nearestHospitalNow() {
+  const fix = guard?.lastKnownFix?.();
+  if (!fix || typeof fix.lat !== 'number') {
+    speak('I do not have your location yet. Start driving mode and try again.');
+    return null;
+  }
+  try {
+    const res = await fetch('/api/ride/nearest-hospital', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat: fix.lat, lng: fix.lng }),
+    });
+    const data = await res.json();
+    if (!data?.hospital) {
+      speak('I could not find a hospital nearby right now.');
+      return null;
+    }
+    const km = Math.round(data.hospital.metres / 100) / 10;
+    speak(`Nearest hospital is ${data.hospital.name}, about ${km} kilometres away.`);
+    return data.hospital;
+  } catch {
+    speak('I could not look that up right now.');
+    return null;
+  }
 }
 
 /** The "test my crash detection" button. Records a drill, messages nobody. */

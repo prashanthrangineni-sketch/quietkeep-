@@ -193,7 +193,24 @@ export default function DriveModePage() {
     } else if (cmd.includes('keep') || cmd.includes('read')) {
       readNextKeep();
     } else {
-      drivespeak(`Sorry, I didn't understand: ${cmd}. Try: navigate to a place, music, call a name, read, home, or S O S.`);
+      drivespeak(`Sorry, I didn't understand: ${cmd}. Try: navigate to a place, music, call a name, read, nearest hospital, home, or S O S.`);
+    }
+  }
+
+  // Fuel fills and services, recorded by voice while the rider is still on the
+  // bike. The reply is spoken because the point of the whole feature is that
+  // nobody looks at the screen.
+  async function recordUpkeep(payload) {
+    try {
+      const res = await fetch('/api/ride/upkeep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken || ''}` },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      drivespeak(data?.spoken || 'Noted.');
+    } catch {
+      drivespeak('I could not save that right now. It will need doing later.');
     }
   }
 

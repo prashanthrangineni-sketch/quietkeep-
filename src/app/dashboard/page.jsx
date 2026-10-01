@@ -783,7 +783,7 @@ export default function Dashboard() {
         setShowVoiceHelp(true); setTimeout(() => setShowVoiceHelp(false), 8000); setContent(''); setSaving(false); savingRef.current = false; return;
       }
       const lowerCmd = commandText.toLowerCase();
-      if (lowerCmd.includes('lotus') || lowerCmd.includes('add') || lowerCmd.includes('set')) speak("I heard you, but could not match a command. Try saying: Lotus help for a full list.");
+      if (lowerCmd.includes('aaria') || lowerCmd.includes('lotus') || lowerCmd.includes('add') || lowerCmd.includes('set')) speak("I heard you, but could not match a command. Try saying: Aaria help for a full list.");
       else speakError();
     }
     const profile = await supabase.from('profiles').select('subscription_tier, is_beta').eq('user_id', user.id).maybeSingle();

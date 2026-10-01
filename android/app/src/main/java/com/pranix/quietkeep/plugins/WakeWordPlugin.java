@@ -59,6 +59,49 @@ public class WakeWordPlugin extends Plugin {
         call.resolve(res);
     }
 
+    /**
+     * Ask the home screen to place the "Talk to Aaria" widget, so nobody has
+     * to hunt for it in the launcher's widget list (the founder could not find
+     * it there on 1 Oct 2026 - launchers file it under the app name, which is
+     * "QuietKeep Personal", and some hide app widgets in a submenu).
+     *
+     * Android 8+ shows its own "Add to home screen?" card. The result says
+     * plainly whether this launcher supports that, so the app can fall back to
+     * instructions instead of a button that silently does nothing.
+     */
+    @PluginMethod
+    public void pinWidget(PluginCall call) {
+        JSObject res = new JSObject();
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                res.put("requested", false);
+                res.put("reason", "android_too_old");
+                call.resolve(res);
+                return;
+            }
+            android.appwidget.AppWidgetManager mgr =
+                android.appwidget.AppWidgetManager.getInstance(getContext());
+            if (mgr == null || !mgr.isRequestPinAppWidgetSupported()) {
+                res.put("requested", false);
+                res.put("reason", "launcher_does_not_support");
+                call.resolve(res);
+                return;
+            }
+            android.content.ComponentName provider = new android.content.ComponentName(
+                getContext(), com.pranix.quietkeep.widgets.QuickMicWidget.class);
+            boolean asked = mgr.requestPinAppWidget(provider, null, null);
+            Log.d(TAG, "pinWidget requested: " + asked);
+            res.put("requested", asked);
+            if (!asked) res.put("reason", "launcher_refused");
+            call.resolve(res);
+        } catch (Exception e) {
+            Log.e(TAG, "pinWidget failed: " + e.getMessage(), e);
+            res.put("requested", false);
+            res.put("reason", "error: " + e.getMessage());
+            call.resolve(res);
+        }
+    }
+
     @PluginMethod
     public void isWakeWordAvailable(PluginCall call) {
         Log.d(TAG, "isWakeWordAvailable requested");

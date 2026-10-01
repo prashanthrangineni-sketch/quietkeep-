@@ -43,6 +43,18 @@ public class MainActivity extends BridgeActivity {
     private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
     private static final int AUDIO_PERMISSION_REQUEST_CODE = 1002;
 
+    // LOCATION FOR THE PAGE. The app is a WebView, and a WebView answers a
+    // page's location request through WebChromeClient.onGeolocationPermissionsShowPrompt.
+    // Nothing here implemented it, and the default answer is NO - so every
+    // location request from quietkeep.com was refused, whatever the person
+    // tapped. The founder saw it on 1 Oct 2026: allowed location in onboarding,
+    // got "Denied". The same refusal sat under the "remind me at Chintal Kunta"
+    // reminders and SOS location. Android's own location permission was never
+    // even asked for. Both are handled now, the same way the microphone is.
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1003;
+    private String mPendingGeoOrigin = null;
+    private android.webkit.GeolocationPermissions.Callback mPendingGeoCallback = null;
+
     private android.webkit.ValueCallback<android.net.Uri[]> mFilePathCallback;
     private PermissionRequest mPendingAudioPermissionRequest = null;
 
@@ -377,6 +389,32 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 @Override
+                public void onGeolocationPermissionsShowPrompt(
+                        String origin,
+                        android.webkit.GeolocationPermissions.Callback callback) {
+                    boolean fine = ContextCompat.checkSelfPermission(MainActivity.this,
+                        android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                    boolean coarse = ContextCompat.checkSelfPermission(MainActivity.this,
+                        android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                    if (fine || coarse) {
+                        Log.d(TAG, "geolocation: Android permission held -> allowing " + origin);
+                        callback.invoke(origin, true, false);
+                        return;
+                    }
+                    Log.d(TAG, "geolocation: asking Android for location on behalf of " + origin);
+                    mPendingGeoOrigin = origin;
+                    mPendingGeoCallback = callback;
+                    ActivityCompat.requestPermissions(
+                        MainActivity.this,
+                        new String[]{
+                            android.Manifest.permission.ACCESS_FINE_LOCATION,
+                            android.Manifest.permission.ACCESS_COARSE_LOCATION
+                        },
+                        LOCATION_PERMISSION_REQUEST_CODE
+                    );
+                }
+
+                @Override
                 public void onPermissionRequestCanceled(PermissionRequest request) {
                     if (request == mPendingAudioPermissionRequest) {
                         mPendingAudioPermissionRequest = null;
@@ -601,6 +639,18 @@ public class MainActivity extends BridgeActivity {
                 }
                 mPendingAudioPermissionRequest = null;
             }
+        }
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE && mPendingGeoCallback != null) {
+            boolean allowed = false;
+            for (int r : grantResults) {
+                if (r == PackageManager.PERMISSION_GRANTED) { allowed = true; break; }
+            }
+            Log.d(TAG, "geolocation: person " + (allowed ? "allowed" : "refused") + " location");
+            // retain=false: ask Android again next time rather than caching a
+            // refusal inside the WebView where Settings cannot undo it.
+            mPendingGeoCallback.invoke(mPendingGeoOrigin, allowed, false);
+            mPendingGeoCallback = null;
+            mPendingGeoOrigin = null;
         }
     }
 

@@ -1192,7 +1192,7 @@ export default function Dashboard() {
 
             {isWakeMode() && !nativeVoiceActive && isNativeVoiceAvailable() && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 8, padding: '7px 12px' }}>
-                <span style={{ fontSize: 11, color: '#f59e0b' }}>💡 Enable Always-On to use "Lotus" wake word hands-free</span>
+                <span style={{ fontSize: 11, color: '#f59e0b' }}>💡 Enable Always-On to use "Aaria" wake word hands-free</span>
               </div>
             )}
 

@@ -309,6 +309,37 @@ export function AariaProvider({ children }) {
       say(spoken);
       setTranscript('');
 
+      // WHEN AARIA ASKS, SHE LISTENS FOR THE ANSWER.
+      //
+      // 2 October 2026: Aaria asked "eppudu gurthu cheyamantaru?" and then sat
+      // there with the microphone off. The server has known how to take the
+      // answer since #128 (src/lib/follow-up-answer.js); nothing on the phone
+      // ever gave the person the chance to say it without tapping again. A
+      // person who asks a question and then looks away is not an assistant.
+      //
+      // So: if the reply is a question, wait until she has finished speaking,
+      // then open the microphone. At most three in a row, and saying nothing
+      // simply ends it (the listener gives up on its own after 8 seconds).
+      const asked = !!json.follow_up || /[?？]\s*$/.test(String(spoken).trim());
+      if (asked && followUpTurns.current < 3) {
+        followUpTurns.current += 1;
+        const startedAt = Date.now();
+        // The native voice cannot tell us when it stops, so there is a floor
+        // estimated from the length of the sentence; where the end IS
+        // observable (isSpeaking), we wait for that as well.
+        const atLeast = Math.min(10000, 1200 + String(spoken).length * 75);
+        if (followUpTimer.current) clearInterval(followUpTimer.current);
+        followUpTimer.current = setInterval(() => {
+          const waited = Date.now() - startedAt;
+          if (waited < atLeast) return;
+          if (isSpeaking() && waited < 14000) return;
+          clearInterval(followUpTimer.current); followUpTimer.current = null;
+          if (!listeningRef.current) { autoTurnRef.current = true; startListenRef.current?.(); }
+        }, 150);
+      } else {
+        followUpTurns.current = 0;
+      }
+
       // ARM THE ALARM FROM HERE TOO.
       //
       // 30 September 2026, 8:08 pm: the founder tapped THIS microphone, said

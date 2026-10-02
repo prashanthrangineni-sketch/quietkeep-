@@ -85,7 +85,7 @@ export default function AariaConsentPage() {
   const [name, setName] = useState('Aaria');
   const [busy, setBusy] = useState(false);
   const [wakeOnBattery, setWakeOnBattery] = useState(false);
-  // '' | downloading | no_wifi | ready | failed | paused:<reason>
+  // '' | downloading | no_wifi | ready | failed | mic | paused:<reason>
   const [setup, setSetup] = useState('');
   const listeners = useRef([]);
   const alive = useRef(true);
@@ -127,7 +127,7 @@ export default function AariaConsentPage() {
     let mic = '';
     try { const perm = await plugin.requestPermissions(); mic = (perm && perm.microphone) || ''; } catch {}
     if (!alive.current) return;
-    if (mic !== 'granted') { setSetup(''); setBusy(false); return; }
+    if (mic !== 'granted') { setSetup('mic'); setBusy(false); return; }
     try { localStorage.setItem('qk_wake_word_available', 'true'); } catch {}
     try { setWakeMode('counter'); } catch {}
     let st = null;
@@ -247,6 +247,9 @@ export default function AariaConsentPage() {
               {s.s4_paused_title}
               {s['s4_paused_' + setup.slice(7)] ? <><br />{s['s4_paused_' + setup.slice(7)]}</> : null}
             </>
+          ) : setup === 'mic' ? (
+            // Wording comes from the plugin (founder-approved). An older plugin copy without it shows nothing.
+            s.s1_mic_needed ? rich(s.s1_mic_needed, name) : null
           ) : (
             rich((SETUP_TEXT[lang] || SETUP_TEXT.en)[setup], name)
           )}

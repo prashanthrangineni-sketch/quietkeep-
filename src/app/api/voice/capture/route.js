@@ -605,6 +605,46 @@ export async function POST(request) {
     }
   }
 
+  // ── "WHEN?" ANSWERED WITH A PLACE ─────────────────────────────────────────
+  // Aaria asked when; the person said where ("when I reach Mansoorabad").
+  // The place goes onto the keep the question was about - not into a second
+  // keep that would itself be asked "when?". Rules in src/lib/follow-up-answer.js.
+  if (geoData?.location_name
+      && isPlaceAnswer(openQuestion, text, geoData.location_name, { hasTime: !!reminderAt })) {
+    const { data: placedKeep } = await supabase
+      .from('keeps')
+      .update({ ...geoData, follow_up: null, updated_at: new Date().toISOString() })
+      .eq('id', openQuestion.id)
+      .eq('user_id', user.id)
+      .select('*')
+      .maybeSingle()
+
+    supabase.from('audit_log').insert({
+      user_id: user.id,
+      action:  'keep.follow_up_answered',
+      service: 'voice_capture',
+      details: {
+        keep_id: openQuestion.id,
+        action_hint: openQuestion.follow_up?.action_hint || null,
+        answer_kind: 'place',
+        answer_text: text,
+        place: geoData.location_name,
+        can_alert: !!geoData.geo_trigger_enabled,
+        ...(cleanListenEvidence(body.listen) ? { listen: cleanListenEvidence(body.listen) } : {}),
+      },
+    }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+
+    return NextResponse.json({
+      keep:              placedKeep || openQuestion,
+      intent:            placedKeep || openQuestion,
+      answered_question: true,
+      answer_kind:       'place',
+      reminder:          null,
+      reminder_at:       null,
+      tts_response:      placeConfirmation(geoData.location_name, !!geoData.geo_trigger_enabled),
+    }, { status: 200 })
+  }
+
   // [GEO] Log the outcome of geo intent resolution
   console.log('[GEO]', JSON.stringify({
     transcript_preview: text.slice(0, 60),

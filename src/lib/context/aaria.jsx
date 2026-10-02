@@ -639,6 +639,7 @@ export function AariaProvider({ children }) {
       },
     );
   }, [voiceLang, submit, startBrowserListening]);
+  useEffect(() => { startListenRef.current = startListening; }, [startListening]);
 
   const toggleListening = useCallback(() => {
     if (listeningRef.current || status === 'speaking') stopAll();

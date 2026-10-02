@@ -178,19 +178,36 @@ export function createFramer(frameSamples = FRAME_SAMPLES) {
 }
 
 /**
- * Loudness-based speech detector with a learned noise floor.
- * The first few frames set the floor; speech is clearly above it.
+ * Loudness-based speech detector.
+ *
+ * WHAT WENT WRONG THE FIRST TIME (2 October 2026, the founder's first test)
+ * "Remind me to buy milk when I reach Mansoorabad" was cut after "Remind me to
+ * buy". The first version learned the room's loudness from the first three
+ * frames only. Tap and speak straight away and those frames ARE speech, so the
+ * bar for "this is speech" was set above the person's own voice; nothing after
+ * the first loud syllable counted, the silence wait ran out mid-sentence.
+ *
+ * NOW: the room level is the QUIETEST frame of the last three seconds. Speech
+ * always has gaps between words, so that minimum finds the room even when the
+ * person starts talking at once, keeps following it if the room changes, and
+ * can never be set by the voice alone for long. Until a real gap has been
+ * seen the detector says "not speech" - which only delays the start of the
+ * silence wait, it can never end a turn early.
  */
-export function createLoudness({ minLevel = 0.012, factor = 2.5, learnFrames = 3 } = {}) {
-  let floor = null, seen = 0;
+export function createLoudness({ minLevel = 0.005, factor = 2.5, windowFrames = 30 } = {}) {
+  const recent = [];
+  let peak = 0;
   return {
     isSpeech(level) {
-      if (seen < learnFrames) {
-        floor = floor === null ? level : Math.min(floor, level);
-        seen++;
-      }
-      return level > Math.max(minLevel, (floor ?? 0) * factor);
+      recent.push(level);
+      if (recent.length > windowFrames) recent.shift();
+      if (level > peak) peak = level;
+      let floor = Infinity;
+      for (const v of recent) if (v < floor) floor = v;
+      return level > Math.max(minLevel, floor * factor);
     },
+    floor() { let f = Infinity; for (const v of recent) if (v < f) f = v; return recent.length ? f : 0; },
+    peak() { return peak; },
   };
 }
 

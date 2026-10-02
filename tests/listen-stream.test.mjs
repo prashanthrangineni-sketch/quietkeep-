@@ -3,6 +3,7 @@
 import {
   downsampleTo16k, floatToPcm16, createFramer, createLoudness, cleanKeyterms,
   listenStreamWanted, setListenStreamWanted, startListenStream, streamingSupported,
+  cleanListenEvidence,
   READY_TIMEOUT_MS, FRAME_SAMPLES,
 } from '../src/lib/listen-stream.js';
 
@@ -29,6 +30,34 @@ check('16 kHz is passed through untouched', downsampleTo16k(new Float32Array(10)
   const l = createLoudness();
   [0.001, 0.002, 0.001].forEach((v) => l.isSpeech(v));
   check('quiet room is not speech; a voice is', !l.isSpeech(0.003) && l.isSpeech(0.2));
+}
+{
+  // THE BUG OF 2 OCTOBER: tap and speak at once, so there is no quiet lead-in.
+  // A sentence is loud syllables with short dips between words. Count the
+  // longest run of frames NOT judged speech while the person is talking: it
+  // must stay far below the 13-frame (1.3 s) silence wait.
+  const l = createLoudness();
+  const sentence = [];
+  for (let i = 0; i < 35; i++) sentence.push(i % 4 === 3 ? 0.012 : 0.07 + (i % 3) * 0.02);
+  let gap = 0, worst = 0;
+  for (const v of sentence) { if (l.isSpeech(v)) gap = 0; else { gap++; worst = Math.max(worst, gap); } }
+  check('speaking from the first instant is never mistaken for 1.3 s of silence', worst <= 4, `worst gap ${worst} frames`);
+  let after = 0;
+  for (let i = 0; i < 14; i++) if (l.isSpeech(0.002)) after++;
+  check('…and the quiet afterwards is still heard as quiet', after === 0);
+}
+{
+  const l = createLoudness();
+  for (let i = 0; i < 10; i++) l.isSpeech(0.002);
+  check('a soft voice in a quiet room counts', l.isSpeech(0.012));
+  const n = createLoudness();
+  for (let i = 0; i < 10; i++) n.isSpeech(0.03);
+  check('a steady noisy room is not speech; a voice over it is', !n.isSpeech(0.035) && n.isSpeech(0.12));
+}
+{
+  const e = cleanListenEvidence({ path: 'engine', finaliseMs: 512.4, stopReason: 'silence', junk: { a: 1 }, reason: 'x'.repeat(200) });
+  check('listening evidence is trimmed to known small fields', e.path === 'engine' && e.finaliseMs === 512.4 && e.stopReason === 'silence' && !('junk' in e) && e.reason.length === 80);
+  check('no path → nothing kept', cleanListenEvidence({ finaliseMs: 3 }) === null && cleanListenEvidence('x') === null);
 }
 {
   const k = cleanKeyterms(['Surya Kiran', 'surya kiran', ' ', 'Venu', 'x'.repeat(80)]);
@@ -124,6 +153,25 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   check('turn returns the finished sentence', r.ok && r.v.text === 'Surya Kiran ki call cheyyi', JSON.stringify(r));
   check('finalise time measured from "stop"', r.ok && r.v.finaliseMs === 501);
   check('words shown while speaking', partials[0] === 'Surya Kiran ki');
+}
+
+// ── the founder's sentence, spoken the moment the mic opens ──────────────────
+{
+  const w = makeWorld();
+  const s = startListenStream({ lang: 'te-IN', silenceMs: 1400, deps: w.deps });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.engine({ event: 'ready' });
+  // 3.6 s of speech, no quiet lead-in, one frame every 100 ms.
+  for (let i = 0; i < 36; i++) { (i % 4 === 3) ? w.speak(0.012) : w.speak(0.08); w.clock.advance(100); }
+  check('a 3.6 s sentence is not cut off part-way', !w.json().some((m) => m.event === 'stop'));
+  for (let i = 0; i < 11; i++) { w.hush(); w.clock.advance(100); }
+  check('…still waiting just inside the silence wait', !w.json().some((m) => m.event === 'stop'));
+  for (let i = 0; i < 3; i++) { w.hush(); w.clock.advance(100); }
+  check('…and stops once the person really has stopped', w.json().some((m) => m.event === 'stop'));
+  w.engine({ event: 'done', text: 'Remind me to buy milk when I reach Mansoorabad' });
+  const r = await res;
+  check('the whole sentence comes back, with why the turn ended', r.ok && /Mansoorabad/.test(r.v.text) && r.v.stopReason === 'silence' && r.v.heardMs >= 3600, JSON.stringify(r.v));
 }
 
 // ── the engine is asleep: fall back ──────────────────────────────────────────

@@ -155,3 +155,39 @@ test('calling now does not announce a time it has not set', () => {
   assert.match(said, /Calling Surya Kiran now/)
   assert.doesNotMatch(said, /\d{1,2}:\d{2}/)
 })
+
+// ── "When?" answered with a place (2 October 2026) ──────────────────────────
+import { isPlaceAnswer, placeConfirmation } from '../src/lib/follow-up-answer.js'
+
+test('a place answers an open "when?"', () => {
+  const keep = pending({ follow_up: { action_hint: 'time_needed', follow_up: 'When should I remind you?' } })
+  assert.equal(isPlaceAnswer(keep, 'when I reach Mansoorabad', 'Mansoorabad', { nowMs: NOW }), true)
+})
+
+test('a place is NOT an answer when a clock time came with it', () => {
+  const keep = pending({ follow_up: { action_hint: 'time_needed', follow_up: 'When?' } })
+  assert.equal(isPlaceAnswer(keep, 'at 6 near Mansoorabad', 'Mansoorabad', { hasTime: true, nowMs: NOW }), false)
+})
+
+test('a long sentence naming a place is a new instruction', () => {
+  const keep = pending({ follow_up: { action_hint: 'time_needed', follow_up: 'When?' } })
+  assert.equal(isPlaceAnswer(keep, 'remind me to pick up the laundry and the keys when I reach Mansoorabad', 'Mansoorabad', { nowMs: NOW }), false)
+})
+
+test('"navigate to …" is never swallowed as an answer', () => {
+  const keep = pending({ follow_up: { action_hint: 'time_needed', follow_up: 'When?' } })
+  assert.equal(isPlaceAnswer(keep, 'navigate to Mansoorabad', 'Mansoorabad', { nowMs: NOW }), false)
+})
+
+test('no open question, a stale one, or a "who?" question → not a place answer', () => {
+  assert.equal(isPlaceAnswer(null, 'when I reach Mansoorabad', 'Mansoorabad', { nowMs: NOW }), false)
+  const stale = pending({ follow_up: { action_hint: 'time_needed', follow_up: 'When?' } })
+  assert.equal(isPlaceAnswer(stale, 'when I reach Mansoorabad', 'Mansoorabad', { nowMs: NOW + 6 * 60 * 1000 }), false)
+  const who = pending({ follow_up: { action_hint: 'disambiguate_contact', follow_up: 'Which Venu?' } })
+  assert.equal(isPlaceAnswer(who, 'the one in Mansoorabad', 'Mansoorabad', { nowMs: NOW }), false)
+})
+
+test('the confirmation says whether she can actually alert there', () => {
+  assert.match(placeConfirmation('Mansoorabad', true), /when you reach Mansoorabad/)
+  assert.match(placeConfirmation('Mansoorabad', false), /could not find it on the map/)
+})

@@ -82,6 +82,25 @@ export function readLastListen(storage) {
   } catch { return null; }
 }
 
+/**
+ * What the server keeps about how a sentence was heard: a fixed set of small
+ * fields, nothing free-form beyond two short labels. Anything else the phone
+ * sends is dropped. Returns null when there is nothing worth keeping.
+ */
+export function cleanListenEvidence(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const out = {};
+  if (['engine', 'phone', 'none'].includes(raw.path)) out.path = raw.path;
+  for (const k of ['firstWordsMs', 'finaliseMs', 'keyterms', 'heardMs', 'speechMs', 'peak', 'floor', 'chars']) {
+    const v = raw[k];
+    if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.round(v * 10000) / 10000;
+  }
+  for (const k of ['reason', 'stopReason']) {
+    if (typeof raw[k] === 'string' && raw[k]) out[k] = raw[k].slice(0, 80);
+  }
+  return out.path ? out : null;
+}
+
 /** Does this browser have everything a streaming turn needs? */
 export function streamingSupported(win) {
   const w = win || (typeof window !== 'undefined' ? window : null);
@@ -159,19 +178,36 @@ export function createFramer(frameSamples = FRAME_SAMPLES) {
 }
 
 /**
- * Loudness-based speech detector with a learned noise floor.
- * The first few frames set the floor; speech is clearly above it.
+ * Loudness-based speech detector.
+ *
+ * WHAT WENT WRONG THE FIRST TIME (2 October 2026, the founder's first test)
+ * "Remind me to buy milk when I reach Mansoorabad" was cut after "Remind me to
+ * buy". The first version learned the room's loudness from the first three
+ * frames only. Tap and speak straight away and those frames ARE speech, so the
+ * bar for "this is speech" was set above the person's own voice; nothing after
+ * the first loud syllable counted, the silence wait ran out mid-sentence.
+ *
+ * NOW: the room level is the QUIETEST frame of the last three seconds. Speech
+ * always has gaps between words, so that minimum finds the room even when the
+ * person starts talking at once, keeps following it if the room changes, and
+ * can never be set by the voice alone for long. Until a real gap has been
+ * seen the detector says "not speech" - which only delays the start of the
+ * silence wait, it can never end a turn early.
  */
-export function createLoudness({ minLevel = 0.012, factor = 2.5, learnFrames = 3 } = {}) {
-  let floor = null, seen = 0;
+export function createLoudness({ minLevel = 0.005, factor = 2.5, windowFrames = 30 } = {}) {
+  const recent = [];
+  let peak = 0;
   return {
     isSpeech(level) {
-      if (seen < learnFrames) {
-        floor = floor === null ? level : Math.min(floor, level);
-        seen++;
-      }
-      return level > Math.max(minLevel, (floor ?? 0) * factor);
+      recent.push(level);
+      if (recent.length > windowFrames) recent.shift();
+      if (level > peak) peak = level;
+      let floor = Infinity;
+      for (const v of recent) if (v < floor) floor = v;
+      return level > Math.max(minLevel, floor * factor);
     },
+    floor() { let f = Infinity; for (const v of recent) if (v < f) f = v; return recent.length ? f : 0; },
+    peak() { return peak; },
   };
 }
 
@@ -273,6 +309,13 @@ export function startListenStream({
       firstWordsMs,
       finaliseMs: tStop === null ? null : Math.round(now() - tStop),
       keyterms: terms.length,
+      // Evidence for the next "it cut me off": how long we listened, how much
+      // of it counted as speech, how loud, and what ended the turn.
+      heardMs: frames * 100,
+      speechMs: speechFrames * 100,
+      peak: Math.round(loud.peak() * 1000) / 1000,
+      floor: Math.round(loud.floor() * 10000) / 10000,
+      stopReason,
     });
   }
 
@@ -290,8 +333,9 @@ export function startListenStream({
   }
 
   // The person has stopped (silence, cap, or a tap on stop).
-  function endpoint() {
+  function endpoint(why) {
     if (ended || stopSent) return;
+    stopReason = typeof why === 'string' ? why : 'silence';
     clear('silence'); clear('max'); clear('nothing');
     releaseAudio();
     if (!ready) {
@@ -311,7 +355,7 @@ export function startListenStream({
 
   function armSilence() {
     clear('silence');
-    timers.silence = setT(endpoint, silenceMs ?? 1200);
+    timers.silence = setT(() => endpoint('silence'), silenceMs ?? 1200);
   }
 
   function speechNow() {
@@ -319,9 +363,11 @@ export function startListenStream({
     armSilence();
   }
 
+  let frames = 0, speechFrames = 0, stopReason = null;
   function onFrame(frame) {
     const pcm = floatToPcm16(frame).buffer;
-    if (loud.isSpeech(rms(frame))) speechNow();
+    frames++;
+    if (loud.isSpeech(rms(frame))) { speechFrames++; speechNow(); }
     if (ready) send(pcm); else pending.push(pcm);
   }
 
@@ -402,7 +448,7 @@ export function startListenStream({
       };
       source.connect(node);
       node.connect(ctx.destination);
-      timers.max = setT(endpoint, maxMs);
+      timers.max = setT(() => endpoint('longest turn reached'), maxMs);
       timers.nothing = setT(() => { if (!speechSeen) fail('nothing heard', { fallback: false }); }, NOTHING_HEARD_MS);
     } catch (e) {
       fail(e?.name === 'NotAllowedError' ? 'microphone blocked' : 'microphone unavailable');
@@ -413,7 +459,7 @@ export function startListenStream({
     result,
     stop: () => {
       if (ended) return;
-      if (speechSeen) endpoint();   // not ready yet → falls back, asks to repeat
+      if (speechSeen) endpoint('tapped stop');   // not ready yet → falls back, asks to repeat
       else fail('stopped', { fallback: false });
     },
     abort: () => {

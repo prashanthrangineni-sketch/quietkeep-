@@ -45,6 +45,7 @@ import {
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 import { checkForNotices } from '@/lib/aaria-watch';
+import { isSpeaking, looksLikeSelfEcho } from '@/lib/barge-in';
 
 const AariaContext = createContext(null);
 
@@ -207,6 +208,14 @@ export function AariaProvider({ children }) {
   const [error,      setError]      = useState('');
   const [wakeInfo,   setWakeInfo]   = useState(null);
   const [notice,     setNotice]     = useState(null);   // {text, count} or null
+  // Which listener heard the last turn - shown in the dock so "did Aaria hear
+  // me, or the phone?" has an answer on screen, not in a settings page.
+  const [heardBy,    setHeardBy]    = useState(null);   // {path, finaliseMs} or null
+  const lastListenRef   = useRef(null);  // sent with the next capture call
+  const startListenRef  = useRef(null);  // startListening, for the follow-up loop
+  const followUpTurns   = useRef(0);     // automatic re-listens in a row
+  const followUpTimer   = useRef(null);
+  const autoTurnRef     = useRef(false); // this turn was opened by Aaria, not a tap
 
   const recognitionRef = useRef(null);
   const listeningRef   = useRef(false);
@@ -245,6 +254,8 @@ export function AariaProvider({ children }) {
   }, []);
 
   const stopAll = useCallback(() => {
+    if (followUpTimer.current) { clearInterval(followUpTimer.current); followUpTimer.current = null; }
+    followUpTurns.current = 0;
     listeningRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
@@ -281,8 +292,13 @@ export function AariaProvider({ children }) {
           // knows the user is staring at Invoices — "add 2000 for Ravi" is an
           // invoice there and an expense on the Money screen.
           page_context: { path: pathname, label: here || null },
+          // How this sentence was heard (engine or phone, timings, what ended
+          // the turn). Stored with the capture so a "it cut me off" report can
+          // be checked against what actually happened.
+          ...(lastListenRef.current ? { listen: lastListenRef.current } : {}),
         }),
       });
+      lastListenRef.current = null;   // it described THIS sentence only
       const json = await res.json().catch(() => null);
       if (!res.ok || !json) {
         setError('I could not save that. It is still in the box — try again.');
@@ -292,6 +308,37 @@ export function AariaProvider({ children }) {
       const spoken = json.tts_response || json.assistant?.reply || 'Saved.';
       say(spoken);
       setTranscript('');
+
+      // WHEN AARIA ASKS, SHE LISTENS FOR THE ANSWER.
+      //
+      // 2 October 2026: Aaria asked "eppudu gurthu cheyamantaru?" and then sat
+      // there with the microphone off. The server has known how to take the
+      // answer since #128 (src/lib/follow-up-answer.js); nothing on the phone
+      // ever gave the person the chance to say it without tapping again. A
+      // person who asks a question and then looks away is not an assistant.
+      //
+      // So: if the reply is a question, wait until she has finished speaking,
+      // then open the microphone. At most three in a row, and saying nothing
+      // simply ends it (the listener gives up on its own after 8 seconds).
+      const asked = !!json.follow_up || /[?？]\s*$/.test(String(spoken).trim());
+      if (asked && followUpTurns.current < 3) {
+        followUpTurns.current += 1;
+        const startedAt = Date.now();
+        // The native voice cannot tell us when it stops, so there is a floor
+        // estimated from the length of the sentence; where the end IS
+        // observable (isSpeaking), we wait for that as well.
+        const atLeast = Math.min(10000, 1200 + String(spoken).length * 75);
+        if (followUpTimer.current) clearInterval(followUpTimer.current);
+        followUpTimer.current = setInterval(() => {
+          const waited = Date.now() - startedAt;
+          if (waited < atLeast) return;
+          if (isSpeaking() && waited < 14000) return;
+          clearInterval(followUpTimer.current); followUpTimer.current = null;
+          if (!listeningRef.current) { autoTurnRef.current = true; startListenRef.current?.(); }
+        }, 150);
+      } else {
+        followUpTurns.current = 0;
+      }
 
       // ARM THE ALARM FROM HERE TOO.
       //
@@ -324,6 +371,11 @@ export function AariaProvider({ children }) {
   const submit = useCallback(async (raw) => {
     const text = String(raw || '').trim();
     if (!text || submittingRef.current) return;
+    // A turn Aaria opened herself can catch the tail of her own question.
+    // Hearing her own words is not an answer.
+    const auto = autoTurnRef.current;
+    autoTurnRef.current = false;
+    if (auto && looksLikeSelfEcho(text)) { setTranscript(''); setInterim(''); return; }
     submittingRef.current = true;
     setError('');
 
@@ -531,7 +583,8 @@ export function AariaProvider({ children }) {
     if (typeof window === 'undefined') return;
     if (listeningRef.current) return;
     if (!listenStreamWanted() || !streamingSupported(window)) {
-      recordLastListen({ path: 'phone', reason: listenStreamWanted() ? 'not supported here' : 'switched off' });
+      const info = { path: 'phone', reason: listenStreamWanted() ? 'not supported here' : 'switched off' };
+      recordLastListen(info); lastListenRef.current = info; setHeardBy(info);
       startBrowserListening();
       return;
     }
@@ -559,10 +612,11 @@ export function AariaProvider({ children }) {
     recognitionRef.current = { stop: session.stop };
 
     session.result.then(
-      ({ text, firstWordsMs, finaliseMs, keyterms }) => {
+      ({ text, ...turn }) => {
         if (recognitionRef.current?.stop === session.stop) recognitionRef.current = null;
         listeningRef.current = false;
-        recordLastListen({ path: 'engine', firstWordsMs, finaliseMs, keyterms, chars: text.length });
+        const info = { path: 'engine', ...turn, chars: text.length };
+        recordLastListen(info); lastListenRef.current = info; setHeardBy(info);
         setInterim('');
         setStatus((st) => (st === 'listening' ? 'idle' : st));
         if (text) { setTranscript(text); submit(text); }
@@ -572,8 +626,10 @@ export function AariaProvider({ children }) {
         if (recognitionRef.current?.stop === session.stop) recognitionRef.current = null;
         listeningRef.current = false;
         setInterim('');
-        recordLastListen({ path: err?.fallback ? 'phone' : 'none', reason: err?.reason || 'unknown' });
+        const info = { path: err?.fallback ? 'phone' : 'none', reason: err?.reason || 'unknown' };
+        recordLastListen(info);
         if (err?.fallback) {
+          lastListenRef.current = info; setHeardBy(info);
           startBrowserListening();
           if (err.lostSpeech) setError('Say that again, please.');
           return;
@@ -583,6 +639,7 @@ export function AariaProvider({ children }) {
       },
     );
   }, [voiceLang, submit, startBrowserListening]);
+  useEffect(() => { startListenRef.current = startListening; }, [startListening]);
 
   const toggleListening = useCallback(() => {
     if (listeningRef.current || status === 'speaking') stopAll();
@@ -729,10 +786,10 @@ export function AariaProvider({ children }) {
 
   const value = useMemo(() => ({
     status, open, setOpen, interim, transcript, reply, error, wakeInfo, hotwordOn,
-    notice, here, silent, signedIn,
+    notice, here, silent, signedIn, heardBy,
     submit, say, stopAll, startListening, toggleListening,
     setError, setReply,
-  }), [status, open, interim, transcript, reply, error, wakeInfo, hotwordOn, notice,
+  }), [status, open, interim, transcript, reply, error, wakeInfo, hotwordOn, notice, heardBy,
        here, silent, signedIn, submit, say, stopAll, startListening, toggleListening]);
 
   return <AariaContext.Provider value={value}>{children}</AariaContext.Provider>;

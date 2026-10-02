@@ -28,6 +28,7 @@ export default function AariaDock() {
   const {
     status, open, setOpen, interim, transcript, reply, error, hotwordOn, notice,
     here, silent, signedIn, submit, toggleListening, stopAll, setError,
+    heardBy,
   } = useAaria();
 
   const [typed, setTyped] = useState('');
@@ -195,6 +196,16 @@ export default function AariaDock() {
           }}>
             Ctrl+Space to talk from anywhere · Esc to stop
           </p>
+
+          {/* Which listener heard the last sentence. On screen, at the moment
+              it happened, so nobody has to dig in settings to find out. */}
+          {heardBy && (
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--text-subtle)' }}>
+              {heardBy.path === 'engine'
+                ? `Heard by Aaria${heardBy.finaliseMs != null ? ` · ready in ${(heardBy.finaliseMs / 1000).toFixed(1)} s` : ''}`
+                : `Heard by your phone's own listener${heardBy.reason ? ` (${heardBy.reason})` : ''}`}
+            </p>
+          )}
 
           {/* An always-open microphone must always be visible. This line is the
               only honest way to ship a wake word in a browser. */}

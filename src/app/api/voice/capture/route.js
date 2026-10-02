@@ -27,7 +27,7 @@ import {
   buildExecutionTTS,
   extractDestination,
 } from '@/lib/intent-executor'
-import { readAnswer, answerConfirmation } from '@/lib/follow-up-answer'
+import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation } from '@/lib/follow-up-answer'
 import { whyBrainRun, describeUnderstanding } from '@/lib/understanding-record'
 import { geocodePlace, cleanPlaceName } from '@/lib/geocode'
 import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep } from '@/lib/geo-resolver'
@@ -40,6 +40,7 @@ import {
   createDecisionRecord, writeAuditRecord, AGENTS, PROTOCOL_VERSION,
 } from '@/lib/decision-protocol' // v16: Phase 8 protocol adoption
 import { buildMemoryContext } from '@/lib/style-engine' // v15: Memory Context
+import { cleanListenEvidence } from '@/lib/listen-stream'
 
 export async function POST(request) {
   const authHeader = request.headers.get('Authorization') || ''
@@ -96,6 +97,10 @@ export async function POST(request) {
     // routing decision, so a forged value can only produce a worse guess.
     page_context  = null,
   } = body
+
+  // How this sentence was heard (Aaria's engine or the phone, how long, what
+  // ended the turn) - trimmed to a few known fields, null when not sent.
+  const listenEvidence = cleanListenEvidence(body.listen)
 
   if (!transcript || !transcript.trim()) {
     return NextResponse.json({ error: 'transcript is required' }, { status: 400 })
@@ -604,6 +609,46 @@ export async function POST(request) {
     }
   }
 
+  // ── "WHEN?" ANSWERED WITH A PLACE ─────────────────────────────────────────
+  // Aaria asked when; the person said where ("when I reach Mansoorabad").
+  // The place goes onto the keep the question was about - not into a second
+  // keep that would itself be asked "when?". Rules in src/lib/follow-up-answer.js.
+  if (geoData?.location_name
+      && isPlaceAnswer(openQuestion, text, geoData.location_name, { hasTime: !!reminderAt })) {
+    const { data: placedKeep } = await supabase
+      .from('keeps')
+      .update({ ...geoData, follow_up: null, updated_at: new Date().toISOString() })
+      .eq('id', openQuestion.id)
+      .eq('user_id', user.id)
+      .select('*')
+      .maybeSingle()
+
+    supabase.from('audit_log').insert({
+      user_id: user.id,
+      action:  'keep.follow_up_answered',
+      service: 'voice_capture',
+      details: {
+        keep_id: openQuestion.id,
+        action_hint: openQuestion.follow_up?.action_hint || null,
+        answer_kind: 'place',
+        answer_text: text,
+        place: geoData.location_name,
+        can_alert: !!geoData.geo_trigger_enabled,
+        listen: listenEvidence,
+      },
+    }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+
+    return NextResponse.json({
+      keep:              placedKeep || openQuestion,
+      intent:            placedKeep || openQuestion,
+      answered_question: true,
+      answer_kind:       'place',
+      reminder:          null,
+      reminder_at:       null,
+      tts_response:      placeConfirmation(geoData.location_name, !!geoData.geo_trigger_enabled),
+    }, { status: 200 })
+  }
+
   // [GEO] Log the outcome of geo intent resolution
   console.log('[GEO]', JSON.stringify({
     transcript_preview: text.slice(0, 60),
@@ -802,6 +847,9 @@ export async function POST(request) {
       reminder_set: !!reminderAt, follow_up_needed: !!followUp, workspace_id,
       // Why "when?" was asked, answerable from the row itself from now on.
       understanding,
+      // How the sentence was HEARD: by the engine or by the phone, for how
+      // long, and what ended the turn. A cut-off report is checkable from here.
+      listen: listenEvidence,
     },
   }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
 

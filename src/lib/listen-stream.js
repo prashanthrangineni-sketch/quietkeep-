@@ -459,7 +459,7 @@ export function startListenStream({
     result,
     stop: () => {
       if (ended) return;
-      if (speechSeen) endpoint();   // not ready yet → falls back, asks to repeat
+      if (speechSeen) endpoint('tapped stop');   // not ready yet → falls back, asks to repeat
       else fail('stopped', { fallback: false });
     },
     abort: () => {

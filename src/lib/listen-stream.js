@@ -355,7 +355,7 @@ export function startListenStream({
 
   function armSilence() {
     clear('silence');
-    timers.silence = setT(endpoint, silenceMs ?? 1200);
+    timers.silence = setT(() => endpoint('silence'), silenceMs ?? 1200);
   }
 
   function speechNow() {

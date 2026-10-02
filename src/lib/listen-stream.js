@@ -333,8 +333,9 @@ export function startListenStream({
   }
 
   // The person has stopped (silence, cap, or a tap on stop).
-  function endpoint() {
+  function endpoint(why) {
     if (ended || stopSent) return;
+    stopReason = typeof why === 'string' ? why : 'silence';
     clear('silence'); clear('max'); clear('nothing');
     releaseAudio();
     if (!ready) {

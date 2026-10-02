@@ -254,6 +254,8 @@ export function AariaProvider({ children }) {
   }, []);
 
   const stopAll = useCallback(() => {
+    if (followUpTimer.current) { clearInterval(followUpTimer.current); followUpTimer.current = null; }
+    followUpTurns.current = 0;
     listeningRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}

@@ -82,6 +82,25 @@ export function readLastListen(storage) {
   } catch { return null; }
 }
 
+/**
+ * What the server keeps about how a sentence was heard: a fixed set of small
+ * fields, nothing free-form beyond two short labels. Anything else the phone
+ * sends is dropped. Returns null when there is nothing worth keeping.
+ */
+export function cleanListenEvidence(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const out = {};
+  if (['engine', 'phone', 'none'].includes(raw.path)) out.path = raw.path;
+  for (const k of ['firstWordsMs', 'finaliseMs', 'keyterms', 'heardMs', 'speechMs', 'peak', 'floor', 'chars']) {
+    const v = raw[k];
+    if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.round(v * 10000) / 10000;
+  }
+  for (const k of ['reason', 'stopReason']) {
+    if (typeof raw[k] === 'string' && raw[k]) out[k] = raw[k].slice(0, 80);
+  }
+  return out.path ? out : null;
+}
+
 /** Does this browser have everything a streaming turn needs? */
 export function streamingSupported(win) {
   const w = win || (typeof window !== 'undefined' ? window : null);

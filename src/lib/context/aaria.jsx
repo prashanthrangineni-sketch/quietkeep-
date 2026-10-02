@@ -612,10 +612,11 @@ export function AariaProvider({ children }) {
     recognitionRef.current = { stop: session.stop };
 
     session.result.then(
-      ({ text, firstWordsMs, finaliseMs, keyterms }) => {
+      ({ text, ...turn }) => {
         if (recognitionRef.current?.stop === session.stop) recognitionRef.current = null;
         listeningRef.current = false;
-        recordLastListen({ path: 'engine', firstWordsMs, finaliseMs, keyterms, chars: text.length });
+        const info = { path: 'engine', ...turn, chars: text.length };
+        recordLastListen(info); lastListenRef.current = info; setHeardBy(info);
         setInterim('');
         setStatus((st) => (st === 'listening' ? 'idle' : st));
         if (text) { setTranscript(text); submit(text); }

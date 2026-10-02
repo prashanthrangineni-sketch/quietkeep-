@@ -21,3 +21,4 @@ gradle.beforeProject { project ->
         }
     }
 }
+include ':aaria-edge'

@@ -68,6 +68,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
+          ./gradlew testPersonalDebugUnitTest testBusinessDebugUnitTest --no-daemon
           ./gradlew assembleDebug --no-daemon
 
       - name: What did it build

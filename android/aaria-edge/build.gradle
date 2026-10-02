@@ -1,0 +1,90 @@
+ext {
+    junitVersion = project.hasProperty('junitVersion') ? rootProject.ext.junitVersion : '4.13.2'
+    androidxAppCompatVersion = project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'
+    androidxJunitVersion = project.hasProperty('androidxJunitVersion') ? rootProject.ext.androidxJunitVersion : '1.3.0'
+    androidxEspressoCoreVersion = project.hasProperty('androidxEspressoCoreVersion') ? rootProject.ext.androidxEspressoCoreVersion : '3.7.0'
+}
+
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace = "com.pranix.aariaedge"
+    compileSdk = project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+    defaultConfig {
+        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 23
+        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    lintOptions {
+        abortOnError = false
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    compileOnly fileTree(dir: 'libs', include: ['*.aar'])
+    testImplementation fileTree(dir: 'libs', include: ['*.aar'])
+    implementation project(':capacitor-android')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.18.0'
+    implementation 'androidx.work:work-runtime:2.10.1'
+    testImplementation 'com.microsoft.onnxruntime:onnxruntime:1.18.0'
+    testImplementation 'org.json:json:20210307'
+    testImplementation 'org.mockito:mockito-core:5.14.2'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+}
+
+import java.security.MessageDigest
+
+task downloadSherpaOnnx {
+    def aarUrl = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-1.13.8.aar'
+    def aarFile = file('libs/sherpa-onnx-1.13.8.aar')
+    def expectedHash = '633C24321E06B1FE79FEAFA03EA16CBC0F8A286641E2DA3559BAC91BDB13BD96'
+
+    outputs.file(aarFile)
+    
+    doLast {
+        if (!aarFile.exists()) {
+            aarFile.parentFile.mkdirs()
+            new URL(aarUrl).withInputStream { i -> aarFile.withOutputStream { it << i } }
+        }
+        
+        def digest = MessageDigest.getInstance('SHA-256')
+        aarFile.withInputStream { is ->
+            byte[] buffer = new byte[8192]
+            int read
+            while ((read = is.read(buffer)) > 0) {
+                digest.update(buffer, 0, read)
+            }
+        }
+        def hash = digest.digest().encodeHex().toString().toUpperCase()
+        if (hash != expectedHash) {
+            throw new GradleException("SHA-256 mismatch for sherpa-onnx.aar. Expected " + expectedHash + " but got " + hash)
+        }
+    }
+}
+
+preBuild.dependsOn downloadSherpaOnnx

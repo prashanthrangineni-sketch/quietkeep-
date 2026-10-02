@@ -13,6 +13,10 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+    useLibrary 'android.test.mock'
     flavorDimensions "appType"
     productFlavors {
         personal {
@@ -36,6 +40,8 @@ android {
             }
         }
     }
+
+
     buildTypes {
         release {
             if (project.hasProperty('RELEASE_STORE_FILE')) {
@@ -151,9 +157,11 @@ dependencies {
     
 
     testImplementation "junit:junit:$junitVersion"
+    testImplementation "org.mockito:mockito-core:5.14.2"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    implementation project(':aaria-edge')
 }
 
 apply from: 'capacitor.build.gradle'

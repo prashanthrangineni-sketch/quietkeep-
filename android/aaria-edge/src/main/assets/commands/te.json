@@ -1,0 +1,13 @@
+// unverified by a native speaker
+{
+  "remind_me": ["remind me", "nannu gurtu cheyi", "gurthu cheyi", "reminder pettu", "నన్ను గుర్తు చేయి", "గుర్తు చేయి"],
+  "call_contact": ["call contact", "call cheyi", "phone cheyi", "call", "కాల్ చేయి", "ఫోన్ చేయి"],
+  "whats_next": ["whats next", "taruvata yenti", "tarwata enti", "next enti", "తరువాత ఏంటి", "తర్వాత ఏంటి"],
+  "read_today": ["read today", "eroju chadavu", "ee roju news", "chadavu", "ఈ రోజు చదువు", "చదువు"],
+  "stop": ["stop", "aapu", "aapeyi", "agipo", "ఆపు", "ఆపేయి", "ఆగిపో"],
+  "yes": ["yes", "avunu", "sare", "ok", "అవును", "సరే"],
+  "no": ["no", "kadu", "oddu", "vaddu", "leydu", "కాదు", "వద్దు", "లేదు"],
+  "help": ["help", "sahayam cheyi", "help cheyi", "సహాయం చేయి"],
+  "repeat": ["repeat", "malli cheppu", "inkosari cheppu", "మళ్లీ చెప్పు", "ఇంకోసారి చెప్పు"],
+  "cancel": ["cancel", "raddhu cheyi", "cancel cheyi", "vadileyi", "రద్దు చేయి", "వదిలేయి"]
+}

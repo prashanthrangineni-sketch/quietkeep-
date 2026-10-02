@@ -1,0 +1,15 @@
+{
+  "ok": "Okay",
+  "done": "Done",
+  "stopped": "Stopped",
+  "cancelled": "Cancelled",
+  "yes_ack": "Okay, going ahead",
+  "no_ack": "Okay, I won't",
+  "repeat_prompt": "Here it is again",
+  "didnt_catch": "Sorry, I didn't catch that",
+  "checking_online": "Checking online",
+  "no_internet": "No internet right now",
+  "help_short": "How can I help?",
+  "reminder_saved": "Reminder saved",
+  "calling": "Calling"
+}

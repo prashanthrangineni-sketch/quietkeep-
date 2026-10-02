@@ -1,0 +1,13 @@
+// unverified by a native speaker
+{
+  "remind_me": ["remind me", "mujhe yaad dilao", "yaad dilaana", "ek reminder set karo", "मुझे याद दिलाओ", "याद दिलाना"],
+  "call_contact": ["call contact", "call karo", "phone lagao", "kisi ko call karo", "कॉल करो", "फोन लगाओ"],
+  "whats_next": ["whats next", "aage kya hai", "agla kya hai", "next kya hai", "आगे क्या है", "अगला क्या है"],
+  "read_today": ["read today", "aaj ka padho", "aaj ki news", "aaj kya hai", "आज का पढ़ो", "आज की न्यूज़"],
+  "stop": ["stop", "ruko", "band karo", "ruk jao", "रुको", "बंद करो", "रुक जाओ"],
+  "yes": ["yes", "haan", "ha", "ji", "bilkul", "हां", "हाँ", "जी", "बिल्कुल"],
+  "no": ["no", "nahi", "na", "mat karo", "नहीं", "ना", "मत करो"],
+  "help": ["help", "madad", "madad karo", "meri madad karo", "मदद", "मदद करो"],
+  "repeat": ["repeat", "phir se bolo", "wapas bolo", "dohrao", "फिर से बोलो", "वापस बोलो", "दोहराओ"],
+  "cancel": ["cancel", "radd karo", "rehne do", "cancel karo", "रद्द करो", "रहने दो"]
+}

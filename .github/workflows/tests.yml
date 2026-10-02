@@ -31,3 +31,6 @@ jobs:
 
       - name: Run every suite in tests/
         run: bash scripts/run-tests.sh
+
+      - name: Check MainActivity injected JS
+        run: node scripts/check-bridge-js.mjs

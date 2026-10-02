@@ -371,6 +371,11 @@ export function AariaProvider({ children }) {
   const submit = useCallback(async (raw) => {
     const text = String(raw || '').trim();
     if (!text || submittingRef.current) return;
+    // A turn Aaria opened herself can catch the tail of her own question.
+    // Hearing her own words is not an answer.
+    const auto = autoTurnRef.current;
+    autoTurnRef.current = false;
+    if (auto && looksLikeSelfEcho(text)) { setTranscript(''); setInterim(''); return; }
     submittingRef.current = true;
     setError('');
 

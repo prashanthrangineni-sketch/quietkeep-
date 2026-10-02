@@ -634,7 +634,7 @@ export async function POST(request) {
         answer_text: text,
         place: geoData.location_name,
         can_alert: !!geoData.geo_trigger_enabled,
-        ...(cleanListenEvidence(body.listen) ? { listen: cleanListenEvidence(body.listen) } : {}),
+        listen: listenEvidence,
       },
     }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
 

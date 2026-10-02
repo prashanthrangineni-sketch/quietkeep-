@@ -292,8 +292,13 @@ export function AariaProvider({ children }) {
           // knows the user is staring at Invoices — "add 2000 for Ravi" is an
           // invoice there and an expense on the Money screen.
           page_context: { path: pathname, label: here || null },
+          // How this sentence was heard (engine or phone, timings, what ended
+          // the turn). Stored with the capture so a "it cut me off" report can
+          // be checked against what actually happened.
+          ...(lastListenRef.current ? { listen: lastListenRef.current } : {}),
         }),
       });
+      lastListenRef.current = null;   // it described THIS sentence only
       const json = await res.json().catch(() => null);
       if (!res.ok || !json) {
         setError('I could not save that. It is still in the box — try again.');

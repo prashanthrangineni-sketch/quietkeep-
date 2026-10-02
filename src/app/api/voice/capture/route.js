@@ -40,6 +40,7 @@ import {
   createDecisionRecord, writeAuditRecord, AGENTS, PROTOCOL_VERSION,
 } from '@/lib/decision-protocol' // v16: Phase 8 protocol adoption
 import { buildMemoryContext } from '@/lib/style-engine' // v15: Memory Context
+import { cleanListenEvidence } from '@/lib/listen-stream'
 
 export async function POST(request) {
   const authHeader = request.headers.get('Authorization') || ''

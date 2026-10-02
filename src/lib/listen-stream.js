@@ -448,7 +448,7 @@ export function startListenStream({
       };
       source.connect(node);
       node.connect(ctx.destination);
-      timers.max = setT(endpoint, maxMs);
+      timers.max = setT(() => endpoint('longest turn reached'), maxMs);
       timers.nothing = setT(() => { if (!speechSeen) fail('nothing heard', { fallback: false }); }, NOTHING_HEARD_MS);
     } catch (e) {
       fail(e?.name === 'NotAllowedError' ? 'microphone blocked' : 'microphone unavailable');

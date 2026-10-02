@@ -847,9 +847,9 @@ export async function POST(request) {
       reminder_set: !!reminderAt, follow_up_needed: !!followUp, workspace_id,
       // Why "when?" was asked, answerable from the row itself from now on.
       understanding,
-      // How the sentence was HEARD (Aaria's engine or the phone, how long,
-      // what ended the turn). "It cut me off" is checkable from here.
-      ...(cleanListenEvidence(body.listen) ? { listen: cleanListenEvidence(body.listen) } : {}),
+      // How the sentence was HEARD: by the engine or by the phone, for how
+      // long, and what ended the turn. A cut-off report is checkable from here.
+      listen: listenEvidence,
     },
   }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
 

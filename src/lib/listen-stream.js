@@ -363,9 +363,11 @@ export function startListenStream({
     armSilence();
   }
 
+  let frames = 0, speechFrames = 0, stopReason = null;
   function onFrame(frame) {
     const pcm = floatToPcm16(frame).buffer;
-    if (loud.isSpeech(rms(frame))) speechNow();
+    frames++;
+    if (loud.isSpeech(rms(frame))) { speechFrames++; speechNow(); }
     if (ready) send(pcm); else pending.push(pcm);
   }
 

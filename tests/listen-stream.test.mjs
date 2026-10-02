@@ -155,6 +155,25 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   check('words shown while speaking', partials[0] === 'Surya Kiran ki');
 }
 
+// ── the founder's sentence, spoken the moment the mic opens ──────────────────
+{
+  const w = makeWorld();
+  const s = startListenStream({ lang: 'te-IN', silenceMs: 1400, deps: w.deps });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.engine({ event: 'ready' });
+  // 3.6 s of speech, no quiet lead-in, one frame every 100 ms.
+  for (let i = 0; i < 36; i++) { (i % 4 === 3) ? w.speak(0.012) : w.speak(0.08); w.clock.advance(100); }
+  check('a 3.6 s sentence is not cut off part-way', !w.json().some((m) => m.event === 'stop'));
+  for (let i = 0; i < 11; i++) { w.hush(); w.clock.advance(100); }
+  check('…still waiting just inside the silence wait', !w.json().some((m) => m.event === 'stop'));
+  for (let i = 0; i < 3; i++) { w.hush(); w.clock.advance(100); }
+  check('…and stops once the person really has stopped', w.json().some((m) => m.event === 'stop'));
+  w.engine({ event: 'done', text: 'Remind me to buy milk when I reach Mansoorabad' });
+  const r = await res;
+  check('the whole sentence comes back, with why the turn ended', r.ok && /Mansoorabad/.test(r.v.text) && r.v.stopReason === 'silence' && r.v.heardMs >= 3600, JSON.stringify(r.v));
+}
+
 // ── the engine is asleep: fall back ──────────────────────────────────────────
 {
   const w = makeWorld();

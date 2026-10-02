@@ -583,7 +583,8 @@ export function AariaProvider({ children }) {
     if (typeof window === 'undefined') return;
     if (listeningRef.current) return;
     if (!listenStreamWanted() || !streamingSupported(window)) {
-      recordLastListen({ path: 'phone', reason: listenStreamWanted() ? 'not supported here' : 'switched off' });
+      const info = { path: 'phone', reason: listenStreamWanted() ? 'not supported here' : 'switched off' };
+      recordLastListen(info); lastListenRef.current = info; setHeardBy(info);
       startBrowserListening();
       return;
     }

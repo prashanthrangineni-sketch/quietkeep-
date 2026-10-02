@@ -626,8 +626,10 @@ export function AariaProvider({ children }) {
         if (recognitionRef.current?.stop === session.stop) recognitionRef.current = null;
         listeningRef.current = false;
         setInterim('');
-        recordLastListen({ path: err?.fallback ? 'phone' : 'none', reason: err?.reason || 'unknown' });
+        const info = { path: err?.fallback ? 'phone' : 'none', reason: err?.reason || 'unknown' };
+        recordLastListen(info);
         if (err?.fallback) {
+          lastListenRef.current = info; setHeardBy(info);
           startBrowserListening();
           if (err.lostSpeech) setError('Say that again, please.');
           return;

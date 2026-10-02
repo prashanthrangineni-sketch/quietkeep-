@@ -168,6 +168,42 @@ export function readAnswer(keep, rawText, nowMs = Date.now()) {
   return null
 }
 
+// A short sentence that is plainly a NEW instruction even though it names a
+// place. "Navigate to Mansoorabad" while a "when?" is open must navigate.
+const NEW_INSTRUCTION_START = /^(navigate|take me|directions|drive|call|phone|open|play|show|search|note|remember that)\b/i
+
+/**
+ * "When should I remind you?" - "When I reach Mansoorabad."
+ *
+ * A "when?" can be answered with a place as well as a time (2 October 2026:
+ * the founder's own answer to Aaria's question). readAnswer() above only
+ * knows clocks; the place itself is found later, by the understanding step,
+ * so this is asked separately once a place name is in hand.
+ *
+ * True only when ALL of these hold - the same caution as readAnswer():
+ *   - a "when?" question is genuinely open on this keep
+ *   - the answer is short
+ *   - it gave no clock time (a time is readAnswer's business)
+ *   - it does not open with a verb that makes it a different instruction
+ */
+export function isPlaceAnswer(keep, rawText, place, { hasTime = false, nowMs = Date.now() } = {}) {
+  if (!place || hasTime) return false
+  if (!isPendingQuestion(keep, nowMs)) return false
+  if (!TIME_HINTS.has(keep.follow_up.action_hint)) return false
+  const text = String(rawText || '').trim()
+  if (!text) return false
+  if (text.split(/\s+/).length > MAX_ANSWER_WORDS) return false
+  if (NEW_INSTRUCTION_START.test(text)) return false
+  return true
+}
+
+/** What Aaria says once a place has answered the question. */
+export function placeConfirmation(place, canAlert) {
+  return canAlert
+    ? `Right — I'll remind you when you reach ${place}.`
+    : `Saved for ${place}, but I could not find it on the map, so I cannot alert you there yet.`
+}
+
 /**
  * What Aaria says back once the answer has been applied.
  *

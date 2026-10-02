@@ -309,6 +309,13 @@ export function startListenStream({
       firstWordsMs,
       finaliseMs: tStop === null ? null : Math.round(now() - tStop),
       keyterms: terms.length,
+      // Evidence for the next "it cut me off": how long we listened, how much
+      // of it counted as speech, how loud, and what ended the turn.
+      heardMs: frames * 100,
+      speechMs: speechFrames * 100,
+      peak: Math.round(loud.peak() * 1000) / 1000,
+      floor: Math.round(loud.floor() * 10000) / 10000,
+      stopReason,
     });
   }
 

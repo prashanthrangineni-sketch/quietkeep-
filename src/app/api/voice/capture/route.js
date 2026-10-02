@@ -98,6 +98,10 @@ export async function POST(request) {
     page_context  = null,
   } = body
 
+  // How this sentence was heard (Aaria's engine or the phone, how long, what
+  // ended the turn) - trimmed to a few known fields, null when not sent.
+  const listenEvidence = cleanListenEvidence(body.listen)
+
   if (!transcript || !transcript.trim()) {
     return NextResponse.json({ error: 'transcript is required' }, { status: 400 })
   }

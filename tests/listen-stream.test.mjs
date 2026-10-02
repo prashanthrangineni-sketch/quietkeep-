@@ -32,6 +32,34 @@ check('16 kHz is passed through untouched', downsampleTo16k(new Float32Array(10)
   check('quiet room is not speech; a voice is', !l.isSpeech(0.003) && l.isSpeech(0.2));
 }
 {
+  // THE BUG OF 2 OCTOBER: tap and speak at once, so there is no quiet lead-in.
+  // A sentence is loud syllables with short dips between words. Count the
+  // longest run of frames NOT judged speech while the person is talking: it
+  // must stay far below the 13-frame (1.3 s) silence wait.
+  const l = createLoudness();
+  const sentence = [];
+  for (let i = 0; i < 35; i++) sentence.push(i % 4 === 3 ? 0.012 : 0.07 + (i % 3) * 0.02);
+  let gap = 0, worst = 0;
+  for (const v of sentence) { if (l.isSpeech(v)) gap = 0; else { gap++; worst = Math.max(worst, gap); } }
+  check('speaking from the first instant is never mistaken for 1.3 s of silence', worst <= 4, `worst gap ${worst} frames`);
+  let after = 0;
+  for (let i = 0; i < 14; i++) if (l.isSpeech(0.002)) after++;
+  check('…and the quiet afterwards is still heard as quiet', after === 0);
+}
+{
+  const l = createLoudness();
+  for (let i = 0; i < 10; i++) l.isSpeech(0.002);
+  check('a soft voice in a quiet room counts', l.isSpeech(0.012));
+  const n = createLoudness();
+  for (let i = 0; i < 10; i++) n.isSpeech(0.03);
+  check('a steady noisy room is not speech; a voice over it is', !n.isSpeech(0.035) && n.isSpeech(0.12));
+}
+{
+  const e = cleanListenEvidence({ path: 'engine', finaliseMs: 512.4, stopReason: 'silence', junk: { a: 1 }, reason: 'x'.repeat(200) });
+  check('listening evidence is trimmed to known small fields', e.path === 'engine' && e.finaliseMs === 512.4 && e.stopReason === 'silence' && !('junk' in e) && e.reason.length === 80);
+  check('no path → nothing kept', cleanListenEvidence({ finaliseMs: 3 }) === null && cleanListenEvidence('x') === null);
+}
+{
   const k = cleanKeyterms(['Surya Kiran', 'surya kiran', ' ', 'Venu', 'x'.repeat(80)]);
   check('names de-duplicated, blanks and junk dropped', k.length === 2 && k[0] === 'Surya Kiran' && k[1] === 'Venu');
 }

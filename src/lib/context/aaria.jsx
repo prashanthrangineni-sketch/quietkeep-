@@ -208,6 +208,14 @@ export function AariaProvider({ children }) {
   const [error,      setError]      = useState('');
   const [wakeInfo,   setWakeInfo]   = useState(null);
   const [notice,     setNotice]     = useState(null);   // {text, count} or null
+  // Which listener heard the last turn - shown in the dock so "did Aaria hear
+  // me, or the phone?" has an answer on screen, not in a settings page.
+  const [heardBy,    setHeardBy]    = useState(null);   // {path, finaliseMs} or null
+  const lastListenRef   = useRef(null);  // sent with the next capture call
+  const startListenRef  = useRef(null);  // startListening, for the follow-up loop
+  const followUpTurns   = useRef(0);     // automatic re-listens in a row
+  const followUpTimer   = useRef(null);
+  const autoTurnRef     = useRef(false); // this turn was opened by Aaria, not a tap
 
   const recognitionRef = useRef(null);
   const listeningRef   = useRef(false);

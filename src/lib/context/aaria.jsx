@@ -682,6 +682,13 @@ export function AariaProvider({ children }) {
         setInterim('');
         const info = { path: err?.fallback ? 'phone' : 'none', reason: err?.reason || 'unknown' };
         recordLastListen(info);
+        // Silence after Aaria's own question is normal - say nothing. Silence
+        // after the person tapped the mic deserves a word, or it looks broken.
+        const wasAuto = autoTurnRef.current;
+        autoTurnRef.current = false;
+        if (!wasAuto && err?.reason === 'nothing heard') {
+          setError('I did not hear anything. Tap the mic and try again.');
+        }
         if (err?.fallback) {
           lastListenRef.current = info; setHeardBy(info);
           startBrowserListening();

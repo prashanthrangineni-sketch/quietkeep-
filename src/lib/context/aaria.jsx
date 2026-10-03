@@ -380,6 +380,25 @@ export function AariaProvider({ children }) {
     }
   }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id]);
 
+  // A tap on one of the offered names. Exact - the id goes with it, so two
+  // contacts with the same name can be told apart.
+  const choose = useCallback((choice) => {
+    if (!choice) return;
+    if (followUpTimer.current) { clearInterval(followUpTimer.current); followUpTimer.current = null; }
+    if (listeningRef.current && recognitionRef.current) {
+      // Close the automatic listening turn without submitting it.
+      autoTurnRef.current = false;
+      try { recognitionRef.current.abort?.(); } catch {}
+      recognitionRef.current = null;
+      listeningRef.current = false;
+    }
+    try { cancelSpeech(); } catch {}
+    setChoices(null);
+    setInterim('');
+    setTranscript(choice.label || choice.name);
+    askBrain(choice.name, choice.id ? { answer_contact_id: choice.id } : null);
+  }, [askBrain]);
+
   // ── the single entry point for everything Aaria hears or is typed ──────────
   const submit = useCallback(async (raw) => {
     const text = String(raw || '').trim();

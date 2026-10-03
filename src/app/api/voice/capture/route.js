@@ -27,10 +27,11 @@ import {
   buildExecutionTTS,
   extractDestination,
 } from '@/lib/intent-executor'
-import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation } from '@/lib/follow-up-answer'
+import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation, isRepeatOfOpenQuestion, isPendingQuestion } from '@/lib/follow-up-answer'
+import { contactChoices, spokenContactQuestion, narrowContacts } from '@/lib/contact-match'
 import { whyBrainRun, describeUnderstanding } from '@/lib/understanding-record'
-import { geocodePlace, cleanPlaceName } from '@/lib/geocode'
-import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep } from '@/lib/geo-resolver'
+import { geocodePlace, cleanPlaceName, prettyPlaceName, isPersonalPlace } from '@/lib/geocode'
+import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep, anchorPoint } from '@/lib/geo-resolver'
 import { detectRouteIntent } from '@/lib/intent-parser'
 import { recordVoiceGeoIntent, getTimeBucket } from '@/lib/behavior-engine'
 import { recordActionPattern, recordSequence } from '@/lib/behavior-intelligence' // v14: Behavior Intel
@@ -160,7 +161,10 @@ export async function POST(request) {
   //
   // Placed before the idempotency key and before every write, so noise costs
   // one cheap scan and touches nothing.
-  const noiseReasons = impossibleSequences(text)
+  // A transcript with no letter or digit in it at all (3 October 2026: a keep
+  // whose whole content was a pair of quotation marks, made from a silent
+  // room) is not writing in any language.
+  const noiseReasons = /[\p{L}\p{N}]/u.test(text) ? impossibleSequences(text) : ['no words at all']
   if (noiseReasons.length) {
     console.warn('[capture] refused transcription noise:', noiseReasons[0], JSON.stringify(text.slice(0, 80)))
     supabase.from('audit_log').insert({
@@ -236,14 +240,54 @@ export async function POST(request) {
   // user believed they had saved, and nothing would show them why.
   const { data: openQuestion } = await supabase
     .from('keeps')
-    .select('id,content,voice_text,contact_name,contact_phone,follow_up,reminder_at,created_at,space_type,workspace_id')
+    .select('id,content,voice_text,contact_name,contact_phone,follow_up,reminder_at,created_at,space_type,workspace_id,location_name,geo_trigger_enabled')
     .eq('user_id', user.id)
     .not('follow_up', 'is', null)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  const answer = openQuestion ? readAnswer(openQuestion, text) : null
+  // A tap on one of the offered names arrives as answer_contact_id.
+  const tappedId = typeof body.answer_contact_id === 'string' ? body.answer_contact_id : null
+  const answer = openQuestion ? readAnswer(openQuestion, text, Date.now(), { contactId: tappedId }) : null
+
+  // ── THE QUESTION IS STILL OPEN AND THIS IS NOT YET AN ANSWER ─────────────
+  // Two cases that used to fall through and be filed as brand-new keeps:
+  //   1. "Venu Nz" when two contacts are called exactly that - ask again about
+  //      just those two (they are told apart by the end of the number).
+  //   2. The same sentence said again - someone retrying, not a second
+  //      reminder. Ask the same question again; save nothing.
+  if (!answer && openQuestion && isPendingQuestion(openQuestion)) {
+    const isContactQ = openQuestion.follow_up?.action_hint === 'disambiguate_contact'
+    const short = text.split(/\s+/).filter(Boolean).length <= 8
+    const narrowed = isContactQ && short ? narrowContacts(text, openQuestion.follow_up.contacts) : []
+    const repeat = isRepeatOfOpenQuestion(openQuestion, text)
+    if (narrowed.length >= 2 || repeat) {
+      let fu = openQuestion.follow_up
+      if (narrowed.length >= 2) {
+        fu = { ...fu, contacts: narrowed }
+        await supabase.from('keeps')
+          .update({ follow_up: fu, updated_at: new Date().toISOString() })
+          .eq('id', openQuestion.id).eq('user_id', user.id)
+      }
+      const choices = isContactQ ? contactChoices(fu.contacts) : null
+      const ask = isContactQ
+        ? (narrowed.length >= 2
+            ? `There are ${narrowed.length} called ${narrowed[0].name}. Tap the right number, or say first or second.`
+            : spokenContactQuestion(fu.suggested_name, fu.contacts))
+        : fu.follow_up
+      return NextResponse.json({
+        keep:              openQuestion,
+        intent:            openQuestion,
+        answered_question: false,
+        asked_again:       true,
+        follow_up:         fu,
+        choices,
+        reminder_at:       openQuestion.reminder_at || null,
+        tts_response:      ask,
+      }, { status: 200 })
+    }
+  }
 
   if (answer) {
     const patch = { follow_up: null, updated_at: new Date().toISOString() }
@@ -548,6 +592,7 @@ export async function POST(request) {
   // parsed.geo is { detected, location_name, use_current_location } or null.
   // If null → geoData stays null → INSERT unchanged (existing flow untouched).
   let geoData = null;
+  let geoFromMap = false;   // the pin is a map lookup, i.e. our guess
   if (parsed.geo?.detected) {
     if (parsed.geo.use_current_location && typeof current_lat === 'number' && typeof current_lng === 'number') {
       // User said "here" / "this place" and client sent GPS coords
@@ -569,17 +614,26 @@ export async function POST(request) {
         // and no coordinates, geo_trigger_enabled=false, and could never
         // fire. A name is enough to geocode. Null on any failure, and then
         // the old "saved for later, tap Save here" path runs unchanged.
-        const pin = await geocodePlace(parsed.geo.location_name, {
-          nearLat: typeof current_lat === 'number' ? current_lat : null,
-          nearLng: typeof current_lng === 'number' ? current_lng : null,
-        });
+        // WHICH "Mansurabad"? The one near this person. Their phone's position
+        // if it came with the request, otherwise a place they saved (home).
+        // And "home"/"office" are never looked up on a map at all - see
+        // src/lib/geocode.js for the two mistakes of 2-3 October behind this.
+        const here = (typeof current_lat === 'number' && typeof current_lng === 'number')
+          ? { latitude: current_lat, longitude: current_lng }
+          : await anchorPoint(supabase, user.id);
+        const pin = isPersonalPlace(parsed.geo.location_name) ? null
+          : await geocodePlace(parsed.geo.location_name, {
+              nearLat: here?.latitude ?? null,
+              nearLng: here?.longitude ?? null,
+            });
         if (pin) {
-          console.log('[GEO] geocoded:', { name: parsed.geo.location_name, lat: pin.latitude, lng: pin.longitude });
+          console.log('[GEO] geocoded:', { name: parsed.geo.location_name, lat: pin.latitude, lng: pin.longitude, km_away: pin.distance_km ?? null });
+          geoFromMap = true;
           geoData = {
             latitude: pin.latitude,
             longitude: pin.longitude,
             radius_meters: 300,
-            location_name: parsed.geo.location_name,
+            location_name: prettyPlaceName(parsed.geo.location_name),
             geo_trigger_enabled: true,
           };
         }
@@ -645,7 +699,7 @@ export async function POST(request) {
       answer_kind:       'place',
       reminder:          null,
       reminder_at:       null,
-      tts_response:      placeConfirmation(geoData.location_name, !!geoData.geo_trigger_enabled),
+      tts_response:      placeConfirmation(prettyPlaceName(geoData.location_name), !!geoData.geo_trigger_enabled),
     }, { status: 200 })
   }
 
@@ -781,8 +835,11 @@ export async function POST(request) {
     writeLedgerEntry(supabase, bizPayload, keep.id).catch(() => {});
   }
 
-  // Auto-save named location to user_locations if we had real coords + a name
-  if (geoData?.geo_trigger_enabled && geoData.latitude && geoData.location_name) {
+  // Auto-save named location to user_locations if we had real coords + a name.
+  // NOT when the pin came from a map lookup: that is our guess, and saving a
+  // guess as one of the user's own places is how a wrong "Mansurabad" and a
+  // wrong "home" became permanent on 2-3 October 2026.
+  if (!geoFromMap && geoData?.geo_trigger_enabled && geoData.latitude && geoData.location_name) {
     autoSaveLocation(supabase, user.id, geoData.location_name, geoData.latitude, geoData.longitude, geoData.radius_meters)
       .catch(() => {});  // Non-blocking
   }
@@ -921,6 +978,11 @@ export async function POST(request) {
   // is attached is the false promise the brain's own prompt forbids.
   if (followUp?.action_hint === 'disambiguate_contact' || followUp?.action_hint === 'add_contact') {
     tts_response = followUp.follow_up
+  }
+  // "Which Venu?" is SAID short and SHOWN in full: three names aloud, every
+  // match as a button. Six names in one breath cannot be answered by ear.
+  if (followUp?.action_hint === 'disambiguate_contact' && Array.isArray(followUp.contacts)) {
+    tts_response = spokenContactQuestion(followUp.suggested_name, followUp.contacts)
   }
   // v12: business TTS overrides generic TTS when resolver produced a confirmation
   if (bizPayload?.tts_response) tts_response = bizPayload.tts_response;
@@ -1136,6 +1198,9 @@ export async function POST(request) {
       ? { name: resolvedContact.name, phone: resolvedContact.phone }
       : null,
     follow_up:         followUp,
+    // The offered contacts as buttons (name, plus the end of the number when
+    // two share a name). Null unless Aaria is asking which person.
+    choices:           followUp?.action_hint === 'disambiguate_contact' ? contactChoices(followUp.contacts) : null,
     // Voice Brain fields (Phase 3 Step 1)
     needs_followup:    needsFollowup,      // true when confidence < 0.68 and intent unclear
     clarification:     clarification,      // question string to show the user

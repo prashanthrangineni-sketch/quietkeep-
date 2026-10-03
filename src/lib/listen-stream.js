@@ -91,7 +91,7 @@ export function cleanListenEvidence(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const out = {};
   if (['engine', 'phone', 'none'].includes(raw.path)) out.path = raw.path;
-  for (const k of ['firstWordsMs', 'finaliseMs', 'keyterms', 'heardMs', 'speechMs', 'peak', 'floor', 'chars']) {
+  for (const k of ['firstWordsMs', 'finaliseMs', 'keyterms', 'heardMs', 'speechMs', 'peak', 'floor', 'chars', 'micLiveMs']) {
     const v = raw[k];
     if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.round(v * 10000) / 10000;
   }
@@ -254,6 +254,7 @@ export function startListenStream({
   maxMs = 15000,
   onPartial = () => {},
   onSpeech = () => {},
+  onLive = () => {},     // the microphone is open and audio is flowing
   deps = {},
 } = {}) {
   const W = deps.window || (typeof window !== 'undefined' ? window : {});
@@ -300,8 +301,22 @@ export function startListenStream({
     return [...finals, lastPartial].join(' ').replace(/\s+/g, ' ').trim();
   }
 
+  // WORDS FROM A SILENT ROOM ARE NOT WORDS. (3 October 2026)
+  // Aaria asked "Which Venu?", opened the microphone, nobody spoke - the
+  // loudest sample was 0.001 - and the recogniser still returned "I mean,"
+  // and then a pair of quotation marks. Both were saved as notes. A
+  // recogniser handed silence will guess; the microphone knows better. If it
+  // heard less than two tenths of a second of voice, nothing was said.
+  const MIN_SPEECH_FRAMES = 2;
+
   function succeed(text) {
     if (ended) return;
+    if (frames > 0 && speechFrames < MIN_SPEECH_FRAMES) {
+      ended = true;
+      clearAll(); releaseAudio(); closeSocket();
+      rejectFn(new ListenStreamError('nothing heard', { fallback: false }));
+      return;
+    }
     ended = true;
     clearAll(); releaseAudio(); closeSocket();
     resolveFn({
@@ -316,6 +331,9 @@ export function startListenStream({
       peak: Math.round(loud.peak() * 1000) / 1000,
       floor: Math.round(loud.floor() * 10000) / 10000,
       stopReason,
+      // How long after the tap the microphone was actually open. Words said
+      // before this were never recorded.
+      micLiveMs,
     });
   }
 
@@ -363,9 +381,10 @@ export function startListenStream({
     armSilence();
   }
 
-  let frames = 0, speechFrames = 0, stopReason = null;
+  let frames = 0, speechFrames = 0, stopReason = null, micLiveMs = null;
   function onFrame(frame) {
     const pcm = floatToPcm16(frame).buffer;
+    if (frames === 0) { micLiveMs = Math.round(now() - t0); try { onLive(); } catch {} }
     frames++;
     if (loud.isSpeech(rms(frame))) { speechFrames++; speechNow(); }
     if (ready) send(pcm); else pending.push(pcm);
@@ -410,7 +429,7 @@ export function startListenStream({
         if (firstWordsMs === null) firstWordsMs = Math.round(now() - t0);
         lastPartial = t;
         onPartial((finals.join(' ') + ' ' + t).trim());
-        if (!stopSent) speechNow();
+        if (!stopSent && speechFrames > 0) speechNow();
       }
     } else if (ev === 'final') {
       const t = (msg.text || '').trim();
@@ -419,7 +438,7 @@ export function startListenStream({
         finals.push(t);
         lastPartial = '';
         onPartial(finals.join(' '));
-        if (!stopSent) speechNow();
+        if (!stopSent && speechFrames > 0) speechNow();
       }
     } else if (ev === 'done') {
       const t = (msg.text || '').trim() || heardText();

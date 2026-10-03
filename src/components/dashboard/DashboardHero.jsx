@@ -108,7 +108,11 @@ export default function DashboardHero({ userName, topReminder, onReminderTap }) 
                 ? new Date(topReminder.scheduled_for).toLocaleString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })
                 : topReminder.reminder_at && !isNaN(new Date(topReminder.reminder_at).getTime())
                   ? new Date(topReminder.reminder_at).toLocaleString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })
-                  : 'No time set'}
+                  : topReminder.location_name
+                    ? (topReminder.geo_trigger_enabled
+                        ? `📍 When you reach ${topReminder.location_name}`
+                        : `📍 ${topReminder.location_name} — not on the map yet`)
+                    : 'No time set'}
             </div>
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>→</span>

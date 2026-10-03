@@ -126,7 +126,14 @@ export function isPendingQuestion(keep, nowMs = Date.now()) {
  *
  * `null` is the safe answer and is returned for anything at all doubtful.
  */
-export function readAnswer(keep, rawText, nowMs = Date.now()) {
+export function readAnswer(keep, rawText, nowMs = Date.now(), opts = {}) {
+  // A TAP on one of the offered names. Exact, so it is checked before anything
+  // that reads words: two contacts both called "Venu Nz" can only be told
+  // apart this way.
+  if (opts.contactId && isPendingQuestion(keep, nowMs) && CONTACT_HINTS.has(keep.follow_up.action_hint)) {
+    const tapped = (keep.follow_up.contacts || []).find((c) => c && c.id === opts.contactId)
+    if (tapped) return { kind: 'contact', contact: tapped }
+  }
   if (!isPendingQuestion(keep, nowMs)) return null
 
   const text = String(rawText || '').trim()
@@ -205,6 +212,19 @@ export function placeConfirmation(place, canAlert) {
 }
 
 /**
+ * The person said the SAME sentence again while its question is still open
+ * (3 October 2026: "Remind me to call Venu when I reach home", twice, saved
+ * twice). That is someone trying again, not a second reminder. Pure.
+ */
+export function isRepeatOfOpenQuestion(keep, rawText, nowMs = Date.now()) {
+  if (!isPendingQuestion(keep, nowMs)) return false
+  const norm = (t) => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}\p{M}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
+  const said = norm(rawText)
+  if (said.split(' ').length < 3) return false
+  return said === norm(keep.voice_text) || said === norm(keep.content)
+}
+
+/**
  * What Aaria says back once the answer has been applied.
  *
  * Kept here beside the decision so the wording and the behaviour cannot drift
@@ -226,6 +246,10 @@ export function answerConfirmation(answer, keep, timeZone = 'Asia/Kolkata') {
 
   if (answer.kind === 'contact') {
     const name = answer.contact?.name || 'them'
+    // A place reminder has no clock time; say the place, not a bare "Got it".
+    if (!keep?.reminder_at && keep?.location_name && keep?.geo_trigger_enabled) {
+      return `Got it — ${name}. I'll remind you when you reach ${keep.location_name}.`
+    }
     if (!keep?.reminder_at) return `Got it — ${name}.`
     const t = new Date(keep.reminder_at)
     const timeStr = t.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone })

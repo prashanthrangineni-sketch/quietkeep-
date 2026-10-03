@@ -8,13 +8,39 @@
 export async function resolveLocation(supabase, userId, name) {
   if (!userId || !name) return null;
   try {
+    // NOT .maybeSingle(). A person who tapped "Save here" for home more than
+    // once has two rows called "home", and maybeSingle() answers "more than
+    // one row" with an error and no data - so their saved home silently did
+    // not exist (found 3 October 2026: three "home" rows, none ever used).
+    // The most recently saved one is the one they meant.
     const { data } = await supabase
       .from('user_locations')
       .select('latitude, longitude, radius_meters, name, visit_count')
       .eq('user_id', userId)
       .ilike('name', name.trim())
-      .maybeSingle();
-    return data || null;
+      .order('created_at', { ascending: false })
+      .limit(1);
+    return (Array.isArray(data) && data[0]) || null;
+  } catch { return null; }
+}
+
+/**
+ * Roughly where this person lives their life: their saved home, else any
+ * place they saved. Used only to choose between same-named places on the map.
+ */
+export async function anchorPoint(supabase, userId) {
+  if (!userId) return null;
+  try {
+    const { data } = await supabase
+      .from('user_locations')
+      .select('name, latitude, longitude, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    const rows = (data || []).filter((r) => typeof r.latitude === 'number' && typeof r.longitude === 'number');
+    const home = rows.find((r) => String(r.name || '').toLowerCase() === 'home');
+    const pick = home || rows[0];
+    return pick ? { latitude: pick.latitude, longitude: pick.longitude } : null;
   } catch { return null; }
 }
 

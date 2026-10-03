@@ -103,3 +103,76 @@ export function pickContactFromAnswer(answer, candidates) {
   if (scored.length > 1 && scored[0].hits === scored[1].hits) return null   // still ambiguous
   return scored[0].c
 }
+
+
+// ── "Which Venu?" as something a person can actually answer ─────────────────
+//
+// 3 October 2026: "Remind me to call Venu when I reach home" matched six
+// contacts. Aaria read all six names aloud in one breath - two of them the
+// identical "Venu Nz" - then listened for five seconds and gave up. Nobody
+// can pick from six names by ear, and nobody can say which of two identical
+// names they mean. So: say three, SHOW all of them as buttons, and tell
+// same-named contacts apart by the end of the number.
+
+/** Last four digits of a phone number, or ''. Pure. */
+function lastFour(phone) {
+  const d = String(phone || '').replace(/\D/g, '')
+  return d.length >= 4 ? d.slice(-4) : ''
+}
+
+/**
+ * The offered contacts as buttons: { id, name, phone, label }.
+ * `label` is the name, plus "· …6899" when another offered contact shares it.
+ */
+export function contactChoices(contacts) {
+  const list = (contacts || []).filter((c) => c && c.name)
+  const count = new Map()
+  for (const c of list) {
+    const k = String(c.name).trim().toLowerCase()
+    count.set(k, (count.get(k) || 0) + 1)
+  }
+  return list.map((c) => {
+    const shared = count.get(String(c.name).trim().toLowerCase()) > 1
+    const tail = lastFour(c.phone)
+    return {
+      id: c.id || null,
+      name: c.name,
+      phone: c.phone || null,
+      label: shared && tail ? `${c.name} · …${tail}` : c.name,
+    }
+  })
+}
+
+/** What Aaria SAYS: at most three different names, the rest are on screen. */
+export function spokenContactQuestion(name, contacts) {
+  const distinct = []
+  for (const c of contactChoices(contacts)) {
+    if (!distinct.some((n) => n.toLowerCase() === c.name.toLowerCase())) distinct.push(c.name)
+  }
+  const said = distinct.slice(0, 3)
+  const more = (contacts || []).length - said.length
+  const who = name ? `Which ${name}?` : 'Which one?'
+  const names = said.length > 1 ? `${said.slice(0, -1).join(', ')} or ${said[said.length - 1]}` : (said[0] || '')
+  return more > 0
+    ? `${who} ${names} — or ${more} more on screen. Say the name, or tap it.`
+    : `${who} ${names}? Say the name, or tap it.`
+}
+
+/**
+ * The answer matched more than one offered contact equally ("Venu Nz" when
+ * there are two). Returns those tied contacts so the question can be asked
+ * again about just them - or [] when the answer matched nobody / one person.
+ */
+export function narrowContacts(answer, candidates) {
+  const said = nameTokens(answer)
+  const list = (candidates || []).filter((c) => c && c.name)
+  if (!said.length || !list.length) return []
+  const scored = list.map((c) => {
+    const have = nameTokens(c.name)
+    return { c, hits: said.filter((w) => have.some((h) => tokenMatches(w, h))).length }
+  }).filter((x) => x.hits > 0)
+  if (scored.length < 2) return []
+  scored.sort((a, b) => b.hits - a.hits)
+  const top = scored.filter((x) => x.hits === scored[0].hits).map((x) => x.c)
+  return top.length >= 2 && top.length < list.length ? top : []
+}

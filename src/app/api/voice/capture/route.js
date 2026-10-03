@@ -548,6 +548,7 @@ export async function POST(request) {
   // parsed.geo is { detected, location_name, use_current_location } or null.
   // If null → geoData stays null → INSERT unchanged (existing flow untouched).
   let geoData = null;
+  let geoFromMap = false;   // the pin is a map lookup, i.e. our guess
   if (parsed.geo?.detected) {
     if (parsed.geo.use_current_location && typeof current_lat === 'number' && typeof current_lng === 'number') {
       // User said "here" / "this place" and client sent GPS coords

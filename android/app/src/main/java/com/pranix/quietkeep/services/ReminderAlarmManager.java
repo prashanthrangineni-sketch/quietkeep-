@@ -74,6 +74,7 @@ public class ReminderAlarmManager {
             editor.putString("alarm_sms_message_" + reminderId, actionSpec.smsMessage);
             if (actionSpec.torchEnable != null) editor.putBoolean("alarm_torch_enable_" + reminderId, actionSpec.torchEnable);
             if (actionSpec.volumeDirection != null) editor.putInt("alarm_volume_direction_" + reminderId, actionSpec.volumeDirection);
+            editor.putString("alarm_display_name_" + reminderId, actionSpec.displayName);
         }
         editor.apply();
 

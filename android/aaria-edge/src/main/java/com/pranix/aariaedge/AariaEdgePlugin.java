@@ -175,10 +175,11 @@ public class AariaEdgePlugin extends Plugin {
                                                     CommandRecognizer.RecognizeResult res = commandRecognizer.recognizeCommand(cmdData, 16000);
                                                     if (res != null && res.transcript != null) {
                                                         JSONObject pref = memoryStore.get("preference", "wake_name");
-                                                        if (pref != null) {
+                                                        // No stored name means the default name, exactly as the wake check assumes.
+                                                        {
                                                             try {
-                                                                JSONObject value = new JSONObject(pref.getString("value"));
-                                                                String wakeName = value.getString("name");
+                                                                JSONObject value = pref != null ? new JSONObject(pref.getString("value")) : new JSONObject();
+                                                                String wakeName = value.optString("name", "Aaria");
                                                                 JSONArray aliases = value.optJSONArray("aliases");
                                                                 List<String> aList = new ArrayList<>();
                                                                 if (aliases != null) {
@@ -203,6 +204,8 @@ public class AariaEdgePlugin extends Plugin {
                                         ev.put("score", score);
                                         ev.put("t", t);
                                         ev.put("hasCommand", hasCommand);
+                                        // The rest of the sentence with the wake name removed, for an app that acts on a one-breath command itself.
+                                        if (hasCommand) ev.put("text", commandTranscript);
                                         notifyListeners("wakeWord", ev);
                                         playChime();
                                         lastWakeWordTime = System.currentTimeMillis();

@@ -24,7 +24,9 @@ public class WakeWordMatcher {
     // What a recogniser writes when it hears the greeting badly. Measured on 3 Oct 2026 with 240 spoken
     // wake phrases in 40 voices: "Hey Aaria" came back as "A aria", "Hay area", "He area" about as often
     // as "Hey aria", nearly always with a comma or a full stop attached.
-    private static final String[] LOOSE_PREFIXES = {"a", "hay", "ay", "he", "eh", "high"};
+    // "hai" and "ari" were added after measuring the Hindi and Telugu recognisers the same day: they write
+    // "hai araya" for "Hey Aaria" and "ari arya" for "are aariya" (their own letters, shown here in Latin).
+    private static final String[] LOOSE_PREFIXES = {"a", "hay", "ay", "he", "eh", "high", "hai", "ari"};
 
     /** One spoken word as bare lower-case Latin letters and digits. Recognisers add capitals, commas and full stops. */
     static String token(String rawWord) {

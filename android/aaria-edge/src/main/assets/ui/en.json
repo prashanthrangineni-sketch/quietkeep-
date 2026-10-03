@@ -39,5 +39,17 @@
   "s4_paused_hot": "The phone is hot.",
   "s4_paused_unplugged": "The phone is not charging.",
   "s4_paused_resume": "It will start again by itself.",
-  "s4_paused_open_app": "Open {app} to start listening again."
+  "s4_paused_open_app": "Open {app} to start listening again.",
+  "s5_title": "Teach {name} your voice",
+  "s5_intro": "Say \"Hey {name}\" three times. This helps the phone catch it when you say it. The sound is not saved.",
+  "s5_btn_start": "Start",
+  "s5_say_now": "Say \"Hey {name}\" now ({n} of 3)",
+  "s5_heard": "I heard: \"{heard}\"",
+  "s5_heard_nothing": "I did not hear anything.",
+  "s5_done": "Done. Your \"Hey {name}\" will be caught better now.",
+  "s5_nothing_new": "Nothing new to learn this time. \"Hey {name}\" keeps working as before.",
+  "s5_btn_try_again": "Try again",
+  "s5_btn_skip": "Skip",
+  "s5_short_name": "Short names are missed more often. A longer name works better.",
+  "s5_mic_busy": "The microphone is in use. Close the other app and try again."
 }

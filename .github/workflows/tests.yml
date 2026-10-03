@@ -34,3 +34,6 @@ jobs:
 
       - name: Check MainActivity injected JS
         run: node scripts/check-bridge-js.mjs
+
+      - name: Check the wake-word bridge (microphone hand-over)
+        run: node scripts/check-bridge-wake.mjs

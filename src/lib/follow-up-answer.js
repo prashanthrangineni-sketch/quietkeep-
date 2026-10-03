@@ -126,6 +126,57 @@ export function isPendingQuestion(keep, nowMs = Date.now()) {
  *
  * `null` is the safe answer and is returned for anything at all doubtful.
  */
+// ── A NEW INSTRUCTION IS NOT AN ANSWER, HOWEVER SHORT ───────────────────────
+//
+// 3 October 2026, 3:45 pm. "Call Akhilesh" was mis-heard as "Surya Exactly",
+// and Aaria asked when to remind him about it. He did what anyone would: said
+// the whole thing again, properly - "Call Akhilesh in one minute." Five words,
+// with a time in them, while a "when?" was open. So it was read as the ANSWER:
+// the mis-heard note got the one minute, and a minute later the phone said
+// "Reminder - Surya Exactly". Akhilesh was never called.
+//
+// The length guard cannot catch this; the sentence is short. What gives it
+// away is that it opens with a command AND brings something new - a name or a
+// thing the open question never mentioned. "Call him in five minutes" brings
+// nothing new and is an answer. "Call Akhilesh in one minute" brings Akhilesh.
+const COMMAND_START = /^(please\s+)?(call|phone|ring|dial|remind|message|text|whatsapp|sms|send|navigate|take me|directions|drive|open|play|show|search|note|remember|buy|pay|book|schedule|add|set)\b/i
+
+// Words an answer to "when?" is made of, plus the little words around them.
+// Anything else of three letters or more is content.
+const ANSWER_WORDS = new Set(`
+  him her them his their that this the and for you your please back again just only
+  call phone ring dial remind reminder message text send set add alarm time
+  minute minutes min mins hour hours hrs second seconds sec secs half quarter past
+  oclock clock today tomorrow tonight morning afternoon evening night noon midnight
+  now later next after before around about sharp from then day days week weeks
+  monday tuesday wednesday thursday friday saturday sunday
+  one two three four five six seven eight nine ten eleven twelve thirteen fourteen
+  fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty ninety
+  baad mein baje kal aaj subah shaam raat dopahar ghante ghanta aadha
+  nimisham nimishalu nimishallo nimishala ganta gantalo gantaki gantalu repu ivala
+  eeroju tarvata taruvata udayam sayantram ratri madhyahnam okka oka rendu moodu
+  nalugu aidu padi
+`.split(/\s+/).filter(Boolean))
+
+function contentWords(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{M}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !ANSWER_WORDS.has(w))
+}
+
+/**
+ * True when the words open with a command and name something the open
+ * question's own keep never mentioned. Pure.
+ */
+export function startsNewInstruction(keep, rawText) {
+  const text = String(rawText || '').trim()
+  if (!COMMAND_START.test(text)) return false
+  const known = new Set(contentWords(`${keep?.content || ''} ${keep?.voice_text || ''} ${keep?.contact_name || ''}`))
+  return contentWords(text).some((w) => !known.has(w))
+}
+
 export function readAnswer(keep, rawText, nowMs = Date.now(), opts = {}) {
   // A TAP on one of the offered names. Exact, so it is checked before anything
   // that reads words: two contacts both called "Venu Nz" can only be told

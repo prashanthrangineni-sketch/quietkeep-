@@ -28,8 +28,8 @@ const tick = () => new Promise((r) => setTimeout(r, 5));
 let failed = 0;
 const ok = (cond, what) => { if (!cond) { failed++; console.error('FAILED: ' + what); } else { console.log('ok   ' + what); } };
 
-async function world({ acceptsText = false, mode = 'counter', listening = true } = {}) {
-  const st = { listening, starts: 0, stops: 0, wakes: [], mode, refuse: '' };
+async function world({ acceptsText = false, mode = 'counter', listening = true, newEngine = false } = {}) {
+  const st = { listening, starts: 0, stops: 0, wakes: [], mode, refuse: '', holds: 0, releases: 0 };
   const pluginListeners = {};
   const domListeners = {};
   const aaria = {
@@ -40,6 +40,11 @@ async function world({ acceptsText = false, mode = 'counter', listening = true }
     requestPermissions: async () => ({ microphone: 'granted' }),
     addListener: (name, fn) => { pluginListeners[name] = fn; },
   };
+  if (newEngine) {
+    // The engine that can pause inside its own listening service.
+    aaria.holdMicrophone = async () => { st.holds++; return { held: st.listening }; };
+    aaria.releaseMicrophone = async () => { st.releases++; };
+  }
   const window = {
     Capacitor: { Plugins: { AariaEdge: aaria } },
     localStorage: { getItem: (k) => (k === 'qk_wake_mode_v2' ? st.mode : null) },
@@ -131,6 +136,23 @@ async function world({ acceptsText = false, mode = 'counter', listening = true }
   const w = await world({ listening: false });
   await w.fire('doc:visibilitychange');
   ok(w.st.starts === 0, 'listening was off: coming back to the screen never turns it on');
+}
+{
+  const w = await world({ newEngine: true });
+  await w.wake({ hasCommand: false });
+  ok(w.st.holds === 1 && w.st.stops === 0, 'newer engine, bare wake: the engine is asked to pause; its service is not stopped');
+  ok(w.st.wakes.length === 1 && w.st.wakes[0].length === 1, 'newer engine, bare wake: QuietKeep is told, with no text');
+  await w.fire('qk_mic_release');
+  ok(w.st.releases === 1 && w.st.starts === 0, 'newer engine: the engine is told the microphone is free; no restart from here');
+  await w.fire('doc:visibilitychange');
+  ok(w.st.releases === 1, 'newer engine: coming back to the screen does not end a pause early');
+  await w.fire('qk_mic_claim');
+  ok(w.st.holds === 2 && w.st.stops === 0, 'newer engine: every "I need the microphone" reaches the engine');
+}
+{
+  const w = await world({ newEngine: true, acceptsText: true });
+  await w.wake({ hasCommand: true, text: 'what is the time' });
+  ok(w.st.holds === 0 && w.st.stops === 0, 'newer engine, one breath: the microphone is not touched');
 }
 if (failed) { console.error(failed + ' check(s) failed'); process.exit(1); }
 console.log('All wake-bridge checks passed.');

@@ -29,8 +29,8 @@ import {
 } from '@/lib/intent-executor'
 import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation } from '@/lib/follow-up-answer'
 import { whyBrainRun, describeUnderstanding } from '@/lib/understanding-record'
-import { geocodePlace, cleanPlaceName } from '@/lib/geocode'
-import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep } from '@/lib/geo-resolver'
+import { geocodePlace, cleanPlaceName, prettyPlaceName, isPersonalPlace } from '@/lib/geocode'
+import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep, anchorPoint } from '@/lib/geo-resolver'
 import { detectRouteIntent } from '@/lib/intent-parser'
 import { recordVoiceGeoIntent, getTimeBucket } from '@/lib/behavior-engine'
 import { recordActionPattern, recordSequence } from '@/lib/behavior-intelligence' // v14: Behavior Intel
@@ -548,6 +548,7 @@ export async function POST(request) {
   // parsed.geo is { detected, location_name, use_current_location } or null.
   // If null → geoData stays null → INSERT unchanged (existing flow untouched).
   let geoData = null;
+  let geoFromMap = false;   // the pin is a map lookup, i.e. our guess
   if (parsed.geo?.detected) {
     if (parsed.geo.use_current_location && typeof current_lat === 'number' && typeof current_lng === 'number') {
       // User said "here" / "this place" and client sent GPS coords
@@ -569,17 +570,26 @@ export async function POST(request) {
         // and no coordinates, geo_trigger_enabled=false, and could never
         // fire. A name is enough to geocode. Null on any failure, and then
         // the old "saved for later, tap Save here" path runs unchanged.
-        const pin = await geocodePlace(parsed.geo.location_name, {
-          nearLat: typeof current_lat === 'number' ? current_lat : null,
-          nearLng: typeof current_lng === 'number' ? current_lng : null,
-        });
+        // WHICH "Mansurabad"? The one near this person. Their phone's position
+        // if it came with the request, otherwise a place they saved (home).
+        // And "home"/"office" are never looked up on a map at all - see
+        // src/lib/geocode.js for the two mistakes of 2-3 October behind this.
+        const here = (typeof current_lat === 'number' && typeof current_lng === 'number')
+          ? { latitude: current_lat, longitude: current_lng }
+          : await anchorPoint(supabase, user.id);
+        const pin = isPersonalPlace(parsed.geo.location_name) ? null
+          : await geocodePlace(parsed.geo.location_name, {
+              nearLat: here?.latitude ?? null,
+              nearLng: here?.longitude ?? null,
+            });
         if (pin) {
-          console.log('[GEO] geocoded:', { name: parsed.geo.location_name, lat: pin.latitude, lng: pin.longitude });
+          console.log('[GEO] geocoded:', { name: parsed.geo.location_name, lat: pin.latitude, lng: pin.longitude, km_away: pin.distance_km ?? null });
+          geoFromMap = true;
           geoData = {
             latitude: pin.latitude,
             longitude: pin.longitude,
             radius_meters: 300,
-            location_name: parsed.geo.location_name,
+            location_name: prettyPlaceName(parsed.geo.location_name),
             geo_trigger_enabled: true,
           };
         }
@@ -645,7 +655,7 @@ export async function POST(request) {
       answer_kind:       'place',
       reminder:          null,
       reminder_at:       null,
-      tts_response:      placeConfirmation(geoData.location_name, !!geoData.geo_trigger_enabled),
+      tts_response:      placeConfirmation(prettyPlaceName(geoData.location_name), !!geoData.geo_trigger_enabled),
     }, { status: 200 })
   }
 
@@ -781,8 +791,11 @@ export async function POST(request) {
     writeLedgerEntry(supabase, bizPayload, keep.id).catch(() => {});
   }
 
-  // Auto-save named location to user_locations if we had real coords + a name
-  if (geoData?.geo_trigger_enabled && geoData.latitude && geoData.location_name) {
+  // Auto-save named location to user_locations if we had real coords + a name.
+  // NOT when the pin came from a map lookup: that is our guess, and saving a
+  // guess as one of the user's own places is how a wrong "Mansurabad" and a
+  // wrong "home" became permanent on 2-3 October 2026.
+  if (!geoFromMap && geoData?.geo_trigger_enabled && geoData.latitude && geoData.location_name) {
     autoSaveLocation(supabase, user.id, geoData.location_name, geoData.latitude, geoData.longitude, geoData.radius_meters)
       .catch(() => {});  // Non-blocking
   }

@@ -128,7 +128,8 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
 {
   const w = makeWorld();
   const partials = [];
-  const s = startListenStream({ lang: 'te-IN', keyterms: ['Surya Kiran'], silenceMs: 1300, onPartial: (t) => partials.push(t), deps: w.deps });
+  let live = 0;
+  const s = startListenStream({ lang: 'te-IN', keyterms: ['Surya Kiran'], silenceMs: 1300, onPartial: (t) => partials.push(t), onLive: () => { live++; }, deps: w.deps });
   const res = outcome(s.result);
   await new Promise((r) => setTimeout(r, 5)); await flush();
   const start = w.json()[0];
@@ -136,6 +137,7 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   w.hush(); w.hush(); w.hush(); // learn the room
   w.speak(); w.speak();          // spoken BEFORE the engine is ready
   check('audio before "ready" is held, not sent', w.audioFrames() === 0);
+  check('"the mic is open" is announced once, on the first audio', live === 1);
   w.engine({ event: 'ready' });
   check('held audio goes out the moment the engine is ready', w.audioFrames() === 5);
   w.clock.advance(300);
@@ -153,6 +155,7 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   check('turn returns the finished sentence', r.ok && r.v.text === 'Surya Kiran ki call cheyyi', JSON.stringify(r));
   check('finalise time measured from "stop"', r.ok && r.v.finaliseMs === 501);
   check('words shown while speaking', partials[0] === 'Surya Kiran ki');
+  check('the turn records when the mic opened', r.ok && typeof r.v.micLiveMs === 'number');
 }
 
 // ── the founder's sentence, spoken the moment the mic opens ──────────────────

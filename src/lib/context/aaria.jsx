@@ -46,6 +46,7 @@ import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 import { checkForNotices } from '@/lib/aaria-watch';
 import { isSpeaking, looksLikeSelfEcho } from '@/lib/barge-in';
+import { lastKnownPosition } from '@/lib/geo';
 
 const AariaContext = createContext(null);
 
@@ -211,6 +212,11 @@ export function AariaProvider({ children }) {
   // Which listener heard the last turn - shown in the dock so "did Aaria hear
   // me, or the phone?" has an answer on screen, not in a settings page.
   const [heardBy,    setHeardBy]    = useState(null);   // {path, finaliseMs} or null
+  // Is the microphone actually open yet? Opening it takes a few hundred
+  // milliseconds after the tap, and the screen used to say "Listening" at
+  // once - so the first word was spoken into a closed microphone ("Remind me
+  // to buy milk" arrived as "Money to buy milk", 3 October 2026).
+  const [micLive,    setMicLive]    = useState(false);
   const lastListenRef   = useRef(null);  // sent with the next capture call
   const startListenRef  = useRef(null);  // startListening, for the follow-up loop
   const followUpTurns   = useRef(0);     // automatic re-listens in a row
@@ -296,6 +302,9 @@ export function AariaProvider({ children }) {
           // the turn). Stored with the capture so a "it cut me off" report can
           // be checked against what actually happened.
           ...(lastListenRef.current ? { listen: lastListenRef.current } : {}),
+          // Where the phone is, when it already knows - so a place name is
+          // matched to the one nearby, not the first one in the country.
+          ...(() => { const p = lastKnownPosition(); return p ? { current_lat: p.latitude, current_lng: p.longitude } : {}; })(),
         }),
       });
       lastListenRef.current = null;   // it described THIS sentence only
@@ -488,6 +497,7 @@ export function AariaProvider({ children }) {
 
     rec.onstart = () => {
       listeningRef.current = true;
+      setMicLive(true);
       setStatus('listening');
       // A hard cap so a stuck recogniser cannot hold the microphone forever.
       // We take what we have rather than dropping the turn.
@@ -560,7 +570,7 @@ export function AariaProvider({ children }) {
     if (Date.now() - namesRef.current.at < 10 * 60 * 1000) return namesRef.current.names;
     try {
       const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const kill = setTimeout(() => ctl?.abort(), 1500);
+      const kill = setTimeout(() => ctl?.abort(), 5000);
       const res = await fetch('/api/voice/spoken-names', {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: ctl?.signal,
@@ -597,7 +607,9 @@ export function AariaProvider({ children }) {
     setReply(null);
     setOpen(true);
     listeningRef.current = true;
+    setMicLive(false);
     setStatus('listening');
+    refreshNames();   // for the NEXT turn, if the list was not loaded yet
 
     const lang = speechLang(voiceLang);
     const session = startListenStream({
@@ -606,6 +618,12 @@ export function AariaProvider({ children }) {
       silenceMs: endpointSilenceMsFor(lang),
       maxMs: MAX_LISTEN_MS,
       onPartial: (text) => setInterim(text),
+      // The moment audio is really flowing: say so on screen and with a short
+      // buzz, so the person knows when to start speaking.
+      onLive: () => {
+        setMicLive(true);
+        try { navigator.vibrate?.(35); } catch {}
+      },
     });
     // stopAll() calls .stop() on whatever is here: for this path that means
     // "finish now and keep what was said", exactly like the browser path.
@@ -638,7 +656,7 @@ export function AariaProvider({ children }) {
         if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);
       },
     );
-  }, [voiceLang, submit, startBrowserListening]);
+  }, [voiceLang, submit, startBrowserListening, refreshNames]);
   useEffect(() => { startListenRef.current = startListening; }, [startListening]);
 
   const toggleListening = useCallback(() => {
@@ -786,10 +804,10 @@ export function AariaProvider({ children }) {
 
   const value = useMemo(() => ({
     status, open, setOpen, interim, transcript, reply, error, wakeInfo, hotwordOn,
-    notice, here, silent, signedIn, heardBy,
+    notice, here, silent, signedIn, heardBy, micLive,
     submit, say, stopAll, startListening, toggleListening,
     setError, setReply,
-  }), [status, open, interim, transcript, reply, error, wakeInfo, hotwordOn, notice, heardBy,
+  }), [status, open, interim, transcript, reply, error, wakeInfo, hotwordOn, notice, heardBy, micLive,
        here, silent, signedIn, submit, say, stopAll, startListening, toggleListening]);
 
   return <AariaContext.Provider value={value}>{children}</AariaContext.Provider>;

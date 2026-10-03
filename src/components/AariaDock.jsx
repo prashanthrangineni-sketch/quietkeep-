@@ -28,7 +28,7 @@ export default function AariaDock() {
   const {
     status, open, setOpen, interim, transcript, reply, error, hotwordOn, notice,
     here, silent, signedIn, submit, toggleListening, stopAll, setError,
-    heardBy,
+    heardBy, micLive,
   } = useAaria();
 
   const [typed, setTyped] = useState('');
@@ -52,7 +52,7 @@ export default function AariaDock() {
     : speaking    ? 'var(--green, #10b981)'
     : 'var(--primary)';
 
-  const statusLine = listening ? 'Listening…'
+  const statusLine = listening ? (micLive ? 'Listening — speak now' : 'Opening the mic…')
     : thinking     ? 'Thinking…'
     : speaking     ? 'Speaking…'
     : here         ? `On ${here}. Say "open invoices", or ask me anything.`
@@ -77,7 +77,9 @@ export default function AariaDock() {
           from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .qk-aaria-panel { animation: qkAariaRise .18s ease-out; }
+        .qk-aaria-panel { animation: qkAariaRise .18s ease-out; background: #f4f6fb; }
+        [data-theme="dark"] .qk-aaria-panel { background: #161b27; }
+        [data-theme="amoled"] .qk-aaria-panel { background: #0a0a0a; }
         .qk-aaria-orb:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
         @media (prefers-reduced-motion: reduce) {
           .qk-aaria-orb, .qk-aaria-panel { animation: none !important; }
@@ -98,8 +100,11 @@ export default function AariaDock() {
             // SOLID, NOT --surface. --surface is a translucent glass tint in the
             // light theme, so the dashboard's text showed straight through the
             // panel and made Aaria's reply hard to read (founder's screenshot,
-            // 1 Oct 2026). --bg is the page's own opaque colour in both themes.
-            background: 'var(--bg)',
+            // 1 Oct 2026). --bg turned out to be see-through too: the light
+            // theme redefines it as 55%-clear glass (globals.css), and the
+            // screenshots of 3 Oct still show the dashboard through the panel.
+            // So the colour is set by the .qk-aaria-panel rule above, as a
+            // fixed opaque value per theme - no theme variable can thin it.
             border: '1px solid var(--border)',
             borderRadius: 16,
             boxShadow: '0 18px 44px rgba(0,0,0,.17)',

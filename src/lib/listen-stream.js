@@ -91,7 +91,7 @@ export function cleanListenEvidence(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const out = {};
   if (['engine', 'phone', 'none'].includes(raw.path)) out.path = raw.path;
-  for (const k of ['firstWordsMs', 'finaliseMs', 'keyterms', 'heardMs', 'speechMs', 'peak', 'floor', 'chars']) {
+  for (const k of ['firstWordsMs', 'finaliseMs', 'keyterms', 'heardMs', 'speechMs', 'peak', 'floor', 'chars', 'micLiveMs']) {
     const v = raw[k];
     if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.round(v * 10000) / 10000;
   }
@@ -254,6 +254,7 @@ export function startListenStream({
   maxMs = 15000,
   onPartial = () => {},
   onSpeech = () => {},
+  onLive = () => {},     // the microphone is open and audio is flowing
   deps = {},
 } = {}) {
   const W = deps.window || (typeof window !== 'undefined' ? window : {});
@@ -316,6 +317,9 @@ export function startListenStream({
       peak: Math.round(loud.peak() * 1000) / 1000,
       floor: Math.round(loud.floor() * 10000) / 10000,
       stopReason,
+      // How long after the tap the microphone was actually open. Words said
+      // before this were never recorded.
+      micLiveMs,
     });
   }
 
@@ -363,9 +367,10 @@ export function startListenStream({
     armSilence();
   }
 
-  let frames = 0, speechFrames = 0, stopReason = null;
+  let frames = 0, speechFrames = 0, stopReason = null, micLiveMs = null;
   function onFrame(frame) {
     const pcm = floatToPcm16(frame).buffer;
+    if (frames === 0) { micLiveMs = Math.round(now() - t0); try { onLive(); } catch {} }
     frames++;
     if (loud.isSpeech(rms(frame))) { speechFrames++; speechNow(); }
     if (ready) send(pcm); else pending.push(pcm);

@@ -66,6 +66,43 @@ public class ReminderAlarmPlugin extends Plugin {
         call.resolve(result);
     }
 
+    /**
+     * What happened the last time an alarm fired, plus what this phone allows
+     * right now. No phone number, no name, no reminder text - see AlarmTrail.
+     */
+    @PluginMethod
+    public void lastFire(PluginCall call) {
+        JSObject out = new JSObject();
+        try {
+            for (Map.Entry<String, String> e : AlarmTrail.read(getContext()).entrySet()) {
+                out.put(e.getKey(), e.getValue());
+            }
+
+            Context ctx = getContext();
+            NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+            boolean fullScreen = true;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && nm != null) {
+                fullScreen = nm.canUseFullScreenIntent();
+            }
+            boolean exact = true;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+                exact = am != null && am.canScheduleExactAlarms();
+            }
+            out.put("now_fullscreen_allowed", String.valueOf(fullScreen));
+            out.put("now_notifications_enabled",
+                    String.valueOf(NotificationManagerCompat.from(ctx).areNotificationsEnabled()));
+            out.put("now_exact_alarms", String.valueOf(exact));
+            out.put("now_call_permission", String.valueOf(
+                    ContextCompat.checkSelfPermission(ctx, Manifest.permission.CALL_PHONE)
+                            == PackageManager.PERMISSION_GRANTED));
+            out.put("android_sdk", String.valueOf(Build.VERSION.SDK_INT));
+        } catch (Exception e) {
+            out.put("error", String.valueOf(e.getMessage()));
+        }
+        call.resolve(out);
+    }
+
     @PluginMethod
     public void cancel(PluginCall call) {
         String reminderId = call.getString("reminderId");

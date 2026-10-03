@@ -979,6 +979,11 @@ export async function POST(request) {
   if (followUp?.action_hint === 'disambiguate_contact' || followUp?.action_hint === 'add_contact') {
     tts_response = followUp.follow_up
   }
+  // "Which Venu?" is SAID short and SHOWN in full: three names aloud, every
+  // match as a button. Six names in one breath cannot be answered by ear.
+  if (followUp?.action_hint === 'disambiguate_contact' && Array.isArray(followUp.contacts)) {
+    tts_response = spokenContactQuestion(followUp.suggested_name, followUp.contacts)
+  }
   // v12: business TTS overrides generic TTS when resolver produced a confirmation
   if (bizPayload?.tts_response) tts_response = bizPayload.tts_response;
   // Feature 7: Contextual TalkBack — mentions both location and keep content

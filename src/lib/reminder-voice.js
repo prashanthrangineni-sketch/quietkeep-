@@ -143,18 +143,8 @@ async function dueBetween(supabase, userId, fromMs, toMs) {
 // I scheduled every alarm this morning with only an id, some text and a time,
 // so every one took the announce-only branch. The action was never passed.
 //
-// A CALL NEEDS A NUMBER. When there is none the alarm still speaks and does
-// nothing else — which is the honest behaviour, not a silent failure.
-function actionFor(item) {
-  const phone = String(item.contactPhone || '').trim();
-  if (!phone) return null;
-  if (!/call|phone|ring|కాల్|ఫోన్|कॉल|फ़ोन/i.test(item.text || '')) return null;
-  return {
-    actionType: 'call',
-    phone,
-    display_name: item.contactName || undefined,
-  };
-}
+// The rule itself (a number, and the word "call") lives in reminder-arm.js
+// where it can be tested.
 
 /**
  * Arm every reminder due in the next HORIZON_HOURS on the best spoken channel.

@@ -105,7 +105,7 @@ async function dueBetween(supabase, userId, fromMs, toMs) {
   return [
     ...(reminders?.data || []).map((r) => ({
       id: `rem-${r.id}`, text: r.reminder_text, fireAt: new Date(r.scheduled_for).getTime(),
-      contactName: r.contact_name, contactPhone: r.contact_phone,
+      contactName: r.contact_name, contactPhone: r.contact_phone, keepId: r.keep_id || null,
     })),
     ...(keeps?.data || []).map((k) => ({
       id: `keep-${k.id}`, text: k.content, fireAt: new Date(k.reminder_at).getTime(),

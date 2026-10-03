@@ -415,7 +415,7 @@ export function startListenStream({
         if (firstWordsMs === null) firstWordsMs = Math.round(now() - t0);
         lastPartial = t;
         onPartial((finals.join(' ') + ' ' + t).trim());
-        if (!stopSent) speechNow();
+        if (!stopSent && speechFrames > 0) speechNow();
       }
     } else if (ev === 'final') {
       const t = (msg.text || '').trim();
@@ -424,7 +424,7 @@ export function startListenStream({
         finals.push(t);
         lastPartial = '';
         onPartial(finals.join(' '));
-        if (!stopSent) speechNow();
+        if (!stopSent && speechFrames > 0) speechNow();
       }
     } else if (ev === 'done') {
       const t = (msg.text || '').trim() || heardText();

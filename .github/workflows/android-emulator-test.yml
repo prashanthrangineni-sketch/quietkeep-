@@ -64,6 +64,36 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: cd android && chmod +x gradlew && ./gradlew :app:connectedPersonalDebugAndroidTest --no-daemon --stacktrace
 
+      - name: Say what happened, where it can be read without signing in
+        # The job log needs a GitHub login. These notes do not: they appear on the check itself.
+        if: always()
+        run: |
+          python3 - <<'EOF'
+          import glob, xml.etree.ElementTree as ET
+          def esc(t): return t.strip()[:3500].replace('%', '%25').replace('\r', '').replace('\n', '%0A')
+          base = 'android/app/build/outputs/androidTest-results/connected'
+          failed = False; ran = False
+          for f in glob.glob(base + '/**/*.xml', recursive=True):
+              for case in ET.parse(f).getroot().iter('testcase'):
+                  ran = True
+                  for kind in ('failure', 'error'):
+                      for node in case.findall(kind):
+                          failed = True
+                          print('::error title=' + (case.get('name') or 'test') + '::' + esc((node.get('message') or '') + '\n' + (node.text or '')))
+          heard = []
+          for f in glob.glob(base + '/**/logcat-*.txt', recursive=True):
+              lines = open(f, errors='replace').read().split('\n')
+              for i, line in enumerate(lines):
+                  if 'AariaEngineTest' in line:
+                      heard.append(line.split('AariaEngineTest', 1)[1].lstrip(': '))
+                  elif heard and line.startswith('  ') and '.wav' in line:
+                      heard.append(line)
+          if heard:
+              print('::notice title=What the engine heard::' + esc('\n'.join(heard)))
+          if not ran:
+              print('::error title=Simulated phone test::no test result was written (the build or the emulator failed first); see the job log')
+          EOF
+
       - name: Keep the test report
         if: always()
         uses: actions/upload-artifact@v4

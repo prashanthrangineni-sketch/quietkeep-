@@ -104,10 +104,18 @@ export async function geocodePlace(name, opts = {}) {
     }
     if (!res?.ok) return null
     const rows = await res.json().catch(() => null)
-    const hit = Array.isArray(rows) ? rows[0] : null
-    const latitude = Number(hit?.lat), longitude = Number(hit?.lon)
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
-    return { latitude, longitude, display_name: String(hit.display_name || q) }
+    const hits = (Array.isArray(rows) ? rows : [])
+      .map((r) => ({ latitude: Number(r?.lat), longitude: Number(r?.lon), display_name: String(r?.display_name || q) }))
+      .filter((r) => Number.isFinite(r.latitude) && Number.isFinite(r.longitude))
+    if (!hits.length) return null
+    const hasNear = typeof opts.nearLat === 'number' && typeof opts.nearLng === 'number'
+    if (!hasNear) return hits[0]
+    let best = null
+    for (const h of hits) {
+      const d = distanceKm(opts.nearLat, opts.nearLng, h.latitude, h.longitude)
+      if (!best || d < best.distance_km) best = { ...h, distance_km: Math.round(d * 10) / 10 }
+    }
+    return best
   } catch {
     return null
   }

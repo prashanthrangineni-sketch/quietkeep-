@@ -59,6 +59,9 @@ export function isGeoFencing() { return _watchId !== null; }
 
 async function _onPosition(pos) {
   const now = Date.now();
+  if (pos?.coords && Number.isFinite(pos.coords.latitude) && Number.isFinite(pos.coords.longitude)) {
+    _lastPos = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, at: now };
+  }
   if (now - _lastCheck < GEO_CHECK_INTERVAL) return;
   _lastCheck = now;
   const token = _getToken ? _getToken() : null;

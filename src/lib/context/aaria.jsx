@@ -656,7 +656,7 @@ export function AariaProvider({ children }) {
         if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);
       },
     );
-  }, [voiceLang, submit, startBrowserListening]);
+  }, [voiceLang, submit, startBrowserListening, refreshNames]);
   useEffect(() => { startListenRef.current = startListening; }, [startListening]);
 
   const toggleListening = useCallback(() => {

@@ -254,6 +254,7 @@ export function startListenStream({
   maxMs = 15000,
   onPartial = () => {},
   onSpeech = () => {},
+  onLive = () => {},     // the microphone is open and audio is flowing
   deps = {},
 } = {}) {
   const W = deps.window || (typeof window !== 'undefined' ? window : {});

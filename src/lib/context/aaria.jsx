@@ -570,7 +570,7 @@ export function AariaProvider({ children }) {
     if (Date.now() - namesRef.current.at < 10 * 60 * 1000) return namesRef.current.names;
     try {
       const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const kill = setTimeout(() => ctl?.abort(), 1500);
+      const kill = setTimeout(() => ctl?.abort(), 5000);
       const res = await fetch('/api/voice/spoken-names', {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: ctl?.signal,

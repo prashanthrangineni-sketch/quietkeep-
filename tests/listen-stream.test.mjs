@@ -128,7 +128,8 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
 {
   const w = makeWorld();
   const partials = [];
-  const s = startListenStream({ lang: 'te-IN', keyterms: ['Surya Kiran'], silenceMs: 1300, onPartial: (t) => partials.push(t), deps: w.deps });
+  let live = 0;
+  const s = startListenStream({ lang: 'te-IN', keyterms: ['Surya Kiran'], silenceMs: 1300, onPartial: (t) => partials.push(t), onLive: () => { live++; }, deps: w.deps });
   const res = outcome(s.result);
   await new Promise((r) => setTimeout(r, 5)); await flush();
   const start = w.json()[0];

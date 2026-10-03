@@ -246,6 +246,10 @@ export function answerConfirmation(answer, keep, timeZone = 'Asia/Kolkata') {
 
   if (answer.kind === 'contact') {
     const name = answer.contact?.name || 'them'
+    // A place reminder has no clock time; say the place, not a bare "Got it".
+    if (!keep?.reminder_at && keep?.location_name && keep?.geo_trigger_enabled) {
+      return `Got it — ${name}. I'll remind you when you reach ${keep.location_name}.`
+    }
     if (!keep?.reminder_at) return `Got it — ${name}.`
     const t = new Date(keep.reminder_at)
     const timeStr = t.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone })

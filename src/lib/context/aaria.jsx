@@ -607,7 +607,9 @@ export function AariaProvider({ children }) {
     setReply(null);
     setOpen(true);
     listeningRef.current = true;
+    setMicLive(false);
     setStatus('listening');
+    refreshNames();   // for the NEXT turn, if the list was not loaded yet
 
     const lang = speechLang(voiceLang);
     const session = startListenStream({
@@ -616,6 +618,12 @@ export function AariaProvider({ children }) {
       silenceMs: endpointSilenceMsFor(lang),
       maxMs: MAX_LISTEN_MS,
       onPartial: (text) => setInterim(text),
+      // The moment audio is really flowing: say so on screen and with a short
+      // buzz, so the person knows when to start speaking.
+      onLive: () => {
+        setMicLive(true);
+        try { navigator.vibrate?.(35); } catch {}
+      },
     });
     // stopAll() calls .stop() on whatever is here: for this path that means
     // "finish now and keep what was said", exactly like the browser path.

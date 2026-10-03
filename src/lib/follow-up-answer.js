@@ -212,6 +212,19 @@ export function placeConfirmation(place, canAlert) {
 }
 
 /**
+ * The person said the SAME sentence again while its question is still open
+ * (3 October 2026: "Remind me to call Venu when I reach home", twice, saved
+ * twice). That is someone trying again, not a second reminder. Pure.
+ */
+export function isRepeatOfOpenQuestion(keep, rawText, nowMs = Date.now()) {
+  if (!isPendingQuestion(keep, nowMs)) return false
+  const norm = (t) => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}\p{M}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
+  const said = norm(rawText)
+  if (said.split(' ').length < 3) return false
+  return said === norm(keep.voice_text) || said === norm(keep.content)
+}
+
+/**
  * What Aaria says back once the answer has been applied.
  *
  * Kept here beside the decision so the wording and the behaviour cannot drift

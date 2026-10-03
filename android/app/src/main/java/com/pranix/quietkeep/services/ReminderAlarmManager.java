@@ -240,6 +240,7 @@ public class ReminderAlarmManager {
                 spec.smsMessage = prefs.getString("alarm_sms_message_" + id, null);
                 if (prefs.contains("alarm_torch_enable_" + id)) spec.torchEnable = prefs.getBoolean("alarm_torch_enable_" + id, false);
                 if (prefs.contains("alarm_volume_direction_" + id)) spec.volumeDirection = prefs.getInt("alarm_volume_direction_" + id, 0);
+                spec.displayName = prefs.getString("alarm_display_name_" + id, null);
             }
             
             // The language this reminder was scheduled with, read back out of

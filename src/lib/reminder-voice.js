@@ -32,6 +32,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { dedupeTwins, actionFor, alarmReport, reportSignature } from './reminder-arm';
 
 // How far ahead to arm. Re-armed on every app open, so this only has to cover
 // the gap between two opens.

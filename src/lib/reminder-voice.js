@@ -294,7 +294,7 @@ export async function retireExpiredReminders({ supabase, userId }) {
 export async function speakMissedReminders({ supabase, userId, speak, prefix = '' }) {
   try {
     const now = Date.now();
-    const missed = await dueBetween(supabase, userId, now - CATCH_UP_HOURS * 3600e3, now);
+    const missed = dedupeTwins(await dueBetween(supabase, userId, now - CATCH_UP_HOURS * 3600e3, now));
     if (!missed.length) return 0;
 
     const already = spokenIds();

@@ -247,7 +247,47 @@ export async function POST(request) {
     .limit(1)
     .maybeSingle()
 
-  const answer = openQuestion ? readAnswer(openQuestion, text) : null
+  // A tap on one of the offered names arrives as answer_contact_id.
+  const tappedId = typeof body.answer_contact_id === 'string' ? body.answer_contact_id : null
+  const answer = openQuestion ? readAnswer(openQuestion, text, Date.now(), { contactId: tappedId }) : null
+
+  // ── THE QUESTION IS STILL OPEN AND THIS IS NOT YET AN ANSWER ─────────────
+  // Two cases that used to fall through and be filed as brand-new keeps:
+  //   1. "Venu Nz" when two contacts are called exactly that - ask again about
+  //      just those two (they are told apart by the end of the number).
+  //   2. The same sentence said again - someone retrying, not a second
+  //      reminder. Ask the same question again; save nothing.
+  if (!answer && openQuestion && isPendingQuestion(openQuestion)) {
+    const isContactQ = openQuestion.follow_up?.action_hint === 'disambiguate_contact'
+    const short = text.split(/\s+/).filter(Boolean).length <= 8
+    const narrowed = isContactQ && short ? narrowContacts(text, openQuestion.follow_up.contacts) : []
+    const repeat = isRepeatOfOpenQuestion(openQuestion, text)
+    if (narrowed.length >= 2 || repeat) {
+      let fu = openQuestion.follow_up
+      if (narrowed.length >= 2) {
+        fu = { ...fu, contacts: narrowed }
+        await supabase.from('keeps')
+          .update({ follow_up: fu, updated_at: new Date().toISOString() })
+          .eq('id', openQuestion.id).eq('user_id', user.id)
+      }
+      const choices = isContactQ ? contactChoices(fu.contacts) : null
+      const ask = isContactQ
+        ? (narrowed.length >= 2
+            ? `There are ${narrowed.length} called ${narrowed[0].name}. Tap the right number, or say first or second.`
+            : spokenContactQuestion(fu.suggested_name, fu.contacts))
+        : fu.follow_up
+      return NextResponse.json({
+        keep:              openQuestion,
+        intent:            openQuestion,
+        answered_question: false,
+        asked_again:       true,
+        follow_up:         fu,
+        choices,
+        reminder_at:       openQuestion.reminder_at || null,
+        tts_response:      ask,
+      }, { status: 200 })
+    }
+  }
 
   if (answer) {
     const patch = { follow_up: null, updated_at: new Date().toISOString() }

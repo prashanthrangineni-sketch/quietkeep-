@@ -659,7 +659,11 @@ export function AariaProvider({ children }) {
     const lang = speechLang(voiceLang);
     const session = startListenStream({
       lang,
-      keyterms: namesRef.current.names,
+      // Listening for "which one?" - the names on offer go first, so the
+      // recogniser leans toward the answers that are actually possible.
+      keyterms: answerTurn && Array.isArray(choicesRef.current)
+        ? [...choicesRef.current.map((c) => c.name), ...namesRef.current.names]
+        : namesRef.current.names,
       silenceMs: endpointSilenceMsFor(lang),
       maxMs: MAX_LISTEN_MS,
       onPartial: (text) => setInterim(text),

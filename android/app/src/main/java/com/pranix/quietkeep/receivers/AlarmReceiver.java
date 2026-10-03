@@ -15,6 +15,7 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import com.pranix.quietkeep.MainActivity;
+import com.pranix.quietkeep.services.AlarmTrail;
 
 public class AlarmReceiver extends BroadcastReceiver {
 

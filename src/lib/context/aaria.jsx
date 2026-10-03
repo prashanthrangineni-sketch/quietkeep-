@@ -138,7 +138,7 @@ export function AariaProvider({ children }) {
       try {
         const { supabase } = await import('@/lib/supabase');
         const { armVoiceReminders, speakMissedReminders, canSpeakWhenClosed,
-                retireExpiredReminders } =
+                retireExpiredReminders, reportLastAlarm } =
           await import('@/lib/reminder-voice');
         if (cancelled) return;
 
@@ -165,6 +165,10 @@ export function AariaProvider({ children }) {
         if (cancelled) return;
         console.log('[Aaria] reminders armed:', armed.armed, 'via', armed.channel);
 
+        // What the phone did the last time an alarm fired - so "it spoke but
+        // did not call" can be answered from a record instead of a guess.
+        reportLastAlarm({ supabase, userId: user.id }).catch(() => {});
+
         // Anything that came due while the phone was in a bag is read out now,
         // rather than being lost in silence.
         await speakMissedReminders({
@@ -182,7 +186,21 @@ export function AariaProvider({ children }) {
     // without waiting for the next app open.
     const onChanged = () => { arm(); };
     window.addEventListener('qk_reminders_changed', onChanged);
-    return () => { cancelled = true; window.removeEventListener('qk_reminders_changed', onChanged); };
+    // Coming back to the app after an alarm: send up what the phone noted.
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { reportLastAlarm } = await import('@/lib/reminder-voice');
+        reportLastAlarm({ supabase, userId: user.id }).catch(() => {});
+      } catch {}
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('qk_reminders_changed', onChanged);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [user?.id, voiceLang]);
 
   // The service worker wakes at the due moment and asks whichever page is open

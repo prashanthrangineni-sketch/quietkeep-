@@ -74,6 +74,7 @@ public class ReminderAlarmManager {
             editor.putString("alarm_sms_message_" + reminderId, actionSpec.smsMessage);
             if (actionSpec.torchEnable != null) editor.putBoolean("alarm_torch_enable_" + reminderId, actionSpec.torchEnable);
             if (actionSpec.volumeDirection != null) editor.putInt("alarm_volume_direction_" + reminderId, actionSpec.volumeDirection);
+            editor.putString("alarm_display_name_" + reminderId, actionSpec.displayName);
         }
         editor.apply();
 
@@ -109,9 +110,10 @@ public class ReminderAlarmManager {
             if (actionSpec.torchEnable != null) intent.putExtra("torch_enable", actionSpec.torchEnable);
             if (actionSpec.volumeDirection != null) intent.putExtra("volume_direction", actionSpec.volumeDirection);
             
-            // Derive displayName
+            // The name when we were given one; otherwise the best we have.
             String displayName = null;
-            if (actionSpec.phone != null) displayName = actionSpec.phone;
+            if (actionSpec.displayName != null && !actionSpec.displayName.trim().isEmpty()) displayName = actionSpec.displayName.trim();
+            else if (actionSpec.phone != null) displayName = actionSpec.phone;
             else if (actionSpec.whatsappPhone != null) displayName = actionSpec.whatsappPhone;
             else if (actionSpec.navigationQuery != null) displayName = actionSpec.navigationQuery;
             else if (actionSpec.appName != null) displayName = actionSpec.appName;
@@ -174,6 +176,7 @@ public class ReminderAlarmManager {
         editor.remove("alarm_sms_message_" + reminderId);
         editor.remove("alarm_torch_enable_" + reminderId);
         editor.remove("alarm_volume_direction_" + reminderId);
+        editor.remove("alarm_display_name_" + reminderId);
         editor.apply();
 
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
@@ -237,6 +240,7 @@ public class ReminderAlarmManager {
                 spec.smsMessage = prefs.getString("alarm_sms_message_" + id, null);
                 if (prefs.contains("alarm_torch_enable_" + id)) spec.torchEnable = prefs.getBoolean("alarm_torch_enable_" + id, false);
                 if (prefs.contains("alarm_volume_direction_" + id)) spec.volumeDirection = prefs.getInt("alarm_volume_direction_" + id, 0);
+                spec.displayName = prefs.getString("alarm_display_name_" + id, null);
             }
             
             // The language this reminder was scheduled with, read back out of
@@ -280,6 +284,7 @@ public class ReminderAlarmManager {
                 editor.remove("alarm_sms_message_" + id);
                 editor.remove("alarm_torch_enable_" + id);
                 editor.remove("alarm_volume_direction_" + id);
+                editor.remove("alarm_display_name_" + id);
             }
             editor.apply();
         }

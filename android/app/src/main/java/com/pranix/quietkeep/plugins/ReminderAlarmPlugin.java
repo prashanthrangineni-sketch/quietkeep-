@@ -1,11 +1,24 @@
 package com.pranix.quietkeep.plugins;
 
+import android.Manifest;
+import android.app.AlarmManager;
+import android.app.NotificationManager;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Build;
+
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
+
+import java.util.Map;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import com.pranix.quietkeep.services.AlarmTrail;
 import com.pranix.quietkeep.services.ReminderAlarmManager;
 import com.pranix.quietkeep.services.ActionExecutor.ActionSpec;
 
@@ -49,6 +62,10 @@ public class ReminderAlarmPlugin extends Plugin {
             spec.smsMessage = call.getString("smsMessage");
             if (call.hasOption("torchEnable")) spec.torchEnable = call.getBoolean("torchEnable");
             if (call.hasOption("volumeDirection")) spec.volumeDirection = call.getInt("volumeDirection");
+            // The JavaScript has sent this since the first day; nothing here
+            // read it, so the countdown said "Calling +91..." and never the
+            // name. With six Vinays in the phonebook the name is the check.
+            spec.displayName = call.getString("display_name");
         }
 
         ReminderAlarmManager.scheduleReminder(
@@ -60,6 +77,43 @@ public class ReminderAlarmPlugin extends Plugin {
         result.put("reminderId", reminderId);
         result.put("fireAtMs", fireAtMs);
         call.resolve(result);
+    }
+
+    /**
+     * What happened the last time an alarm fired, plus what this phone allows
+     * right now. No phone number, no name, no reminder text - see AlarmTrail.
+     */
+    @PluginMethod
+    public void lastFire(PluginCall call) {
+        JSObject out = new JSObject();
+        try {
+            for (Map.Entry<String, String> e : AlarmTrail.read(getContext()).entrySet()) {
+                out.put(e.getKey(), e.getValue());
+            }
+
+            Context ctx = getContext();
+            NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+            boolean fullScreen = true;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && nm != null) {
+                fullScreen = nm.canUseFullScreenIntent();
+            }
+            boolean exact = true;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+                exact = am != null && am.canScheduleExactAlarms();
+            }
+            out.put("now_fullscreen_allowed", String.valueOf(fullScreen));
+            out.put("now_notifications_enabled",
+                    String.valueOf(NotificationManagerCompat.from(ctx).areNotificationsEnabled()));
+            out.put("now_exact_alarms", String.valueOf(exact));
+            out.put("now_call_permission", String.valueOf(
+                    ContextCompat.checkSelfPermission(ctx, Manifest.permission.CALL_PHONE)
+                            == PackageManager.PERMISSION_GRANTED));
+            out.put("android_sdk", String.valueOf(Build.VERSION.SDK_INT));
+        } catch (Exception e) {
+            out.put("error", String.valueOf(e.getMessage()));
+        }
+        call.resolve(out);
     }
 
     @PluginMethod

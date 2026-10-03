@@ -100,8 +100,11 @@ export default function AariaDock() {
             // SOLID, NOT --surface. --surface is a translucent glass tint in the
             // light theme, so the dashboard's text showed straight through the
             // panel and made Aaria's reply hard to read (founder's screenshot,
-            // 1 Oct 2026). --bg is the page's own opaque colour in both themes.
-            background: 'var(--bg)',
+            // 1 Oct 2026). --bg turned out to be see-through too: the light
+            // theme redefines it as 55%-clear glass (globals.css), and the
+            // screenshots of 3 Oct still show the dashboard through the panel.
+            // So the colour is set by the .qk-aaria-panel rule above, as a
+            // fixed opaque value per theme - no theme variable can thin it.
             border: '1px solid var(--border)',
             borderRadius: 16,
             boxShadow: '0 18px 44px rgba(0,0,0,.17)',

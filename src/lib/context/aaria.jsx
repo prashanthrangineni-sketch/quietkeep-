@@ -138,7 +138,7 @@ export function AariaProvider({ children }) {
       try {
         const { supabase } = await import('@/lib/supabase');
         const { armVoiceReminders, speakMissedReminders, canSpeakWhenClosed,
-                retireExpiredReminders } =
+                retireExpiredReminders, reportLastAlarm } =
           await import('@/lib/reminder-voice');
         if (cancelled) return;
 

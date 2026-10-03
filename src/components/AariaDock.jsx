@@ -157,6 +157,26 @@ export default function AariaDock() {
             </div>
           )}
 
+          {/* "Which Venu?" - every match as a button. Saying the name works
+              too; tapping is exact, which matters when two share a name. */}
+          {Array.isArray(choices) && choices.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+              {choices.map((c, i) => (
+                <button
+                  key={c.id || `${c.name}-${i}`}
+                  type="button"
+                  onClick={() => choose(c)}
+                  style={{
+                    textAlign: 'left', padding: '10px 12px', borderRadius: 10,
+                    border: '1.5px solid var(--primary)', background: 'transparent',
+                    color: 'var(--text)', fontSize: 14, fontWeight: 600,
+                    fontFamily: 'inherit', cursor: 'pointer',
+                  }}
+                >{c.label || c.name}</button>
+              ))}
+            </div>
+          )}
+
           {error && (
             <div style={{
               background: 'var(--red-dim, rgba(220,38,38,.08))',

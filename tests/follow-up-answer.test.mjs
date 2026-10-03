@@ -263,3 +263,52 @@ test('a "when?" question is re-asked as "when?"', () => {
   const keep = pending({ follow_up: { action_hint: 'time_needed', follow_up: 'When should I remind you?' } })
   assert.match(askAgain(keep), /when should I remind you/i)
 })
+
+// ── a new instruction is not an answer, however short ───────────────────────
+// 3 October 2026, 3:45 pm: "Call Akhilesh" was mis-heard as "Surya Exactly",
+// Aaria asked when, and "Call Akhilesh in one minute." was taken as the answer.
+// A minute later the phone said "Reminder - Surya Exactly".
+import { startsNewInstruction } from '../src/lib/follow-up-answer.js'
+
+const MISHEARD = {
+  content: 'Surya Exactly', voice_text: 'Surya Exactly.', contact_name: 'Surya', contact_phone: null,
+  follow_up: { action_hint: 'time_needed', follow_up: 'When should I remind you?' },
+}
+
+test('"Call Akhilesh in one minute" is not the answer to a question about someone else', () => {
+  const keep = pending(MISHEARD)
+  assert.equal(startsNewInstruction(keep, 'Call Akhilesh in one minute.'), true)
+  assert.equal(readAnswer(keep, 'Call Akhilesh in one minute.', NOW), null)
+})
+
+test('and in an answer turn it is saved, not asked about again', () => {
+  const keep = pending(MISHEARD)
+  assert.equal(isUnmatchedAnswer(keep, 'Call Akhilesh in one minute.', { answering: true, nowMs: NOW }), false)
+})
+
+test('MUST NOT BREAK: a plain time is still the answer', () => {
+  const keep = pending(MISHEARD)
+  assert.equal(readAnswer(keep, 'in one minute', NOW).kind, 'time')
+  assert.equal(readAnswer(keep, 'five minutes', NOW).kind, 'time')
+})
+
+test('MUST NOT BREAK: a command that names nothing new is still the answer', () => {
+  const keep = pending()   // "Call Surya Kiran now or set a reminder?"
+  assert.equal(startsNewInstruction(keep, 'call him in five minutes'), false)
+  assert.equal(readAnswer(keep, 'call him in five minutes', NOW).kind, 'time')
+  assert.equal(readAnswer(keep, 'Call Surya in five minutes', NOW).kind, 'time')
+  assert.equal(readAnswer(keep, 'remind me in ten minutes', NOW).kind, 'time')
+  assert.equal(readAnswer(keep, 'call now', NOW).kind, 'now')
+})
+
+test('MUST NOT BREAK: a mis-heard short answer is still asked again', () => {
+  const keep = pending(MISHEARD)
+  assert.equal(isUnmatchedAnswer(keep, 'Surya Exactly.', { answering: true, nowMs: NOW }), true)
+})
+
+test('a command about a different person or thing is new, with or without a time', () => {
+  const keep = pending(MISHEARD)
+  assert.equal(startsNewInstruction(keep, 'Whatsapp Ravi at 6 pm'), true)
+  assert.equal(startsNewInstruction(keep, 'Buy milk tomorrow'), true)
+  assert.equal(startsNewInstruction(keep, 'Akhilesh in one minute'), false)   // no command: left to the time rules
+})

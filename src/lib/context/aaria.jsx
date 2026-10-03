@@ -345,7 +345,7 @@ export function AariaProvider({ children }) {
         followUpTimer.current = setInterval(() => {
           const waited = Date.now() - startedAt;
           if (waited < atLeast) return;
-          if (isSpeaking() && waited < 14000) return;
+          if (isSpeaking() && waited < 25000) return;
           clearInterval(followUpTimer.current); followUpTimer.current = null;
           if (!listeningRef.current) { autoTurnRef.current = true; startListenRef.current?.(); }
         }, 150);

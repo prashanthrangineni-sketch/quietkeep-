@@ -442,7 +442,11 @@ export function AariaProvider({ children }) {
       }
 
       // LAYER 2 — the brain.
-      await askBrain(text);
+      // A turn Aaria opened to hear an ANSWER says so, and the server then
+      // never files a short non-answer as a brand-new keep (3 October 2026:
+      // "Which Vinay?" - "Surya Exactly." was saved as a note and became a
+      // second question about six Suryas).
+      await askBrain(text, auto ? { answering: true } : null);
     } finally {
       submittingRef.current = false;
     }

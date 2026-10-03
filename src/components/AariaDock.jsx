@@ -112,6 +112,10 @@ export default function AariaDock() {
             borderRadius: 16,
             boxShadow: '0 18px 44px rgba(0,0,0,.17)',
             padding: 16,
+            // A long list of names must scroll inside the panel, not push the
+            // panel off the top of the screen.
+            maxHeight: 'calc(100dvh - 190px - env(safe-area-inset-bottom, 0px))',
+            overflowY: 'auto',
             zIndex: 9998,
           }}
         >

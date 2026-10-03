@@ -1,0 +1,9 @@
+{
+  "en": ["hey", "hi", "hello"],
+  "hi": ["हे", "अरे", "हाय"],
+  "te": ["హే", "హలో", "ఓయ్"],
+  "_comments": {
+    "hi": "unverified by a native speaker",
+    "te": "unverified by a native speaker"
+  }
+}

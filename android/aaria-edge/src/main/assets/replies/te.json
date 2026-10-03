@@ -1,0 +1,16 @@
+{
+  "_comment": "unverified by a native speaker",
+  "ok": "సరే",
+  "done": "అయింది",
+  "stopped": "ఆపేశాను",
+  "cancelled": "రద్దు చేశాను",
+  "yes_ack": "సరే, కొనసాగిస్తాను",
+  "no_ack": "సరే, చేయను",
+  "repeat_prompt": "మళ్ళీ చెప్తాను",
+  "didnt_catch": "క్షమించండి, నాకు అర్థం కాలేదు",
+  "checking_online": "ఆన్‌లైన్‌లో చూస్తున్నాను",
+  "no_internet": "ఇప్పుడు ఇంటర్నెట్ లేదు",
+  "help_short": "నేను ఎలా సహాయం చేయగలను?",
+  "reminder_saved": "రిమైండర్ పెట్టాను",
+  "calling": "కాల్ చేస్తున్నాను"
+}

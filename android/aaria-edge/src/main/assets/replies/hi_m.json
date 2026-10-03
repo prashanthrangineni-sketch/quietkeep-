@@ -1,0 +1,16 @@
+{
+  "_comment": "unverified by a native speaker",
+  "ok": "ठीक है",
+  "done": "हो गया",
+  "stopped": "रोक दिया",
+  "cancelled": "रद्द कर दिया",
+  "yes_ack": "ठीक है, आगे बढ़ता हूँ",
+  "no_ack": "ठीक है, नहीं करूँगा",
+  "repeat_prompt": "फिर से बता रहा हूँ",
+  "didnt_catch": "क्षमा करें, मुझे समझ नहीं आया",
+  "checking_online": "ऑनलाइन चेक कर रहा हूँ",
+  "no_internet": "अभी इंटरनेट नहीं है",
+  "help_short": "मैं कैसे मदद कर सकता हूँ?",
+  "reminder_saved": "रिमाइंडर सेट हो गया",
+  "calling": "कॉल कर रहा हूँ"
+}

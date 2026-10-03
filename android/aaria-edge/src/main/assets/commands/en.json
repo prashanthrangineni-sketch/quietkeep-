@@ -1,0 +1,12 @@
+{
+  "remind_me": ["remind me", "set a reminder", "create a reminder", "remind me to"],
+  "call_contact": ["call contact", "make a call", "call someone", "phone call"],
+  "whats_next": ["what's next", "whats next", "next event", "what is next", "my next meeting"],
+  "read_today": ["read today", "read today's news", "what is the news", "today's summary"],
+  "stop": ["stop", "halt", "end", "terminate"],
+  "yes": ["yes", "yeah", "yep", "sure", "ok", "okay"],
+  "no": ["no", "nope", "nay", "cancel that"],
+  "help": ["help", "help me", "what can you do", "i need help"],
+  "repeat": ["repeat", "say that again", "repeat that", "what did you say"],
+  "cancel": ["cancel", "abort", "nevermind", "never mind", "stop that"]
+}

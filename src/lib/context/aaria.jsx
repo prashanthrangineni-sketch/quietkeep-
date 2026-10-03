@@ -278,7 +278,7 @@ export function AariaProvider({ children }) {
   }, []);
 
   // ── the brain call ─────────────────────────────────────────────────────────
-  const askBrain = useCallback(async (text) => {
+  const askBrain = useCallback(async (text, extra = null) => {
     if (!signedIn) {
       setError('Sign in first and I can act on that.');
       setStatus('idle');

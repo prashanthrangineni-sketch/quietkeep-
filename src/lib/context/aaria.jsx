@@ -219,6 +219,8 @@ export function AariaProvider({ children }) {
   const [micLive,    setMicLive]    = useState(false);
   // "Which Venu?" - the people Aaria is asking about, shown as buttons.
   const [choices,    setChoices]    = useState(null);
+  const choicesRef = useRef(null);
+  useEffect(() => { choicesRef.current = choices; }, [choices]);
   const lastListenRef   = useRef(null);  // sent with the next capture call
   const startListenRef  = useRef(null);  // startListening, for the follow-up loop
   const followUpTurns   = useRef(0);     // automatic re-listens in a row

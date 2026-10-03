@@ -217,6 +217,8 @@ export function AariaProvider({ children }) {
   // once - so the first word was spoken into a closed microphone ("Remind me
   // to buy milk" arrived as "Money to buy milk", 3 October 2026).
   const [micLive,    setMicLive]    = useState(false);
+  // "Which Venu?" - the people Aaria is asking about, shown as buttons.
+  const [choices,    setChoices]    = useState(null);
   const lastListenRef   = useRef(null);  // sent with the next capture call
   const startListenRef  = useRef(null);  // startListening, for the follow-up loop
   const followUpTurns   = useRef(0);     // automatic re-listens in a row

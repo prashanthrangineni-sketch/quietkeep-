@@ -175,7 +175,9 @@ function chosenLanguage() {
 export async function armVoiceReminders({ supabase, userId }) {
   try {
     const now = Date.now();
-    const upcoming = await dueBetween(supabase, userId, now, now + HORIZON_HOURS * 3600e3);
+    // One alarm per reminder: the row and the keep it came from are the same
+    // reminder, and arming both fired two alarms at the same second.
+    const upcoming = dedupeTwins(await dueBetween(supabase, userId, now, now + HORIZON_HOURS * 3600e3));
     if (!upcoming.length) return { channel: canSpeakWhenClosed() ? 'native-voice' : 'page-voice', armed: 0 };
 
     const lang = chosenLanguage();

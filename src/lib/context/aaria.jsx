@@ -847,10 +847,10 @@ export function AariaProvider({ children }) {
 
   const value = useMemo(() => ({
     status, open, setOpen, interim, transcript, reply, error, wakeInfo, hotwordOn,
-    notice, here, silent, signedIn, heardBy, micLive,
+    notice, here, silent, signedIn, heardBy, micLive, choices, choose,
     submit, say, stopAll, startListening, toggleListening,
     setError, setReply,
-  }), [status, open, interim, transcript, reply, error, wakeInfo, hotwordOn, notice, heardBy, micLive,
+  }), [status, open, interim, transcript, reply, error, wakeInfo, hotwordOn, notice, heardBy, micLive, choices, choose,
        here, silent, signedIn, submit, say, stopAll, startListening, toggleListening]);
 
   return <AariaContext.Provider value={value}>{children}</AariaContext.Provider>;

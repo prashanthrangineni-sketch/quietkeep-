@@ -21,6 +21,33 @@ public class AlarmReceiver extends BroadcastReceiver {
     private static final String TAG        = "QK_ALARM";
     private static final String CHANNEL_ID = "qk_reminders_alarm";
 
+    // THE COUNTDOWN NEEDS ITS OWN, LOUDER CHANNEL.
+    //
+    // 3 October 2026: "Call Akhilesh Munugala in one minute", phone locked. The
+    // reminder was spoken and nothing else happened - no countdown, no call.
+    //
+    // Android only lets an app put a screen up over the lock screen by itself in
+    // one way: a notification carrying a "full-screen intent", posted on a
+    // channel of HIGH importance. The notification below did carry one. But it
+    // was posted on the ordinary reminders channel above, which is created at
+    // DEFAULT importance for every reminder that is not an alarm-clock alarm -
+    // that is, for all of them, because nothing ever asks for the alarm type.
+    // On a DEFAULT channel Android quietly ignores the full-screen intent.
+    //
+    // What had been opening the countdown on a locked phone was the direct
+    // startActivity() further down. Android blocks that from the background
+    // unless the app holds one of a few exemptions. The build this phone ran
+    // until 1 October held one (notification access); the phone-test build
+    // leaves notification access out, and the exemption left with it.
+    //
+    // An existing channel cannot be made more important by the app afterwards,
+    // so this is a new channel rather than a change to the old one.
+    private static final String ACTION_CHANNEL_ID = "qk_actions_fullscreen";
+
+    // A countdown that is not started within this long is no longer offered.
+    // Tapping a two-hour-old banner must never start dialling.
+    public static final long ACTION_WINDOW_MS = 2 * 60 * 1000L;
+
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.d(TAG, "AlarmReceiver.onReceive: alarm fired");

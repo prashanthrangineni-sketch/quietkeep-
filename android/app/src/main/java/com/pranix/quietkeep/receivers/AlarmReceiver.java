@@ -272,38 +272,53 @@ public class AlarmReceiver extends BroadcastReceiver {
         Log.d(TAG, "AlarmReceiver: notification shown for reminder=" + reminderId);
     }
 
-    private void showNotificationWithFullScreenIntent(Context context, String reminderId, String reminderText, boolean isAlarmType, Intent countdownIntent) {
+    /**
+     * The banner that opens the countdown. Returns false when it could not be
+     * posted at all.
+     */
+    private boolean showNotificationWithFullScreenIntent(Context context, int notificationId, String reminderText,
+                                                         Intent countdownIntent, boolean fullScreenAllowed) {
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
+        if (nm == null) return false;
 
         int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-            ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+            ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             : PendingIntent.FLAG_UPDATE_CURRENT;
 
         PendingIntent pi = PendingIntent.getActivity(
-            context, reminderId.hashCode(), countdownIntent, flags
+            context, notificationId, countdownIntent, flags
         );
 
-        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("⏰ QuietKeep Scheduled Execution")
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ACTION_CHANNEL_ID)
+            .setContentTitle("QuietKeep - tap to start")
             .setContentText(reminderText)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            // Tapping the banner opens the same countdown. Before this the
+            // banner had nothing behind it: a tap did nothing at all.
+            .setContentIntent(pi)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setSound(soundUri)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setVibrate(new long[]{0, 300, 150, 300})
+            // Gone after two minutes. A stale banner that still dials when it
+            // is tapped an hour later would be worse than no banner.
+            .setTimeoutAfter(ACTION_WINDOW_MS)
             .setStyle(new NotificationCompat.BigTextStyle().bigText(reminderText));
 
-        if (canUseFullScreenIntent(context)) {
+        if (fullScreenAllowed) {
             builder.setFullScreenIntent(pi, true);
         } else {
-            Log.w(TAG, "showNotificationWithFullScreenIntent: Skipping setFullScreenIntent because permission is withheld.");
+            Log.w(TAG, "showNotificationWithFullScreenIntent: full-screen is withheld; the banner still opens the countdown when tapped.");
         }
 
-        nm.notify(Math.abs(reminderId.hashCode()) % 10000, builder.build());
-        Log.d(TAG, "AlarmReceiver: full screen notification shown for reminder=" + reminderId);
+        try {
+            nm.notify(notificationId, builder.build());
+            Log.d(TAG, "AlarmReceiver: countdown notification shown, id=" + notificationId);
+            return true;
+        } catch (Exception e) {
+            Log.w(TAG, "AlarmReceiver: could not post the countdown notification: " + e.getMessage());
+            return false;
+        }
     }
 }

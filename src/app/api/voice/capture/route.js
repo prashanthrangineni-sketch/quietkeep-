@@ -703,6 +703,37 @@ export async function POST(request) {
     }, { status: 200 })
   }
 
+  // ── AN ANSWER TURN THAT DID NOT ANSWER ───────────────────────────────────
+  // The phone says this turn was opened by Aaria to hear the answer to her
+  // own question (body.answering). Every real answer has already returned
+  // above: a time, a contact, a tap, a place. What is left is short and
+  // matched nothing - a mis-hearing. Ask again; write nothing.
+  if (isUnmatchedAnswer(openQuestion, text, { answering: body.answering === true })) {
+    const isContactQ = openQuestion.follow_up?.action_hint === 'disambiguate_contact'
+    supabase.from('audit_log').insert({
+      user_id: user.id,
+      action:  'keep.follow_up_unmatched',
+      service: 'voice_capture',
+      details: {
+        keep_id: openQuestion.id,
+        action_hint: openQuestion.follow_up?.action_hint || null,
+        heard: text.slice(0, 120),
+        listen: listenEvidence,
+      },
+    }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+
+    return NextResponse.json({
+      keep:              openQuestion,
+      intent:            openQuestion,
+      answered_question: false,
+      asked_again:       true,
+      follow_up:         openQuestion.follow_up,
+      choices:           isContactQ ? contactChoices(openQuestion.follow_up.contacts) : null,
+      reminder_at:       openQuestion.reminder_at || null,
+      tts_response:      askAgain(openQuestion),
+    }, { status: 200 })
+  }
+
   // [GEO] Log the outcome of geo intent resolution
   console.log('[GEO]', JSON.stringify({
     transcript_preview: text.slice(0, 60),

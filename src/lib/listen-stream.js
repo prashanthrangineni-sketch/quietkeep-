@@ -301,8 +301,22 @@ export function startListenStream({
     return [...finals, lastPartial].join(' ').replace(/\s+/g, ' ').trim();
   }
 
+  // WORDS FROM A SILENT ROOM ARE NOT WORDS. (3 October 2026)
+  // Aaria asked "Which Venu?", opened the microphone, nobody spoke - the
+  // loudest sample was 0.001 - and the recogniser still returned "I mean,"
+  // and then a pair of quotation marks. Both were saved as notes. A
+  // recogniser handed silence will guess; the microphone knows better. If it
+  // heard less than two tenths of a second of voice, nothing was said.
+  const MIN_SPEECH_FRAMES = 2;
+
   function succeed(text) {
     if (ended) return;
+    if (frames > 0 && speechFrames < MIN_SPEECH_FRAMES) {
+      ended = true;
+      clearAll(); releaseAudio(); closeSocket();
+      rejectFn(new ListenStreamError('nothing heard', { fallback: false }));
+      return;
+    }
     ended = true;
     clearAll(); releaseAudio(); closeSocket();
     resolveFn({

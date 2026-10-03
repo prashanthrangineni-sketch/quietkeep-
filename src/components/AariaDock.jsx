@@ -77,7 +77,9 @@ export default function AariaDock() {
           from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .qk-aaria-panel { animation: qkAariaRise .18s ease-out; }
+        .qk-aaria-panel { animation: qkAariaRise .18s ease-out; background: #f4f6fb; }
+        [data-theme="dark"] .qk-aaria-panel { background: #161b27; }
+        [data-theme="amoled"] .qk-aaria-panel { background: #0a0a0a; }
         .qk-aaria-orb:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
         @media (prefers-reduced-motion: reduce) {
           .qk-aaria-orb, .qk-aaria-panel { animation: none !important; }

@@ -497,6 +497,7 @@ export function AariaProvider({ children }) {
 
     rec.onstart = () => {
       listeningRef.current = true;
+      setMicLive(true);
       setStatus('listening');
       // A hard cap so a stuck recogniser cannot hold the microphone forever.
       // We take what we have rather than dropping the turn.

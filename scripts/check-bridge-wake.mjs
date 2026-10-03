@@ -29,13 +29,13 @@ let failed = 0;
 const ok = (cond, what) => { if (!cond) { failed++; console.error('FAILED: ' + what); } else { console.log('ok   ' + what); } };
 
 async function world({ acceptsText = false, mode = 'counter', listening = true } = {}) {
-  const st = { listening, starts: 0, stops: 0, wakes: [], mode };
+  const st = { listening, starts: 0, stops: 0, wakes: [], mode, refuse: '' };
   const pluginListeners = {};
   const domListeners = {};
   const aaria = {
     isBackgroundListening: async () => ({ listening: st.listening, paused: false }),
     stopBackgroundListening: async () => { st.stops++; st.listening = false; },
-    startBackgroundListening: async () => { st.starts++; st.listening = true; },
+    startBackgroundListening: async () => { st.starts++; if (st.refuse) throw new Error(st.refuse); st.listening = true; },
     setWakeName: async () => {},
     requestPermissions: async () => ({ microphone: 'granted' }),
     addListener: (name, fn) => { pluginListeners[name] = fn; },
@@ -46,6 +46,7 @@ async function world({ acceptsText = false, mode = 'counter', listening = true }
     addEventListener: (name, fn) => { (domListeners[name] = domListeners[name] || []).push(fn); },
     fetch: () => {},
     location: { href: '' },
+    document: { visibilityState: 'visible', addEventListener: (name, fn) => { (domListeners['doc:' + name] = domListeners['doc:' + name] || []).push(fn); } },
     __qkOnWake: function () { st.wakes.push(Array.from(arguments)); },
   };
   if (acceptsText) window.__qkOnWakeAcceptsText = true;
@@ -102,6 +103,34 @@ async function world({ acceptsText = false, mode = 'counter', listening = true }
   ok(w.st.stops === 1 && !w.st.listening, 'QuietKeep asks for the microphone (tap on the mic): it is given');
   await w.fire('qk_mic_release');
   ok(w.st.starts === 1 && w.st.listening, 'and listening starts again afterwards');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.refuse = 'not_in_foreground';
+  w.window.document.visibilityState = 'hidden';
+  await w.fire('qk_mic_release');
+  ok(w.st.starts === 1 && !w.st.listening, 'QuietKeep is not on screen: Android refuses the restart');
+  w.st.refuse = '';
+  w.window.document.visibilityState = 'visible';
+  await w.fire('doc:visibilitychange');
+  ok(w.st.starts === 2 && w.st.listening, 'QuietKeep comes back to the screen: listening starts again');
+  await w.fire('doc:visibilitychange');
+  ok(w.st.starts === 2, 'coming back to the screen again does not start it twice');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.refuse = 'microphone_permission_required';
+  await w.fire('qk_mic_release');
+  w.st.refuse = '';
+  await w.fire('doc:visibilitychange');
+  ok(w.st.starts === 1 && !w.st.listening, 'any other refusal: no further attempts');
+}
+{
+  const w = await world({ listening: false });
+  await w.fire('doc:visibilitychange');
+  ok(w.st.starts === 0, 'listening was off: coming back to the screen never turns it on');
 }
 if (failed) { console.error(failed + ' check(s) failed'); process.exit(1); }
 console.log('All wake-bridge checks passed.');

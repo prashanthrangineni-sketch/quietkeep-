@@ -212,6 +212,11 @@ export function AariaProvider({ children }) {
   // Which listener heard the last turn - shown in the dock so "did Aaria hear
   // me, or the phone?" has an answer on screen, not in a settings page.
   const [heardBy,    setHeardBy]    = useState(null);   // {path, finaliseMs} or null
+  // Is the microphone actually open yet? Opening it takes a few hundred
+  // milliseconds after the tap, and the screen used to say "Listening" at
+  // once - so the first word was spoken into a closed microphone ("Remind me
+  // to buy milk" arrived as "Money to buy milk", 3 October 2026).
+  const [micLive,    setMicLive]    = useState(false);
   const lastListenRef   = useRef(null);  // sent with the next capture call
   const startListenRef  = useRef(null);  // startListening, for the follow-up loop
   const followUpTurns   = useRef(0);     // automatic re-listens in a row

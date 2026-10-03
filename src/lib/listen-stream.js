@@ -317,6 +317,9 @@ export function startListenStream({
       peak: Math.round(loud.peak() * 1000) / 1000,
       floor: Math.round(loud.floor() * 10000) / 10000,
       stopReason,
+      // How long after the tap the microphone was actually open. Words said
+      // before this were never recorded.
+      micLiveMs,
     });
   }
 

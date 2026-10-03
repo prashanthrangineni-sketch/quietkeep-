@@ -27,7 +27,8 @@ import {
   buildExecutionTTS,
   extractDestination,
 } from '@/lib/intent-executor'
-import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation } from '@/lib/follow-up-answer'
+import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation, isRepeatOfOpenQuestion, isPendingQuestion } from '@/lib/follow-up-answer'
+import { contactChoices, spokenContactQuestion, narrowContacts } from '@/lib/contact-match'
 import { whyBrainRun, describeUnderstanding } from '@/lib/understanding-record'
 import { geocodePlace, cleanPlaceName, prettyPlaceName, isPersonalPlace } from '@/lib/geocode'
 import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep, anchorPoint } from '@/lib/geo-resolver'
@@ -160,7 +161,10 @@ export async function POST(request) {
   //
   // Placed before the idempotency key and before every write, so noise costs
   // one cheap scan and touches nothing.
-  const noiseReasons = impossibleSequences(text)
+  // A transcript with no letter or digit in it at all (3 October 2026: a keep
+  // whose whole content was a pair of quotation marks, made from a silent
+  // room) is not writing in any language.
+  const noiseReasons = /[\p{L}\p{N}]/u.test(text) ? impossibleSequences(text) : ['no words at all']
   if (noiseReasons.length) {
     console.warn('[capture] refused transcription noise:', noiseReasons[0], JSON.stringify(text.slice(0, 80)))
     supabase.from('audit_log').insert({
@@ -236,14 +240,54 @@ export async function POST(request) {
   // user believed they had saved, and nothing would show them why.
   const { data: openQuestion } = await supabase
     .from('keeps')
-    .select('id,content,voice_text,contact_name,contact_phone,follow_up,reminder_at,created_at,space_type,workspace_id')
+    .select('id,content,voice_text,contact_name,contact_phone,follow_up,reminder_at,created_at,space_type,workspace_id,location_name,geo_trigger_enabled')
     .eq('user_id', user.id)
     .not('follow_up', 'is', null)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  const answer = openQuestion ? readAnswer(openQuestion, text) : null
+  // A tap on one of the offered names arrives as answer_contact_id.
+  const tappedId = typeof body.answer_contact_id === 'string' ? body.answer_contact_id : null
+  const answer = openQuestion ? readAnswer(openQuestion, text, Date.now(), { contactId: tappedId }) : null
+
+  // ── THE QUESTION IS STILL OPEN AND THIS IS NOT YET AN ANSWER ─────────────
+  // Two cases that used to fall through and be filed as brand-new keeps:
+  //   1. "Venu Nz" when two contacts are called exactly that - ask again about
+  //      just those two (they are told apart by the end of the number).
+  //   2. The same sentence said again - someone retrying, not a second
+  //      reminder. Ask the same question again; save nothing.
+  if (!answer && openQuestion && isPendingQuestion(openQuestion)) {
+    const isContactQ = openQuestion.follow_up?.action_hint === 'disambiguate_contact'
+    const short = text.split(/\s+/).filter(Boolean).length <= 8
+    const narrowed = isContactQ && short ? narrowContacts(text, openQuestion.follow_up.contacts) : []
+    const repeat = isRepeatOfOpenQuestion(openQuestion, text)
+    if (narrowed.length >= 2 || repeat) {
+      let fu = openQuestion.follow_up
+      if (narrowed.length >= 2) {
+        fu = { ...fu, contacts: narrowed }
+        await supabase.from('keeps')
+          .update({ follow_up: fu, updated_at: new Date().toISOString() })
+          .eq('id', openQuestion.id).eq('user_id', user.id)
+      }
+      const choices = isContactQ ? contactChoices(fu.contacts) : null
+      const ask = isContactQ
+        ? (narrowed.length >= 2
+            ? `There are ${narrowed.length} called ${narrowed[0].name}. Tap the right number, or say first or second.`
+            : spokenContactQuestion(fu.suggested_name, fu.contacts))
+        : fu.follow_up
+      return NextResponse.json({
+        keep:              openQuestion,
+        intent:            openQuestion,
+        answered_question: false,
+        asked_again:       true,
+        follow_up:         fu,
+        choices,
+        reminder_at:       openQuestion.reminder_at || null,
+        tts_response:      ask,
+      }, { status: 200 })
+    }
+  }
 
   if (answer) {
     const patch = { follow_up: null, updated_at: new Date().toISOString() }
@@ -935,6 +979,11 @@ export async function POST(request) {
   if (followUp?.action_hint === 'disambiguate_contact' || followUp?.action_hint === 'add_contact') {
     tts_response = followUp.follow_up
   }
+  // "Which Venu?" is SAID short and SHOWN in full: three names aloud, every
+  // match as a button. Six names in one breath cannot be answered by ear.
+  if (followUp?.action_hint === 'disambiguate_contact' && Array.isArray(followUp.contacts)) {
+    tts_response = spokenContactQuestion(followUp.suggested_name, followUp.contacts)
+  }
   // v12: business TTS overrides generic TTS when resolver produced a confirmation
   if (bizPayload?.tts_response) tts_response = bizPayload.tts_response;
   // Feature 7: Contextual TalkBack — mentions both location and keep content
@@ -1149,6 +1198,9 @@ export async function POST(request) {
       ? { name: resolvedContact.name, phone: resolvedContact.phone }
       : null,
     follow_up:         followUp,
+    // The offered contacts as buttons (name, plus the end of the number when
+    // two share a name). Null unless Aaria is asking which person.
+    choices:           followUp?.action_hint === 'disambiguate_contact' ? contactChoices(followUp.contacts) : null,
     // Voice Brain fields (Phase 3 Step 1)
     needs_followup:    needsFollowup,      // true when confidence < 0.68 and intent unclear
     clarification:     clarification,      // question string to show the user

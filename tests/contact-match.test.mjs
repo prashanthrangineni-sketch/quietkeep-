@@ -78,3 +78,44 @@ test('answering "which Venu" resolves even though the keep already has a time', 
   assert.equal(a.kind, 'contact')
   assert.equal(a.contact.phone, '+914')
 })
+
+// ── "Which Venu?" made answerable (3 October 2026) ───────────────────────────
+import { contactChoices, spokenContactQuestion, narrowContacts } from '../src/lib/contact-match.js'
+
+const SIX_VENUS = [
+  { id: 'a', name: 'Venu Champapet', phone: '+919666522488' },
+  { id: 'b', name: 'Venu Nz', phone: '+910220716592' },
+  { id: 'c', name: 'Venu Nz', phone: '+919948046899' },
+  { id: 'd', name: 'Venu Menukonda', phone: '+919347569066' },
+  { id: 'e', name: 'Venugopal Chary Oyo Santhosh Oak', phone: '+919550657530' },
+  { id: 'f', name: 'Venukumar Home Theatre', phone: '+919704733047' },
+]
+
+test('same-named contacts are told apart by the end of the number; others are not cluttered', () => {
+  const labels = contactChoices(SIX_VENUS).map((c) => c.label)
+  assert.equal(labels[0], 'Venu Champapet')
+  assert.equal(labels[1], 'Venu Nz · …6592')
+  assert.equal(labels[2], 'Venu Nz · …6899')
+  assert.equal(labels.length, 6)
+})
+
+test('the spoken question names three people, not six', () => {
+  const q = spokenContactQuestion('Venu', SIX_VENUS)
+  assert.match(q, /^Which Venu\?/)
+  assert.match(q, /Venu Champapet, Venu Nz or Venu Menukonda/)
+  assert.match(q, /3 more on screen/)
+  assert.ok(q.length < 110, `too long to say: ${q.length} characters`)
+  assert.doesNotMatch(q, /Home Theatre/)
+})
+
+test('two people offered → both are said, nothing is "on screen"', () => {
+  const q = spokenContactQuestion('Venu', SIX_VENUS.slice(0, 1).concat(SIX_VENUS.slice(3, 4)))
+  assert.match(q, /Venu Champapet or Venu Menukonda\?/)
+  assert.doesNotMatch(q, /more on screen/)
+})
+
+test('"Venu Nz" with two Venu Nz narrows to those two; a unique or useless answer narrows nothing', () => {
+  assert.deepEqual(narrowContacts('Venu Nz', SIX_VENUS).map((c) => c.id), ['b', 'c'])
+  assert.deepEqual(narrowContacts('Menukonda', SIX_VENUS), [])
+  assert.deepEqual(narrowContacts('umbrella', SIX_VENUS), [])
+})

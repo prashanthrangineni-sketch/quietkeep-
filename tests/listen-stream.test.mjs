@@ -177,6 +177,23 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   check('the whole sentence comes back, with why the turn ended', r.ok && /Mansoorabad/.test(r.v.text) && r.v.stopReason === 'silence' && r.v.heardMs >= 3600, JSON.stringify(r.v));
 }
 
+// ── a silent room: the recogniser guesses, the microphone knows better ───────
+{
+  const w = makeWorld();
+  const s = startListenStream({ lang: 'en', silenceMs: 900, deps: w.deps });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.engine({ event: 'ready' });
+  for (let i = 0; i < 20; i++) { w.hush(); w.clock.advance(100); }
+  w.engine({ event: 'partial', text: 'I mean,' });      // a guess from silence
+  w.clock.advance(1500);
+  check('words guessed from silence do not start the "has he stopped?" clock', !w.json().some((m) => m.event === 'stop'));
+  w.engine({ event: 'final', text: 'I mean,' });
+  w.closeSocket();
+  const r = await res;
+  check('…and are never handed on as something the person said', !r.ok && r.e.reason === 'nothing heard' && r.e.fallback === false, JSON.stringify(r.ok ? r.v : r.e));
+}
+
 // ── the engine is asleep: fall back ──────────────────────────────────────────
 {
   const w = makeWorld();

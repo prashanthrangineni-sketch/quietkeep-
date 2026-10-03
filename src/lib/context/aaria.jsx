@@ -217,6 +217,8 @@ export function AariaProvider({ children }) {
   // once - so the first word was spoken into a closed microphone ("Remind me
   // to buy milk" arrived as "Money to buy milk", 3 October 2026).
   const [micLive,    setMicLive]    = useState(false);
+  // "Which Venu?" - the people Aaria is asking about, shown as buttons.
+  const [choices,    setChoices]    = useState(null);
   const lastListenRef   = useRef(null);  // sent with the next capture call
   const startListenRef  = useRef(null);  // startListening, for the follow-up loop
   const followUpTurns   = useRef(0);     // automatic re-listens in a row
@@ -276,7 +278,7 @@ export function AariaProvider({ children }) {
   }, []);
 
   // ── the brain call ─────────────────────────────────────────────────────────
-  const askBrain = useCallback(async (text) => {
+  const askBrain = useCallback(async (text, extra = null) => {
     if (!signedIn) {
       setError('Sign in first and I can act on that.');
       setStatus('idle');
@@ -305,6 +307,7 @@ export function AariaProvider({ children }) {
           // Where the phone is, when it already knows - so a place name is
           // matched to the one nearby, not the first one in the country.
           ...(() => { const p = lastKnownPosition(); return p ? { current_lat: p.latitude, current_lng: p.longitude } : {}; })(),
+          ...(extra || {}),
         }),
       });
       lastListenRef.current = null;   // it described THIS sentence only
@@ -317,6 +320,7 @@ export function AariaProvider({ children }) {
       const spoken = json.tts_response || json.assistant?.reply || 'Saved.';
       say(spoken);
       setTranscript('');
+      setChoices(Array.isArray(json.choices) && json.choices.length ? json.choices : null);
 
       // WHEN AARIA ASKS, SHE LISTENS FOR THE ANSWER.
       //
@@ -336,12 +340,12 @@ export function AariaProvider({ children }) {
         // The native voice cannot tell us when it stops, so there is a floor
         // estimated from the length of the sentence; where the end IS
         // observable (isSpeaking), we wait for that as well.
-        const atLeast = Math.min(10000, 1200 + String(spoken).length * 75);
+        const atLeast = Math.min(20000, 1200 + String(spoken).length * 75);
         if (followUpTimer.current) clearInterval(followUpTimer.current);
         followUpTimer.current = setInterval(() => {
           const waited = Date.now() - startedAt;
           if (waited < atLeast) return;
-          if (isSpeaking() && waited < 14000) return;
+          if (isSpeaking() && waited < 25000) return;
           clearInterval(followUpTimer.current); followUpTimer.current = null;
           if (!listeningRef.current) { autoTurnRef.current = true; startListenRef.current?.(); }
         }, 150);
@@ -375,6 +379,25 @@ export function AariaProvider({ children }) {
       setStatus('idle');
     }
   }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id]);
+
+  // A tap on one of the offered names. Exact - the id goes with it, so two
+  // contacts with the same name can be told apart.
+  const choose = useCallback((choice) => {
+    if (!choice) return;
+    if (followUpTimer.current) { clearInterval(followUpTimer.current); followUpTimer.current = null; }
+    if (listeningRef.current && recognitionRef.current) {
+      // Close the automatic listening turn without submitting it.
+      autoTurnRef.current = false;
+      try { recognitionRef.current.abort?.(); } catch {}
+      recognitionRef.current = null;
+      listeningRef.current = false;
+    }
+    try { cancelSpeech(); } catch {}
+    setChoices(null);
+    setInterim('');
+    setTranscript(choice.label || choice.name);
+    askBrain(choice.name, choice.id ? { answer_contact_id: choice.id } : null);
+  }, [askBrain]);
 
   // ── the single entry point for everything Aaria hears or is typed ──────────
   const submit = useCallback(async (raw) => {
@@ -565,6 +588,16 @@ export function AariaProvider({ children }) {
   // wait. Any failure before a word is heard drops to path B above, so the
   // worst case is exactly what the app did yesterday.
   const namesRef = useRef({ names: [], at: 0 });
+  // The list from last time, so the very first sentence after opening the app
+  // already has the names (3 October: every first turn went up with none).
+  useEffect(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('qk_spoken_names') || 'null');
+      if (Array.isArray(cached) && cached.length && !namesRef.current.names.length) {
+        namesRef.current = { names: cached.slice(0, 40), at: 0 };
+      }
+    } catch {}
+  }, []);
   const refreshNames = useCallback(async () => {
     if (!accessToken) return namesRef.current.names;
     if (Date.now() - namesRef.current.at < 10 * 60 * 1000) return namesRef.current.names;
@@ -577,7 +610,10 @@ export function AariaProvider({ children }) {
       });
       clearTimeout(kill);
       const json = await res.json().catch(() => null);
-      if (Array.isArray(json?.names)) namesRef.current = { names: json.names, at: Date.now() };
+      if (Array.isArray(json?.names)) {
+        namesRef.current = { names: json.names, at: Date.now() };
+        try { localStorage.setItem('qk_spoken_names', JSON.stringify(json.names.slice(0, 40))); } catch {}
+      }
     } catch {}
     return namesRef.current.names;
   }, [accessToken]);
@@ -627,7 +663,7 @@ export function AariaProvider({ children }) {
     });
     // stopAll() calls .stop() on whatever is here: for this path that means
     // "finish now and keep what was said", exactly like the browser path.
-    recognitionRef.current = { stop: session.stop };
+    recognitionRef.current = { stop: session.stop, abort: session.abort };
 
     session.result.then(
       ({ text, ...turn }) => {
@@ -646,6 +682,13 @@ export function AariaProvider({ children }) {
         setInterim('');
         const info = { path: err?.fallback ? 'phone' : 'none', reason: err?.reason || 'unknown' };
         recordLastListen(info);
+        // Silence after Aaria's own question is normal - say nothing. Silence
+        // after the person tapped the mic deserves a word, or it looks broken.
+        const wasAuto = autoTurnRef.current;
+        autoTurnRef.current = false;
+        if (!wasAuto && err?.reason === 'nothing heard') {
+          setError('I did not hear anything. Tap the mic and try again.');
+        }
         if (err?.fallback) {
           lastListenRef.current = info; setHeardBy(info);
           startBrowserListening();
@@ -804,10 +847,10 @@ export function AariaProvider({ children }) {
 
   const value = useMemo(() => ({
     status, open, setOpen, interim, transcript, reply, error, wakeInfo, hotwordOn,
-    notice, here, silent, signedIn, heardBy, micLive,
+    notice, here, silent, signedIn, heardBy, micLive, choices, choose,
     submit, say, stopAll, startListening, toggleListening,
     setError, setReply,
-  }), [status, open, interim, transcript, reply, error, wakeInfo, hotwordOn, notice, heardBy, micLive,
+  }), [status, open, interim, transcript, reply, error, wakeInfo, hotwordOn, notice, heardBy, micLive, choices, choose,
        here, silent, signedIn, submit, say, stopAll, startListening, toggleListening]);
 
   return <AariaContext.Provider value={value}>{children}</AariaContext.Provider>;

@@ -28,7 +28,7 @@ export default function AariaDock() {
   const {
     status, open, setOpen, interim, transcript, reply, error, hotwordOn, notice,
     here, silent, signedIn, submit, toggleListening, stopAll, setError,
-    heardBy, micLive,
+    heardBy, micLive, choices, choose,
   } = useAaria();
 
   const [typed, setTyped] = useState('');

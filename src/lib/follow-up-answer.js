@@ -275,6 +275,9 @@ export function placeConfirmation(place, canAlert) {
 export function isUnmatchedAnswer(keep, rawText, { answering = false, nowMs = Date.now() } = {}) {
   if (!answering) return false
   if (!isPendingQuestion(keep, nowMs)) return false
+  // A command that names something new is the person moving on, not a
+  // mis-heard answer. It is theirs to save.
+  if (startsNewInstruction(keep, rawText)) return false
   const words = String(rawText || '').trim().split(/\s+/).filter(Boolean)
   return words.length > 0 && words.length <= MAX_ANSWER_WORDS
 }

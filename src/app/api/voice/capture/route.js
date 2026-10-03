@@ -29,8 +29,8 @@ import {
 } from '@/lib/intent-executor'
 import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation } from '@/lib/follow-up-answer'
 import { whyBrainRun, describeUnderstanding } from '@/lib/understanding-record'
-import { geocodePlace, cleanPlaceName } from '@/lib/geocode'
-import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep } from '@/lib/geo-resolver'
+import { geocodePlace, cleanPlaceName, prettyPlaceName, isPersonalPlace } from '@/lib/geocode'
+import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep, anchorPoint } from '@/lib/geo-resolver'
 import { detectRouteIntent } from '@/lib/intent-parser'
 import { recordVoiceGeoIntent, getTimeBucket } from '@/lib/behavior-engine'
 import { recordActionPattern, recordSequence } from '@/lib/behavior-intelligence' // v14: Behavior Intel

@@ -1198,6 +1198,9 @@ export async function POST(request) {
       ? { name: resolvedContact.name, phone: resolvedContact.phone }
       : null,
     follow_up:         followUp,
+    // The offered contacts as buttons (name, plus the end of the number when
+    // two share a name). Null unless Aaria is asking which person.
+    choices:           followUp?.action_hint === 'disambiguate_contact' ? contactChoices(followUp.contacts) : null,
     // Voice Brain fields (Phase 3 Step 1)
     needs_followup:    needsFollowup,      // true when confidence < 0.68 and intent unclear
     clarification:     clarification,      // question string to show the user

@@ -23,6 +23,16 @@ const GEO_CHECK_INTERVAL = 30_000;
 const GEO_OPTIONS = { enableHighAccuracy: true, timeout: 15_000, maximumAge: 15_000 };
 
 let _watchId = null, _lastCheck = 0, _onTrigger = null, _getToken = null;
+let _lastPos = null; // { latitude, longitude, at } - the most recent fix, kept in memory only
+
+/**
+ * Where the phone last was, if we were told within `maxAgeMs`. Sent with a
+ * spoken reminder so "Mansurabad" means the one near the person. Never stored.
+ */
+export function lastKnownPosition(maxAgeMs = 30 * 60 * 1000) {
+  if (!_lastPos || Date.now() - _lastPos.at > maxAgeMs) return null;
+  return { latitude: _lastPos.latitude, longitude: _lastPos.longitude };
+}
 
 /**
  * @param onTriggerCallback (keep) => void, called once per keep the server

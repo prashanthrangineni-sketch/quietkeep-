@@ -39,7 +39,7 @@ async function world({ acceptsText = false, mode = 'counter', on = true, newEngi
                        holdThrows = false, releaseThrows = false, receiver = true } = {}) {
   const st = { on, waiting: on, starts: 0, stops: 0, wakes: [], mode, refuse: '', holds: 0, releases: 0,
                held: false, warns: 0, logs: 0, gate: null, statusGate: null, holdGate: null, holdThrows, releaseThrows,
-               stopThrows: false, timerThrows: false, storageThrows: false, nameGate: null, permGate: null, refuseOnce: '', statusThrows: false, permAsks: 0, startsInFlight: 0, maxStartsInFlight: 0 };
+               stopThrows: false, timerThrows: false, storageThrows: false, nameGate: null, permGate: null, refuseOnce: '', statusThrows: false, permAsks: 0, enginePaused: false, startsInFlight: 0, maxStartsInFlight: 0 };
   const pluginListeners = {};
   const domListeners = {};
   const timers = [];
@@ -47,7 +47,7 @@ async function world({ acceptsText = false, mode = 'counter', on = true, newEngi
   let queue = Promise.resolve();
   const inTurn = (fn) => () => { const p = queue.then(fn); queue = p.catch(() => {}); return p; };
   const aaria = {
-    isBackgroundListening: inTurn(async () => { if (st.statusGate) await st.statusGate; if (st.statusThrows) throw new Error('aaria_unavailable'); return { listening: st.on && st.waiting, paused: false }; }),
+    isBackgroundListening: inTurn(async () => { if (st.statusGate) await st.statusGate; if (st.statusThrows) throw new Error('aaria_unavailable'); return { listening: st.on && st.waiting && !st.enginePaused, paused: st.on && st.enginePaused }; }),
     stopBackgroundListening: inTurn(async () => { st.stops++; if (st.stopThrows) throw new Error('aaria_unavailable'); st.on = false; st.waiting = false; st.held = false; }),
     startBackgroundListening: () => {
       st.starts++;
@@ -88,7 +88,7 @@ async function world({ acceptsText = false, mode = 'counter', on = true, newEngi
   if (acceptsText) window.__qkOnWakeAcceptsText = true;
   new Function('window', 'console', 'return ' + src)(window, { log() { st.logs++; }, warn() { st.warns++; }, error() {} });
   const fire = async (name) => { (domListeners[name] || []).forEach((fn) => fn()); await tick(); };
-  window.dispatch = (name) => { (domListeners[name] || []).forEach((fn) => fn()); };   // two signals in the same instant
+  window.dispatch = (name) => { (domListeners[name] || []).forEach((fn) => fn()); };   // two signals in the same instant ("doc:..." for the document's)
   // As in the real engine: a bare wake switches it to "waiting for a command" before the app is told.
   const wake = async (ev) => { if (!ev.hasCommand) st.waiting = false; await pluginListeners.wakeWord(ev); await tick(); };
   // The bridge also sets a time limit on each thing it does (20 seconds; 2 minutes for turning on). Those are
@@ -529,11 +529,84 @@ for (const newEngine of [false, true]) {
   const w = await world({ newEngine: true, receiver: false });
   await w.fire('qk_mic_claim');                      // QuietKeep takes the microphone (a tap on the mic)...
   await w.wake({ hasCommand: false });               // ...and a wake that left the engine just before arrives
-  ok(w.st.held && w.st.releases === 0, 'newer engine, nobody takes the wake, QuietKeep has the microphone: the late wake does not end the pause');
+  ok(w.st.held && w.st.releases === 0 && w.st.stops === 0, 'newer engine, nobody takes the wake, QuietKeep has the microphone: the late wake does not end the pause');
   await w.fire('qk_mic_release');
   ok(!w.st.held && w.st.releases === 1, 'and the pause ends at the "free" signal as usual');
   await w.wake({ hasCommand: false });
   ok(w.st.releases === 2 && w.st.waiting, 'and after that, a wake nobody takes puts the engine back to waiting for the name again');
+}
+{
+  const w = await world({ receiver: false });
+  w.st.waiting = false;                              // the older engine has just heard a bare wake (it now says "not listening")...
+  await w.fire('qk_mic_claim');                      // ...QuietKeep asks for the microphone before that wake has arrived...
+  ok(w.st.stops === 0, 'older engine that says "not listening" after a bare wake: the request alone cannot tell it is on');
+  await w.wake({ hasCommand: false });               // ...and then the wake arrives, on a page where nobody takes it
+  ok(w.st.stops === 1 && !w.st.on, 'the wake proves the engine is on while QuietKeep wants the microphone: it is stopped now');
+  await w.fire('qk_mic_release');
+  ok(w.st.on, 'and listening comes back at the "free" signal');
+}
+{
+  const w = await world();
+  w.st.enginePaused = true;                          // the engine is on but paused by the phone (say, unplugged)
+  await w.fire('qk_mic_claim');
+  ok(w.st.stops === 1 && !w.st.on, 'older engine that is on but paused by the phone: it is still stopped for QuietKeep, so it cannot come back in the middle');
+  w.st.enginePaused = false;
+  await w.fire('qk_mic_release');
+  ok(w.st.on, 'and started again at the "free" signal');
+}
+for (const newEngine of [false, true]) {
+  const which = newEngine ? 'newer engine whose pause fails' : 'older engine';
+  const w = await world({ newEngine, holdThrows: newEngine });
+  await w.fire('qk_mic_claim');                      // stopped for QuietKeep; the three minutes run
+  const timer = w.liveTimers()[0];
+  let open; w.st.statusGate = new Promise((r) => { open = r; });
+  if (newEngine) w.st.holdGate = w.st.statusGate;
+  w.window.dispatch('qk_mic_claim');                 // QuietKeep asks again, and while that is being handled...
+  await tick();
+  timer.live = false; timer.fn();                    // ...the three minutes of the first request run out
+  await tick();
+  w.st.statusGate = null; w.st.holdGate = null; open(); await tick(); await tick(); await tick();
+  ok(!w.st.on && w.st.starts === 0, which + ': the timer runs out while a new request is being handled: listening is not started under it');
+  ok(w.liveTimers().length === 1 && w.liveTimers()[0].ms === 180000, which + ': and the three minutes of the new request are running');
+  await w.timePasses();
+  ok(w.st.on, which + ': and they still bring listening back');
+}
+{
+  const w = await world();
+  await w.fire('qk_mic_claim');
+  w.st.refuse = 'not_in_foreground';
+  w.window.document.visibilityState = 'hidden';
+  await w.fire('qk_mic_release');                    // refused: not on screen; waits for the return
+  w.st.refuse = '';
+  let open; w.st.statusGate = new Promise((r) => { open = r; });
+  w.window.dispatch('qk_mic_claim');                 // QuietKeep asks again, and while that is being handled...
+  await tick();
+  w.window.document.visibilityState = 'visible';
+  w.window.dispatch('doc:visibilitychange');         // ...QuietKeep comes back to the screen
+  await tick();
+  w.st.statusGate = null; open(); await tick(); await tick(); await tick();
+  ok(!w.st.on && w.st.starts === 1, 'back on screen while a new request is being handled: it waits its turn, and listening is not started under the request');
+}
+{
+  const w = await world();
+  await w.fire('qk_mic_claim');
+  w.window.document.visibilityState = 'hidden';
+  let open; w.st.gate = new Promise((r) => { open = r; });
+  w.st.refuseOnce = 'not_in_foreground';
+  w.window.dispatch('qk_mic_release');               // the restart is under way; Android is about to refuse it...
+  await tick();
+  w.window.document.visibilityState = 'visible';
+  w.window.dispatch('doc:visibilitychange');         // ...and QuietKeep comes back to the screen before the refusal arrives
+  await tick();
+  w.st.gate = null; open(); await tick(); await tick(); await tick();
+  ok(w.st.on && w.st.starts === 2, 'back on screen just before a "not on screen" refusal arrives: the return is still acted on, after the refusal');
+}
+{
+  const w = await world({ on: false });
+  const a = w.window.__QK_WAKE__.startHotword({ word: 'aaria' });
+  const b = w.window.__QK_WAKE__.startHotword({ word: 'aaria' });
+  await a; await b; await tick();
+  ok(w.st.on && w.st.starts === 1, 'turned on twice in one instant: started once');
 }
 {
   const w = await world();

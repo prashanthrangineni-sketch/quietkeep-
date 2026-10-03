@@ -663,7 +663,7 @@ export function AariaProvider({ children }) {
     });
     // stopAll() calls .stop() on whatever is here: for this path that means
     // "finish now and keep what was said", exactly like the browser path.
-    recognitionRef.current = { stop: session.stop };
+    recognitionRef.current = { stop: session.stop, abort: session.abort };
 
     session.result.then(
       ({ text, ...turn }) => {

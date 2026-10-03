@@ -19,6 +19,7 @@ import androidx.work.testing.TestWorkerBuilder;
 import com.pranix.aariaedge.CommandRecognizer;
 import com.pranix.aariaedge.ModelStore;
 import com.pranix.aariaedge.NightlySyncWorker;
+import com.pranix.aariaedge.SherpaVadScorer;
 import com.pranix.aariaedge.VadProcessor;
 import com.pranix.aariaedge.WakeWordMatcher;
 
@@ -37,9 +38,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
 
-import ai.onnxruntime.OrtEnvironment;
-import ai.onnxruntime.OrtSession;
-
 /**
  * The on-phone speech engine, run on a real Android system (an emulator in the automatic checks).
  *
@@ -54,8 +52,9 @@ import ai.onnxruntime.OrtSession;
  *      check, same checksums).
  *   2. Checks the publisher's model.json is still the publisher's.
  *   3. Loads the recogniser. This fails if the speech engine is not packed into the app.
- *   4. Runs the speech detector over five recordings. This fails if the two native libraries the
- *      engine is built from do not work together.
+ *   4. Runs the speech detector over five recordings, on the same native library as the recogniser.
+ *      (The first run of this test, 3 Oct 2026, failed here: the detector then used a second library
+ *      that could not share a file with the recogniser's.)
  *   5. Lets the recogniser write down the first 1.5 seconds of each, as the plugin does, and puts that
  *      through the wake check. Recordings that say "Hey Aaria ..." must wake; the others must not.
  *
@@ -110,9 +109,8 @@ public class AariaSpeechEngineTest {
         recognizer.setLanguage("en");
         assertNull("the recogniser did not load (engine_missing = not packed into the app)", recognizer.checkReady());
 
-        // 4. The speech detector, on the same native library.
-        OrtEnvironment env = OrtEnvironment.getEnvironment();
-        OrtSession vad = env.createSession(readAll(app.getAssets().open("silero_vad.onnx")), new OrtSession.SessionOptions());
+        // 4. The speech detector, on the same native library as the recogniser.
+        SherpaVadScorer vad = new SherpaVadScorer(app);
 
         // 5. Hear, then decide.
         WakeWordMatcher matcher = new WakeWordMatcher(Arrays.asList("hey", "hi", "hello"));
@@ -120,7 +118,7 @@ public class AariaSpeechEngineTest {
         int woke = 0;
         boolean oneBreathCommandKept = false;
         for (String name : WAKE) {
-            Heard h = hear(test, env, vad, recognizer, name);
+            Heard h = hear(test, vad, recognizer, name);
             boolean wake = matcher.match(h.first, "Aaria", null).isMatch;
             if (wake) woke++;
             String rest = matcher.stripWake(h.whole, "Aaria", null);
@@ -131,7 +129,7 @@ public class AariaSpeechEngineTest {
         }
         int falseWakes = 0;
         for (String name : NOT_WAKE) {
-            Heard h = hear(test, env, vad, recognizer, name);
+            Heard h = hear(test, vad, recognizer, name);
             boolean wake = matcher.match(h.first, "Aaria", null).isMatch;
             if (wake) falseWakes++;
             report.append("\n  ").append(name).append(" -> first 1.5 s: \"").append(h.first).append("\", wake: ").append(wake);
@@ -151,10 +149,11 @@ public class AariaSpeechEngineTest {
     }
 
     /** One recording through the speech detector and the recogniser, cut the way the plugin cuts it. */
-    private static Heard hear(Context test, OrtEnvironment env, OrtSession vad, CommandRecognizer recognizer,
+    private static Heard hear(Context test, SherpaVadScorer vad, CommandRecognizer recognizer,
                               String asset) throws Exception {
         short[] pcm = readWav(test.getAssets().open(asset));
-        VadProcessor detector = new VadProcessor(env, vad, 16000, 250, 600);   // the plugin's own settings
+        VadProcessor detector = new VadProcessor(vad, 16000, 250, 600);   // the plugin's own settings
+        detector.reset();                                                 // each recording starts from silence
         long startMs = -1;
         long endMs = -1;
         for (int at = 0; at + 512 <= pcm.length && endMs < 0; at += 512) {

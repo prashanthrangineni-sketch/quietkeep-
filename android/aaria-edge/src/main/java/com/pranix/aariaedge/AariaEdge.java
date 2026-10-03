@@ -9,9 +9,6 @@ import android.util.Log;
 import java.io.InputStream;
 import java.util.List;
 
-import ai.onnxruntime.OrtEnvironment;
-import ai.onnxruntime.OrtSession;
-
 public class AariaEdge {
     private static final String TAG = "AariaEdge";
     
@@ -22,8 +19,8 @@ public class AariaEdge {
     private volatile boolean isRecording = false;
     private volatile boolean isPaused = false;
 
-    private OrtEnvironment env;
-    private OrtSession session;
+    // Scores each 32 ms of sound for speech. Null when the speech engine could not be loaded.
+    private VadProcessor.WindowScorer scorer;
 
     public interface EventListener {
         void onSpeechStart(long t);
@@ -35,12 +32,17 @@ public class AariaEdge {
         this.context = context;
         this.listener = listener;
         try {
-            env = OrtEnvironment.getEnvironment();
-            byte[] modelBytes = loadModel("silero_vad.onnx");
-            session = env.createSession(modelBytes, new OrtSession.SessionOptions());
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to load ONNX model", e);
+            scorer = new SherpaVadScorer(context);
+        } catch (Throwable t) {
+            // Throwable, not Exception: a speech engine that is not packed into the app arrives as a LinkageError.
+            Log.e(TAG, "Failed to load the speech detector", t);
+            scorer = null;
         }
+    }
+
+    /** False when the speech detector could not be loaded. Listening cannot work then, and start() refuses. */
+    public boolean isSpeechDetectorReady() {
+        return scorer != null;
     }
 
     private byte[] loadModel(String filename) throws Exception {
@@ -54,6 +56,10 @@ public class AariaEdge {
     public void start(int sampleRate, int minSpeechMs, int minSilenceMs) throws Exception {
         if (isRecording) {
             return;
+        }
+        if (scorer == null) {
+            // Without the detector the microphone would stay open and nothing would ever be heard.
+            throw new Exception("speech_detector_unavailable");
         }
 
         int bufferSize = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
@@ -102,7 +108,8 @@ public class AariaEdge {
         int readSize = 512;
         short[] buffer = new short[readSize];
 
-        VadProcessor processor = new VadProcessor(env, session, sampleRate, minSpeechMs, minSilenceMs);
+        VadProcessor processor = new VadProcessor(scorer, sampleRate, minSpeechMs, minSilenceMs);
+        processor.reset(); // the scorer outlives one listening session; start each from silence
         long lastLevelTime = 0;
         
         int preRollSize = (int)(sampleRate * 0.3);

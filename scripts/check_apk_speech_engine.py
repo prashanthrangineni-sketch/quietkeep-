@@ -7,10 +7,10 @@ speech files, said "Ready", and could never turn one sound into words. A real-ph
 
 What it checks, for every APK given on the command line:
   1. the recogniser's native library is there for every processor type the APK supports;
-  2. libonnxruntime.so is the version sherpa-onnx was built for (an older copy under the same
-     file name also comes in with the VAD library, and the recogniser cannot run on that one);
-  3. the recogniser's Java classes, the VAD's Java classes and the Aaria plugin are DEFINED in the
-     app's code, not merely mentioned by it.
+  2. libonnxruntime.so is the version sherpa-onnx was built for, and the older onnxruntime Java
+     library is NOT there (its native half cannot share that file; see android/app/build.gradle);
+  3. the recogniser's and the speech detector's Java classes and the Aaria plugin are DEFINED in
+     the app's code, not merely mentioned by it.
 
 usage: python3 scripts/check_apk_speech_engine.py <apk> [<apk> ...]
 """
@@ -21,10 +21,14 @@ import zipfile
 
 # The onnxruntime that sherpa-onnx 1.13.8 ships and needs. Change both together.
 ORT_VERSION = "1.28.2"
-NATIVE_LIBS = ("libsherpa-onnx-jni.so", "libonnxruntime.so", "libonnxruntime4j_jni.so")
+NATIVE_LIBS = ("libsherpa-onnx-jni.so", "libonnxruntime.so")
+# Must NOT be packed: it needs a different libonnxruntime.so than the recogniser does.
+FORBIDDEN_LIBS = ("libonnxruntime4j_jni.so",)
 CLASSES = (
     "Lcom/k2fsa/sherpa/onnx/OfflineRecognizer;",
-    "Lai/onnxruntime/OrtEnvironment;",
+    "Lcom/k2fsa/sherpa/onnx/Vad;",
+    "Lcom/pranix/aariaedge/SherpaVadScorer;",
+    "Lkotlin/jvm/internal/Intrinsics;",
     "Lcom/pranix/aariaedge/AariaEdgePlugin;",
 )
 
@@ -60,6 +64,9 @@ def check(path):
             for lib in NATIVE_LIBS:
                 if f"lib/{abi}/{lib}" not in names:
                     problems.append(f"{abi}: {lib} is missing")
+            for lib in FORBIDDEN_LIBS:
+                if f"lib/{abi}/{lib}" in names:
+                    problems.append(f"{abi}: {lib} is packed, and it cannot work beside the recogniser")
             ort = f"lib/{abi}/libonnxruntime.so"
             if ort in names:
                 found = {m.group().decode() for m in re.finditer(

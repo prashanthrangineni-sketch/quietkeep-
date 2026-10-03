@@ -152,11 +152,16 @@ repositories {
 // first real-phone test found it.
 //
 // WHY IT IS UNPACKED RATHER THAN ADDED AS AN .aar
-// sherpa-onnx brings its own libonnxruntime.so (1.28.2). The VAD library (onnxruntime-android 1.18.0)
-// brings an older one under the same file name, and sherpa-onnx cannot run on the older one. Putting
-// sherpa's copy in the app's OWN jniLibs is meant to make it the one that gets packed. That is not
-// taken on trust: scripts/check_apk_speech_engine.py opens every finished APK and fails the build if
-// the recogniser, or the right libonnxruntime.so, is not inside.
+// The app only needs two things out of it: the Java classes and the native libraries. Unpacking puts
+// the native libraries in the app's OWN jniLibs, so nothing else can displace them.
+//
+// ONE NATIVE LIBRARY FOR THE WHOLE ENGINE
+// sherpa-onnx brings its own libonnxruntime.so (1.28.2). The speech detector used to run on a second
+// library (onnxruntime-android 1.18.0) that brings an older file under the same name; the two refuse
+// each other's copy, and no published version matches. The first run on a simulated phone failed on
+// exactly that. The detector now runs on sherpa-onnx's library too, so there is only one copy.
+// None of this is taken on trust: scripts/check_apk_speech_engine.py opens every finished APK and
+// fails the build if the recogniser, or the right libonnxruntime.so, is not inside.
 tasks.register('unpackSherpaOnnx', Copy) {
     dependsOn ':aaria-edge:downloadSherpaOnnx'
     from({ zipTree(file('../aaria-edge/libs/sherpa-onnx-1.13.8.aar')) }) {
@@ -167,11 +172,6 @@ tasks.register('unpackSherpaOnnx', Copy) {
 }
 android {
     sourceSets.main.jniLibs.srcDirs += ["${buildDir}/sherpa-onnx/jni"]
-    packaging {
-        jniLibs {
-            pickFirsts += ['**/libonnxruntime.so']
-        }
-    }
 }
 afterEvaluate {
     tasks.named('preBuild').configure { dependsOn 'unpackSherpaOnnx' }
@@ -203,10 +203,9 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     // For AariaSpeechEngineTest (the speech engine on a simulated phone). The aaria-edge module keeps
-    // these two libraries to itself, so the test has to name them; the versions are aaria-edge's own.
+    // this library to itself, so the test has to name it; the version is aaria-edge's own.
     androidTestImplementation 'androidx.work:work-runtime:2.10.1'
     androidTestImplementation 'androidx.work:work-testing:2.10.1'
-    androidTestImplementation 'com.microsoft.onnxruntime:onnxruntime-android:1.18.0'
     implementation project(':capacitor-cordova-android-plugins')
     implementation project(':aaria-edge')
 }

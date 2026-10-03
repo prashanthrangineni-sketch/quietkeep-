@@ -1,16 +1,33 @@
 package com.pranix.aariaedge;
 
-import java.nio.FloatBuffer;
-import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-import ai.onnxruntime.OnnxTensor;
-import ai.onnxruntime.OrtEnvironment;
-import ai.onnxruntime.OrtSession;
-
+/**
+ * Turns a stream of sound into "speech started" and "speech ended" events.
+ *
+ * It asks a {@link WindowScorer} how likely each 32 ms window is speech and applies the start and end
+ * thresholds and the minimum speech and silence lengths. It does not know which library does the scoring.
+ *
+ * WHY THE SCORER IS SEPARATE (3 Oct 2026)
+ * This class used to run the speech-detector model itself through the onnxruntime Java library, while
+ * the recogniser (sherpa-onnx) ran on its own, newer copy of the same native library. On a phone only
+ * one file named libonnxruntime.so can be packed, and the two halves refuse each other's copy
+ * ("cannot locate symbol OrtGetApiBase"). The first test on a simulated phone found it. On the phone the
+ * scorer is now {@link SherpaVadScorer}, which uses the recogniser's own library, so one copy serves both.
+ */
 public class VadProcessor {
+
+    /** Says how likely it is (0 to 1) that one window of sound is speech. Remembers what came before. */
+    public interface WindowScorer {
+        /**
+         * @param window512 exactly 512 samples at 16 kHz, each between -1 and 1. Read it, do not keep it.
+         */
+        float score(float[] window512) throws Exception;
+
+        /** Forget everything heard so far. */
+        void reset();
+    }
 
     public enum EventType {
         SPEECH_START,
@@ -29,14 +46,11 @@ public class VadProcessor {
         }
     }
 
-    private OrtEnvironment env;
-    private OrtSession session;
+    private final WindowScorer scorer;
     private int sampleRate;
     private int minSpeechMs;
     private int minSilenceMs;
 
-    private float[][][] state = new float[2][1][128];
-    private float[] contextBuffer = new float[64];
     private float[] windowBuffer = new float[512]; // Current window buffer
     private int windowPos = 0;
 
@@ -51,9 +65,8 @@ public class VadProcessor {
     // Track for tests
     public float maxProbability = 0f;
 
-    public VadProcessor(OrtEnvironment env, OrtSession session, int sampleRate, int minSpeechMs, int minSilenceMs) {
-        this.env = env;
-        this.session = session;
+    public VadProcessor(WindowScorer scorer, int sampleRate, int minSpeechMs, int minSilenceMs) {
+        this.scorer = scorer;
         this.sampleRate = sampleRate;
         this.minSpeechMs = minSpeechMs;
         this.minSilenceMs = minSilenceMs;
@@ -71,7 +84,7 @@ public class VadProcessor {
                 // Process the 512-sample window
                 long currentMs = startMs + (i / samplesPerMs);
                 try {
-                    float prob = runModel();
+                    float prob = scorer.score(windowBuffer);
                     if (prob > maxProbability) {
                         maxProbability = prob;
                     }
@@ -96,8 +109,6 @@ public class VadProcessor {
                     e.printStackTrace();
                 }
 
-                // Prepare next window: the last 64 samples become the context
-                System.arraycopy(windowBuffer, 512 - 64, contextBuffer, 0, 64);
                 windowPos = 0;
             }
         }
@@ -105,54 +116,10 @@ public class VadProcessor {
     }
 
     public void reset() {
-        state = new float[2][1][128];
-        contextBuffer = new float[64];
+        if (scorer != null) scorer.reset();
         windowPos = 0;
         isSpeechActive = false;
         speechStartTime = 0;
         lastSpeechTime = 0;
-    }
-
-    private float runModel() throws Exception {
-        int inputLength = 64 + 512; // context + window
-        float[] modelInput = new float[inputLength];
-        
-        System.arraycopy(contextBuffer, 0, modelInput, 0, 64);
-        System.arraycopy(windowBuffer, 0, modelInput, 64, 512);
-
-        long[] inputShape = {1, inputLength};
-        long[] stateShape = {2, 1, 128};
-        long[] srShape = {1};
-
-        FloatBuffer inputBuffer = FloatBuffer.wrap(modelInput);
-        FloatBuffer stateBuffer = FloatBuffer.allocate(256);
-        for (int i = 0; i < 2; i++) {
-            stateBuffer.put(state[i][0]);
-        }
-        stateBuffer.rewind();
-
-        try (
-            OnnxTensor inputTensor = OnnxTensor.createTensor(env, inputBuffer, inputShape);
-            OnnxTensor stateTensor = OnnxTensor.createTensor(env, stateBuffer, stateShape);
-            OnnxTensor srTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(new long[]{sampleRate}), srShape)
-        ) {
-            Map<String, OnnxTensor> inputs = Map.of(
-                "input", inputTensor,
-                "state", stateTensor,
-                "sr", srTensor
-            );
-
-            try (OrtSession.Result result = session.run(inputs)) {
-                float[][] out = (float[][]) result.get(0).getValue();
-                float[][][] stateOut = (float[][][]) result.get(1).getValue();
-
-                // Update state
-                for (int i = 0; i < 2; i++) {
-                    System.arraycopy(stateOut[i][0], 0, state[i][0], 0, 128);
-                }
-
-                return out[0][0];
-            }
-        }
     }
 }

@@ -46,7 +46,8 @@ dependencies {
     testImplementation fileTree(dir: 'libs', include: ['*.aar'])
     implementation project(':capacitor-android')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
-    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.18.0'
+    // No onnxruntime-android here: its native half cannot share libonnxruntime.so with sherpa-onnx's.
+    // The speech detector runs on sherpa-onnx's own library (SherpaVadScorer). The JVM copy below is for desk tests only.
     implementation 'androidx.work:work-runtime:2.10.1'
     testImplementation 'com.microsoft.onnxruntime:onnxruntime:1.18.0'
     testImplementation 'org.json:json:20210307'

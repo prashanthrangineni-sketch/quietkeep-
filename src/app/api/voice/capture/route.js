@@ -240,7 +240,7 @@ export async function POST(request) {
   // user believed they had saved, and nothing would show them why.
   const { data: openQuestion } = await supabase
     .from('keeps')
-    .select('id,content,voice_text,contact_name,contact_phone,follow_up,reminder_at,created_at,space_type,workspace_id')
+    .select('id,content,voice_text,contact_name,contact_phone,follow_up,reminder_at,created_at,space_type,workspace_id,location_name,geo_trigger_enabled')
     .eq('user_id', user.id)
     .not('follow_up', 'is', null)
     .order('created_at', { ascending: false })

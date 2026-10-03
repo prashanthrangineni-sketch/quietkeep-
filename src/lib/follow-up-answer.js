@@ -126,7 +126,14 @@ export function isPendingQuestion(keep, nowMs = Date.now()) {
  *
  * `null` is the safe answer and is returned for anything at all doubtful.
  */
-export function readAnswer(keep, rawText, nowMs = Date.now()) {
+export function readAnswer(keep, rawText, nowMs = Date.now(), opts = {}) {
+  // A TAP on one of the offered names. Exact, so it is checked before anything
+  // that reads words: two contacts both called "Venu Nz" can only be told
+  // apart this way.
+  if (opts.contactId && isPendingQuestion(keep, nowMs) && CONTACT_HINTS.has(keep.follow_up.action_hint)) {
+    const tapped = (keep.follow_up.contacts || []).find((c) => c && c.id === opts.contactId)
+    if (tapped) return { kind: 'contact', contact: tapped }
+  }
   if (!isPendingQuestion(keep, nowMs)) return null
 
   const text = String(rawText || '').trim()

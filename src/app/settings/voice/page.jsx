@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/context/auth';
 // Without this the language picker below is decoration: it POSTs the choice to
 // user_settings and never touches the value the speaking code actually reads.
 import { useLanguage } from '@/lib/context/language';
-import { availableWakeModes, getWakeMode, setWakeMode } from '@/lib/wake-word-engine';
+import { availableWakeModes, getWakeMode, setWakeMode, getWakeWord } from '@/lib/wake-word-engine';
 import { isWebHotwordEnabled, setWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 import { listenStreamWanted, setListenStreamWanted, readLastListen } from '@/lib/listen-stream';
 
@@ -41,6 +41,12 @@ export default function VoiceSettings() {
   const [msg, setMsg] = useState('');
   const [wakeModes, setWakeModes] = useState(['manual']);
   const [wake, setWake] = useState('manual');
+  // The on-phone wake-word engine (Aaria Edge) is in this app, but not set up yet.
+  const [edgePresent, setEdgePresent] = useState(false);
+  const [wakeName, setWakeName] = useState('Aaria');
+  // After set-up: the user's on-phone listening choices, and the plugin's own wording for the battery switch.
+  const [edgeChoices, setEdgeChoices] = useState(null);
+  const [edgeText, setEdgeText] = useState({});
   const [webWake, setWebWake] = useState(false);
   const [webWakePossible, setWebWakePossible] = useState(false);
   const [streamOn, setStreamOn] = useState(true);
@@ -60,8 +66,23 @@ export default function VoiceSettings() {
         const d = await r.json(); if (r.ok) setPrefs(d);
       } catch {}
       try { setWakeModes(availableWakeModes()); setWake(getWakeMode()); } catch {}
+      try {
+        setEdgePresent(!!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AariaEdge));
+        const w = String(getWakeWord() || 'aaria').trim();
+        setWakeName(w ? w.charAt(0).toUpperCase() + w.slice(1) : 'Aaria');
+      } catch {}
       try { setWebWakePossible(isHotwordSupported()); setWebWake(isWebHotwordEnabled()); } catch {}
       try { setStreamOn(listenStreamWanted()); setLastListen(readLastListen()); } catch {}
+      try {
+        const edge = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AariaEdge;
+        if (edge) {
+          const l = (localStorage.getItem('qk_voice_lang') || 'en').slice(0, 2).toLowerCase();
+          const n = await edge.getNotice({ lang: l === 'hi' || l === 'te' ? l : 'en' });
+          if (n && n.strings) setEdgeText(n.strings);
+          const c = await edge.getConsent();
+          if (c && c.consent && c.consent.choices) setEdgeChoices(c.consent.choices);
+        }
+      } catch {}
     })();
   }, [accessToken]);
 
@@ -78,6 +99,17 @@ export default function VoiceSettings() {
       });
       setMsg('Saved ✓'); setTimeout(() => setMsg(''), 1500);
     } catch { setMsg('Could not save'); } finally { setSaving(false); }
+  }
+
+  // The plugin replaces the whole set of choices, so send every choice back with only this one changed.
+  async function toggleWakeOnBattery(on) {
+    const edge = typeof window !== 'undefined' && window.Capacitor && window.Capacitor.Plugins
+      ? window.Capacitor.Plugins.AariaEdge : null;
+    if (!edge || !edgeChoices) return;
+    const before = edgeChoices;
+    const next = { ...before, wakeOnBattery: !!on };
+    setEdgeChoices(next);
+    try { await edge.updateChoices({ choices: next }); } catch { setEdgeChoices(before); }
   }
 
   // Ask Android to place the widget itself - no hunting through the launcher's
@@ -265,6 +297,15 @@ export default function VoiceSettings() {
               </span>
             </label>
           ))}
+          {edgePresent && wake === 'counter' && edgeChoices && edgeText.s2_wake_on_battery && (
+            <label style={opt}>
+              <input type="checkbox" checked={!!edgeChoices.wakeOnBattery} onChange={(e) => toggleWakeOnBattery(e.target.checked)} />
+              <span>
+                <b style={{ fontSize: 14 }}>{edgeText.s2_wake_on_battery}</b>
+                {edgeText.s2_wake_on_battery_hint && <small style={{ display: 'block', color: '#64748b', fontSize: 12, lineHeight: 1.5 }}>{edgeText.s2_wake_on_battery_hint}</small>}
+              </span>
+            </label>
+          )}
           {wakeModes.includes('invoke') && (
             <button onClick={pinWidget} style={{ ...btn, width: '100%', marginTop: 4 }}>
               ➕ Add “Talk to Aaria” to my home screen
@@ -273,7 +314,14 @@ export default function VoiceSettings() {
           {/* This line used to say always-on "Aaria" was available in the
               Android app. It was not - the detector is a placeholder - and
               the founder read that promise inside the Android app itself. */}
-          {!wakeModes.includes('counter') && (
+          {/* Android app with the on-phone engine: the way in to the consent and set-up screen.
+              Button wording approved by the founder on 2 Oct 2026. */}
+          {edgePresent && !wakeModes.includes('counter') && (
+            <Link href="/aaria-consent" style={{ ...btn, display: 'block', textAlign: 'center', textDecoration: 'none', marginTop: 4 }}>
+              Set up hands-free "Hey {wakeName}"
+            </Link>
+          )}
+          {!edgePresent && !wakeModes.includes('counter') && (
             <p style={hint}>
               Saying “Aaria” with the screen locked is not ready yet — it is being built.
               {wakeModes.includes('invoke')

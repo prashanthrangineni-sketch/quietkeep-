@@ -610,7 +610,10 @@ export function AariaProvider({ children }) {
       });
       clearTimeout(kill);
       const json = await res.json().catch(() => null);
-      if (Array.isArray(json?.names)) namesRef.current = { names: json.names, at: Date.now() };
+      if (Array.isArray(json?.names)) {
+        namesRef.current = { names: json.names, at: Date.now() };
+        try { localStorage.setItem('qk_spoken_names', JSON.stringify(json.names.slice(0, 40))); } catch {}
+      }
     } catch {}
     return namesRef.current.names;
   }, [accessToken]);

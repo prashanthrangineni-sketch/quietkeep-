@@ -655,7 +655,7 @@ export async function POST(request) {
       answer_kind:       'place',
       reminder:          null,
       reminder_at:       null,
-      tts_response:      placeConfirmation(geoData.location_name, !!geoData.geo_trigger_enabled),
+      tts_response:      placeConfirmation(prettyPlaceName(geoData.location_name), !!geoData.geo_trigger_enabled),
     }, { status: 200 })
   }
 

@@ -264,6 +264,7 @@ public class CountdownActivity extends Activity {
 
     private void cancelAction() {
         Log.d("QK_COUNTDOWN", "Action cancelled by user.");
+        AlarmTrail.note(this, "countdown_result", "cancelled");
         if (countDownTimer != null) {
             countDownTimer.cancel();
         }

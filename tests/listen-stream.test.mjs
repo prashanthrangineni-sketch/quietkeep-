@@ -137,6 +137,7 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   w.hush(); w.hush(); w.hush(); // learn the room
   w.speak(); w.speak();          // spoken BEFORE the engine is ready
   check('audio before "ready" is held, not sent', w.audioFrames() === 0);
+  check('"the mic is open" is announced once, on the first audio', live === 1);
   w.engine({ event: 'ready' });
   check('held audio goes out the moment the engine is ready', w.audioFrames() === 5);
   w.clock.advance(300);

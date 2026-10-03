@@ -109,7 +109,7 @@ async function dueBetween(supabase, userId, fromMs, toMs) {
     })),
     ...(keeps?.data || []).map((k) => ({
       id: `keep-${k.id}`, text: k.content, fireAt: new Date(k.reminder_at).getTime(),
-      contactName: k.contact_name, contactPhone: k.contact_phone,
+      contactName: k.contact_name, contactPhone: k.contact_phone, keepId: k.id,
     })),
   ]
     .filter((r) => r.text && Number.isFinite(r.fireAt))

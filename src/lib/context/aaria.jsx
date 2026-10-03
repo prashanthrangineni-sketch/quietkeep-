@@ -165,6 +165,10 @@ export function AariaProvider({ children }) {
         if (cancelled) return;
         console.log('[Aaria] reminders armed:', armed.armed, 'via', armed.channel);
 
+        // What the phone did the last time an alarm fired - so "it spoke but
+        // did not call" can be answered from a record instead of a guess.
+        reportLastAlarm({ supabase, userId: user.id }).catch(() => {});
+
         // Anything that came due while the phone was in a bag is read out now,
         // rather than being lost in silence.
         await speakMissedReminders({

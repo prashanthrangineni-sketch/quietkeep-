@@ -588,6 +588,16 @@ export function AariaProvider({ children }) {
   // wait. Any failure before a word is heard drops to path B above, so the
   // worst case is exactly what the app did yesterday.
   const namesRef = useRef({ names: [], at: 0 });
+  // The list from last time, so the very first sentence after opening the app
+  // already has the names (3 October: every first turn went up with none).
+  useEffect(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('qk_spoken_names') || 'null');
+      if (Array.isArray(cached) && cached.length && !namesRef.current.names.length) {
+        namesRef.current = { names: cached.slice(0, 40), at: 0 };
+      }
+    } catch {}
+  }, []);
   const refreshNames = useCallback(async () => {
     if (!accessToken) return namesRef.current.names;
     if (Date.now() - namesRef.current.at < 10 * 60 * 1000) return namesRef.current.names;

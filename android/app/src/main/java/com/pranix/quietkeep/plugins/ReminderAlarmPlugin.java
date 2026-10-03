@@ -49,6 +49,10 @@ public class ReminderAlarmPlugin extends Plugin {
             spec.smsMessage = call.getString("smsMessage");
             if (call.hasOption("torchEnable")) spec.torchEnable = call.getBoolean("torchEnable");
             if (call.hasOption("volumeDirection")) spec.volumeDirection = call.getInt("volumeDirection");
+            // The JavaScript has sent this since the first day; nothing here
+            // read it, so the countdown said "Calling +91..." and never the
+            // name. With six Vinays in the phonebook the name is the check.
+            spec.displayName = call.getString("display_name");
         }
 
         ReminderAlarmManager.scheduleReminder(

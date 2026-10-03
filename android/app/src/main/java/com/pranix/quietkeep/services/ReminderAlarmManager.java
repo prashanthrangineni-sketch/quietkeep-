@@ -110,9 +110,10 @@ public class ReminderAlarmManager {
             if (actionSpec.torchEnable != null) intent.putExtra("torch_enable", actionSpec.torchEnable);
             if (actionSpec.volumeDirection != null) intent.putExtra("volume_direction", actionSpec.volumeDirection);
             
-            // Derive displayName
+            // The name when we were given one; otherwise the best we have.
             String displayName = null;
-            if (actionSpec.phone != null) displayName = actionSpec.phone;
+            if (actionSpec.displayName != null && !actionSpec.displayName.trim().isEmpty()) displayName = actionSpec.displayName.trim();
+            else if (actionSpec.phone != null) displayName = actionSpec.phone;
             else if (actionSpec.whatsappPhone != null) displayName = actionSpec.whatsappPhone;
             else if (actionSpec.navigationQuery != null) displayName = actionSpec.navigationQuery;
             else if (actionSpec.appName != null) displayName = actionSpec.appName;

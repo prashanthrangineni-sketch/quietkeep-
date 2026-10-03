@@ -18,7 +18,8 @@ test('a real-looking answer becomes coordinates', async () => {
     return { ok: true, json: async () => [{ lat: '17.4512', lon: '78.3801', display_name: 'Chintal Kunta, Hyderabad' }] }
   }
   const pin = await geocodePlace('chintal kunta today', { fetchImpl, nearLat: 17.4, nearLng: 78.4 })
-  assert.deepEqual(pin, { latitude: 17.4512, longitude: 78.3801, display_name: 'Chintal Kunta, Hyderabad' })
+  // distance_km: how far the chosen pin is from where the person is (new 3 Oct).
+  assert.deepEqual(pin, { latitude: 17.4512, longitude: 78.3801, display_name: 'Chintal Kunta, Hyderabad', distance_km: 6.1 })
   assert.ok(url.includes('q=chintal+kunta'))
   assert.ok(url.includes('countrycodes=in'))
   assert.ok(url.includes('viewbox='))

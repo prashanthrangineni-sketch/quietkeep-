@@ -211,6 +211,10 @@ export function readAnswer(keep, rawText, nowMs = Date.now(), opts = {}) {
     return { kind: 'now' }
   }
 
+  // "Call Akhilesh in one minute" while a "when?" is open about something
+  // else: a new instruction that happens to contain a time.
+  if (startsNewInstruction(keep, text)) return null
+
   // A relative offset - "five minutes", "ఐదు నిమిషాల్లో", "paanch minute".
   // Checked before the full parse because it is the commonest answer by far
   // and resolves without touching entities.

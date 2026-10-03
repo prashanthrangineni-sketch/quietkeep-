@@ -64,11 +64,25 @@ public class AlarmReceiver extends BroadcastReceiver {
         createNotificationChannel(context, isAlarmType);
 
         String actionType = intent.getStringExtra("action_type");
-        if (actionType != null && !actionType.trim().isEmpty()) {
-            // Build the intent to launch CountdownActivity
+        boolean hasAction = actionType != null && !actionType.trim().isEmpty();
+        String firedPhone = intent.getStringExtra("phone");
+        AlarmTrail.begin(context, reminderId, hasAction ? actionType : "",
+                firedPhone != null && !firedPhone.trim().isEmpty());
+
+        if (hasAction) {
+            createActionChannel(context);
+            int notificationId = Math.abs(reminderId.hashCode()) % 10000;
+
+            // Build the intent to launch CountdownActivity. SINGLE_TOP so that
+            // being asked twice (the full-screen notification AND the direct
+            // start below) shows one countdown, not one that restarts.
             Intent countdownIntent = new Intent(context, com.pranix.quietkeep.activities.CountdownActivity.class);
-            countdownIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            
+            countdownIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            countdownIntent.putExtra("reminder_id", reminderId);
+            countdownIntent.putExtra("notification_id", notificationId);
+            countdownIntent.putExtra("fired_at_ms", System.currentTimeMillis());
+
             // Forward action spec properties
             countdownIntent.putExtra("action_type", actionType);
             countdownIntent.putExtra("phone", intent.getStringExtra("phone"));

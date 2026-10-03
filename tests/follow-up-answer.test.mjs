@@ -191,3 +191,44 @@ test('the confirmation says whether she can actually alert there', () => {
   assert.match(placeConfirmation('Mansoorabad', true), /when you reach Mansoorabad/)
   assert.match(placeConfirmation('Mansoorabad', false), /could not find it on the map/)
 })
+
+// ── a tap is exact; a repeat is not a second reminder (3 October 2026) ───────
+import { isRepeatOfOpenQuestion } from '../src/lib/follow-up-answer.js'
+
+const WHICH_VENU = {
+  action_hint: 'disambiguate_contact', suggested_name: 'Venu',
+  follow_up: 'Which Venu?',
+  contacts: [
+    { id: 'b', name: 'Venu Nz', phone: '+910220716592' },
+    { id: 'c', name: 'Venu Nz', phone: '+919948046899' },
+  ],
+}
+
+test('a tapped contact is chosen by id, even when two share the name', () => {
+  const keep = pending({ follow_up: WHICH_VENU })
+  const a = readAnswer(keep, 'Venu Nz', NOW, { contactId: 'c' })
+  assert.equal(a.kind, 'contact')
+  assert.equal(a.contact.phone, '+919948046899')
+  // Said, not tapped: still ambiguous, so no guess is made.
+  assert.equal(readAnswer(keep, 'Venu Nz', NOW), null)
+})
+
+test('a tap for someone who was not offered is ignored', () => {
+  const keep = pending({ follow_up: WHICH_VENU })
+  assert.equal(readAnswer(keep, 'Venu Nz', NOW, { contactId: 'zzz' }), null)
+})
+
+test('the same sentence said again is a retry, not a new reminder', () => {
+  const keep = pending({ follow_up: WHICH_VENU, voice_text: 'Remind me to call Venu when I reach home.', content: 'Remind me to call Venu when I reach home' })
+  assert.equal(isRepeatOfOpenQuestion(keep, 'remind me to call Venu when I reach home', NOW), true)
+  assert.equal(isRepeatOfOpenQuestion(keep, 'Remind me to call Suresh when I reach home', NOW), false)
+  assert.equal(isRepeatOfOpenQuestion(keep, 'Venu Nz', NOW), false)
+  assert.equal(isRepeatOfOpenQuestion(keep, 'remind me to call Venu when I reach home', NOW + 6 * 60 * 1000), false)
+})
+
+test('choosing who, on a place reminder, confirms the place', () => {
+  const keep = pending({ follow_up: WHICH_VENU, reminder_at: null, location_name: 'home', geo_trigger_enabled: true })
+  const said = answerConfirmation({ kind: 'contact', contact: { name: 'Venu Nz' } }, keep)
+  assert.match(said, /Venu Nz/)
+  assert.match(said, /when you reach home/)
+})

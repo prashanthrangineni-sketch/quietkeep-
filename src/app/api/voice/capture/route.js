@@ -27,7 +27,8 @@ import {
   buildExecutionTTS,
   extractDestination,
 } from '@/lib/intent-executor'
-import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation } from '@/lib/follow-up-answer'
+import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation, isRepeatOfOpenQuestion, isPendingQuestion } from '@/lib/follow-up-answer'
+import { contactChoices, spokenContactQuestion, narrowContacts } from '@/lib/contact-match'
 import { whyBrainRun, describeUnderstanding } from '@/lib/understanding-record'
 import { geocodePlace, cleanPlaceName, prettyPlaceName, isPersonalPlace } from '@/lib/geocode'
 import { resolveLocation, autoSaveLocation, shouldSuggestSave, createRouteKeep, anchorPoint } from '@/lib/geo-resolver'

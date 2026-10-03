@@ -646,7 +646,10 @@ export function AariaProvider({ children }) {
     setError('');
     setTranscript('');
     setInterim('');
-    setReply(null);
+    // The question stays on screen while she listens for its answer. Only a
+    // turn the person started themselves clears the last reply.
+    const answerTurn = autoTurnRef.current;
+    if (!answerTurn) { setReply(null); setChoices(null); }
     setOpen(true);
     listeningRef.current = true;
     setMicLive(false);

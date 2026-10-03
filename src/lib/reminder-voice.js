@@ -316,3 +316,38 @@ export async function speakMissedReminders({ supabase, userId, speak, prefix = '
     return 0;
   }
 }
+
+/**
+ * Send up what the phone noted the last time an alarm fired.
+ *
+ * WHY
+ * 3 October 2026: a scheduled call was spoken and not placed on a locked
+ * phone. The server showed the alarm had been armed with the number; nothing
+ * showed what the phone did next, because that was only ever written to the
+ * phone's own log. The app now keeps a few notes (AlarmTrail.java) and this
+ * puts them in the audit log, once for each new state.
+ *
+ * No number, no name, no reminder text. An older app build has no such method;
+ * that is caught and means "nothing to report".
+ */
+const REPORTED_KEY = 'qk_alarm_reported';
+
+export async function reportLastAlarm({ supabase, userId }) {
+  try {
+    const alarm = nativeAlarm();
+    if (!alarm || !userId) return null;
+    const report = alarmReport(await alarm.lastFire());
+    if (!Object.keys(report).length) return null;
+
+    const signature = reportSignature(report);
+    try { if (localStorage.getItem(REPORTED_KEY) === signature) return null; } catch {}
+
+    const row = { user_id: userId, action: 'reminder.alarm_fired', service: 'native_alarm', details: report };
+    const { error } = await supabase.from('audit_log').insert(row);
+    if (error) return null;
+    try { localStorage.setItem(REPORTED_KEY, signature); } catch {}
+    return report;
+  } catch {
+    return null;
+  }
+}

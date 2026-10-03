@@ -2,7 +2,9 @@
 // checks what it does with the microphone. Guards three promises:
 //   1. a bare wake gives the microphone to QuietKeep, and listening starts again when QuietKeep is done;
 //   2. a wake that carries a one-breath command hands over the words and does not touch the microphone;
-//   3. listening is never restarted after the person turned it off.
+//   3. listening is never restarted after the person turned it off;
+//   4. nothing fails silently: when the engine cannot pause, the bridge stops it instead and says so, and a
+//      stop that nobody ends is ended after three minutes.
 import fs from 'fs';
 import path from 'path';
 
@@ -28,66 +30,104 @@ const tick = () => new Promise((r) => setTimeout(r, 5));
 let failed = 0;
 const ok = (cond, what) => { if (!cond) { failed++; console.error('FAILED: ' + what); } else { console.log('ok   ' + what); } };
 
-async function world({ acceptsText = false, mode = 'counter', listening = true, newEngine = false } = {}) {
-  const st = { listening, starts: 0, stops: 0, wakes: [], mode, refuse: '', holds: 0, releases: 0 };
+// The pretend engine behaves like the real one where it matters:
+//  - after a bare wake the real engine reports listening:false (it is waiting for a command, not for the name),
+//    although its service is still on and still holds the microphone;
+//  - an older engine has no holdMicrophone/releaseMicrophone; 'proxy' gives it the two functions anyway, both
+//    refusing, which is what an app-side plugin wrapper does for a method the engine does not have.
+async function world({ acceptsText = false, mode = 'counter', on = true, newEngine = false, proxy = false,
+                       holdThrows = false, releaseThrows = false, receiver = true } = {}) {
+  const st = { on, waiting: on, starts: 0, stops: 0, wakes: [], mode, refuse: '', holds: 0, releases: 0,
+               held: false, warns: 0, logs: 0, gate: null, statusGate: null, holdGate: null, holdThrows, releaseThrows,
+               stopThrows: false, timerThrows: false, storageThrows: false, startsInFlight: 0, maxStartsInFlight: 0 };
   const pluginListeners = {};
   const domListeners = {};
+  const timers = [];
+  // The real engine takes the app's calls one at a time, in the order they were made. So does this one.
+  let queue = Promise.resolve();
+  const inTurn = (fn) => () => { const p = queue.then(fn); queue = p.catch(() => {}); return p; };
   const aaria = {
-    isBackgroundListening: async () => ({ listening: st.listening, paused: false }),
-    stopBackgroundListening: async () => { st.stops++; st.listening = false; },
-    startBackgroundListening: async () => { st.starts++; if (st.refuse) throw new Error(st.refuse); st.listening = true; },
+    isBackgroundListening: inTurn(async () => { if (st.statusGate) await st.statusGate; return { listening: st.on && st.waiting, paused: false }; }),
+    stopBackgroundListening: inTurn(async () => { st.stops++; if (st.stopThrows) throw new Error('aaria_unavailable'); st.on = false; st.waiting = false; st.held = false; }),
+    startBackgroundListening: () => {
+      st.starts++;
+      st.startsInFlight++; st.maxStartsInFlight = Math.max(st.maxStartsInFlight, st.startsInFlight);
+      return inTurn(async () => {
+        try {
+          if (st.gate) await st.gate;
+          if (st.refuse) throw new Error(st.refuse);
+          st.on = true; st.waiting = true;
+        } finally { st.startsInFlight--; }
+      })();
+    },
     setWakeName: async () => {},
     requestPermissions: async () => ({ microphone: 'granted' }),
     addListener: (name, fn) => { pluginListeners[name] = fn; },
   };
   if (newEngine) {
     // The engine that can pause inside its own listening service.
-    aaria.holdMicrophone = async () => { st.holds++; return { held: st.listening }; };
-    aaria.releaseMicrophone = async () => { st.releases++; };
+    aaria.holdMicrophone = inTurn(async () => { st.holds++; if (st.holdGate) await st.holdGate; if (st.holdThrows) throw new Error('hold_timer_failed'); st.held = st.on; if (st.on) st.waiting = true; return { held: st.on }; });
+    aaria.releaseMicrophone = inTurn(async () => { st.releases++; if (st.releaseThrows) throw new Error('aaria_unavailable'); st.held = false; if (st.on) st.waiting = true; });
+  } else if (proxy) {
+    aaria.holdMicrophone = inTurn(async () => { st.holds++; throw new Error('"AariaEdge.holdMicrophone()" is not implemented on android'); });
+    aaria.releaseMicrophone = inTurn(async () => { st.releases++; throw new Error('"AariaEdge.releaseMicrophone()" is not implemented on android'); });
   }
   const window = {
     Capacitor: { Plugins: { AariaEdge: aaria } },
-    localStorage: { getItem: (k) => (k === 'qk_wake_mode_v2' ? st.mode : null) },
+    localStorage: { getItem: (k) => { if (st.storageThrows) throw new Error('storage is not available'); return k === 'qk_wake_mode_v2' ? st.mode : null; } },
     addEventListener: (name, fn) => { (domListeners[name] = domListeners[name] || []).push(fn); },
+    setTimeout: (fn, ms) => { if (st.timerThrows) throw new Error('no timers'); timers.push({ fn, ms, live: true }); return timers.length; },
+    clearTimeout: (id) => { if (timers[id - 1]) timers[id - 1].live = false; },
     fetch: () => {},
     location: { href: '' },
     document: { visibilityState: 'visible', addEventListener: (name, fn) => { (domListeners['doc:' + name] = domListeners['doc:' + name] || []).push(fn); } },
-    __qkOnWake: function () { st.wakes.push(Array.from(arguments)); },
   };
+  // The receiver also notes whether the engine still had the microphone at the moment QuietKeep was told.
+  if (receiver) window.__qkOnWake = function () { st.wakes.push(Array.from(arguments)); st.engineHadMicWhenTold = st.on && !st.held; };
   if (acceptsText) window.__qkOnWakeAcceptsText = true;
-  new Function('window', 'console', 'return ' + src)(window, { log() {}, warn() {}, error() {} });
+  new Function('window', 'console', 'return ' + src)(window, { log() { st.logs++; }, warn() { st.warns++; }, error() {} });
   const fire = async (name) => { (domListeners[name] || []).forEach((fn) => fn()); await tick(); };
-  const wake = async (ev) => { await pluginListeners.wakeWord(ev); await tick(); };
-  return { st, window, fire, wake };
+  window.dispatch = (name) => { (domListeners[name] || []).forEach((fn) => fn()); };   // two signals in the same instant
+  // As in the real engine: a bare wake switches it to "waiting for a command" before the app is told.
+  const wake = async (ev) => { if (!ev.hasCommand) st.waiting = false; await pluginListeners.wakeWord(ev); await tick(); };
+  const liveTimers = () => timers.filter((t) => t.live);
+  // Fires every timer that is still set (whatever its length), as the passing of time would.
+  const threeMinutesPass = async () => { for (const t of liveTimers()) { t.live = false; t.fn(); } await tick(); };
+  return { st, window, fire, wake, liveTimers, threeMinutesPass, timePasses: threeMinutesPass };
 }
 
+// ---- older engine (no pause of its own): the listening service is stopped and started again ----
 {
   const w = await world();
   await w.wake({ id: 'asr_wakeword', score: 1, t: 1, hasCommand: false });
-  ok(w.st.stops === 1 && !w.st.listening, 'bare wake: the microphone is given to QuietKeep');
+  ok(w.st.stops === 1 && !w.st.on, 'bare wake: the microphone is given to QuietKeep (although the engine no longer says "listening")');
   ok(w.st.wakes.length === 1 && w.st.wakes[0][0] === 'aaria_edge' && w.st.wakes[0].length === 1, 'bare wake: QuietKeep is told, with no text');
+  ok(w.st.engineHadMicWhenTold === false, 'bare wake: QuietKeep is told only after the engine has given the microphone up');
   await w.fire('qk_mic_release');
-  ok(w.st.starts === 1 && w.st.listening, 'bare wake: listening starts again when QuietKeep frees the microphone');
+  ok(w.st.starts === 1 && w.st.on, 'bare wake: listening starts again when QuietKeep frees the microphone');
   await w.fire('qk_mic_release');
   ok(w.st.starts === 1, 'a second "free" signal does not start it twice');
+  ok(w.liveTimers().length === 0, 'no safety timer is left running afterwards');
 }
 {
   const w = await world({ acceptsText: true });
   await w.wake({ id: 'asr_wakeword', score: 1, t: 1, hasCommand: true, text: 'remind me to call home at five' });
-  ok(w.st.stops === 0 && w.st.listening, 'one breath: the microphone is not touched');
+  ok(w.st.stops === 0 && w.st.on, 'one breath: the microphone is not touched');
   ok(w.st.wakes.length === 1 && w.st.wakes[0][1] && w.st.wakes[0][1].text === 'remind me to call home at five', 'one breath: the words are handed to QuietKeep');
 }
 {
   const w = await world({ acceptsText: false });
   await w.wake({ id: 'asr_wakeword', score: 1, t: 1, hasCommand: true, text: 'remind me' });
-  ok(w.st.stops === 1 && w.st.wakes.length === 1 && w.st.wakes[0].length === 1, 'one breath, but QuietKeep has no receiver yet: treated as a bare wake');
+  ok(w.st.stops === 1 && w.st.wakes.length === 1 && w.st.wakes[0].length === 1, 'one breath, but QuietKeep has no receiver for words yet: treated as a bare wake');
 }
 {
   const w = await world();
   await w.wake({ hasCommand: false });
   await w.window.__QK_WAKE__.stopHotword();
   await w.fire('qk_mic_release');
-  ok(w.st.starts === 0 && !w.st.listening, 'turned off by the person after a wake: not restarted');
+  ok(w.st.starts === 0 && !w.st.on, 'turned off by the person after a wake: not restarted');
+  await w.threeMinutesPass();
+  ok(w.st.starts === 0 && !w.st.on, 'turned off by the person: the safety timer does not restart it either');
 }
 {
   const w = await world();
@@ -97,53 +137,382 @@ async function world({ acceptsText = false, mode = 'counter', listening = true, 
   ok(w.st.starts === 0, 'hands-free switched off in settings after a wake: not restarted');
 }
 {
-  const w = await world({ listening: false });
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.mode = 'manual';
+  await w.threeMinutesPass();
+  ok(w.st.starts === 0, 'hands-free switched off in settings: the safety timer does not restart it');
+}
+{
+  const w = await world({ on: false });
   await w.fire('qk_mic_claim');
   await w.fire('qk_mic_release');
   ok(w.st.stops === 0 && w.st.starts === 0, 'listening was off: a "free" signal never turns it on');
+  ok(w.liveTimers().length === 0, 'listening was off: no safety timer is set');
 }
 {
   const w = await world();
   await w.fire('qk_mic_claim');
-  ok(w.st.stops === 1 && !w.st.listening, 'QuietKeep asks for the microphone (tap on the mic): it is given');
+  ok(w.st.stops === 1 && !w.st.on, 'QuietKeep asks for the microphone (tap on the mic): it is given');
   await w.fire('qk_mic_release');
-  ok(w.st.starts === 1 && w.st.listening, 'and listening starts again afterwards');
+  ok(w.st.starts === 1 && w.st.on, 'and listening starts again afterwards');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  ok(w.liveTimers().length === 1 && w.liveTimers()[0].ms === 180000, 'after a stop, a three-minute safety timer is set');
+  await w.fire('qk_mic_claim');
+  ok(w.liveTimers().length === 1 && w.st.stops === 1, 'another "I need the microphone" starts the three minutes again; nothing is stopped twice');
+  await w.threeMinutesPass();
+  ok(w.st.starts === 1 && w.st.on, 'nobody said "free": listening starts again by itself after three minutes');
+  await w.fire('qk_mic_release');
+  ok(w.st.starts === 1, 'a late "free" signal does not start it twice');
 }
 {
   const w = await world();
   await w.wake({ hasCommand: false });
   w.st.refuse = 'not_in_foreground';
   w.window.document.visibilityState = 'hidden';
+  const logsBefore = w.st.logs;
   await w.fire('qk_mic_release');
-  ok(w.st.starts === 1 && !w.st.listening, 'QuietKeep is not on screen: Android refuses the restart');
+  ok(w.st.starts === 1 && !w.st.on, 'QuietKeep is not on screen: Android refuses the restart');
+  ok(w.st.logs > logsBefore && w.st.warns === 0, 'and that is noted in the log as something that will be tried again, not as a fault');
+  await w.fire('doc:visibilitychange');
+  ok(w.st.starts === 1, 'a screen change while still not on screen does not try again');
   w.st.refuse = '';
   w.window.document.visibilityState = 'visible';
   await w.fire('doc:visibilitychange');
-  ok(w.st.starts === 2 && w.st.listening, 'QuietKeep comes back to the screen: listening starts again');
+  ok(w.st.starts === 2 && w.st.on, 'QuietKeep comes back to the screen: listening starts again');
   await w.fire('doc:visibilitychange');
   ok(w.st.starts === 2, 'coming back to the screen again does not start it twice');
 }
 {
   const w = await world();
-  await w.wake({ hasCommand: false });
-  w.st.refuse = 'microphone_permission_required';
-  await w.fire('qk_mic_release');
-  w.st.refuse = '';
+  await w.fire('qk_mic_claim');
+  w.window.document.visibilityState = 'hidden';
   await w.fire('doc:visibilitychange');
-  ok(w.st.starts === 1 && !w.st.listening, 'any other refusal: no further attempts');
+  w.window.document.visibilityState = 'visible';
+  await w.fire('doc:visibilitychange');
+  ok(w.st.starts === 0 && !w.st.on, 'leaving and returning in the middle of a conversation does not take the microphone back early');
 }
 {
-  const w = await world({ listening: false });
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.refuse = 'aaria_unavailable';
+  await w.fire('qk_mic_release');
+  ok(w.st.starts === 1 && !w.st.on && w.st.warns >= 1, 'the engine refuses the restart for another reason: it is written to the log');
+  ok(w.liveTimers().length === 1 && w.liveTimers()[0].ms === 30000, 'and another try is set for half a minute later');
+  await w.fire('doc:visibilitychange');
+  ok(w.st.starts === 1, 'coming back to the screen is not what retries this kind of refusal');
+  w.st.refuse = '';
+  await w.timePasses();
+  ok(w.st.starts === 2 && w.st.on && w.liveTimers().length === 0, 'the second try succeeds: listening is back, no timer left');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.refuse = 'aaria_unavailable';
+  await w.fire('qk_mic_release');
+  await w.timePasses();
+  await w.timePasses();
+  await w.timePasses();
+  await w.timePasses();
+  ok(w.st.starts === 3 && !w.st.on && w.liveTimers().length === 0, 'the engine keeps refusing: three tries in all, then no more');
+  w.st.refuse = '';
+  await w.fire('qk_mic_release');
+  ok(w.st.starts === 3, 'after giving up, a "free" signal does not start it');
+  await w.window.__QK_WAKE__.startHotword({ word: 'aaria' });
+  ok(w.st.on, 'turning listening on (QuietKeep does this when it is opened) brings it back');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.refuse = 'Some other error from Android';
+  w.window.document.visibilityState = 'hidden';
+  await w.fire('qk_mic_release');
+  ok(w.liveTimers().length === 0 && w.st.starts === 1, 'refused while QuietKeep is not on screen, whatever the words of the refusal: no timer');
+  w.st.refuse = '';
+  w.window.document.visibilityState = 'visible';
+  await w.fire('doc:visibilitychange');
+  ok(w.st.starts === 2 && w.st.on, 'and it is tried again when QuietKeep comes back to the screen');
+}
+{
+  const w = await world({ on: false });
   await w.fire('doc:visibilitychange');
   ok(w.st.starts === 0, 'listening was off: coming back to the screen never turns it on');
 }
 {
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  let open; w.st.gate = new Promise((r) => { open = r; });
+  await w.fire('qk_mic_release');            // the restart begins and is still in flight...
+  await w.fire('qk_mic_claim');              // ...when QuietKeep needs the microphone again
+  open(); await tick(); await tick();
+  ok(!w.st.on && w.st.stops >= 2 && w.liveTimers().length === 1, 'QuietKeep asks again while listening is being started: it is stopped again, with the safety timer set');
+  w.st.gate = null;
+  await w.fire('qk_mic_release');
+  ok(w.st.on, 'and it comes back at the next "free" signal');
+}
+{
+  const w = await world({ receiver: false });
+  await w.wake({ hasCommand: false });
+  ok(w.st.stops === 1 && w.liveTimers().length === 1, 'older engine, a page with nobody to take the wake: it is stopped (it could not be told from "off" otherwise), with the safety timer set');
+  await w.fire('qk_mic_claim');
+  ok(w.st.stops === 1 && !w.st.on, 'and a tap on the mic there finds the microphone free');
+  await w.timePasses();
+  ok(w.st.starts === 1 && w.st.on, 'and listening is back after three minutes');
+}
+{
+  const w = await world({ receiver: false });
+  await w.wake({ hasCommand: false });
+  await w.window.__QK_WAKE__.startHotword({ word: 'aaria' });
+  ok(w.st.on && w.liveTimers().length === 0, 'older engine, nobody took the wake: QuietKeep turning listening on brings it straight back');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.refuse = 'not_in_foreground';          // Android says "not on screen" although the page believes it is
+  const logsBefore = w.st.logs;
+  await w.fire('qk_mic_release');
+  ok(w.liveTimers().length === 0 && w.st.warns === 0 && w.st.logs > logsBefore, 'Android says QuietKeep is not on screen while the page thinks it is: no timer; noted in the log');
+  w.st.refuse = '';
+  await w.fire('doc:visibilitychange');
+  ok(w.st.starts === 2 && w.st.on, 'and it is tried again at the next return to the screen');
+}
+// ---- the person's own on or off wins, even over something the bridge is in the middle of ----
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  let open; w.st.gate = new Promise((r) => { open = r; });
+  await w.fire('qk_mic_release');            // the restart is in flight
+  await w.fire('qk_mic_claim');              // QuietKeep needs the microphone again
+  const off = w.window.__QK_WAKE__.stopHotword();   // the person turns listening off
+  open(); await off; await tick(); await tick();
+  w.st.gate = null;
+  ok(!w.st.on, 'turned off while a restart was in flight: it is off');
+  await w.fire('qk_mic_release');
+  await w.timePasses();
+  ok(!w.st.on && w.st.starts === 1, 'and neither a "free" signal nor the timer turns it on again');
+}
+{
+  const w = await world();
+  let open; w.st.statusGate = new Promise((r) => { open = r; });
+  await w.fire('qk_mic_claim');              // the bridge is asking the engine whether it is listening
+  w.st.statusGate = null;
+  const off = w.window.__QK_WAKE__.stopHotword();   // the person turns listening off before the answer comes
+  await tick();
+  open(); await off; await tick(); await tick();
+  await w.fire('qk_mic_release');
+  await w.timePasses();
+  ok(!w.st.on && w.st.starts === 0 && w.liveTimers().length === 0, 'turned off while the bridge was asking the engine: nothing turns it on again');
+}
+{
+  const w = await world({ newEngine: true, holdThrows: true });
+  let open; w.st.holdGate = new Promise((r) => { open = r; });
+  const waking = w.wake({ hasCommand: false });     // the pause is asked for, and will be refused
+  await tick();
+  w.st.holdGate = null;
+  const off = w.window.__QK_WAKE__.stopHotword();    // the person turns listening off at that moment
+  await tick();
+  open(); await off; await waking; await tick();
+  await w.fire('qk_mic_release');
+  await w.timePasses();
+  ok(!w.st.on && w.st.starts === 0 && w.liveTimers().length === 0, 'turned off while a pause was being refused: nothing turns it on again');
+  ok(w.st.wakes.length === 0, 'and QuietKeep is not told of a wake once listening has been turned off');
+}
+{
+  const w = await world();
+  await w.window.__QK_WAKE__.stopHotword();          // the person turns listening off
+  await w.wake({ hasCommand: false });               // a wake that was still on its way arrives afterwards
+  ok(w.st.wakes.length === 0, 'a wake that arrives after listening was turned off is not passed to QuietKeep');
+  await w.fire('qk_mic_release');
+  await w.timePasses();
+  ok(!w.st.on && w.st.starts === 0 && w.liveTimers().length === 0, 'and it never leads to listening being started again');
+  await w.wake({ hasCommand: true, text: 'what is the time' });
+  ok(w.st.wakes.length === 0, 'a late one-breath wake is dropped as well');
+}
+{
+  const w = await world({ newEngine: true });
+  await w.window.__QK_WAKE__.stopHotword();
+  await w.wake({ hasCommand: false });
+  ok(w.st.wakes.length === 0 && w.st.holds === 0, 'newer engine: a wake that arrives after listening was turned off is dropped');
+}
+{
+  const w = await world();
+  await w.window.__QK_WAKE__.stopHotword();
+  await w.window.__QK_WAKE__.startHotword({ word: 'aaria' });
+  await w.wake({ hasCommand: false });
+  ok(w.st.wakes.length === 1, 'turned off and on again: wakes are passed on again');
+}
+{
+  const w = await world({ proxy: true, receiver: false });
+  let open; w.st.gate = null;
+  const waking = w.wake({ hasCommand: false });      // nobody takes the wake; "back to the name" is refused...
+  const off = w.window.__QK_WAKE__.stopHotword();    // ...and the person turns listening off in that moment
+  await off; await waking; await tick();
+  await w.fire('qk_mic_release');
+  await w.timePasses();
+  ok(!w.st.on && w.st.starts === 0 && w.liveTimers().length === 0, 'turned off while a wake nobody takes was being handled: nothing turns it on again');
+}
+{
+  const w = await world({ newEngine: true, holdThrows: true });
+  await w.wake({ hasCommand: false });               // the pause fails: the engine is stopped instead
+  w.st.holdThrows = false;
+  w.window.dispatch('qk_mic_release');               // "free"...
+  w.window.dispatch('qk_mic_claim');                 // ...and at once "I need the microphone" again
+  await tick(); await tick(); await tick();
+  ok(!(w.st.on && !w.st.held), 'free, then needed again at once: the engine does not end up listening while QuietKeep has the microphone');
+  await w.fire('qk_mic_release');
+  ok(w.st.on && !w.st.held, 'and it comes back at the next "free" signal');
+}
+{
+  const w = await world({ newEngine: true, holdThrows: true });
+  await w.wake({ hasCommand: false });               // the pause fails: the engine is stopped instead
+  w.st.holdThrows = false;
+  w.window.dispatch('qk_mic_release');               // "free"...
+  w.window.dispatch('qk_mic_claim');                 // ...needed again...
+  w.window.dispatch('qk_mic_release');               // ...and free again, all while the start is in flight
+  await tick(); await tick(); await tick();
+  ok(w.st.on && !w.st.held && w.liveTimers().length === 0, 'free, needed, free again in one instant: listening is back at once, not after three minutes');
+}
+{
+  const w = await world({ newEngine: true, holdThrows: true });
+  await w.wake({ hasCommand: false });               // the pause fails: the engine is stopped instead
+  w.st.refuse = 'not_in_foreground';
+  w.window.document.visibilityState = 'hidden';
+  await w.fire('qk_mic_release');                    // refused: QuietKeep is not on screen
+  w.st.refuse = ''; w.st.holdThrows = false;
+  await w.fire('qk_mic_claim');                      // QuietKeep needs the microphone again (still off screen)
+  w.window.document.visibilityState = 'visible';
+  await w.fire('doc:visibilitychange');              // and comes back to the screen while it has the microphone
+  ok(!w.st.on, 'back on screen in the middle of a new conversation: listening is not started under it');
+  await w.fire('qk_mic_release');
+  ok(w.st.on, 'and it is started when that conversation ends');
+}
+{
+  const w = await world();
+  await w.fire('qk_mic_claim');
+  w.st.refuse = 'not_in_foreground';
+  w.window.document.visibilityState = 'hidden';
+  await w.fire('qk_mic_release');                    // refused: not on screen
+  w.st.refuse = '';
+  await w.fire('qk_mic_claim');                      // older engine: a new request while it is still stopped
+  w.window.document.visibilityState = 'visible';
+  await w.fire('doc:visibilitychange');
+  ok(!w.st.on && w.st.starts === 1, 'older engine, back on screen in the middle of a new conversation: listening is not started under it');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.refuse = 'aaria_unavailable';
+  await w.fire('qk_mic_release');                    // first refusal
+  w.st.refuse = '';
+  await w.timePasses();                              // second try succeeds
+  await w.wake({ hasCommand: false });               // a new conversation later
+  w.st.refuse = 'aaria_unavailable';
+  await w.fire('qk_mic_release');
+  await w.timePasses();
+  ok(w.liveTimers().length === 1, 'after a success the count of tries starts again: a new refusal gets its full three tries');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.refuse = 'aaria_unavailable';
+  await w.fire('qk_mic_release');
+  await w.timePasses();                              // two refusals so far
+  await w.fire('qk_mic_claim');                      // a new request: the count starts again
+  await w.fire('qk_mic_release');                    // refused: this is try one of the new count
+  ok(w.liveTimers().length === 1 && w.liveTimers()[0].ms === 30000, 'a new "I need the microphone" starts the count of tries again');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.mode = 'manual';
+  await w.fire('qk_mic_release');                    // hands-free is off in settings: not restarted, note dropped
+  w.st.mode = 'counter';
+  await w.fire('qk_mic_release');
+  await w.timePasses();
+  ok(w.st.starts === 0 && !w.st.on, 'hands-free off in settings at the "free" signal: the bridge forgets its stop for good');
+}
+// ---- nothing fails silently ----
+{
+  const w = await world();
+  w.st.stopThrows = true;
+  await w.fire('qk_mic_claim');
+  ok(w.st.warns >= 1, 'the engine cannot be stopped: it is written to the log');
+}
+{
+  const w = await world({ receiver: false });
+  w.st.stopThrows = true;
+  await w.wake({ hasCommand: false });
+  ok(w.st.warns >= 1, 'a wake nobody takes, and the engine cannot be stopped: it is written to the log');
+}
+{
+  const w = await world({ newEngine: true, receiver: false, releaseThrows: true });
+  await w.wake({ hasCommand: false });
+  ok(w.st.warns >= 1 && w.st.stops === 1, 'newer engine, a wake nobody takes, and it cannot be put back to waiting: written to the log, and stopped instead');
+}
+{
+  const w = await world();
+  w.st.timerThrows = true;
+  await w.wake({ hasCommand: false });
+  ok(w.st.warns >= 1 && w.st.stops === 1, 'the safety timer cannot be set: it is written to the log, and the microphone is still given');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.storageThrows = true;
+  await w.fire('qk_mic_release');
+  ok(w.st.starts === 1 && w.st.on && w.st.warns >= 1, 'the hands-free setting cannot be read: listening is started again, and it is written to the log');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  let open; w.st.gate = new Promise((r) => { open = r; });
+  await w.fire('qk_mic_release');
+  await w.fire('qk_mic_release');
+  await w.timePasses();
+  open(); await tick(); await tick();
+  ok(w.st.maxStartsInFlight === 1 && w.st.starts === 1, 'two "free" signals and the timer while a start is in flight: one start only');
+}
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  const first = w.liveTimers()[0];
+  await w.fire('qk_mic_claim');
+  ok(first.live === false && w.liveTimers().length === 1 && w.liveTimers()[0] !== first, 'a new "I need the microphone" really starts the three minutes again (a new timer, the old one cancelled)');
+  await w.window.__QK_WAKE__.stopHotword();
+  ok(w.liveTimers().length === 0, 'turning listening off cancels the timer');
+}
+{
+  const w = await world({ newEngine: true, holdThrows: true });
+  await w.wake({ hasCommand: false });       // the pause fails: the engine is stopped, timer set
+  const first = w.liveTimers()[0];
+  w.st.holdThrows = false;
+  await w.fire('qk_mic_claim');              // later in the same conversation the pause works
+  ok(first && first.live === false && w.liveTimers().length === 1, 'a pause that works after one that failed: the three minutes of the earlier stop start again too');
+  await w.fire('qk_mic_release');
+  ok(w.st.on && w.st.releases === 1 && w.liveTimers().length === 0, 'and at "free" the engine is un-paused and started again');
+}
+// ---- older engine behind an app-side wrapper that has every function name, each refusing ----
+{
+  const w = await world({ proxy: true });
+  await w.wake({ hasCommand: false });
+  ok(w.st.holds === 1 && w.st.stops === 1 && !w.st.on, 'engine cannot pause (function exists but refuses): it is stopped instead');
+  ok(w.st.warns >= 1, 'and that is written to the log');
+  await w.fire('qk_mic_release');
+  ok(w.st.starts === 1 && w.st.on, 'and listening starts again when QuietKeep frees the microphone');
+}
+// ---- newer engine: it pauses inside its own listening service ----
+{
   const w = await world({ newEngine: true });
   await w.wake({ hasCommand: false });
-  ok(w.st.holds === 1 && w.st.stops === 0, 'newer engine, bare wake: the engine is asked to pause; its service is not stopped');
+  ok(w.st.holds === 1 && w.st.stops === 0 && w.st.held, 'newer engine, bare wake: the engine is asked to pause; its service is not stopped');
   ok(w.st.wakes.length === 1 && w.st.wakes[0].length === 1, 'newer engine, bare wake: QuietKeep is told, with no text');
+  ok(w.st.engineHadMicWhenTold === false, 'newer engine, bare wake: QuietKeep is told only after the engine has paused');
+  ok(w.liveTimers().length === 0, 'newer engine: no timer here; the engine has its own three-minute end');
   await w.fire('qk_mic_release');
-  ok(w.st.releases === 1 && w.st.starts === 0, 'newer engine: the engine is told the microphone is free; no restart from here');
+  ok(w.st.releases === 1 && w.st.starts === 0 && !w.st.held, 'newer engine: the engine is told the microphone is free; no restart from here');
   await w.fire('doc:visibilitychange');
   ok(w.st.releases === 1, 'newer engine: coming back to the screen does not end a pause early');
   await w.fire('qk_mic_claim');
@@ -153,6 +522,42 @@ async function world({ acceptsText = false, mode = 'counter', listening = true, 
   const w = await world({ newEngine: true, acceptsText: true });
   await w.wake({ hasCommand: true, text: 'what is the time' });
   ok(w.st.holds === 0 && w.st.stops === 0, 'newer engine, one breath: the microphone is not touched');
+}
+{
+  const w = await world({ newEngine: true });
+  await w.fire('qk_mic_release');
+  ok(w.st.releases === 1 && w.st.starts === 0, 'newer engine: a "free" signal with no pause from this page still reaches the engine (a pause placed before a page reload)');
+}
+{
+  const w = await world({ newEngine: true, receiver: false });
+  await w.wake({ hasCommand: false });
+  ok(w.st.holds === 0 && w.st.stops === 0 && w.liveTimers().length === 0, 'newer engine, a page with nobody to take the wake: no pause is placed and nothing is stopped');
+  ok(w.st.releases === 1 && w.st.waiting, 'newer engine, nobody took the wake: the engine is put back to waiting for the wake name');
+}
+{
+  const w = await world({ newEngine: true, holdThrows: true });
+  await w.wake({ hasCommand: false });
+  ok(w.st.holds === 1 && w.st.stops === 1 && !w.st.on, 'newer engine, the pause fails: the engine is stopped instead, so QuietKeep still gets the microphone');
+  ok(w.st.warns >= 1, 'the failed pause is written to the log');
+  ok(w.st.wakes.length === 1, 'and QuietKeep is still told of the wake');
+  await w.fire('qk_mic_release');
+  ok(w.st.starts === 1 && w.st.on, 'and listening starts again afterwards');
+}
+{
+  const w = await world({ newEngine: true, releaseThrows: true });
+  await w.wake({ hasCommand: false });
+  await w.fire('qk_mic_release');
+  ok(w.st.releases === 1 && w.st.warns >= 1, 'newer engine, "free" fails: it is written to the log (the engine ends its own pause within three minutes)');
+  await w.fire('qk_mic_claim');
+  ok(w.st.holds === 2, 'and the bridge carries on working afterwards');
+}
+{
+  const w = await world({ newEngine: true });
+  await w.wake({ hasCommand: false });
+  await w.window.__QK_WAKE__.stopHotword();
+  ok(w.st.stops === 1 && !w.st.on, 'newer engine: the person turns listening off during a pause; it is off');
+  await w.fire('qk_mic_release');
+  ok(w.st.starts === 0 && !w.st.on, 'newer engine: and a later "free" signal never turns it on');
 }
 if (failed) { console.error(failed + ' check(s) failed'); process.exit(1); }
 console.log('All wake-bridge checks passed.');

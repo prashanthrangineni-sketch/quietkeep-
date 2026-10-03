@@ -212,6 +212,26 @@ export function placeConfirmation(place, canAlert) {
 }
 
 /**
+ * Aaria opened the microphone to hear the answer to her own question, and
+ * what came back is short and is not an answer ("Which Vinay?" - "Surya
+ * Exactly."). That is a mis-hearing, not a new instruction: ask again, save
+ * nothing. A long sentence is still a new instruction, always. Pure.
+ */
+export function isUnmatchedAnswer(keep, rawText, { answering = false, nowMs = Date.now() } = {}) {
+  if (!answering) return false
+  if (!isPendingQuestion(keep, nowMs)) return false
+  const words = String(rawText || '').trim().split(/\s+/).filter(Boolean)
+  return words.length > 0 && words.length <= MAX_ANSWER_WORDS
+}
+
+/** What Aaria says when she could not use the answer. Pure. */
+export function askAgain(keep) {
+  const hint = keep?.follow_up?.action_hint
+  if (CONTACT_HINTS.has(hint)) return 'Sorry, I did not catch which one. Say the name again, or tap it.'
+  return 'Sorry, I did not catch that. When should I remind you?'
+}
+
+/**
  * The person said the SAME sentence again while its question is still open
  * (3 October 2026: "Remind me to call Venu when I reach home", twice, saved
  * twice). That is someone trying again, not a second reminder. Pure.

@@ -219,6 +219,8 @@ export function AariaProvider({ children }) {
   const [micLive,    setMicLive]    = useState(false);
   // "Which Venu?" - the people Aaria is asking about, shown as buttons.
   const [choices,    setChoices]    = useState(null);
+  const choicesRef = useRef(null);
+  useEffect(() => { choicesRef.current = choices; }, [choices]);
   const lastListenRef   = useRef(null);  // sent with the next capture call
   const startListenRef  = useRef(null);  // startListening, for the follow-up loop
   const followUpTurns   = useRef(0);     // automatic re-listens in a row
@@ -440,7 +442,11 @@ export function AariaProvider({ children }) {
       }
 
       // LAYER 2 — the brain.
-      await askBrain(text);
+      // A turn Aaria opened to hear an ANSWER says so, and the server then
+      // never files a short non-answer as a brand-new keep (3 October 2026:
+      // "Which Vinay?" - "Surya Exactly." was saved as a note and became a
+      // second question about six Suryas).
+      await askBrain(text, auto ? { answering: true } : null);
     } finally {
       submittingRef.current = false;
     }
@@ -640,7 +646,10 @@ export function AariaProvider({ children }) {
     setError('');
     setTranscript('');
     setInterim('');
-    setReply(null);
+    // The question stays on screen while she listens for its answer. Only a
+    // turn the person started themselves clears the last reply.
+    const answerTurn = autoTurnRef.current;
+    if (!answerTurn) { setReply(null); setChoices(null); }
     setOpen(true);
     listeningRef.current = true;
     setMicLive(false);
@@ -650,7 +659,11 @@ export function AariaProvider({ children }) {
     const lang = speechLang(voiceLang);
     const session = startListenStream({
       lang,
-      keyterms: namesRef.current.names,
+      // Listening for "which one?" - the names on offer go first, so the
+      // recogniser leans toward the answers that are actually possible.
+      keyterms: answerTurn && Array.isArray(choicesRef.current)
+        ? [...choicesRef.current.map((c) => c.name), ...namesRef.current.names]
+        : namesRef.current.names,
       silenceMs: endpointSilenceMsFor(lang),
       maxMs: MAX_LISTEN_MS,
       onPartial: (text) => setInterim(text),

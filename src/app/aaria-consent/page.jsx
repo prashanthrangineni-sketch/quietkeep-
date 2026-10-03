@@ -87,6 +87,9 @@ export default function AariaConsentPage() {
   const [wakeOnBattery, setWakeOnBattery] = useState(false);
   // '' | downloading | no_wifi | ready | failed | mic | paused:<reason>
   const [setup, setSetup] = useState('');
+  // Megabytes on the phone so far and megabytes expected, shown beside "Downloading...". 0 = not known yet.
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const poll = useRef(null);
   const listeners = useRef([]);
   const alive = useRef(true);
 
@@ -94,6 +97,7 @@ export default function AariaConsentPage() {
     alive.current = true;
     return () => {
       alive.current = false;
+      if (poll.current) { clearInterval(poll.current); poll.current = null; }
       listeners.current.forEach((h) => { try { h && h.remove && h.remove(); } catch {} });
       listeners.current = [];
     };
@@ -121,6 +125,18 @@ export default function AariaConsentPage() {
       .catch(() => setState('unavailable'));
   }, []);
 
+  // Can the phone really turn sound into words right now? Older app copies cannot answer; for those,
+  // fall back to "files are present".
+  const recogniserLoads = async (plugin) => {
+    if (typeof plugin.checkRecognizer === 'function') {
+      try { const r = await plugin.checkRecognizer(); return !!(r && r.ok); } catch { return false; }
+    }
+    const wake = window.__QK_WAKE__;
+    try { return !!(wake && typeof wake.isWakeWordAvailable === 'function' && (await wake.isWakeWordAvailable())); } catch { return false; }
+  };
+
+  const stopPolling = () => { if (poll.current) { clearInterval(poll.current); poll.current = null; } };
+
   // The voice files are on the phone: remember that the wake word is on, start listening, say so, go back.
   const finishSetup = async (plugin) => {
     // Android asks for the microphone here, while this screen is open. No microphone, no "Ready".
@@ -128,6 +144,13 @@ export default function AariaConsentPage() {
     try { const perm = await plugin.requestPermissions(); mic = (perm && perm.microphone) || ''; } catch {}
     if (!alive.current) return;
     if (mic !== 'granted') { setSetup('mic'); setBusy(false); return; }
+    // "Ready" must mean the recogniser really loads, not merely that files exist. The first phone test
+    // (3 Oct 2026) reached this point on a build that could never recognise a word.
+    if (!(await recogniserLoads(plugin))) {
+      if (alive.current) { setSetup('failed'); setBusy(false); }
+      return;
+    }
+    if (!alive.current) return;
     try { localStorage.setItem('qk_wake_word_available', 'true'); } catch {}
     try { setWakeMode('counter'); } catch {}
     let st = null;
@@ -159,21 +182,20 @@ export default function AariaConsentPage() {
         manifestUrl: MODELS_MANIFEST_URL,
         manifestPublicKey: MODELS_MANIFEST_PUBLIC_KEY,
       });
-      const wake = window.__QK_WAKE__;
-      const available = async () =>
-        !!(wake && typeof wake.isWakeWordAvailable === 'function' && (await wake.isWakeWordAvailable()));
-
-      if (await available()) {
+      if (await recogniserLoads(plugin)) {
         await finishSetup(plugin);
         return;
       }
 
       // First time: fetch the voice files now, on Wi-Fi only (never on mobile data).
       setSetup(onMobileData() ? 'no_wifi' : 'downloading');
+      setProgress({ done: 0, total: 0 });
       let progressed = false;
+      const totals = {};
       const done = new Promise((resolve) => {
-        Promise.resolve(plugin.addListener('syncProgress', () => {
+        Promise.resolve(plugin.addListener('syncProgress', (ev) => {
           progressed = true;
+          if (ev && ev.lang && ev.bytesTotal > 0) totals[ev.lang] = ev.bytesTotal;
           if (alive.current) setSetup('downloading');
         })).then((h) => listeners.current.push(h)).catch(() => {});
         Promise.resolve(plugin.addListener('syncFinished', (ev) => resolve(ev || {})))
@@ -183,21 +205,44 @@ export default function AariaConsentPage() {
       // Nothing moving after half a minute almost always means the phone is not on Wi-Fi.
       setTimeout(() => { if (alive.current && !progressed) setSetup((v) => (v === 'downloading' ? 'no_wifi' : v)); }, 30000);
 
-      const ev = await done;
+      // Count what has arrived every few seconds, so the screen shows movement. If the job has started
+      // and then nothing arrives for 90 seconds, say it failed instead of waiting in silence.
+      let lastBytes = -1;
+      let lastMove = Date.now();
+      const stalled = new Promise((resolve) => {
+        stopPolling();
+        poll.current = setInterval(async () => {
+          if (!alive.current) return;
+          let bytes = 0;
+          try {
+            const d = await plugin.getMyData();
+            (d.downloadedModels || []).forEach((m) => { bytes += Number(m.size) || 0; });
+          } catch { return; }
+          if (bytes !== lastBytes) { lastBytes = bytes; lastMove = Date.now(); }
+          const total = Object.values(totals).reduce((a, b) => a + b, 0);
+          setProgress({ done: Math.round(bytes / 1048576), total: Math.round(total / 1048576) });
+          if (progressed && Date.now() - lastMove > 90000) resolve({ ok: false, stalled: true });
+        }, 3000);
+      });
+
+      const ev = await Promise.race([done, stalled]);
+      stopPolling();
       if (!alive.current) return;
-      if (ev.ok && (await available())) {
+      if (ev.ok && (await recogniserLoads(plugin))) {
         await finishSetup(plugin);
         return;
       }
       setSetup('failed');
       setBusy(false);
     } catch (e) {
+      stopPolling();
       console.warn('[QK] Aaria set-up did not finish', e);
       if (alive.current) { setSetup('failed'); setBusy(false); }
     }
   };
 
-  const box = { padding: '1.25rem', maxWidth: 640, margin: '0 auto', lineHeight: 1.5 };
+  // The bottom space keeps the status line and buttons clear of the app's round floating mic button.
+  const box = { padding: '1.25rem 1.25rem 7rem', maxWidth: 640, margin: '0 auto', lineHeight: 1.5 };
   const btn = { flex: 1, padding: '0.9rem', borderRadius: 8, fontSize: '1rem' };
 
   if (state === 'loading') return <div style={box}>…</div>;
@@ -251,15 +296,20 @@ export default function AariaConsentPage() {
             // Wording comes from the plugin (founder-approved). An older plugin copy without it shows nothing.
             s.s1_mic_needed ? rich(s.s1_mic_needed, name) : null
           ) : (
-            rich((SETUP_TEXT[lang] || SETUP_TEXT.en)[setup], name)
+            <>
+              {rich((SETUP_TEXT[lang] || SETUP_TEXT.en)[setup], name)}
+              {setup === 'downloading' && progress.done > 0
+                ? ' ' + progress.done + (progress.total > 0 ? ' / ' + progress.total : '') + ' MB'
+                : null}
+            </>
           )}
         </p>
       )}
       <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-        <button onClick={() => router.back()} style={btn} disabled={busy}>
+        <button onClick={() => router.back()} style={btn}>
           {rich(s.s1_btn_not_now, name)}
         </button>
-        <button onClick={turnOn} style={{ ...btn, background: '#1f6b52', color: '#fff' }} disabled={busy}>
+        <button onClick={turnOn} style={{ ...btn, background: '#1f6b52', color: '#fff', opacity: busy ? 0.45 : 1 }} disabled={busy}>
           {rich(s.s1_btn_turn_on, name)}
         </button>
       </div>

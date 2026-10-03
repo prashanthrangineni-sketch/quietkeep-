@@ -1,4 +1,4 @@
 Repository: https://github.com/PranixQuick/aaria-edge
-Commit: c51097ecca5b1236a44c7c98899e70c44ff57003
+Commit: 21f08c2f417576decbc35578358fe5a855323ea8 (branch fix/keep-shipped-model-json, PR #13 - NOT merged yet; must be re-pointed at main before this change is merged)
 Date: 2026-10-03
 Tests: live and run in PranixQuick/aaria-edge (not vendored)

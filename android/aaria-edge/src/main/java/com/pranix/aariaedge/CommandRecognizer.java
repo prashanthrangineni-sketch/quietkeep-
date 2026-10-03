@@ -37,6 +37,8 @@ public class CommandRecognizer {
     private OfflineRecognizer cachedOfflineRecognizer = null;
     private OnlineRecognizer cachedOnlineRecognizer = null;
     private String cachedRecognizerLang = null;
+    /** Why the last load attempt failed: engine_missing, unknown_model_type or load_failed. Null if it has not failed. */
+    private String lastLoadError = null;
 
     public CommandRecognizer(Context context, ModelStore store) {
         this.context = context;
@@ -63,7 +65,18 @@ public class CommandRecognizer {
         this.currentLang = lang;
     }
 
-    private void prepareRecognizer() {
+    /**
+     * Loads the recogniser for the current language if needed and says whether it is really usable.
+     * @return null when ready; otherwise model_missing, engine_missing, unknown_model_type or load_failed
+     */
+    public synchronized String checkReady() {
+        prepareRecognizer();
+        if (cachedOfflineRecognizer != null || cachedOnlineRecognizer != null) return null;
+        if (!modelStore.isAvailable(currentLang)) return "model_missing";
+        return lastLoadError != null ? lastLoadError : "load_failed";
+    }
+
+    private synchronized void prepareRecognizer() {
         if (cachedRecognizerLang != null && currentLang.equals(cachedRecognizerLang)) {
             return;
         }
@@ -79,6 +92,7 @@ public class CommandRecognizer {
         if (!modelStore.isAvailable(currentLang)) {
             return;
         }
+        lastLoadError = null;
         
         try {
             String modelPath = modelStore.getModelPath(currentLang);
@@ -132,6 +146,7 @@ public class CommandRecognizer {
                     moonshine.setCachedDecoder(new File(modelPath, configJson.has("cachedDecoder") ? configJson.getString("cachedDecoder") : configJson.getString("cached_decoder")).getAbsolutePath());
                     modelConfig.setMoonshine(moonshine);
                 } else {
+                    lastLoadError = "unknown_model_type";
                     return;
                 }
                 
@@ -141,8 +156,13 @@ public class CommandRecognizer {
                 cachedOfflineRecognizer = new OfflineRecognizer(null, config);
             }
             cachedRecognizerLang = currentLang;
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Throwable t) {
+            // Throwable, not Exception: a speech engine that was not packed into the app shows up as a
+            // LinkageError (NoClassDefFoundError / UnsatisfiedLinkError). That must not crash the app.
+            t.printStackTrace();
+            lastLoadError = (t instanceof LinkageError) ? "engine_missing" : "load_failed";
+            cachedOfflineRecognizer = null;
+            cachedOnlineRecognizer = null;
         }
     }
 

@@ -66,6 +66,14 @@ android {
                 manifest.srcFile 'src/phonetest/AndroidManifest.xml'
             }
         }
+        // The phone-test APK is handed over as one file. With the speech engine inside for four
+        // processor types it is too large to send; current phones are all arm64-v8a. Play Store
+        // builds are untouched and still carry every type.
+        defaultConfig {
+            ndk {
+                abiFilters 'arm64-v8a'
+            }
+        }
         logger.lifecycle("QuietKeep phone-test build: notification access left out (Play Protect sideload block)")
     }
 }
@@ -136,8 +144,42 @@ repositories {
     }
 }
 
+// ── The on-phone speech recogniser (sherpa-onnx) ─────────────────────────────
+// WHY THIS IS HERE AND NOT IN android/aaria-edge
+// The aaria-edge module only COMPILES against sherpa-onnx (compileOnly): an Android library module
+// is not allowed to carry a local .aar inside it. So the app has to pack it. Until 3 Oct 2026 nothing
+// did. The app built, installed and showed "Ready", and could never turn one sound into words. The
+// first real-phone test found it.
+//
+// WHY IT IS UNPACKED RATHER THAN ADDED AS AN .aar
+// sherpa-onnx brings its own libonnxruntime.so (1.28.2). The VAD library (onnxruntime-android 1.18.0)
+// brings an older one under the same file name, and sherpa-onnx cannot run on the older one. Putting
+// sherpa's copy in the app's OWN jniLibs is meant to make it the one that gets packed. That is not
+// taken on trust: scripts/check_apk_speech_engine.py opens every finished APK and fails the build if
+// the recogniser, or the right libonnxruntime.so, is not inside.
+tasks.register('unpackSherpaOnnx', Copy) {
+    dependsOn ':aaria-edge:downloadSherpaOnnx'
+    from({ zipTree(file('../aaria-edge/libs/sherpa-onnx-1.13.8.aar')) }) {
+        include 'classes.jar'
+        include 'jni/**'
+    }
+    into "${buildDir}/sherpa-onnx"
+}
+android {
+    sourceSets.main.jniLibs.srcDirs += ["${buildDir}/sherpa-onnx/jni"]
+    packaging {
+        jniLibs {
+            pickFirsts += ['**/libonnxruntime.so']
+        }
+    }
+}
+afterEvaluate {
+    tasks.named('preBuild').configure { dependsOn 'unpackSherpaOnnx' }
+}
+
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation(files("${buildDir}/sherpa-onnx/classes.jar") { builtBy 'unpackSherpaOnnx' })
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
@@ -160,6 +202,11 @@ dependencies {
     testImplementation "org.mockito:mockito-core:5.14.2"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    // For AariaSpeechEngineTest (the speech engine on a simulated phone). The aaria-edge module keeps
+    // these two libraries to itself, so the test has to name them; the versions are aaria-edge's own.
+    androidTestImplementation 'androidx.work:work-runtime:2.10.1'
+    androidTestImplementation 'androidx.work:work-testing:2.10.1'
+    androidTestImplementation 'com.microsoft.onnxruntime:onnxruntime-android:1.18.0'
     implementation project(':capacitor-cordova-android-plugins')
     implementation project(':aaria-edge')
 }

@@ -351,6 +351,17 @@ public class AariaEdgePlugin extends Plugin {
         call.resolve(ret);
     }
 
+    /** Really loads the recogniser for the current language. "Ready" on a screen should rest on this, not on files existing. */
+    @PluginMethod
+    public void checkRecognizer(PluginCall call) {
+        if (!ensureReady()) { call.reject("aaria_unavailable"); return; }
+        String reason = commandRecognizer == null ? "load_failed" : commandRecognizer.checkReady();
+        JSObject ret = new JSObject();
+        ret.put("ok", reason == null);
+        if (reason != null) ret.put("reason", reason);
+        call.resolve(ret);
+    }
+
     @PluginMethod
     public void setLanguage(PluginCall call) {
         if (!ensureReady()) { call.reject("aaria_unavailable"); return; }

@@ -183,8 +183,8 @@ public class NightlySyncWorker extends Worker {
                     }
 
                     if (langOk) {
-                        // Write model.json for CommandRecognizer
-                        writeModelJson(langDir, group);
+                        // model.json tells CommandRecognizer which file is which.
+                        finishModelDir(langDir, group);
                         updated.add("model:" + lang);
                     }
                 }
@@ -264,11 +264,28 @@ public class NightlySyncWorker extends Worker {
                 return Result.retry();
             }
         } catch (Throwable t) {
+            // Never end silently: the screen that started this download is waiting for an answer.
+            try {
+                reportFinished(false, new ArrayList<>(), new ArrayList<>(),
+                        listOf("fatal:" + t.getClass().getSimpleName()));
+            } catch (Throwable ignored) {}
             return Result.failure();
         }
     }
 
-    private void writeModelJson(File langDir, SyncManifest.ModelGroup group) throws Exception {
+    /**
+     * The model publisher ships its own model.json, already downloaded and checked like every other file.
+     * Keep that one. Only build a model.json from the file names when the publisher sent none.
+     * (Overwriting it used to replace the right keys with guessed ones, and the recogniser could not load.)
+     */
+    static void finishModelDir(File langDir, SyncManifest.ModelGroup group) throws Exception {
+        for (SyncManifest.ManifestFile mf : group.files) {
+            if ("model.json".equals(mf.name)) return;
+        }
+        writeModelJson(langDir, group);
+    }
+
+    static void writeModelJson(File langDir, SyncManifest.ModelGroup group) throws Exception {
         JSONObject modelJson = new JSONObject();
         modelJson.put("type", group.type);
         for (SyncManifest.ManifestFile mf : group.files) {

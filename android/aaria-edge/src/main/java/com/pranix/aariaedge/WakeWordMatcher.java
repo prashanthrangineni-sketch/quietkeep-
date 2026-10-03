@@ -21,9 +21,61 @@ public class WakeWordMatcher {
         public String bestName;
     }
 
-    public MatchResult match(String rawTranscript, String wakeName, List<String> aliases) {
-        String latinTranscript = transliterateToLatin(rawTranscript.toLowerCase());
+    // What a recogniser writes when it hears the greeting badly. Measured on 3 Oct 2026 with 240 spoken
+    // wake phrases in 40 voices: "Hey Aaria" came back as "A aria", "Hay area", "He area" about as often
+    // as "Hey aria", nearly always with a comma or a full stop attached.
+    private static final String[] LOOSE_PREFIXES = {"a", "hay", "ay", "he", "eh", "high"};
 
+    /** One spoken word as bare lower-case Latin letters and digits. Recognisers add capitals, commas and full stops. */
+    static String token(String rawWord) {
+        String latin = transliterateToLatin(rawWord.toLowerCase());
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < latin.length(); i++) {
+            char c = latin.charAt(i);
+            if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    /** A rough "how it sounds" form of a word, so that Arya, Aria, Area and Aaria all compare as the same name. */
+    static String soundKey(String token) {
+        StringBuilder sb = new StringBuilder();
+        char last = 0;
+        for (int i = 0; i < token.length(); i++) {
+            char c = token.charAt(i);
+            if (c == 'y' || c == 'e') c = 'i';
+            if (c != last) sb.append(c);
+            last = c;
+        }
+        return sb.toString();
+    }
+
+    /** The words of a transcript, cleaned, with the position each one had in the raw text. */
+    private static final class Words {
+        final String[] raw;
+        final List<String> tokens = new ArrayList<>();
+        final List<Integer> rawIndex = new ArrayList<>();
+        Words(String rawTranscript) {
+            String t = rawTranscript == null ? "" : rawTranscript.trim();
+            raw = t.isEmpty() ? new String[0] : t.split("\\s+");
+            for (int i = 0; i < raw.length; i++) {
+                String tok = token(raw[i]);
+                if (!tok.isEmpty()) { tokens.add(tok); rawIndex.add(i); }
+            }
+        }
+    }
+
+    private boolean isPrefix(String token) {
+        for (String p : prefixes) {
+            if (token.equals(token(p))) return true;
+        }
+        for (String p : LOOSE_PREFIXES) {
+            if (token.equals(p)) return true;
+        }
+        return false;
+    }
+
+    private static List<String> validNames(String wakeName, List<String> aliases) {
         List<String> validNames = new ArrayList<>();
         validNames.add(transliterateToLatin(wakeName.toLowerCase()));
         if (aliases != null) {
@@ -31,22 +83,49 @@ public class WakeWordMatcher {
                 validNames.add(transliterateToLatin(alias.toLowerCase()));
             }
         }
+        return validNames;
+    }
 
-        String[] words = latinTranscript.split("\\s+");
-        StringBuilder firstThree = new StringBuilder();
-        for (int i = 0; i < Math.min(3, words.length); i++) {
-            firstThree.append(words[i]).append(" ");
+    /**
+     * How much the one or two words right after the greeting sound like the name: 0 to 1.
+     * A word that does not start with the same sound as the name scores 0 ("Maria" is not "Aaria").
+     * usedWords[0] is set to how many words made the best score.
+     */
+    private static float nameScore(List<String> tokens, String name, int[] usedWords) {
+        String nameKey = soundKey(token(name));
+        float best = 0.0f;
+        if (nameKey.isEmpty()) return best;
+        StringBuilder joined = new StringBuilder();
+        for (int n = 1; n <= 2 && n < tokens.size(); n++) {
+            joined.append(tokens.get(n));
+            String k = soundKey(joined.toString());
+            if (k.isEmpty() || k.charAt(0) != nameKey.charAt(0)) continue;
+            float s = getEditDistanceRatio(k, nameKey);
+            if (s > best) {
+                best = s;
+                usedWords[0] = n;
+            }
         }
-        String toMatch = firstThree.toString().trim();
+        return best;
+    }
+
+    /**
+     * Does this transcript begin with a greeting followed by the wake name (or one of its taught spellings)?
+     * The greeting is required: the name alone never wakes.
+     */
+    public MatchResult match(String rawTranscript, String wakeName, List<String> aliases) {
+        Words w = new Words(rawTranscript);
 
         float maxScore = 0.0f;
         String bestName = "";
 
-        for (String name : validNames) {
-            float s = evaluateMatch(toMatch, name);
-            if (s > maxScore) {
-                maxScore = s;
-                bestName = name;
+        if (w.tokens.size() >= 2 && isPrefix(w.tokens.get(0))) {
+            for (String name : validNames(wakeName, aliases)) {
+                float s = nameScore(w.tokens, name, new int[1]);
+                if (s > maxScore) {
+                    maxScore = s;
+                    bestName = name;
+                }
             }
         }
 
@@ -62,45 +141,38 @@ public class WakeWordMatcher {
         return result;
     }
 
+    /**
+     * The command that follows "Hey <name>" in the same breath, in the speaker's own letters.
+     * Called only after the wake check has passed, so it is lenient about how the name was written:
+     * it drops the greeting and the word (or two) that best sounds like the name.
+     * Returns "" when the text does not start with a greeting, or when nothing follows the name.
+     */
     public String stripWake(String rawTranscript, String wakeName, List<String> aliases) {
-        String latinTranscript = transliterateToLatin(rawTranscript.toLowerCase());
-        String[] latinWords = latinTranscript.trim().split("\\s+");
-        String[] rawWords = rawTranscript.trim().split("\\s+");
-
-        List<String> validNames = new ArrayList<>();
-        validNames.add(transliterateToLatin(wakeName.toLowerCase()));
-        if (aliases != null) {
-            for (String alias : aliases) {
-                validNames.add(transliterateToLatin(alias.toLowerCase()));
-            }
+        Words w = new Words(rawTranscript);
+        if (w.tokens.size() < 2 || !isPrefix(w.tokens.get(0))) {
+            return "";
         }
 
         float maxScore = 0.0f;
-        int bestWordCount = 0;
-
-        for (int count = 1; count <= Math.min(4, latinWords.length); count++) {
-            StringBuilder prefix = new StringBuilder();
-            for (int i = 0; i < count; i++) {
-                prefix.append(latinWords[i]).append(" ");
-            }
-            String toMatch = prefix.toString().trim();
-            for (String name : validNames) {
-                float s = evaluateMatch(toMatch, name);
-                if (s > maxScore) {
-                    maxScore = s;
-                    bestWordCount = count;
-                }
+        int nameWords = 1;
+        for (String name : validNames(wakeName, aliases)) {
+            int[] used = new int[1];
+            float s = nameScore(w.tokens, name, used);
+            if (s > maxScore) {
+                maxScore = s;
+                nameWords = used[0];
             }
         }
 
-        if (bestWordCount == 0 || bestWordCount >= rawWords.length) {
+        int cut = w.rawIndex.get(nameWords) + 1;
+        if (cut >= w.raw.length) {
             return "";
         }
 
         StringBuilder remainder = new StringBuilder();
-        for (int i = bestWordCount; i < rawWords.length; i++) {
-            remainder.append(rawWords[i]);
-            if (i < rawWords.length - 1) remainder.append(" ");
+        for (int i = cut; i < w.raw.length; i++) {
+            remainder.append(w.raw[i]);
+            if (i < w.raw.length - 1) remainder.append(" ");
         }
         return remainder.toString();
     }
@@ -111,24 +183,16 @@ public class WakeWordMatcher {
         String typedNorm = transliterateToLatin(typedName.toLowerCase()).trim();
         List<String> validHeard = new ArrayList<>();
         for (String h : heard) {
-            String norm = transliterateToLatin(h.toLowerCase()).trim();
-            String[] words = norm.split("\\s+");
-            if (words.length > 1) {
-                String first = words[0];
-                boolean isGreeting = first.equals("hey") || first.equals("hi") || first.equals("ok") || first.equals("okay") || first.equals("hello");
-                if (!isGreeting) {
-                    for (String p : prefixes) {
-                        if (first.equals(p)) {
-                            isGreeting = true;
-                            break;
-                        }
-                    }
-                }
-                if (isGreeting) {
-                    norm = norm.substring(first.length()).trim();
+            // Cleaned the same way as the wake check: "Hey, Kamla." must count as "kamla".
+            List<String> tokens = new Words(h).tokens;
+            if (tokens.size() > 1) {
+                String first = tokens.get(0);
+                if (first.equals("hey") || first.equals("hi") || first.equals("ok") || first.equals("okay")
+                        || first.equals("hello") || isPrefix(first)) {
+                    tokens = tokens.subList(1, tokens.size());
                 }
             }
-            validHeard.add(norm);
+            validHeard.add(String.join(" ", tokens));
         }
 
         List<String> selected = new ArrayList<>();
@@ -147,16 +211,6 @@ public class WakeWordMatcher {
             }
         }
         return selected;
-    }
-
-    private float evaluateMatch(String text, String name) {
-        float maxScore = 0.0f; // Require prefix match!
-        for (String prefix : prefixes) {
-            String combined = prefix + " " + name;
-            float s = getEditDistanceRatio(text, combined);
-            if (s > maxScore) maxScore = s;
-        }
-        return maxScore;
     }
 
     public static float getEditDistanceRatio(String s1, String s2) {

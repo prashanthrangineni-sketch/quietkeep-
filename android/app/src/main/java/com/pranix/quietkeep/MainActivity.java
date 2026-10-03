@@ -543,6 +543,7 @@ public class MainActivity extends BridgeActivity {
             + "          var st = await aaria.getStatus(); if (!st || !st.available) return false;\n"
             + "          var c = await aaria.getConsent();\n"
             + "          if (!c.consent) return false;\n"
+            + "          if (aaria.checkRecognizer) { var r = await aaria.checkRecognizer(); return (r && r.ok) ? true : false; }\n"
             + "          var d = await aaria.getMyData();\n"
             + "          return (d.downloadedModels && d.downloadedModels.length > 0) ? true : false;\n"
             + "        } catch(e){ return false; }\n"

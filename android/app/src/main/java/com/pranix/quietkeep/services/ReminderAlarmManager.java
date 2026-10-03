@@ -284,6 +284,7 @@ public class ReminderAlarmManager {
                 editor.remove("alarm_sms_message_" + id);
                 editor.remove("alarm_torch_enable_" + id);
                 editor.remove("alarm_volume_direction_" + id);
+                editor.remove("alarm_display_name_" + id);
             }
             editor.apply();
         }

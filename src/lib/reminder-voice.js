@@ -92,7 +92,7 @@ async function dueBetween(supabase, userId, fromMs, toMs) {
 
   const [reminders, keeps] = await Promise.all([
     supabase.from('reminders')
-      .select('id, reminder_text, scheduled_for, contact_name, contact_phone')
+      .select('id, keep_id, reminder_text, scheduled_for, contact_name, contact_phone')
       .eq('user_id', userId).eq('is_active', true)
       .gt('scheduled_for', from).lt('scheduled_for', to),
     supabase.from('keeps')

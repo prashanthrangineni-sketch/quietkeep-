@@ -161,7 +161,10 @@ export async function POST(request) {
   //
   // Placed before the idempotency key and before every write, so noise costs
   // one cheap scan and touches nothing.
-  const noiseReasons = impossibleSequences(text)
+  // A transcript with no letter or digit in it at all (3 October 2026: a keep
+  // whose whole content was a pair of quotation marks, made from a silent
+  // room) is not writing in any language.
+  const noiseReasons = /[\p{L}\p{N}]/u.test(text) ? impossibleSequences(text) : ['no words at all']
   if (noiseReasons.length) {
     console.warn('[capture] refused transcription noise:', noiseReasons[0], JSON.stringify(text.slice(0, 80)))
     supabase.from('audit_log').insert({

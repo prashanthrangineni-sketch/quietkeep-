@@ -253,6 +253,11 @@ public class CountdownActivity extends Activity {
 
     private void executeAction() {
         Log.d("QK_COUNTDOWN", "Countdown finished. Executing action: " + actionSpec.type);
+        boolean canCall = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || checkSelfPermission(android.Manifest.permission.CALL_PHONE)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        AlarmTrail.note(this, "call_permission", String.valueOf(canCall));
+        AlarmTrail.note(this, "countdown_result", "acted");
         ActionExecutor.execute(this, actionSpec);
         finish();
     }

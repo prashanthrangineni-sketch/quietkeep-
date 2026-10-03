@@ -138,7 +138,7 @@ export function AariaProvider({ children }) {
       try {
         const { supabase } = await import('@/lib/supabase');
         const { armVoiceReminders, speakMissedReminders, canSpeakWhenClosed,
-                retireExpiredReminders } =
+                retireExpiredReminders, reportLastAlarm } =
           await import('@/lib/reminder-voice');
         if (cancelled) return;
 
@@ -165,6 +165,10 @@ export function AariaProvider({ children }) {
         if (cancelled) return;
         console.log('[Aaria] reminders armed:', armed.armed, 'via', armed.channel);
 
+        // What the phone did the last time an alarm fired - so "it spoke but
+        // did not call" can be answered from a record instead of a guess.
+        reportLastAlarm({ supabase, userId: user.id }).catch(() => {});
+
         // Anything that came due while the phone was in a bag is read out now,
         // rather than being lost in silence.
         await speakMissedReminders({
@@ -182,7 +186,21 @@ export function AariaProvider({ children }) {
     // without waiting for the next app open.
     const onChanged = () => { arm(); };
     window.addEventListener('qk_reminders_changed', onChanged);
-    return () => { cancelled = true; window.removeEventListener('qk_reminders_changed', onChanged); };
+    // Coming back to the app after an alarm: send up what the phone noted.
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { reportLastAlarm } = await import('@/lib/reminder-voice');
+        reportLastAlarm({ supabase, userId: user.id }).catch(() => {});
+      } catch {}
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('qk_reminders_changed', onChanged);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [user?.id, voiceLang]);
 
   // The service worker wakes at the due moment and asks whichever page is open
@@ -219,6 +237,8 @@ export function AariaProvider({ children }) {
   const [micLive,    setMicLive]    = useState(false);
   // "Which Venu?" - the people Aaria is asking about, shown as buttons.
   const [choices,    setChoices]    = useState(null);
+  const choicesRef = useRef(null);
+  useEffect(() => { choicesRef.current = choices; }, [choices]);
   const lastListenRef   = useRef(null);  // sent with the next capture call
   const startListenRef  = useRef(null);  // startListening, for the follow-up loop
   const followUpTurns   = useRef(0);     // automatic re-listens in a row
@@ -440,7 +460,11 @@ export function AariaProvider({ children }) {
       }
 
       // LAYER 2 — the brain.
-      await askBrain(text);
+      // A turn Aaria opened to hear an ANSWER says so, and the server then
+      // never files a short non-answer as a brand-new keep (3 October 2026:
+      // "Which Vinay?" - "Surya Exactly." was saved as a note and became a
+      // second question about six Suryas).
+      await askBrain(text, auto ? { answering: true } : null);
     } finally {
       submittingRef.current = false;
     }
@@ -640,7 +664,10 @@ export function AariaProvider({ children }) {
     setError('');
     setTranscript('');
     setInterim('');
-    setReply(null);
+    // The question stays on screen while she listens for its answer. Only a
+    // turn the person started themselves clears the last reply.
+    const answerTurn = autoTurnRef.current;
+    if (!answerTurn) { setReply(null); setChoices(null); }
     setOpen(true);
     listeningRef.current = true;
     setMicLive(false);
@@ -650,7 +677,11 @@ export function AariaProvider({ children }) {
     const lang = speechLang(voiceLang);
     const session = startListenStream({
       lang,
-      keyterms: namesRef.current.names,
+      // Listening for "which one?" - the names on offer go first, so the
+      // recogniser leans toward the answers that are actually possible.
+      keyterms: answerTurn && Array.isArray(choicesRef.current)
+        ? [...choicesRef.current.map((c) => c.name), ...namesRef.current.names]
+        : namesRef.current.names,
       silenceMs: endpointSilenceMsFor(lang),
       maxMs: MAX_LISTEN_MS,
       onPartial: (text) => setInterim(text),

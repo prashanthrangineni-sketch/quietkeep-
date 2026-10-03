@@ -232,3 +232,34 @@ test('choosing who, on a place reminder, confirms the place', () => {
   assert.match(said, /Venu Nz/)
   assert.match(said, /when you reach home/)
 })
+
+// ── an answer turn that did not answer (3 October 2026, "Surya Exactly.") ────
+import { isUnmatchedAnswer, askAgain } from '../src/lib/follow-up-answer.js'
+
+test('a short non-answer in a turn Aaria opened is asked again, not saved', () => {
+  const keep = pending({ follow_up: WHICH_VENU })
+  assert.equal(isUnmatchedAnswer(keep, 'Surya Exactly.', { answering: true, nowMs: NOW }), true)
+  assert.match(askAgain(keep), /which one/i)
+})
+
+test('the same words in a turn the PERSON started are theirs to save', () => {
+  const keep = pending({ follow_up: WHICH_VENU })
+  assert.equal(isUnmatchedAnswer(keep, 'Surya Exactly.', { answering: false, nowMs: NOW }), false)
+  assert.equal(isUnmatchedAnswer(keep, 'Surya Exactly.', { nowMs: NOW }), false)
+})
+
+test('a long sentence in an answer turn is still a new instruction', () => {
+  const keep = pending({ follow_up: WHICH_VENU })
+  assert.equal(isUnmatchedAnswer(keep, 'remind me to pay the electricity bill tomorrow morning before ten', { answering: true, nowMs: NOW }), false)
+})
+
+test('no open question, or a stale one → nothing is swallowed', () => {
+  assert.equal(isUnmatchedAnswer(null, 'Surya', { answering: true, nowMs: NOW }), false)
+  const keep = pending({ follow_up: WHICH_VENU })
+  assert.equal(isUnmatchedAnswer(keep, 'Surya', { answering: true, nowMs: NOW + 6 * 60 * 1000 }), false)
+})
+
+test('a "when?" question is re-asked as "when?"', () => {
+  const keep = pending({ follow_up: { action_hint: 'time_needed', follow_up: 'When should I remind you?' } })
+  assert.match(askAgain(keep), /when should I remind you/i)
+})

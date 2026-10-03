@@ -32,6 +32,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { dedupeTwins, actionFor, alarmReport, reportSignature } from './reminder-arm';
 
 // How far ahead to arm. Re-armed on every app open, so this only has to cover
 // the gap between two opens.
@@ -91,7 +92,7 @@ async function dueBetween(supabase, userId, fromMs, toMs) {
 
   const [reminders, keeps] = await Promise.all([
     supabase.from('reminders')
-      .select('id, reminder_text, scheduled_for, contact_name, contact_phone')
+      .select('id, keep_id, reminder_text, scheduled_for, contact_name, contact_phone')
       .eq('user_id', userId).eq('is_active', true)
       .gt('scheduled_for', from).lt('scheduled_for', to),
     supabase.from('keeps')
@@ -104,11 +105,11 @@ async function dueBetween(supabase, userId, fromMs, toMs) {
   return [
     ...(reminders?.data || []).map((r) => ({
       id: `rem-${r.id}`, text: r.reminder_text, fireAt: new Date(r.scheduled_for).getTime(),
-      contactName: r.contact_name, contactPhone: r.contact_phone,
+      contactName: r.contact_name, contactPhone: r.contact_phone, keepId: r.keep_id || null,
     })),
     ...(keeps?.data || []).map((k) => ({
       id: `keep-${k.id}`, text: k.content, fireAt: new Date(k.reminder_at).getTime(),
-      contactName: k.contact_name, contactPhone: k.contact_phone,
+      contactName: k.contact_name, contactPhone: k.contact_phone, keepId: k.id,
     })),
   ]
     .filter((r) => r.text && Number.isFinite(r.fireAt))
@@ -142,18 +143,8 @@ async function dueBetween(supabase, userId, fromMs, toMs) {
 // I scheduled every alarm this morning with only an id, some text and a time,
 // so every one took the announce-only branch. The action was never passed.
 //
-// A CALL NEEDS A NUMBER. When there is none the alarm still speaks and does
-// nothing else — which is the honest behaviour, not a silent failure.
-function actionFor(item) {
-  const phone = String(item.contactPhone || '').trim();
-  if (!phone) return null;
-  if (!/call|phone|ring|కాల్|ఫోన్|कॉल|फ़ोन/i.test(item.text || '')) return null;
-  return {
-    actionType: 'call',
-    phone,
-    display_name: item.contactName || undefined,
-  };
-}
+// The rule itself (a number, and the word "call") lives in reminder-arm.js
+// where it can be tested.
 
 /**
  * Arm every reminder due in the next HORIZON_HOURS on the best spoken channel.
@@ -184,7 +175,9 @@ function chosenLanguage() {
 export async function armVoiceReminders({ supabase, userId }) {
   try {
     const now = Date.now();
-    const upcoming = await dueBetween(supabase, userId, now, now + HORIZON_HOURS * 3600e3);
+    // One alarm per reminder: the row and the keep it came from are the same
+    // reminder, and arming both fired two alarms at the same second.
+    const upcoming = dedupeTwins(await dueBetween(supabase, userId, now, now + HORIZON_HOURS * 3600e3));
     if (!upcoming.length) return { channel: canSpeakWhenClosed() ? 'native-voice' : 'page-voice', armed: 0 };
 
     const lang = chosenLanguage();
@@ -301,7 +294,7 @@ export async function retireExpiredReminders({ supabase, userId }) {
 export async function speakMissedReminders({ supabase, userId, speak, prefix = '' }) {
   try {
     const now = Date.now();
-    const missed = await dueBetween(supabase, userId, now - CATCH_UP_HOURS * 3600e3, now);
+    const missed = dedupeTwins(await dueBetween(supabase, userId, now - CATCH_UP_HOURS * 3600e3, now));
     if (!missed.length) return 0;
 
     const already = spokenIds();
@@ -321,5 +314,40 @@ export async function speakMissedReminders({ supabase, userId, speak, prefix = '
     return toSay.length;
   } catch {
     return 0;
+  }
+}
+
+/**
+ * Send up what the phone noted the last time an alarm fired.
+ *
+ * WHY
+ * 3 October 2026: a scheduled call was spoken and not placed on a locked
+ * phone. The server showed the alarm had been armed with the number; nothing
+ * showed what the phone did next, because that was only ever written to the
+ * phone's own log. The app now keeps a few notes (AlarmTrail.java) and this
+ * puts them in the audit log, once for each new state.
+ *
+ * No number, no name, no reminder text. An older app build has no such method;
+ * that is caught and means "nothing to report".
+ */
+const REPORTED_KEY = 'qk_alarm_reported';
+
+export async function reportLastAlarm({ supabase, userId }) {
+  try {
+    const alarm = nativeAlarm();
+    if (!alarm || !userId) return null;
+    const report = alarmReport(await alarm.lastFire());
+    if (!Object.keys(report).length) return null;
+
+    const signature = reportSignature(report);
+    try { if (localStorage.getItem(REPORTED_KEY) === signature) return null; } catch {}
+
+    const row = { user_id: userId, action: 'reminder.alarm_fired', service: 'native_alarm', details: report };
+    const { error } = await supabase.from('audit_log').insert(row);
+    if (error) return null;
+    try { localStorage.setItem(REPORTED_KEY, signature); } catch {}
+    return report;
+  } catch {
+    return null;
   }
 }

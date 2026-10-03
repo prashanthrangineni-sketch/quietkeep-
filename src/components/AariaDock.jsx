@@ -37,7 +37,10 @@ export default function AariaDock() {
   // Focus the box when the panel opens by keyboard, not when it opens by voice —
   // stealing focus mid-utterance pops the on-screen keyboard over the transcript.
   useEffect(() => {
-    if (open && status === 'idle' && inputRef.current) inputRef.current.focus();
+    // Not on a phone. Focusing the box there raises the keyboard, which
+    // covered the name buttons Aaria had just offered (3 October 2026).
+    const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+    if (open && status === 'idle' && inputRef.current && !touch) inputRef.current.focus();
   }, [open, status]);
 
   if (silent || !signedIn) return null;
@@ -109,6 +112,10 @@ export default function AariaDock() {
             borderRadius: 16,
             boxShadow: '0 18px 44px rgba(0,0,0,.17)',
             padding: 16,
+            // A long list of names must scroll inside the panel, not push the
+            // panel off the top of the screen.
+            maxHeight: 'calc(100dvh - 190px - env(safe-area-inset-bottom, 0px))',
+            overflowY: 'auto',
             zIndex: 9998,
           }}
         >

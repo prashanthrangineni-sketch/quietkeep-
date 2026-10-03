@@ -15,11 +15,39 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import com.pranix.quietkeep.MainActivity;
+import com.pranix.quietkeep.services.AlarmTrail;
 
 public class AlarmReceiver extends BroadcastReceiver {
 
     private static final String TAG        = "QK_ALARM";
     private static final String CHANNEL_ID = "qk_reminders_alarm";
+
+    // THE COUNTDOWN NEEDS ITS OWN, LOUDER CHANNEL.
+    //
+    // 3 October 2026: "Call Akhilesh Munugala in one minute", phone locked. The
+    // reminder was spoken and nothing else happened - no countdown, no call.
+    //
+    // Android only lets an app put a screen up over the lock screen by itself in
+    // one way: a notification carrying a "full-screen intent", posted on a
+    // channel of HIGH importance. The notification below did carry one. But it
+    // was posted on the ordinary reminders channel above, which is created at
+    // DEFAULT importance for every reminder that is not an alarm-clock alarm -
+    // that is, for all of them, because nothing ever asks for the alarm type.
+    // On a DEFAULT channel Android quietly ignores the full-screen intent.
+    //
+    // What had been opening the countdown on a locked phone was the direct
+    // startActivity() further down. Android blocks that from the background
+    // unless the app holds one of a few exemptions. The build this phone ran
+    // until 1 October held one (notification access); the phone-test build
+    // leaves notification access out, and the exemption left with it.
+    //
+    // An existing channel cannot be made more important by the app afterwards,
+    // so this is a new channel rather than a change to the old one.
+    private static final String ACTION_CHANNEL_ID = "qk_actions_fullscreen";
+
+    // A countdown that is not started within this long is no longer offered.
+    // Tapping a two-hour-old banner must never start dialling.
+    public static final long ACTION_WINDOW_MS = 2 * 60 * 1000L;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -37,11 +65,25 @@ public class AlarmReceiver extends BroadcastReceiver {
         createNotificationChannel(context, isAlarmType);
 
         String actionType = intent.getStringExtra("action_type");
-        if (actionType != null && !actionType.trim().isEmpty()) {
-            // Build the intent to launch CountdownActivity
+        boolean hasAction = actionType != null && !actionType.trim().isEmpty();
+        String firedPhone = intent.getStringExtra("phone");
+        AlarmTrail.begin(context, reminderId, hasAction ? actionType : "",
+                firedPhone != null && !firedPhone.trim().isEmpty());
+
+        if (hasAction) {
+            createActionChannel(context);
+            int notificationId = Math.abs(reminderId.hashCode()) % 10000;
+
+            // Build the intent to launch CountdownActivity. SINGLE_TOP so that
+            // being asked twice (the full-screen notification AND the direct
+            // start below) shows one countdown, not one that restarts.
             Intent countdownIntent = new Intent(context, com.pranix.quietkeep.activities.CountdownActivity.class);
-            countdownIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            
+            countdownIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            countdownIntent.putExtra("reminder_id", reminderId);
+            countdownIntent.putExtra("notification_id", notificationId);
+            countdownIntent.putExtra("fired_at_ms", System.currentTimeMillis());
+
             // Forward action spec properties
             countdownIntent.putExtra("action_type", actionType);
             countdownIntent.putExtra("phone", intent.getStringExtra("phone"));
@@ -61,18 +103,27 @@ public class AlarmReceiver extends BroadcastReceiver {
             if (intent.hasExtra("volume_direction")) countdownIntent.putExtra("volume_direction", intent.getIntExtra("volume_direction", 0));
             countdownIntent.putExtra("display_name", intent.getStringExtra("display_name"));
 
-            // Show full screen intent notification
-            showNotificationWithFullScreenIntent(context, reminderId, reminderText, isAlarmType, countdownIntent);
+            // 1. The way Android intends: a full-screen notification. With the
+            //    phone locked or the screen off, Android opens the countdown
+            //    itself. With the phone in use it shows a banner; tapping the
+            //    banner opens the countdown.
+            boolean fullScreenAllowed = canUseFullScreenIntent(context);
+            boolean posted = showNotificationWithFullScreenIntent(
+                    context, notificationId, reminderText, countdownIntent, fullScreenAllowed);
+            AlarmTrail.note(context, "fullscreen_allowed", String.valueOf(fullScreenAllowed));
+            AlarmTrail.note(context, "notification_posted", String.valueOf(posted));
+            AlarmTrail.note(context, "notifications_enabled", String.valueOf(notificationsEnabled(context)));
+            AlarmTrail.note(context, "channel_importance", String.valueOf(actionChannelImportance(context)));
 
-            // Also launch CountdownActivity directly if full screen intent is allowed
-            if (canUseFullScreenIntent(context)) {
-                try {
-                    context.startActivity(countdownIntent);
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to start CountdownActivity directly: " + e.getMessage());
-                }
-            } else {
-                Log.w(TAG, "Skipping direct CountdownActivity start because full-screen intent is not permitted by OS/user.");
+            // 2. And directly, which is what works while QuietKeep itself is on
+            //    screen. From the background Android ignores this, silently;
+            //    that is why it can no longer be the only way.
+            try {
+                context.startActivity(countdownIntent);
+                AlarmTrail.note(context, "direct_start", "asked");
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to start CountdownActivity directly: " + e.getMessage());
+                AlarmTrail.note(context, "direct_start", "refused");
             }
         } else {
             // Legacy / simple notification flow
@@ -105,6 +156,43 @@ public class AlarmReceiver extends BroadcastReceiver {
             }
         }
         return true;
+    }
+
+    private boolean notificationsEnabled(Context context) {
+        try {
+            return androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    /** -1 when it cannot be read (older Android, or the channel is missing). */
+    private int actionChannelImportance(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return -1;
+        try {
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            NotificationChannel ch = nm == null ? null : nm.getNotificationChannel(ACTION_CHANNEL_ID);
+            return ch == null ? -1 : ch.getImportance();
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    private void createActionChannel(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        NotificationChannel channel = new NotificationChannel(
+            ACTION_CHANNEL_ID,
+            "QuietKeep calls and actions",
+            NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription("The countdown shown before QuietKeep places a call or opens something you scheduled");
+        channel.enableVibration(true);
+        channel.setVibrationPattern(new long[]{0, 300, 150, 300});
+        channel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+        nm.createNotificationChannel(channel);
     }
 
     private void createNotificationChannel(Context context, boolean isAlarmType) {
@@ -185,38 +273,53 @@ public class AlarmReceiver extends BroadcastReceiver {
         Log.d(TAG, "AlarmReceiver: notification shown for reminder=" + reminderId);
     }
 
-    private void showNotificationWithFullScreenIntent(Context context, String reminderId, String reminderText, boolean isAlarmType, Intent countdownIntent) {
+    /**
+     * The banner that opens the countdown. Returns false when it could not be
+     * posted at all.
+     */
+    private boolean showNotificationWithFullScreenIntent(Context context, int notificationId, String reminderText,
+                                                         Intent countdownIntent, boolean fullScreenAllowed) {
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
+        if (nm == null) return false;
 
         int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-            ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+            ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             : PendingIntent.FLAG_UPDATE_CURRENT;
 
         PendingIntent pi = PendingIntent.getActivity(
-            context, reminderId.hashCode(), countdownIntent, flags
+            context, notificationId, countdownIntent, flags
         );
 
-        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("⏰ QuietKeep Scheduled Execution")
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ACTION_CHANNEL_ID)
+            .setContentTitle("QuietKeep - tap to start")
             .setContentText(reminderText)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            // Tapping the banner opens the same countdown. Before this the
+            // banner had nothing behind it: a tap did nothing at all.
+            .setContentIntent(pi)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setSound(soundUri)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setVibrate(new long[]{0, 300, 150, 300})
+            // Gone after two minutes. A stale banner that still dials when it
+            // is tapped an hour later would be worse than no banner.
+            .setTimeoutAfter(ACTION_WINDOW_MS)
             .setStyle(new NotificationCompat.BigTextStyle().bigText(reminderText));
 
-        if (canUseFullScreenIntent(context)) {
+        if (fullScreenAllowed) {
             builder.setFullScreenIntent(pi, true);
         } else {
-            Log.w(TAG, "showNotificationWithFullScreenIntent: Skipping setFullScreenIntent because permission is withheld.");
+            Log.w(TAG, "showNotificationWithFullScreenIntent: full-screen is withheld; the banner still opens the countdown when tapped.");
         }
 
-        nm.notify(Math.abs(reminderId.hashCode()) % 10000, builder.build());
-        Log.d(TAG, "AlarmReceiver: full screen notification shown for reminder=" + reminderId);
+        try {
+            nm.notify(notificationId, builder.build());
+            Log.d(TAG, "AlarmReceiver: countdown notification shown, id=" + notificationId);
+            return true;
+        } catch (Exception e) {
+            Log.w(TAG, "AlarmReceiver: could not post the countdown notification: " + e.getMessage());
+            return false;
+        }
     }
 }

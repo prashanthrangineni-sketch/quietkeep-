@@ -17,7 +17,9 @@ import android.window.OnBackInvokedDispatcher;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import com.pranix.quietkeep.receivers.AlarmReceiver;
 import com.pranix.quietkeep.services.ActionExecutor;
+import com.pranix.quietkeep.services.AlarmTrail;
 import com.pranix.quietkeep.services.ActionExecutor.ActionSpec;
 
 public class CountdownActivity extends Activity {
@@ -41,6 +43,33 @@ public class CountdownActivity extends Activity {
                     | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
                     | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
         }
+
+        // The screen must stay lit for the ten seconds, or a phone with a short
+        // screen timeout goes dark half-way and the person never sees what is
+        // about to be dialled.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        // The banner that brought us here has done its job.
+        int notificationId = getIntent().getIntExtra("notification_id", -1);
+        if (notificationId >= 0) {
+            try {
+                android.app.NotificationManager nm =
+                        (android.app.NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null) nm.cancel(notificationId);
+            } catch (Exception ignored) { }
+        }
+
+        // TOO LATE IS NOT "NOW". If this screen is opened long after the alarm
+        // fired - an old banner tapped, a screen restored from recents - it
+        // must not start dialling. Close without doing anything.
+        long firedAtMs = getIntent().getLongExtra("fired_at_ms", 0L);
+        if (firedAtMs > 0 && System.currentTimeMillis() - firedAtMs > AlarmReceiver.ACTION_WINDOW_MS + 60 * 1000L) {
+            Log.w("QK_COUNTDOWN", "Opened too long after the alarm - not acting.");
+            AlarmTrail.note(this, "countdown_result", "too_late");
+            finish();
+            return;
+        }
+        AlarmTrail.note(this, "countdown_shown_at", String.valueOf(System.currentTimeMillis()));
 
         // Register predictive back gesture callback for API 33+ (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -224,12 +253,18 @@ public class CountdownActivity extends Activity {
 
     private void executeAction() {
         Log.d("QK_COUNTDOWN", "Countdown finished. Executing action: " + actionSpec.type);
+        boolean canCall = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || checkSelfPermission(android.Manifest.permission.CALL_PHONE)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        AlarmTrail.note(this, "call_permission", String.valueOf(canCall));
+        AlarmTrail.note(this, "countdown_result", "acted");
         ActionExecutor.execute(this, actionSpec);
         finish();
     }
 
     private void cancelAction() {
         Log.d("QK_COUNTDOWN", "Action cancelled by user.");
+        AlarmTrail.note(this, "countdown_result", "cancelled");
         if (countDownTimer != null) {
             countDownTimer.cancel();
         }

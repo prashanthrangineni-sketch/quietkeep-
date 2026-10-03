@@ -340,7 +340,7 @@ export function AariaProvider({ children }) {
         // The native voice cannot tell us when it stops, so there is a floor
         // estimated from the length of the sentence; where the end IS
         // observable (isSpeaking), we wait for that as well.
-        const atLeast = Math.min(10000, 1200 + String(spoken).length * 75);
+        const atLeast = Math.min(20000, 1200 + String(spoken).length * 75);
         if (followUpTimer.current) clearInterval(followUpTimer.current);
         followUpTimer.current = setInterval(() => {
           const waited = Date.now() - startedAt;

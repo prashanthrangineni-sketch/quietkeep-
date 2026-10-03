@@ -18,6 +18,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import com.pranix.quietkeep.services.AlarmTrail;
 import com.pranix.quietkeep.services.ReminderAlarmManager;
 import com.pranix.quietkeep.services.ActionExecutor.ActionSpec;
 

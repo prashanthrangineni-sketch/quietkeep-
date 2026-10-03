@@ -302,6 +302,9 @@ export function AariaProvider({ children }) {
           // the turn). Stored with the capture so a "it cut me off" report can
           // be checked against what actually happened.
           ...(lastListenRef.current ? { listen: lastListenRef.current } : {}),
+          // Where the phone is, when it already knows - so a place name is
+          // matched to the one nearby, not the first one in the country.
+          ...(() => { const p = lastKnownPosition(); return p ? { current_lat: p.latitude, current_lng: p.longitude } : {}; })(),
         }),
       });
       lastListenRef.current = null;   // it described THIS sentence only

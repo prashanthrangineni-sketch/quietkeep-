@@ -570,17 +570,26 @@ export async function POST(request) {
         // and no coordinates, geo_trigger_enabled=false, and could never
         // fire. A name is enough to geocode. Null on any failure, and then
         // the old "saved for later, tap Save here" path runs unchanged.
-        const pin = await geocodePlace(parsed.geo.location_name, {
-          nearLat: typeof current_lat === 'number' ? current_lat : null,
-          nearLng: typeof current_lng === 'number' ? current_lng : null,
-        });
+        // WHICH "Mansurabad"? The one near this person. Their phone's position
+        // if it came with the request, otherwise a place they saved (home).
+        // And "home"/"office" are never looked up on a map at all - see
+        // src/lib/geocode.js for the two mistakes of 2-3 October behind this.
+        const here = (typeof current_lat === 'number' && typeof current_lng === 'number')
+          ? { latitude: current_lat, longitude: current_lng }
+          : await anchorPoint(supabase, user.id);
+        const pin = isPersonalPlace(parsed.geo.location_name) ? null
+          : await geocodePlace(parsed.geo.location_name, {
+              nearLat: here?.latitude ?? null,
+              nearLng: here?.longitude ?? null,
+            });
         if (pin) {
-          console.log('[GEO] geocoded:', { name: parsed.geo.location_name, lat: pin.latitude, lng: pin.longitude });
+          console.log('[GEO] geocoded:', { name: parsed.geo.location_name, lat: pin.latitude, lng: pin.longitude, km_away: pin.distance_km ?? null });
+          geoFromMap = true;
           geoData = {
             latitude: pin.latitude,
             longitude: pin.longitude,
             radius_meters: 300,
-            location_name: parsed.geo.location_name,
+            location_name: prettyPlaceName(parsed.geo.location_name),
             geo_trigger_enabled: true,
           };
         }

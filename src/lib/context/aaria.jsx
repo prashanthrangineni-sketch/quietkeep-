@@ -320,6 +320,7 @@ export function AariaProvider({ children }) {
       const spoken = json.tts_response || json.assistant?.reply || 'Saved.';
       say(spoken);
       setTranscript('');
+      setChoices(Array.isArray(json.choices) && json.choices.length ? json.choices : null);
 
       // WHEN AARIA ASKS, SHE LISTENS FOR THE ANSWER.
       //

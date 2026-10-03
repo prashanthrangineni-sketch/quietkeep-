@@ -157,6 +157,43 @@ public class AlarmReceiver extends BroadcastReceiver {
         return true;
     }
 
+    private boolean notificationsEnabled(Context context) {
+        try {
+            return androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    /** -1 when it cannot be read (older Android, or the channel is missing). */
+    private int actionChannelImportance(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return -1;
+        try {
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            NotificationChannel ch = nm == null ? null : nm.getNotificationChannel(ACTION_CHANNEL_ID);
+            return ch == null ? -1 : ch.getImportance();
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    private void createActionChannel(Context context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        NotificationChannel channel = new NotificationChannel(
+            ACTION_CHANNEL_ID,
+            "QuietKeep calls and actions",
+            NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription("The countdown shown before QuietKeep places a call or opens something you scheduled");
+        channel.enableVibration(true);
+        channel.setVibrationPattern(new long[]{0, 300, 150, 300});
+        channel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+        nm.createNotificationChannel(channel);
+    }
+
     private void createNotificationChannel(Context context, boolean isAlarmType) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);

@@ -102,18 +102,27 @@ public class AlarmReceiver extends BroadcastReceiver {
             if (intent.hasExtra("volume_direction")) countdownIntent.putExtra("volume_direction", intent.getIntExtra("volume_direction", 0));
             countdownIntent.putExtra("display_name", intent.getStringExtra("display_name"));
 
-            // Show full screen intent notification
-            showNotificationWithFullScreenIntent(context, reminderId, reminderText, isAlarmType, countdownIntent);
+            // 1. The way Android intends: a full-screen notification. With the
+            //    phone locked or the screen off, Android opens the countdown
+            //    itself. With the phone in use it shows a banner; tapping the
+            //    banner opens the countdown.
+            boolean fullScreenAllowed = canUseFullScreenIntent(context);
+            boolean posted = showNotificationWithFullScreenIntent(
+                    context, notificationId, reminderText, countdownIntent, fullScreenAllowed);
+            AlarmTrail.note(context, "fullscreen_allowed", String.valueOf(fullScreenAllowed));
+            AlarmTrail.note(context, "notification_posted", String.valueOf(posted));
+            AlarmTrail.note(context, "notifications_enabled", String.valueOf(notificationsEnabled(context)));
+            AlarmTrail.note(context, "channel_importance", String.valueOf(actionChannelImportance(context)));
 
-            // Also launch CountdownActivity directly if full screen intent is allowed
-            if (canUseFullScreenIntent(context)) {
-                try {
-                    context.startActivity(countdownIntent);
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to start CountdownActivity directly: " + e.getMessage());
-                }
-            } else {
-                Log.w(TAG, "Skipping direct CountdownActivity start because full-screen intent is not permitted by OS/user.");
+            // 2. And directly, which is what works while QuietKeep itself is on
+            //    screen. From the background Android ignores this, silently;
+            //    that is why it can no longer be the only way.
+            try {
+                context.startActivity(countdownIntent);
+                AlarmTrail.note(context, "direct_start", "asked");
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to start CountdownActivity directly: " + e.getMessage());
+                AlarmTrail.note(context, "direct_start", "refused");
             }
         } else {
             // Legacy / simple notification flow

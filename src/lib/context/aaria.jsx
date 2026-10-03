@@ -307,6 +307,7 @@ export function AariaProvider({ children }) {
           // Where the phone is, when it already knows - so a place name is
           // matched to the one nearby, not the first one in the country.
           ...(() => { const p = lastKnownPosition(); return p ? { current_lat: p.latitude, current_lng: p.longitude } : {}; })(),
+          ...(extra || {}),
         }),
       });
       lastListenRef.current = null;   // it described THIS sentence only

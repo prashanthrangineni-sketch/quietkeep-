@@ -176,6 +176,7 @@ public class ReminderAlarmManager {
         editor.remove("alarm_sms_message_" + reminderId);
         editor.remove("alarm_torch_enable_" + reminderId);
         editor.remove("alarm_volume_direction_" + reminderId);
+        editor.remove("alarm_display_name_" + reminderId);
         editor.apply();
 
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);

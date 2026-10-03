@@ -186,7 +186,21 @@ export function AariaProvider({ children }) {
     // without waiting for the next app open.
     const onChanged = () => { arm(); };
     window.addEventListener('qk_reminders_changed', onChanged);
-    return () => { cancelled = true; window.removeEventListener('qk_reminders_changed', onChanged); };
+    // Coming back to the app after an alarm: send up what the phone noted.
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { reportLastAlarm } = await import('@/lib/reminder-voice');
+        reportLastAlarm({ supabase, userId: user.id }).catch(() => {});
+      } catch {}
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('qk_reminders_changed', onChanged);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [user?.id, voiceLang]);
 
   // The service worker wakes at the due moment and asks whichever page is open

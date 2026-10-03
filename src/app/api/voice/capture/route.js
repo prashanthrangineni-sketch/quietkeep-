@@ -791,8 +791,11 @@ export async function POST(request) {
     writeLedgerEntry(supabase, bizPayload, keep.id).catch(() => {});
   }
 
-  // Auto-save named location to user_locations if we had real coords + a name
-  if (geoData?.geo_trigger_enabled && geoData.latitude && geoData.location_name) {
+  // Auto-save named location to user_locations if we had real coords + a name.
+  // NOT when the pin came from a map lookup: that is our guess, and saving a
+  // guess as one of the user's own places is how a wrong "Mansurabad" and a
+  // wrong "home" became permanent on 2-3 October 2026.
+  if (!geoFromMap && geoData?.geo_trigger_enabled && geoData.latitude && geoData.location_name) {
     autoSaveLocation(supabase, user.id, geoData.location_name, geoData.latitude, geoData.longitude, geoData.radius_meters)
       .catch(() => {});  // Non-blocking
   }

@@ -33,6 +33,7 @@ public class ActionExecutor {
         public String smsMessage;
         public Boolean torchEnable;
         public Integer volumeDirection;  // 1 = raise, -1 = lower
+        public String displayName;       // Who or what, as the person would say it
     }
 
     public static void execute(Context context, ActionSpec spec) {

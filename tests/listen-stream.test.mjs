@@ -155,6 +155,7 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   check('turn returns the finished sentence', r.ok && r.v.text === 'Surya Kiran ki call cheyyi', JSON.stringify(r));
   check('finalise time measured from "stop"', r.ok && r.v.finaliseMs === 501);
   check('words shown while speaking', partials[0] === 'Surya Kiran ki');
+  check('the turn records when the mic opened', r.ok && typeof r.v.micLiveMs === 'number');
 }
 
 // ── the founder's sentence, spoken the moment the mic opens ──────────────────

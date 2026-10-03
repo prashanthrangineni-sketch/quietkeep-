@@ -46,6 +46,7 @@ import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 import { checkForNotices } from '@/lib/aaria-watch';
 import { isSpeaking, looksLikeSelfEcho } from '@/lib/barge-in';
+import { lastKnownPosition } from '@/lib/geo';
 
 const AariaContext = createContext(null);
 

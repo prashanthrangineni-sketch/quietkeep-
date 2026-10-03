@@ -52,7 +52,7 @@ export default function AariaDock() {
     : speaking    ? 'var(--green, #10b981)'
     : 'var(--primary)';
 
-  const statusLine = listening ? 'Listening…'
+  const statusLine = listening ? (micLive ? 'Listening — speak now' : 'Opening the mic…')
     : thinking     ? 'Thinking…'
     : speaking     ? 'Speaking…'
     : here         ? `On ${here}. Say "open invoices", or ask me anything.`

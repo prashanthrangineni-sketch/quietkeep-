@@ -39,7 +39,7 @@ async function world({ acceptsText = false, mode = 'counter', on = true, newEngi
                        holdThrows = false, releaseThrows = false, receiver = true } = {}) {
   const st = { on, waiting: on, starts: 0, stops: 0, wakes: [], mode, refuse: '', holds: 0, releases: 0,
                held: false, warns: 0, logs: 0, gate: null, statusGate: null, holdGate: null, holdThrows, releaseThrows,
-               stopThrows: false, timerThrows: false, storageThrows: false, nameGate: null, permGate: null, refuseOnce: '', statusThrows: false, startsInFlight: 0, maxStartsInFlight: 0 };
+               stopThrows: false, timerThrows: false, storageThrows: false, nameGate: null, permGate: null, refuseOnce: '', statusThrows: false, permAsks: 0, startsInFlight: 0, maxStartsInFlight: 0 };
   const pluginListeners = {};
   const domListeners = {};
   const timers = [];
@@ -62,7 +62,7 @@ async function world({ acceptsText = false, mode = 'counter', on = true, newEngi
       })();
     },
     setWakeName: inTurn(async () => { if (st.nameGate) await st.nameGate; }),
-    requestPermissions: inTurn(async () => { if (st.permGate) await st.permGate; return { microphone: 'granted' }; }),
+    requestPermissions: inTurn(async () => { st.permAsks++; if (st.permGate) await st.permGate; return { microphone: 'granted' }; }),
     addListener: (name, fn) => { pluginListeners[name] = fn; },
   };
   if (newEngine) {
@@ -98,7 +98,8 @@ async function world({ acceptsText = false, mode = 'counter', on = true, newEngi
   const limitsPass = async () => { for (const t of timers.filter((x) => x.live && isLimit(x))) { t.live = false; t.fn(); } await tick(); };
   // Fires every timer that is still set (whatever its length), as the passing of time would.
   const threeMinutesPass = async () => { for (const t of liveTimers()) { t.live = false; t.fn(); } await tick(); };
-  return { st, window, fire, wake, liveTimers, threeMinutesPass, timePasses: threeMinutesPass, limitsPass };
+  const liveLimits = () => timers.filter((t) => t.live && isLimit(t));
+  return { st, window, fire, wake, liveTimers, threeMinutesPass, timePasses: threeMinutesPass, limitsPass, liveLimits };
 }
 
 // ---- older engine (no pause of its own): the listening service is stopped and started again ----
@@ -501,6 +502,38 @@ for (const newEngine of [false, true]) {
     await a; await b; await c; await tick();
     ok(w.st.on && w.st.starts === 1, which + ': on, off, on in one instant: it ends on, started once');
   }
+}
+{
+  const w = await world({ on: false });
+  w.st.refuseOnce = 'microphone_permission_required';
+  let open; w.st.gate = new Promise((r) => { open = r; });
+  const turnOn = w.window.__QK_WAKE__.startHotword({ word: 'aaria' });   // the engine is about to say "microphone not allowed"...
+  await tick(); await tick();
+  const turnOff = w.window.__QK_WAKE__.stopHotword();                    // ...when the person turns listening off
+  await tick(); w.st.gate = null; open(); await turnOn; await turnOff; await tick();
+  ok(w.st.permAsks === 0 && !w.st.on, 'turned off just before the engine says "microphone not allowed": Android\'s microphone question is not shown');
+}
+{
+  const w = await world({ on: false });
+  w.st.refuseOnce = 'microphone_permission_required';
+  let open; w.st.permGate = new Promise((r) => { open = r; });
+  const turnOn = w.window.__QK_WAKE__.startHotword({ word: 'aaria' });
+  await tick(); await tick();
+  ok(w.liveLimits().length === 1 && w.liveLimits()[0].ms === 120000, 'while Android\'s microphone question is open, the bridge waits up to two minutes, not twenty seconds');
+  w.st.refuse = 'aaria_unavailable';                                     // and after the answer the engine still refuses
+  const warnsBefore = w.st.warns;
+  open(); await turnOn; await tick();
+  ok(w.st.warns > warnsBefore && !w.st.on, 'listening cannot be turned on after the microphone question: it is written to the log');
+}
+{
+  const w = await world({ newEngine: true, receiver: false });
+  await w.fire('qk_mic_claim');                      // QuietKeep takes the microphone (a tap on the mic)...
+  await w.wake({ hasCommand: false });               // ...and a wake that left the engine just before arrives
+  ok(w.st.held && w.st.releases === 0, 'newer engine, nobody takes the wake, QuietKeep has the microphone: the late wake does not end the pause');
+  await w.fire('qk_mic_release');
+  ok(!w.st.held && w.st.releases === 1, 'and the pause ends at the "free" signal as usual');
+  await w.wake({ hasCommand: false });
+  ok(w.st.releases === 2 && w.st.waiting, 'and after that, a wake nobody takes puts the engine back to waiting for the name again');
 }
 {
   const w = await world();

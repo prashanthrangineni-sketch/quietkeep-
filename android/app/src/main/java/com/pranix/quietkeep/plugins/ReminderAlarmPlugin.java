@@ -1,5 +1,17 @@
 package com.pranix.quietkeep.plugins;
 
+import android.Manifest;
+import android.app.AlarmManager;
+import android.app.NotificationManager;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Build;
+
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
+
+import java.util.Map;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;

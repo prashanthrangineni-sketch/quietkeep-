@@ -73,10 +73,11 @@ export function distanceKm(lat1, lng1, lat2, lng2) {
 export async function geocodePlace(name, opts = {}) {
   const q = cleanPlaceName(name)
   if (q.length < 3) return null
+  if (isPersonalPlace(q)) return null   // "home" is the user's to define
   const f = opts.fetchImpl || fetch
   try {
     const params = new URLSearchParams({
-      q, format: 'jsonv2', limit: '1', countrycodes: 'in', addressdetails: '0',
+      q, format: 'jsonv2', limit: '5', countrycodes: 'in', addressdetails: '0',
     })
     // Bias toward the user's current position when the client sent one: a
     // "Chintal Kunta" near them beats one 600 km away. ~0.5 degrees is about

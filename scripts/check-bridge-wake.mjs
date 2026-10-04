@@ -653,6 +653,18 @@ for (const newEngine of [false, true]) {
   await w.limitsPass();                               // the time limit for that one thing runs out
   ok(w.st.warns > warnsBefore, 'something the engine never answers: after its time limit that is written to the log');
 }
+{
+  const w = await world();
+  await w.wake({ hasCommand: false });
+  w.st.refuse = 'turned_off';                        // the engine says: turned off on the notice meanwhile
+  const logsBefore = w.st.logs;
+  await w.fire('qk_mic_release');
+  ok(w.st.starts === 1 && !w.st.on && w.liveTimers().length === 0 && w.st.logs > logsBefore, 'the engine says listening was turned off on the notice: no retry is set, and it is noted in the log');
+  w.st.refuse = '';
+  await w.fire('qk_mic_release');
+  await w.fire('doc:visibilitychange');
+  ok(w.st.starts === 1 && !w.st.on, 'and no later "free" signal or return to the screen starts it');
+}
 // ---- nothing fails silently ----
 {
   const w = await world();

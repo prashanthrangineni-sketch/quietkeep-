@@ -240,6 +240,7 @@ public class VoiceService extends Service {
     }
 
     private void startCapture() {
+        MicGuard.stopAariaListenService(this);
         if (isCapturing) {
             Log.d(TAG, "VoiceService.startCapture: already capturing");
             return;

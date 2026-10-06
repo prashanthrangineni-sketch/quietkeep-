@@ -91,6 +91,11 @@ jobs:
           test -n "$(find android -name '*-release.apk' -type f -print -quit)" \
             || { echo "no release APK produced - failing rather than uploading nothing" >&2; exit 1; }
 
+      - name: Is the speech engine really inside the APK
+        # Added 3 Oct 2026. Every check was green on a build whose speech recogniser had never been
+        # packed. This opens each finished APK and fails unless the recogniser is inside it.
+        run: python3 scripts/check_apk_speech_engine.py $(find android -name '*.apk' -type f)
+
       - name: Keep the APK
         uses: actions/upload-artifact@v4
         with:

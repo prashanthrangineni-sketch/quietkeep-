@@ -1,0 +1,14 @@
+{
+  "stop": "stopped",
+  "cancel": "cancelled",
+  "yes": "yes_ack",
+  "no": "no_ack",
+  "help": "help_short",
+  "repeat": "repeat_prompt",
+  "remind_me": "ok",
+  "call_contact": "ok",
+  "whats_next": "ok",
+  "read_today": "ok",
+  "no_match": "didnt_catch",
+  "needsCloud": "checking_online"
+}

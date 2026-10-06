@@ -68,6 +68,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
+          ./gradlew testPersonalDebugUnitTest testBusinessDebugUnitTest --no-daemon
           ./gradlew assembleDebug --no-daemon
 
       - name: What did it build
@@ -80,6 +81,11 @@ jobs:
           find android -name '*.apk' -type f -print -exec ls -lh {} \;
           test -n "$(find android -name '*.apk' -type f -print -quit)" \
             || { echo "the build reported success and produced no APK - failing rather than uploading nothing" >&2; exit 1; }
+
+      - name: Is the speech engine really inside the APK
+        # Added 3 Oct 2026. Every check was green on a build whose speech recogniser had never been
+        # packed. This opens each finished APK and fails unless the recogniser is inside it.
+        run: python3 scripts/check_apk_speech_engine.py $(find android -name '*.apk' -type f)
 
       - name: Keep the APKs
         uses: actions/upload-artifact@v4

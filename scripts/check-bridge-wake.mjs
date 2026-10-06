@@ -1342,5 +1342,10 @@ for (const newEngine of [false, true]) {
   await tick();
   ok(w.st.starts === 0 && !w.st.on && w.st.warns > warnsBefore, 'the wake name cannot be set: listening is not turned on, and it is written to the log');
 }
+// ---- the native side (MicGuard.java) uses the same two signals ----
+{
+  const w = await world();
+  ok(w.window.__qkEdgeMicBridge === true, 'the page says it has the bridge, so native voice capture asks it for the microphone instead of turning listening off');
+}
 if (failed) { console.error(failed + ' check(s) failed'); process.exit(1); }
 console.log('All wake-bridge checks passed.');

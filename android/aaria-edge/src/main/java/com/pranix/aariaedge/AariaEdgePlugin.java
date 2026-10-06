@@ -44,8 +44,8 @@ public class AariaEdgePlugin extends Plugin {
     private int statsScored = 0;
     private int statsSkipped = 0;
     
-    private boolean isListeningPaused = false;
-    private String pauseReason = null;
+    private volatile boolean isListeningPaused = false;
+    private volatile String pauseReason = null;
     
     private String manifestUrl = null;
     private String manifestPublicKey = null;
@@ -53,7 +53,53 @@ public class AariaEdgePlugin extends Plugin {
     
     public static AariaEdgePlugin instance;
     private WakeWordDetector wakeWordDetector;
-    private boolean isWaitingForWakeWord = false;
+    // Read and written from the listening thread and from the app's calls.
+    private volatile boolean isWaitingForWakeWord = false;
+    private final Object nameLock = new Object();
+    private int nameEpoch = 0;
+    // "Turn off" and what is sent to the app. offCount goes up when a turn-off begins and again when the
+    // recorder has stopped; turningOff is true in between. Speech is remembered with the count at the moment
+    // it was heard, and is stale once the count has moved or while a turn-off is under way. Nothing made
+    // from stale speech is sent. A turn-off and a send never overlap (sendLock), so nothing can be sent
+    // after a turn-off has begun.
+    private final java.util.concurrent.atomic.AtomicInteger offCount = new java.util.concurrent.atomic.AtomicInteger();
+    private volatile boolean turningOff = false;
+    // True from the moment the recorder is told to stop until it is next started. Whatever a stopped
+    // recorder still delivers (the tail of what it was hearing, or everything, if it refused to stop) is
+    // thrown away.
+    private volatile boolean speechUnwanted = false;
+    private final Object sendLock = new Object();
+
+    private boolean stale(int offCountWhenHeard) {
+        return turningOff || speechUnwanted || offCount.get() != offCountWhenHeard;
+    }
+
+    /** After a command: back to waiting for the wake name, unless a turn-off has begun meanwhile. */
+    private void rearmIfStillOn(int offCountWhenHeard) {
+        synchronized (sendLock) {
+            if (!stale(offCountWhenHeard) && isBackgroundListeningInternal()) isWaitingForWakeWord = true;
+        }
+    }
+
+    /** Sends an event made from speech, unless that speech is stale. Returns false when it was not sent. */
+    private boolean sendIfStillOn(int offCountWhenHeard, String eventName, JSObject data) {
+        synchronized (sendLock) {
+            if (stale(offCountWhenHeard)) return false;
+            notifyListeners(eventName, data);
+            return true;
+        }
+    }
+
+    /**
+     * The next thing heard must be checked for the wake name. It also overrules a wake that is still being
+     * worked out on the listening thread: that one may no longer switch to "the next thing is a command".
+     */
+    private void waitForNameAgain() {
+        synchronized (nameLock) {
+            nameEpoch++;
+            isWaitingForWakeWord = true;
+        }
+    }
     private long lastWakeWordTime = 0;
 
     private int initAttempts = 0;
@@ -69,11 +115,19 @@ public class AariaEdgePlugin extends Plugin {
                 NightlySyncWorker.microphoneActive = false;
                 throw e;
             }
+            speechUnwanted = false;
+            // Listening that starts, or comes back after any pause, always waits for the wake name.
+            waitForNameAgain();
         }
         @Override
         public void stop() {
-            if (implementation != null) implementation.stop();
-            NightlySyncWorker.microphoneActive = false;
+            // Set first: speech that arrives while it is stopping, or after, is not used.
+            speechUnwanted = true;
+            try {
+                if (implementation != null) implementation.stop();
+            } finally {
+                NightlySyncWorker.microphoneActive = false;
+            }
         }
         @Override
         public boolean isRunning() {
@@ -104,7 +158,7 @@ public class AariaEdgePlugin extends Plugin {
                 try { getContext().startService(intent); } catch (Exception ignored) {}
             }
         }
-    });
+    }, () -> android.os.SystemClock.elapsedRealtime());   // counts through sleep; a changed clock does not move it
 
     private synchronized boolean ensureReady() {
         if (initAttempts > 0 && unavailableReason == null) return true;
@@ -138,11 +192,23 @@ public class AariaEdgePlugin extends Plugin {
                         ret.put("durationMs", durationMs);
                         notifyListeners("speechEnd", ret);
 
+                        // Speech that arrives while a turn-off is under way, or from a recorder that has been told
+                        // to stop, is thrown away here and now, whatever happens before its turn would have come.
+                        if (turningOff || speechUnwanted) return;
+                        // Speech heard before a turn-off is thrown away when its turn comes.
+                        final int offCountWhenHeard = offCount.get();
                         executor.submit(() -> {
+                            if (stale(offCountWhenHeard)) return;
                             if (System.currentTimeMillis() - lastWakeWordTime < 1500) return;
+                            final int nameEpochAtStart;
+                            synchronized (nameLock) { nameEpochAtStart = nameEpoch; }
+                            // The app holds the microphone: whatever was still being worked out is dropped.
+                            if (listenController.isHeldByApp()) return;
                             statsHeard++;
 
-                            if (isWaitingForWakeWord) {
+                            // Read once: a turn-off in the middle must not turn a wake check into a command.
+                            final boolean checkForName = isWaitingForWakeWord;
+                            if (checkForName) {
                                 if (durationMs < 300) {
                                     statsSkipped++;
                                     return;
@@ -199,6 +265,10 @@ public class AariaEdgePlugin extends Plugin {
                                             } catch (Exception ignored) {}
                                         }
 
+                                        // The app took the microphone, or listening was turned off, while this was being
+                                        // worked out: drop it. Nobody is told of a wake after "Turn off".
+                                        if (listenController.isHeldByApp() || stale(offCountWhenHeard)) return;
+
                                         JSObject ev = new JSObject();
                                         ev.put("id", wakeWordDetector.id());
                                         ev.put("score", score);
@@ -206,7 +276,15 @@ public class AariaEdgePlugin extends Plugin {
                                         ev.put("hasCommand", hasCommand);
                                         // The rest of the sentence with the wake name removed, for an app that acts on a one-breath command itself.
                                         if (hasCommand) ev.put("text", commandTranscript);
-                                        notifyListeners("wakeWord", ev);
+                                        // A bare wake: the next thing heard is the command. This is set BEFORE the app is told,
+                                        // so an app that answers with holdMicrophone() is not overruled a moment later. And it
+                                        // is not set at all if "wait for the name" was asked for while this was being worked out.
+                                        if (!hasCommand) {
+                                            synchronized (nameLock) {
+                                                if (nameEpoch == nameEpochAtStart) isWaitingForWakeWord = false;
+                                            }
+                                        }
+                                        if (!sendIfStillOn(offCountWhenHeard, "wakeWord", ev)) return;
                                         playChime();
                                         lastWakeWordTime = System.currentTimeMillis();
 
@@ -219,7 +297,7 @@ public class AariaEdgePlugin extends Plugin {
                                                     cmd.put("reason", "no_match");
                                                     cmd.put("durationMs", durationMs);
                                                     cmd.put("transcript", commandTranscript);
-                                                    notifyListeners("needsCloud", cmd);
+                                                    if (!sendIfStillOn(offCountWhenHeard, "needsCloud", cmd)) return;
                                                 } else {
                                                     JSObject cmd = new JSObject();
                                                     cmd.put("intent", matchResult.intent);
@@ -227,7 +305,7 @@ public class AariaEdgePlugin extends Plugin {
                                                     cmd.put("transcript", commandTranscript);
                                                     cmd.put("lang", currentLang);
                                                     cmd.put("onDevice", true);
-                                                    notifyListeners("commandRecognized", cmd);
+                                                    if (!sendIfStillOn(offCountWhenHeard, "commandRecognized", cmd)) return;
                                                     if (rememberCommands) {
                                                         try {
                                                             String value = "{\"intent\":\"" + matchResult.intent + "\",\"time\":" + System.currentTimeMillis() + "}";
@@ -242,10 +320,8 @@ public class AariaEdgePlugin extends Plugin {
                                                 JSObject cmd = new JSObject();
                                                 cmd.put("reason", "no_engine");
                                                 cmd.put("durationMs", durationMs);
-                                                notifyListeners("needsCloud", cmd);
+                                                if (!sendIfStillOn(offCountWhenHeard, "needsCloud", cmd)) return;
                                             }
-                                        } else {
-                                            isWaitingForWakeWord = false;
                                         }
                                     }
                                 }
@@ -256,8 +332,8 @@ public class AariaEdgePlugin extends Plugin {
                                 JSObject cmd = new JSObject();
                                 cmd.put("reason", "too_long");
                                 cmd.put("durationMs", durationMs);
-                                notifyListeners("needsCloud", cmd);
-                                if (isBackgroundListeningInternal()) isWaitingForWakeWord = true;
+                                if (!sendIfStillOn(offCountWhenHeard, "needsCloud", cmd)) return;
+                                rearmIfStillOn(offCountWhenHeard);
                                 return;
                             }
 
@@ -269,17 +345,21 @@ public class AariaEdgePlugin extends Plugin {
                                 JSObject cmd = new JSObject();
                                 cmd.put("reason", "no_engine");
                                 cmd.put("durationMs", durationMs);
-                                notifyListeners("needsCloud", cmd);
-                                if (isBackgroundListeningInternal()) isWaitingForWakeWord = true;
+                                if (!sendIfStillOn(offCountWhenHeard, "needsCloud", cmd)) return;
+                                rearmIfStillOn(offCountWhenHeard);
                                 return;
                             }
+
+                            // Listening was turned off while this was being worked out: nothing is sent to the app,
+                            // and what was said goes nowhere.
+                            if (stale(offCountWhenHeard)) return;
 
                             if (result == null) {
                                 JSObject cmd = new JSObject();
                                 cmd.put("reason", "no_model");
                                 cmd.put("durationMs", durationMs);
-                                notifyListeners("needsCloud", cmd);
-                                if (isBackgroundListeningInternal()) isWaitingForWakeWord = true;
+                                if (!sendIfStillOn(offCountWhenHeard, "needsCloud", cmd)) return;
+                                rearmIfStillOn(offCountWhenHeard);
                                 return;
                             }
 
@@ -288,8 +368,8 @@ public class AariaEdgePlugin extends Plugin {
                                 cmd.put("reason", "no_match");
                                 cmd.put("durationMs", durationMs);
                                 cmd.put("transcript", result.transcript);
-                                notifyListeners("needsCloud", cmd);
-                                if (isBackgroundListeningInternal()) isWaitingForWakeWord = true;
+                                if (!sendIfStillOn(offCountWhenHeard, "needsCloud", cmd)) return;
+                                rearmIfStillOn(offCountWhenHeard);
                                 return;
                             }
 
@@ -299,7 +379,7 @@ public class AariaEdgePlugin extends Plugin {
                             cmd.put("transcript", result.transcript);
                             cmd.put("lang", currentLang);
                             cmd.put("onDevice", true);
-                            notifyListeners("commandRecognized", cmd);
+                            if (!sendIfStillOn(offCountWhenHeard, "commandRecognized", cmd)) return;
 
                             if (rememberCommands) {
                                 try {
@@ -310,7 +390,7 @@ public class AariaEdgePlugin extends Plugin {
                                     memoryStore.put("recent_command", result.matchResult.intent + "_" + System.currentTimeMillis(), value, 7);
                                 } catch (Exception ignored) {}
                             }
-                            if (isBackgroundListeningInternal()) isWaitingForWakeWord = true;
+                            rearmIfStillOn(offCountWhenHeard);
                         });
                     }
 
@@ -436,6 +516,7 @@ public class AariaEdgePlugin extends Plugin {
         try {
             NightlySyncWorker.microphoneActive = true;
             implementation.start(sampleRate, minSpeechMs, minSilenceMs);
+            speechUnwanted = false;
             call.resolve();
         } catch (Exception e) {
             NightlySyncWorker.microphoneActive = false;
@@ -983,10 +1064,29 @@ public class AariaEdgePlugin extends Plugin {
     }
 
     public void onBackgroundListeningStopped() {
-        listenController.turnOff();
-        isWaitingForWakeWord = false;
-        isListeningPaused = false;
-        pauseReason = null;
+        // From this line on, nothing made from speech is sent to the app: what was heard before is stale
+        // (the count moved), and what is heard while the recorder is stopping is stale too (turningOff).
+        synchronized (sendLock) {
+            turningOff = true;
+            offCount.incrementAndGet();
+            isWaitingForWakeWord = false;
+        }
+        try {
+            listenController.turnOff();
+        } catch (RuntimeException e) {
+            // The controller is off all the same; the rest of the turn-off must still happen.
+            android.util.Log.w("AariaEdge", "The recorder did not stop cleanly at turn-off", e);
+        } finally {
+            if (appHold != null) appHold.cancel();
+            synchronized (sendLock) {
+                // The recorder has stopped. Speech heard while it was stopping carries the count from above.
+                offCount.incrementAndGet();
+                isWaitingForWakeWord = false;
+                turningOff = false;
+            }
+            isListeningPaused = false;
+            pauseReason = null;
+        }
         
         if (getContext() != null) {
             android.content.SharedPreferences prefs = getContext().getSharedPreferences("aaria_prefs", android.content.Context.MODE_PRIVATE);
@@ -1010,6 +1110,8 @@ public class AariaEdgePlugin extends Plugin {
 
     @PluginMethod
     public void startBackgroundListening(PluginCall call) {
+        // Read on the very first line: a "Turn off" at any moment during this call must be noticed at its end.
+        final int offCountAtStart = offCount.get();
         if (!ensureReady()) { if(call!=null) call.reject("aaria_unavailable"); return; }
         if (!isBackgroundListeningInternal()) {
             if(call!=null) call.reject("Consent for wake word is not granted");
@@ -1064,26 +1166,52 @@ public class AariaEdgePlugin extends Plugin {
         }
 
         DeviceState state = new DeviceState(batteryPct, charging, powerSave, thermalStatus, wakeOnBattery);
-        ListenController.TurnOnResult res = listenController.turnOn(state);
-        isListeningPaused = res.paused;
-        pauseReason = res.reason;
+        if (appHold != null) appHold.cancel();
+        boolean wasOn = listenController.isOn();
+        listenController.turnOn(state);
+        // Read what is true now from the controller (a battery report may already have changed it).
+        String reasonNow = listenController.pauseReason();
+        isListeningPaused = (reasonNow != null);
+        pauseReason = reasonNow;
         
         // Let the service do the real state-gathering and start
         Intent intent = new Intent(getContext(), AariaListenService.class);
         intent.putExtra("lang", currentLang);
         intent.putExtra("wakeOnBattery", wakeOnBattery);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            getContext().startForegroundService(intent);
-        } else {
-            getContext().startService(intent);
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                getContext().startForegroundService(intent);
+            } else {
+                getContext().startService(intent);
+            }
+        } catch (Exception e) {
+            // Android refused to start the listening service. Listening that was off must not be left
+            // recording without its service and its notice: everything is put back to "off". Listening that
+            // was already on carries on under the service it has.
+            if (!wasOn) onBackgroundListeningStopped();
+            // IllegalStateException is how Android says "the app is not on screen".
+            if (call != null) call.reject((e instanceof IllegalStateException) ? "not_in_foreground" : "service_start_failed");
+            return;
         }
-        isWaitingForWakeWord = true;
-        
-        android.content.SharedPreferences prefs = getContext().getSharedPreferences("aaria_prefs", android.content.Context.MODE_PRIVATE);
-        prefs.edit()
-             .putBoolean("aaria_listen_was_on", true)
-             .putString("aaria_lang", currentLang)
-             .apply();
+        // "Turn off" may have been pressed while listening was being started. Then it stays off: this call
+        // must not say "waiting for the name" or store "was on" on top of that turn-off.
+        boolean turnedOffMeanwhile;
+        synchronized (sendLock) {
+            turnedOffMeanwhile = turningOff || offCount.get() != offCountAtStart;
+            if (!turnedOffMeanwhile) {
+                waitForNameAgain();
+                android.content.SharedPreferences prefs = getContext().getSharedPreferences("aaria_prefs", android.content.Context.MODE_PRIVATE);
+                prefs.edit()
+                     .putBoolean("aaria_listen_was_on", true)
+                     .putString("aaria_lang", currentLang)
+                     .apply();
+            }
+        }
+        if (turnedOffMeanwhile) {
+            stopListeningInternal();    // also takes down the service this call has just asked for
+            if (call != null) call.reject("turned_off");
+            return;
+        }
         
         // Remove open-app notification if it exists
         android.app.NotificationManager manager = (android.app.NotificationManager) getContext().getSystemService(android.content.Context.NOTIFICATION_SERVICE);
@@ -1107,6 +1235,64 @@ public class AariaEdgePlugin extends Plugin {
     }
 
 
+    // ---- The host app needs the microphone ----
+
+    private java.util.concurrent.ScheduledExecutorService holdTimer;
+    private volatile AppHold appHold;
+
+    private Runnable scheduleHoldTask(Runnable task, long delayMs) {
+        if (holdTimer == null) {
+            holdTimer = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "aaria-hold-timer");
+                t.setDaemon(true);
+                return t;
+            });
+        }
+        final java.util.concurrent.ScheduledFuture<?> f =
+                holdTimer.schedule(task, delayMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+        return () -> f.cancel(false);
+    }
+
+    /** Made on first use. The rules of a hold (ceiling, undo, wait for the name again) live in AppHold. */
+    private synchronized AppHold appHold() {
+        if (appHold == null) {
+            appHold = new AppHold(
+                    () -> listenController,
+                    (task, delayMs) -> scheduleHoldTask(task, delayMs),
+                    () -> waitForNameAgain());
+        }
+        return appHold;
+    }
+
+    /**
+     * The host app is about to listen itself, or to speak. Listening pauses; the listening service and its
+     * notice stay, so listening can come back by itself even when the app is not on screen.
+     * Resolves held:false when listening is off. Calling it again renews the three-minute ceiling.
+     * Rejects with "hold_timer_failed" when that ceiling could not be set, or "hold_failed" when the recorder
+     * could not be paused; nothing is held then.
+     */
+    @PluginMethod
+    public void holdMicrophone(PluginCall call) {
+        if (!ensureReady()) { call.reject("aaria_unavailable"); return; }
+        boolean held;
+        try {
+            held = appHold().hold();
+        } catch (Exception e) {
+            call.reject("hold_failed".equals(e.getMessage()) ? "hold_failed" : "hold_timer_failed");
+            return;
+        }
+        JSObject ret = new JSObject();
+        ret.put("held", held);
+        call.resolve(ret);
+    }
+
+    /** The host app is done. Listening starts again by itself if the phone allows it, waiting for the wake name. */
+    @PluginMethod
+    public void releaseMicrophone(PluginCall call) {
+        if (!ensureReady()) { call.reject("aaria_unavailable"); return; }
+        appHold().release();
+        call.resolve();
+    }
 
     @PluginMethod
     public void isBackgroundListening(PluginCall call) {
@@ -1332,6 +1518,8 @@ public class AariaEdgePlugin extends Plugin {
     public void stop(PluginCall call) {
         if (!ensureReady()) { if(call!=null) call.reject("aaria_unavailable"); return; }
         NightlySyncWorker.microphoneActive = false;
+        // Deliberately no "speech unwanted" mark here: a host that listens in the foreground and stops the
+        // microphone as soon as the person has finished speaking must still get that command.
         if (implementation != null) {
             implementation.stop();
         }

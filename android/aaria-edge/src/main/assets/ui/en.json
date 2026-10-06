@@ -38,6 +38,7 @@
   "s4_paused_power_saver": "Battery saver is on.",
   "s4_paused_hot": "The phone is hot.",
   "s4_paused_unplugged": "The phone is not charging.",
+  "s4_paused_in_use": "A conversation is in progress.",
   "s4_paused_resume": "It will start again by itself.",
   "s4_paused_open_app": "Open {app} to start listening again.",
   "s5_title": "Teach {name} your voice",

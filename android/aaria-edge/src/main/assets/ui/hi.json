@@ -39,6 +39,7 @@
   "s4_paused_power_saver": "बैटरी सेवर चालू है।",
   "s4_paused_hot": "फ़ोन गरम है।",
   "s4_paused_unplugged": "फ़ोन चार्ज नहीं हो रहा है।",
+  "s4_paused_in_use": "बातचीत चल रही है।",
   "s4_paused_resume": "यह अपने आप फिर शुरू हो जाएगा।",
   "s4_paused_open_app": "फिर से सुनना शुरू करने के लिए {app} खोलें।",
   "s5_title": "{name} को अपनी आवाज़ सिखाएँ",

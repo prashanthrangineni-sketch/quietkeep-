@@ -133,6 +133,17 @@ public class AariaListenService extends Service {
             }
             
             if (intent != null && ACTION_UPDATE_STATE.equals(intent.getAction())) {
+                if (AariaEdgePlugin.instance == null || !AariaEdgePlugin.instance.listenController.isOn()) {
+                    // This request to redraw the notice was sent while listening was on, but "Turn off" got
+                    // here first. There is nothing to show: put no notice up, and take down any that is up.
+                    stopForeground(true);
+                    NotificationManager gone = getSystemService(NotificationManager.class);
+                    if (gone != null) gone.cancel(NOTIF_ID);
+                    // Only if nothing newer is waiting: a start that came in behind this request must still
+                    // be allowed to bring the service up (Android insists that it does).
+                    stopSelf(startId);
+                    return START_NOT_STICKY;
+                }
                 if (intent.hasExtra("isPaused")) {
                     isPaused = intent.getBooleanExtra("isPaused", false);
                     pauseReason = intent.getStringExtra("pauseReason");
@@ -143,8 +154,9 @@ public class AariaListenService extends Service {
                 return START_STICKY;
             }
 
-            if (AariaEdgePlugin.instance == null) {
-                // Plugin died, show open app notification
+            if (AariaEdgePlugin.instance == null || !AariaEdgePlugin.instance.listenController.isOn()) {
+                // The plugin is gone, or listening is off (a stop overtook this start): say "open the app",
+                // never "listening".
                 Notification notification = createNotificationForDeadPlugin();
                 startForeground(NOTIF_ID, notification);
             } else {
@@ -156,6 +168,11 @@ public class AariaListenService extends Service {
                 // But we need to ensure the service knows the initial state for the first startForeground.
                 // It might not have received a notificationChanged event yet.
                 // I will just use the current state from the gate for the first notification, or call checkGate().
+                // Show what is true now. The controller only announces changes, so a start (or a start again)
+                // that changes nothing would otherwise leave this notice on whatever it showed before.
+                String reasonNow = AariaEdgePlugin.instance.listenController.pauseReason();
+                isPaused = (reasonNow != null);
+                pauseReason = reasonNow;
                 Notification notification = createNotification();
                 startForeground(NOTIF_ID, notification);
                 checkGate();

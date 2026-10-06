@@ -240,7 +240,7 @@ public class VoiceService extends Service {
     }
 
     private void startCapture() {
-        MicGuard.stopAariaListenService(this);
+        MicGuard.beforeCapture(this);
         if (isCapturing) {
             Log.d(TAG, "VoiceService.startCapture: already capturing");
             return;
@@ -726,6 +726,8 @@ public class VoiceService extends Service {
             try { audioRecord.stop(); audioRecord.release(); } catch (Exception ignored) {}
             audioRecord = null;
         }
+        // The microphone is closed: Aaria's listening may come back (see MicGuard).
+        MicGuard.afterCapture(this);
     }
 
     private void createNotificationChannel() {

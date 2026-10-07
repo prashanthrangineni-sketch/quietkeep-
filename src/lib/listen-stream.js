@@ -45,6 +45,7 @@ export const FRAME_SAMPLES = 1600;   // 100 ms at 16 kHz
 export const READY_TIMEOUT_MS   = 4000;
 export const DONE_TIMEOUT_MS    = 5000;
 export const NOTHING_HEARD_MS   = 8000;  // tapped the mic and said nothing
+export const ENGINE_HOLD_MS     = 1000;  // new words from the engine count only this soon after a voice
 export const MAX_KEYTERMS       = 40;
 
 const PREF_KEY = 'qk_listen_stream';
@@ -381,12 +382,28 @@ export function startListenStream({
     armSilence();
   }
 
+  // THE MICROPHONE DECIDES WHEN THE PERSON HAS STOPPED. (4 October 2026)
+  // The founder spoke Telugu four times this morning and each turn ran to the
+  // fifteen-second limit: 0.8 to 4.3 seconds of voice, then ten seconds of a
+  // quiet room, and still listening. Twice more he tapped stop himself.
+  // Words from the engine used to restart the "has he stopped?" wait every
+  // time they arrived. With one sentence held open, the engine keeps sending
+  // its running guess while the room is silent, so the wait never ran out.
+  // Now words from the engine may hold the turn open only when they are NEW
+  // words and the microphone itself heard a voice within the last second.
+  // A quiet room ends the turn however much the engine goes on talking.
+  let lastLoudAt = null;
+  function engineHeardFreshVoice(isNewText) {
+    return isNewText && speechFrames > 0 && lastLoudAt !== null
+      && now() - lastLoudAt <= ENGINE_HOLD_MS;
+  }
+
   let frames = 0, speechFrames = 0, stopReason = null, micLiveMs = null;
   function onFrame(frame) {
     const pcm = floatToPcm16(frame).buffer;
     if (frames === 0) { micLiveMs = Math.round(now() - t0); try { onLive(); } catch {} }
     frames++;
-    if (loud.isSpeech(rms(frame))) { speechFrames++; speechNow(); }
+    if (loud.isSpeech(rms(frame))) { speechFrames++; lastLoudAt = now(); speechNow(); }
     if (ready) send(pcm); else pending.push(pcm);
   }
 
@@ -427,9 +444,10 @@ export function startListenStream({
       const t = (msg.text || '').trim();
       if (t) {
         if (firstWordsMs === null) firstWordsMs = Math.round(now() - t0);
+        const isNewText = t !== lastPartial;
         lastPartial = t;
         onPartial((finals.join(' ') + ' ' + t).trim());
-        if (!stopSent && speechFrames > 0) speechNow();
+        if (!stopSent && engineHeardFreshVoice(isNewText)) speechNow();
       }
     } else if (ev === 'final') {
       const t = (msg.text || '').trim();
@@ -438,7 +456,7 @@ export function startListenStream({
         finals.push(t);
         lastPartial = '';
         onPartial(finals.join(' '));
-        if (!stopSent && speechFrames > 0) speechNow();
+        if (!stopSent && engineHeardFreshVoice(true)) speechNow();
       }
     } else if (ev === 'done') {
       const t = (msg.text || '').trim() || heardText();

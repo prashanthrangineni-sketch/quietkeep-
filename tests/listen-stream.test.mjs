@@ -4,7 +4,7 @@ import {
   downsampleTo16k, floatToPcm16, createFramer, createLoudness, cleanKeyterms,
   listenStreamWanted, setListenStreamWanted, startListenStream, streamingSupported,
   cleanListenEvidence,
-  READY_TIMEOUT_MS, FRAME_SAMPLES,
+  READY_TIMEOUT_MS, FRAME_SAMPLES, ENGINE_HOLD_MS,
 } from '../src/lib/listen-stream.js';
 
 let pass = 0, fail = 0;

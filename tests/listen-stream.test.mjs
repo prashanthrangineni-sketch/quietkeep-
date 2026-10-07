@@ -194,6 +194,65 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   check('…and are never handed on as something the person said', !r.ok && r.e.reason === 'nothing heard' && r.e.fallback === false, JSON.stringify(r.ok ? r.v : r.e));
 }
 
+// ── Telugu, 4 October: the room is quiet but the engine keeps talking ────────
+{
+  const w = makeWorld();
+  const s = startListenStream({ lang: 'te-IN', silenceMs: 1400, deps: w.deps });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.engine({ event: 'ready' });
+  for (let i = 0; i < 3; i++) { w.hush(); w.clock.advance(100); }
+  for (let i = 0; i < 8; i++) { w.speak(); w.clock.advance(100); }       // 0.8 s of voice
+  w.engine({ event: 'partial', text: 'one minute lo' });
+  // Ten seconds of a quiet room; the engine repeats its running guess twice a second.
+  let stoppedAfterMs = null;
+  for (let i = 1; i <= 100 && stoppedAfterMs === null; i++) {
+    w.hush(); w.clock.advance(100);
+    if (i % 5 === 0) w.engine({ event: 'partial', text: 'one minute lo' });
+    if (w.json().some((m) => m.event === 'stop')) stoppedAfterMs = i * 100;
+  }
+  check('the same words repeated into a quiet room do not hold the turn open', stoppedAfterMs !== null && stoppedAfterMs <= 1500, String(stoppedAfterMs));
+  w.engine({ event: 'done', text: 'one minute lo' });
+  const r = await res;
+  check('…and the turn ends on silence, not on the fifteen-second limit', r.ok && r.v.stopReason === 'silence' && r.v.heardMs < 3000, JSON.stringify(r.ok ? r.v : r.e));
+}
+{
+  const w = makeWorld();
+  const s = startListenStream({ lang: 'te-IN', silenceMs: 1400, deps: w.deps });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.engine({ event: 'ready' });
+  for (let i = 0; i < 3; i++) { w.hush(); w.clock.advance(100); }
+  for (let i = 0; i < 8; i++) { w.speak(); w.clock.advance(100); }
+  // The engine cannot make up its mind: a different guess every 300 ms, for ever.
+  let stoppedAfterMs = null;
+  for (let i = 1; i <= 100 && stoppedAfterMs === null; i++) {
+    w.hush(); w.clock.advance(100);
+    if (i % 3 === 0) w.engine({ event: 'partial', text: i % 2 ? 'one minute lo' : 'van minute lo' });
+    if (w.json().some((m) => m.event === 'stop')) stoppedAfterMs = i * 100;
+  }
+  check('a guess that keeps changing cannot hold a quiet room open either', stoppedAfterMs !== null && stoppedAfterMs <= ENGINE_HOLD_MS + 1500, String(stoppedAfterMs));
+  w.engine({ event: 'done', text: 'one minute lo' });
+  await res;
+}
+{
+  const w = makeWorld();
+  const s = startListenStream({ lang: 'te-IN', silenceMs: 1400, deps: w.deps });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.engine({ event: 'ready' });
+  for (let i = 0; i < 3; i++) { w.hush(); w.clock.advance(100); }
+  for (let i = 0; i < 8; i++) { w.speak(); w.clock.advance(100); }
+  for (let i = 0; i < 9; i++) { w.hush(); w.clock.advance(100); }         // 0.9 s quiet
+  w.engine({ event: 'partial', text: 'Akhilesh ki call' });                // new words, just after a voice
+  for (let i = 0; i < 9; i++) { w.hush(); w.clock.advance(100); }         // 1.8 s since the voice
+  check('new words just after a voice still give the person the full wait', !w.json().some((m) => m.event === 'stop'));
+  for (let i = 0; i < 6; i++) { w.hush(); w.clock.advance(100); }
+  check('…and then the turn ends', w.json().some((m) => m.event === 'stop'));
+  w.engine({ event: 'done', text: 'Akhilesh ki call' });
+  await res;
+}
+
 // ── the engine is asleep: fall back ──────────────────────────────────────────
 {
   const w = makeWorld();

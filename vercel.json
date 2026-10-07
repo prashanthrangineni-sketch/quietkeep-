@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "wip/**": false
+    }
+  },
   "crons": [
     {
       "path": "/api/system/cleanup",

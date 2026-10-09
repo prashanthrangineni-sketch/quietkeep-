@@ -325,6 +325,7 @@ export function AariaProvider({ children }) {
       recognitionRef.current = null;
     }
     try { cancelSpeech(); } catch {}
+    speakUntilRef.current = 0;   // stopped by hand: nothing more will be said
     setInterim('');
     setStatus('idle');
     // Give the microphone back to the hotword, but only after the capture

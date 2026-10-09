@@ -791,9 +791,20 @@ export function AariaProvider({ children }) {
     let info = null;
     try { info = initWakeEngine(); } catch {}
     setWakeInfo(info);
-    const off = onWake(() => { startListening(); });
+    // A wake that already carries the command ("Hey Aaria, remind me...") is
+    // acted on directly, through the same door the web hotword uses for a
+    // one-breath sentence. A bare wake opens the microphone, as before.
+    const off = onWake((wake) => {
+      const text = typeof wake?.text === 'string' ? wake.text.trim() : '';
+      if (text) {
+        // No microphone is opened for this turn, but she is about to think
+        // and speak: the phone-side listener steps aside from the start.
+        if (!hotwordRef.current) micHold.hold();
+        setOpen(true); setTranscript(text); submitRef.current?.(text);
+      } else startListening();
+    });
     return () => { try { off(); } catch {} };
-  }, [silent, signedIn, startListening]);
+  }, [silent, signedIn, startListening, micHold]);
 
   // Keep the ref pointing at the current submit, every render.
   useEffect(() => { submitRef.current = submit; }, [submit]);

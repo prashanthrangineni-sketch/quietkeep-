@@ -43,7 +43,8 @@ import {
   startListenStream, listenStreamWanted, streamingSupported, keepEngineWarm, recordLastListen,
 } from '@/lib/listen-stream';
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
-import { startWebHotword, isWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
+import { startWebHotword, isWebHotwordEnabled, isHotwordSupported, claimMic, releaseMic } from '@/lib/aaria-hotword';
+import { createMicHold } from '@/lib/mic-hold';
 import { checkForNotices } from '@/lib/aaria-watch';
 import { isSpeaking, looksLikeSelfEcho } from '@/lib/barge-in';
 import { lastKnownPosition } from '@/lib/geo';
@@ -172,7 +173,8 @@ export function AariaProvider({ children }) {
         // Anything that came due while the phone was in a bag is read out now,
         // rather than being lost in silence.
         await speakMissedReminders({
-          supabase, userId: user.id, speak,
+          supabase, userId: user.id,
+          speak: (t, o) => { holdForSpeech(t, { queue: true }); return speak(t, o); },
           prefix: MISSED_PREFIX[String(voiceLang || 'en').split('-')[0]] || MISSED_PREFIX.en,
         });
       } catch {
@@ -212,6 +214,7 @@ export function AariaProvider({ children }) {
     function onWorkerMessage(event) {
       const msg = event.data;
       if (!msg || msg.type !== 'REMINDER_DUE' || !msg.text) return;
+      holdForSpeech(msg.text);
       speak(String(msg.text), { priority: 'high' });
     }
     navigator.serviceWorker.addEventListener('message', onWorkerMessage);
@@ -255,6 +258,34 @@ export function AariaProvider({ children }) {
   // would drift within a week.
   const hotwordRef     = useRef(null);
   const [hotwordOn, setHotwordOn] = useState(false);
+  // "The microphone is taken" / "free again", for the phone-side listener
+  // (src/lib/mic-hold.js has the why). Taken when Aaria opens the microphone;
+  // free only when the whole turn is over - not listening, no call to the
+  // brain in flight, nothing being spoken, no answer awaited.
+  const brainBusyRef   = useRef(0);
+  const speakUntilRef  = useRef(0);
+  const micHold = useMemo(() => createMicHold({
+    claim: claimMic,
+    release: releaseMic,
+    isBusy: () => listeningRef.current
+      || submittingRef.current
+      || brainBusyRef.current > 0
+      || followUpTimer.current !== null
+      || Date.now() < speakUntilRef.current
+      || isSpeaking(),
+  }), []);
+  useEffect(() => () => { micHold.dispose(); }, [micHold]);
+  // She is about to speak. The phone-side listener must not be transcribing
+  // her own voice, so "taken" is said here too - not only when the microphone
+  // opens. That covers a one-breath command ("Hey Aaria, remind me..."), a
+  // typed question, and a reminder read out on opening, none of which open the
+  // microphone. `queue` is for things said one after another.
+  const holdForSpeech = useCallback((text, { queue = false } = {}) => {
+    const est = Math.min(20000, 1200 + String(text || '').length * 75);
+    const from = queue ? Math.max(speakUntilRef.current, Date.now()) : Date.now();
+    speakUntilRef.current = Math.min(from + est, Date.now() + 60000);
+    if (!hotwordRef.current) micHold.hold();
+  }, [micHold]);
   // The hotword listener is created ONCE and lives across navigation. Its
   // callbacks must therefore never close over `submit` directly: `submit`
   // depends on `pathname`, so listing it as an effect dependency would tear
@@ -273,13 +304,17 @@ export function AariaProvider({ children }) {
     if (!text) return;
     setReply(String(text));
     setStatus('speaking');
+    // How long she will be talking, at least - there is no dependable
+    // "finished speaking" signal, so the microphone is not called free before
+    // this has passed (same estimate the follow-up loop waits on).
+    holdForSpeech(text);
     try { speak(String(text), { priority: 'high' }); } catch {}
     // No reliable end-of-speech event across the native bridge and the browser,
     // so fall back to idle on a timer proportional to length. Worst case the
     // orb stops pulsing slightly early — cosmetic, never functional.
     const ms = Math.min(9000, 1200 + String(text).length * 55);
     setTimeout(() => setStatus((s) => (s === 'speaking' ? 'idle' : s)), ms);
-  }, []);
+  }, [holdForSpeech]);
 
   const stopAll = useCallback(() => {
     if (followUpTimer.current) { clearInterval(followUpTimer.current); followUpTimer.current = null; }
@@ -290,6 +325,7 @@ export function AariaProvider({ children }) {
       recognitionRef.current = null;
     }
     try { cancelSpeech(); } catch {}
+    speakUntilRef.current = 0;   // stopped by hand: nothing more will be said
     setInterim('');
     setStatus('idle');
     // Give the microphone back to the hotword, but only after the capture
@@ -305,6 +341,7 @@ export function AariaProvider({ children }) {
       return;
     }
     setStatus('thinking');
+    brainBusyRef.current += 1;   // the turn is not over while this is in flight
     try {
       const res = await fetch('/api/voice/capture', {
         method: 'POST',
@@ -397,6 +434,8 @@ export function AariaProvider({ children }) {
     } catch {
       setError('Network problem. Nothing was lost — try again.');
       setStatus('idle');
+    } finally {
+      brainBusyRef.current = Math.max(0, brainBusyRef.current - 1);
     }
   }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id]);
 
@@ -483,6 +522,11 @@ export function AariaProvider({ children }) {
     if (listeningRef.current) return;
 
     // Take the microphone off the hotword before opening our own recogniser.
+    // With no web hotword in play (the phone app), say "taken" for whoever
+    // else is listening - the phone-side "Hey Aaria" listener steps aside on
+    // it and comes back on "free". The web hotword is handled directly here,
+    // as it always was, so it is not also sent the signal.
+    if (!hotwordRef.current) micHold.hold();
     try { hotwordRef.current?.suspend(); } catch {}
     try { cancelSpeech(); } catch {}
     setError('');
@@ -604,7 +648,7 @@ export function AariaProvider({ children }) {
     recognitionRef.current = rec;
     try { rec.start(); }
     catch { setError('Could not start the microphone.'); setStatus('idle'); }
-  }, [voiceLang, submit]);
+  }, [voiceLang, submit, micHold]);
 
   // ── listening, path A: through Aaria's engine while the person speaks ─────
   // src/lib/listen-stream.js has the why. Sarvam saaras:v4 with this user's
@@ -661,6 +705,7 @@ export function AariaProvider({ children }) {
       return;
     }
 
+    if (!hotwordRef.current) micHold.hold();   // see startBrowserListening
     try { hotwordRef.current?.suspend(); } catch {}
     try { cancelSpeech(); } catch {}
     setError('');
@@ -732,7 +777,7 @@ export function AariaProvider({ children }) {
         if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);
       },
     );
-  }, [voiceLang, submit, startBrowserListening, refreshNames]);
+  }, [voiceLang, submit, startBrowserListening, refreshNames, micHold]);
   useEffect(() => { startListenRef.current = startListening; }, [startListening]);
 
   const toggleListening = useCallback(() => {
@@ -748,9 +793,20 @@ export function AariaProvider({ children }) {
     let info = null;
     try { info = initWakeEngine(); } catch {}
     setWakeInfo(info);
-    const off = onWake(() => { startListening(); });
+    // A wake that already carries the command ("Hey Aaria, remind me...") is
+    // acted on directly, through the same door the web hotword uses for a
+    // one-breath sentence. A bare wake opens the microphone, as before.
+    const off = onWake((wake) => {
+      const text = typeof wake?.text === 'string' ? wake.text.trim() : '';
+      if (text) {
+        // No microphone is opened for this turn, but she is about to think
+        // and speak: the phone-side listener steps aside from the start.
+        if (!hotwordRef.current) micHold.hold();
+        setOpen(true); setTranscript(text); submitRef.current?.(text);
+      } else startListening();
+    });
     return () => { try { off(); } catch {} };
-  }, [silent, signedIn, startListening]);
+  }, [silent, signedIn, startListening, micHold]);
 
   // Keep the ref pointing at the current submit, every render.
   useEffect(() => { submitRef.current = submit; }, [submit]);
@@ -837,7 +893,7 @@ export function AariaProvider({ children }) {
         const where = keep?.location_name || 'your place';
         const what  = String(keep?.content || keep?.subject || '').slice(0, 120);
         const line  = what ? `You're at ${where}. ${what}` : `You're at ${where}.`;
-        if (silent) { try { speak(line, { priority: 'high' }); } catch {} }
+        if (silent) { holdForSpeech(line); try { speak(line, { priority: 'high' }); } catch {} }
         else { setOpen(true); say(line); }
       }, () => tokenRef.current);
     }).catch(() => {});

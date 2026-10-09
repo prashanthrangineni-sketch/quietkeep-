@@ -304,6 +304,10 @@ export function AariaProvider({ children }) {
     if (!text) return;
     setReply(String(text));
     setStatus('speaking');
+    // How long she will be talking, at least - there is no dependable
+    // "finished speaking" signal, so the microphone is not called free before
+    // this has passed (same estimate the follow-up loop waits on).
+    holdForSpeech(text);
     try { speak(String(text), { priority: 'high' }); } catch {}
     // No reliable end-of-speech event across the native bridge and the browser,
     // so fall back to idle on a timer proportional to length. Worst case the

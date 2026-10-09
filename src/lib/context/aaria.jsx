@@ -173,7 +173,8 @@ export function AariaProvider({ children }) {
         // Anything that came due while the phone was in a bag is read out now,
         // rather than being lost in silence.
         await speakMissedReminders({
-          supabase, userId: user.id, speak,
+          supabase, userId: user.id,
+          speak: (t, o) => { holdForSpeech(t, { queue: true }); return speak(t, o); },
           prefix: MISSED_PREFIX[String(voiceLang || 'en').split('-')[0]] || MISSED_PREFIX.en,
         });
       } catch {

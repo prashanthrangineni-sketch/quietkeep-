@@ -891,7 +891,7 @@ export function AariaProvider({ children }) {
         const where = keep?.location_name || 'your place';
         const what  = String(keep?.content || keep?.subject || '').slice(0, 120);
         const line  = what ? `You're at ${where}. ${what}` : `You're at ${where}.`;
-        if (silent) { try { speak(line, { priority: 'high' }); } catch {} }
+        if (silent) { holdForSpeech(line); try { speak(line, { priority: 'high' }); } catch {} }
         else { setOpen(true); say(line); }
       }, () => tokenRef.current);
     }).catch(() => {});

@@ -648,7 +648,7 @@ export function AariaProvider({ children }) {
     recognitionRef.current = rec;
     try { rec.start(); }
     catch { setError('Could not start the microphone.'); setStatus('idle'); }
-  }, [voiceLang, submit]);
+  }, [voiceLang, submit, micHold]);
 
   // ── listening, path A: through Aaria's engine while the person speaks ─────
   // src/lib/listen-stream.js has the why. Sarvam saaras:v4 with this user's

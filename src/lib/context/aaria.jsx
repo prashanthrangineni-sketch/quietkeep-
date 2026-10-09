@@ -258,6 +258,34 @@ export function AariaProvider({ children }) {
   // would drift within a week.
   const hotwordRef     = useRef(null);
   const [hotwordOn, setHotwordOn] = useState(false);
+  // "The microphone is taken" / "free again", for the phone-side listener
+  // (src/lib/mic-hold.js has the why). Taken when Aaria opens the microphone;
+  // free only when the whole turn is over - not listening, no call to the
+  // brain in flight, nothing being spoken, no answer awaited.
+  const brainBusyRef   = useRef(0);
+  const speakUntilRef  = useRef(0);
+  const micHold = useMemo(() => createMicHold({
+    claim: claimMic,
+    release: releaseMic,
+    isBusy: () => listeningRef.current
+      || submittingRef.current
+      || brainBusyRef.current > 0
+      || followUpTimer.current !== null
+      || Date.now() < speakUntilRef.current
+      || isSpeaking(),
+  }), []);
+  useEffect(() => () => { micHold.dispose(); }, [micHold]);
+  // She is about to speak. The phone-side listener must not be transcribing
+  // her own voice, so "taken" is said here too - not only when the microphone
+  // opens. That covers a one-breath command ("Hey Aaria, remind me..."), a
+  // typed question, and a reminder read out on opening, none of which open the
+  // microphone. `queue` is for things said one after another.
+  const holdForSpeech = useCallback((text, { queue = false } = {}) => {
+    const est = Math.min(20000, 1200 + String(text || '').length * 75);
+    const from = queue ? Math.max(speakUntilRef.current, Date.now()) : Date.now();
+    speakUntilRef.current = Math.min(from + est, Date.now() + 60000);
+    if (!hotwordRef.current) micHold.hold();
+  }, [micHold]);
   // The hotword listener is created ONCE and lives across navigation. Its
   // callbacks must therefore never close over `submit` directly: `submit`
   // depends on `pathname`, so listing it as an effect dependency would tear

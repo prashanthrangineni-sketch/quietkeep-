@@ -522,6 +522,11 @@ export function AariaProvider({ children }) {
     if (listeningRef.current) return;
 
     // Take the microphone off the hotword before opening our own recogniser.
+    // With no web hotword in play (the phone app), say "taken" for whoever
+    // else is listening - the phone-side "Hey Aaria" listener steps aside on
+    // it and comes back on "free". The web hotword is handled directly here,
+    // as it always was, so it is not also sent the signal.
+    if (!hotwordRef.current) micHold.hold();
     try { hotwordRef.current?.suspend(); } catch {}
     try { cancelSpeech(); } catch {}
     setError('');

@@ -40,7 +40,7 @@ import { routeUtterance, helpText, DESTINATIONS } from '@/lib/aaria-router';
 import { speak, cancelSpeech, setSpeechAuthToken } from '@/components/VoiceTalkback';
 import { endpointSilenceMsFor, MAX_LISTEN_MS } from '@/lib/endpointing';
 import {
-  startListenStream, listenStreamWanted, streamingSupported, warmEngine, recordLastListen,
+  startListenStream, listenStreamWanted, streamingSupported, keepEngineWarm, recordLastListen,
 } from '@/lib/listen-stream';
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';

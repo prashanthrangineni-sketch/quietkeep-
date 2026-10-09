@@ -703,6 +703,7 @@ export function AariaProvider({ children }) {
       return;
     }
 
+    if (!hotwordRef.current) micHold.hold();   // see startBrowserListening
     try { hotwordRef.current?.suspend(); } catch {}
     try { cancelSpeech(); } catch {}
     setError('');

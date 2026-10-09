@@ -642,11 +642,13 @@ export function AariaProvider({ children }) {
     return namesRef.current.names;
   }, [accessToken]);
 
-  // Wake the engine and fetch the names before the first tap, not during it.
+  // Wake the engine and fetch the names before the first tap, not during it,
+  // and keep the engine awake while QuietKeep stays on screen (see keepEngineWarm).
   useEffect(() => {
     if (silent || !signedIn) return;
-    warmEngine();
+    const stopWarm = keepEngineWarm();
     refreshNames();
+    return stopWarm;
   }, [silent, signedIn, refreshNames]);
 
   const startListening = useCallback(() => {

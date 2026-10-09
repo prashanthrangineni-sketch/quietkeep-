@@ -314,7 +314,7 @@ export function AariaProvider({ children }) {
     // orb stops pulsing slightly early — cosmetic, never functional.
     const ms = Math.min(9000, 1200 + String(text).length * 55);
     setTimeout(() => setStatus((s) => (s === 'speaking' ? 'idle' : s)), ms);
-  }, []);
+  }, [holdForSpeech]);
 
   const stopAll = useCallback(() => {
     if (followUpTimer.current) { clearInterval(followUpTimer.current); followUpTimer.current = null; }

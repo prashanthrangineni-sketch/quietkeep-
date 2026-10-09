@@ -434,6 +434,8 @@ export function AariaProvider({ children }) {
     } catch {
       setError('Network problem. Nothing was lost — try again.');
       setStatus('idle');
+    } finally {
+      brainBusyRef.current = Math.max(0, brainBusyRef.current - 1);
     }
   }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id]);
 

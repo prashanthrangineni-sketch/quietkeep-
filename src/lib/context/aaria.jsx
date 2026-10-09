@@ -341,6 +341,7 @@ export function AariaProvider({ children }) {
       return;
     }
     setStatus('thinking');
+    brainBusyRef.current += 1;   // the turn is not over while this is in flight
     try {
       const res = await fetch('/api/voice/capture', {
         method: 'POST',

@@ -214,6 +214,7 @@ export function AariaProvider({ children }) {
     function onWorkerMessage(event) {
       const msg = event.data;
       if (!msg || msg.type !== 'REMINDER_DUE' || !msg.text) return;
+      holdForSpeech(msg.text);
       speak(String(msg.text), { priority: 'high' });
     }
     navigator.serviceWorker.addEventListener('message', onWorkerMessage);

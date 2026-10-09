@@ -40,7 +40,7 @@ import { routeUtterance, helpText, DESTINATIONS } from '@/lib/aaria-router';
 import { speak, cancelSpeech, setSpeechAuthToken } from '@/components/VoiceTalkback';
 import { endpointSilenceMsFor, MAX_LISTEN_MS } from '@/lib/endpointing';
 import {
-  startListenStream, listenStreamWanted, streamingSupported, warmEngine, recordLastListen,
+  startListenStream, listenStreamWanted, streamingSupported, keepEngineWarm, recordLastListen,
 } from '@/lib/listen-stream';
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
@@ -642,11 +642,13 @@ export function AariaProvider({ children }) {
     return namesRef.current.names;
   }, [accessToken]);
 
-  // Wake the engine and fetch the names before the first tap, not during it.
+  // Wake the engine and fetch the names before the first tap, not during it,
+  // and keep the engine awake while QuietKeep stays on screen (see keepEngineWarm).
   useEffect(() => {
     if (silent || !signedIn) return;
-    warmEngine();
+    const stopWarm = keepEngineWarm();
     refreshNames();
+    return stopWarm;
   }, [silent, signedIn, refreshNames]);
 
   const startListening = useCallback(() => {

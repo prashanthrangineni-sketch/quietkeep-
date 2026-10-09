@@ -5,6 +5,7 @@ import {
   listenStreamWanted, setListenStreamWanted, startListenStream, streamingSupported,
   cleanListenEvidence,
   READY_TIMEOUT_MS, FRAME_SAMPLES, ENGINE_HOLD_MS,
+  keepEngineWarm, ENGINE_KEEP_WARM_MS, ENGINE_HEALTH_URL,
 } from '../src/lib/listen-stream.js';
 
 let pass = 0, fail = 0;
@@ -318,6 +319,39 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   const s = startListenStream({ lang: 'en', silenceMs: 900, deps: w.deps });
   const r = await outcome(s.result);
   check('microphone blocked → fall back', !r.ok && r.e.fallback === true && r.e.reason === 'microphone blocked');
+}
+
+// ── 7 October: keep the engine awake while QuietKeep is on screen ───────────
+{
+  const calls = [];
+  const fetchImpl = (url) => { calls.push(url); return Promise.resolve(); };
+  const listeners = {};
+  const doc = {
+    visibilityState: 'visible',
+    addEventListener: (ev, fn) => { listeners[ev] = fn; },
+    removeEventListener: (ev, fn) => { if (listeners[ev] === fn) delete listeners[ev]; },
+  };
+  let tick = null, everyMs = null, cleared = false;
+  const setInt = (fn, ms) => { tick = fn; everyMs = ms; return 7; };
+  const clearInt = (id) => { cleared = id === 7; };
+  const stop = keepEngineWarm({ doc, fetchImpl, setInt, clearInt });
+  check('the engine is woken as soon as the assistant loads', calls.length === 1 && calls[0] === ENGINE_HEALTH_URL, JSON.stringify(calls));
+  check('…and again every ten minutes, inside free hosting\'s fifteen-minute sleep', everyMs === ENGINE_KEEP_WARM_MS && everyMs < 15 * 60 * 1000, String(everyMs));
+  tick();
+  check('a ten-minute tick while QuietKeep is on screen wakes it', calls.length === 2);
+  doc.visibilityState = 'hidden';
+  tick();
+  check('nothing is sent while QuietKeep is in the background', calls.length === 2);
+  doc.visibilityState = 'visible';
+  listeners.visibilitychange();
+  check('coming back on screen wakes it at once', calls.length === 3);
+  stop();
+  check('closing the assistant stops the ticks and the screen listener', cleared && !listeners.visibilitychange);
+}
+{
+  let threw = false;
+  try { keepEngineWarm({ doc: null, fetchImpl: () => { throw new Error('offline'); }, setInt: null, clearInt: null })(); } catch { threw = true; }
+  check('no network and no timers: it never throws', !threw);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

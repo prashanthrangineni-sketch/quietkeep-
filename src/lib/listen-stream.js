@@ -119,6 +119,35 @@ export function warmEngine(fetchImpl) {
   } catch {}
 }
 
+// KEEP THE ENGINE AWAKE WHILE QUIETKEEP IS ON SCREEN. (7 October 2026)
+// At the NVIDIA meetup one of the founder's three turns never reached the
+// engine: "engine not ready in time", and the phone's own recogniser took
+// over. The engine runs on free hosting that goes to sleep after about
+// fifteen minutes with no traffic and takes far longer than the four-second
+// wait to wake. QuietKeep woke it once, when the assistant first loaded; an
+// app left open longer than that found it asleep again.
+// Now: wake it on load, again whenever QuietKeep comes back on screen, and
+// every ten minutes while it stays on screen. Nothing is sent while the app
+// is in the background, so a phone in a pocket costs nothing.
+export const ENGINE_KEEP_WARM_MS = 10 * 60 * 1000;
+
+/** Returns a function that stops keeping the engine warm. Never throws. */
+export function keepEngineWarm({ doc, fetchImpl, setInt, clearInt, everyMs = ENGINE_KEEP_WARM_MS } = {}) {
+  const d = doc || (typeof document !== 'undefined' ? document : null);
+  const si = setInt || (typeof setInterval !== 'undefined' ? setInterval : null);
+  const ci = clearInt || (typeof clearInterval !== 'undefined' ? clearInterval : null);
+  const onScreen = () => !d || d.visibilityState !== 'hidden';
+  const wake = () => { if (onScreen()) warmEngine(fetchImpl); };
+  wake();
+  try { d?.addEventListener?.('visibilitychange', wake); } catch {}
+  let timer = null;
+  try { timer = si ? si(wake, everyMs) : null; } catch {}
+  return () => {
+    try { d?.removeEventListener?.('visibilitychange', wake); } catch {}
+    try { if (timer !== null && ci) ci(timer); } catch {}
+  };
+}
+
 // ── audio arithmetic (pure) ──────────────────────────────────────────────────
 
 /** Average-down to 16 kHz. Input already at 16 kHz is returned as is. */

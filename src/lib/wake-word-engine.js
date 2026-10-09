@@ -225,9 +225,41 @@ export function stop() {
 // user long-presses power (default assistant), taps the notification mic, taps
 // the widget, or the hotword fires. We normalise it into a single 'qk_wake' event
 // that the dashboard's existing voice loop can subscribe to.
+//
+// ONE BREATH. "Hey Aaria, remind me to call Ravi" is one sentence, and the
+// founder's rule (2 October 2026) is that the part after the name is the
+// command - the person must not have to wait and say it again. The phone-side
+// listener (Aaria Edge) already keeps the rest of the sentence; it had nowhere
+// to hand it. So the callback takes a second argument, { text }, and the wake
+// event carries it. No text - a bare "Hey Aaria", the power button, the
+// widget - is exactly the wake it always was.
+const MAX_WAKE_TEXT = 300;
+
+/** The words that came with a wake, cleaned; '' when there are none. Pure. */
+export function wakeCommandText(detail) {
+  const raw = detail && typeof detail === 'object' ? detail.text : null;
+  if (typeof raw !== 'string') return '';
+  const text = raw.replace(/\s+/g, ' ').trim().slice(0, MAX_WAKE_TEXT);
+  // Punctuation or noise alone is not a command.
+  return /[\p{L}\p{N}]/u.test(text) ? text : '';
+}
+
+/** What a wake event carries. Pure, so it can be tested without a phone. */
+export function wakePayload(source, detail, word, nowMs = Date.now()) {
+  return {
+    source: typeof source === 'string' && source ? source : 'native',
+    at: nowMs,
+    word,
+    text: wakeCommandText(detail),
+  };
+}
+
 export function registerNativeWake() {
   if (!isBrowser()) return;
-  window.__qkOnWake = (source = 'native') => emitWake({ source, at: Date.now(), word: getWakeWord() });
+  window.__qkOnWake = (source = 'native', detail = null) => emitWake(wakePayload(source, detail, getWakeWord()));
+  // The phone-side listener reads this before it sends any words: an older
+  // page, without the door above, is sent a bare wake exactly as before.
+  window.__qkOnWakeAcceptsText = true;
   // Back-compat: honour the stub's documented event name too.
   window.addEventListener('lotus_wake', () => emitWake({ source: 'legacy_lotus', at: Date.now() }));
 }

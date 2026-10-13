@@ -499,6 +499,7 @@ export function startListenStream({
     const ev = msg?.event;
     if (ev === 'ready') {
       ready = true;
+      engineUsed = msg.engine === 'nemotron' ? 'nemotron' : 'sarvam';
       clear('ready');
       while (pending.length) send(pending.shift());
     } else if (ev === 'partial') {

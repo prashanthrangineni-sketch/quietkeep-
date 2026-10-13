@@ -49,6 +49,7 @@ import { createMicHold } from '@/lib/mic-hold';
 import { checkForNotices } from '@/lib/aaria-watch';
 import { isSpeaking, looksLikeSelfEcho } from '@/lib/barge-in';
 import { lastKnownPosition } from '@/lib/geo';
+import { isSosUtterance, triggerSOS } from '@/lib/sos';
 
 const AariaContext = createContext(null);
 

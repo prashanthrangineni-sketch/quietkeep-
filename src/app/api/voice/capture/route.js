@@ -353,12 +353,69 @@ export async function POST(request) {
       },
     }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
 
+    // ── THE SAFETY CHECK, FOR "NOW" ────────────────────────────────────────
+    // "Call Surya Kiran?" ... "now" is the person's spoken yes to a call they
+    // just heard read back. Until 13 Oct 2026 the server replied "Calling Surya
+    // now." and NOTHING dialled: call_now was returned and no client read it -
+    // a false "done", the exact failure the plan's item 1 counts (target 0).
+    // Now the level table decides (src/lib/action-levels.js): a saved contact
+    // needs spoken yes + an unlocked phone; the app being in the foreground
+    // ('voice' / 'text' sources) is the unlock proof we have today. When it
+    // says do, the response carries auto_exec and the phone dials; when it
+    // does not, the reply says why in plain words and nothing is claimed.
+    let nowExec = null
+    let nowSafety = null
+    let nowTts = answerConfirmation(answer, openQuestion)
+    if (answer.kind === 'now') {
+      const { count: doneThisHour } = await supabase
+        .from('audit_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('action', 'action.spoken_yes')
+        .gte('created_at', new Date(Date.now() - 3_600_000).toISOString())
+        .then((r) => ({ count: r.error ? null : (r.count ?? 0) }))
+      nowSafety = decide(
+        { type: 'contact', contactSaved: !!openQuestion.contact_phone },
+        { spokenYes: true, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
+        { doneThisHour },
+      )
+      nowSafety.unlock_proof = ['voice', 'text'].includes(source) ? 'app_in_foreground' : null
+      if (nowSafety.decision === DECISION.DO && openQuestion.contact_phone) {
+        nowExec = {
+          keep_id:       openQuestion.id,
+          intent_type:   'contact',
+          confidence:    1,
+          contact_name:  openQuestion.contact_name || null,
+          contact_phone: openQuestion.contact_phone,
+          content:       openQuestion.content || text,
+          delay_ms:      1000,
+          proof:         'spoken_yes',
+        }
+        supabase.from('audit_log').insert({
+          user_id: user.id, action: 'action.spoken_yes', service: 'voice_capture',
+          details: { keep_id: openQuestion.id, level: nowSafety.level, reason: nowSafety.reason, source },
+        }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+      } else {
+        // Never "Calling now." for a call that will not be placed.
+        const who = openQuestion.contact_name || 'them'
+        nowTts = ({
+          needs_unlocked_phone: `Unlock the phone, then say now again to call ${who}.`,
+          hourly_limit_reached: `That is the limit of calls for this hour. ${who} is saved as a reminder.`,
+          hourly_count_unknown: `I could not check the hourly limit just now, so I have not called ${who}.`,
+          needs_pin:            `${who} is not a saved contact, so that needs your fingerprint or PIN in the app.`,
+          actions_paused:       `Actions are paused from your settings, so I have not called ${who}.`,
+        })[nowSafety.reason] || `I have not called ${who} just now.`
+      }
+    }
+
     return NextResponse.json({
       keep:              resolvedKeep || openQuestion,
       intent:            resolvedKeep || openQuestion,
       answered_question: true,
       answer_kind:       answer.kind,
       reminder:          answeredReminder,
+      safety:            nowSafety,
+      auto_exec:         nowExec,
       // A resolved contact keeps the reminder's existing time - returned so
       // the client re-arms the native alarm with the number now attached.
       reminder_at:       answer.kind === 'time' ? answer.reminderAt.toISOString()

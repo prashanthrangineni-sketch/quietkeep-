@@ -382,6 +382,7 @@ export function startListenStream({
     clearAll(); releaseAudio(); closeSocket();
     resolveFn({
       text,
+      ...(engineUsed ? { engine: engineUsed } : {}),
       firstWordsMs,
       finaliseMs: tStop === null ? null : Math.round(now() - tStop),
       keyterms: terms.length,

@@ -73,7 +73,7 @@ export default function VoiceSettings() {
         setWakeName(w ? w.charAt(0).toUpperCase() + w.slice(1) : 'Aaria');
       } catch {}
       try { setWebWakePossible(isHotwordSupported()); setWebWake(isWebHotwordEnabled()); } catch {}
-      try { setStreamOn(listenStreamWanted()); setLastListen(readLastListen()); } catch {}
+      try { setStreamOn(listenStreamWanted()); setLastListen(readLastListen()); setNemoOn(nemotronWanted()); } catch {}
       try {
         const edge = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AariaEdge;
         if (edge) {

@@ -333,6 +333,7 @@ export function startListenStream({
   let ready = false, ended = false, stopSent = false;
   let speechSeen = false, firstWordsMs = null, tStop = null;
   let lastPartial = '';
+  let engineUsed = null;   // what the engine said it used, from its "ready"
   const finals = [];
   const pending = [];                 // frames captured before "ready"
   const framer = createFramer();

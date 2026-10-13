@@ -1302,6 +1302,7 @@ export async function POST(request) {
     entities:          parsed.entities,
     aaria,             // SOT P1: Aaria's read of utterances the regex missed (null otherwise)
     auto_exec,
+    safety,            // item 2: what the level table decided for this turn (null when nothing was automatic)
     // v2: geo intelligence fields
     geo_detected:   !!(parsed.geo?.detected || parsed.route?.detected),
     suggest_save:   suggestSave,  // true → prompt user to save this location

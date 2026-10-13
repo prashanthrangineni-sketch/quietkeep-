@@ -483,6 +483,7 @@ export function startListenStream({
       lang: String(lang || 'en').split('-')[0].toLowerCase(),
       endpointing: 'manual',
       ...(terms.length ? { keyterms: terms } : {}),
+      ...(engine ? { engine } : {}),
     }));
   };
   ws.onerror = () => { if (!ended && !stopSent) fail('socket error'); };

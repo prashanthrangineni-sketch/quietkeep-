@@ -42,6 +42,7 @@ import {
 } from '@/lib/decision-protocol' // v16: Phase 8 protocol adoption
 import { buildMemoryContext } from '@/lib/style-engine' // v15: Memory Context
 import { cleanListenEvidence } from '@/lib/listen-stream'
+import { decide, DECISION } from '@/lib/action-levels' // item 2: the safety check before every action
 
 export async function POST(request) {
   const authHeader = request.headers.get('Authorization') || ''

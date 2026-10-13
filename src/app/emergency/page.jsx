@@ -272,6 +272,21 @@ export default function EmergencyPage() {
           <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
             Hold 3 seconds to trigger emergency
           </p>
+          {phoneSos.available && (
+            <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--text-muted)' }}>
+              {phoneSos.sms_permission === 'granted'
+                ? `This phone will send the SOS SMS itself after a 10-second countdown — no internet needed${typeof phoneSos.contacts_saved === 'number' ? ` (${phoneSos.contacts_saved} contact${phoneSos.contacts_saved === 1 ? '' : 's'} kept on the phone)` : ''}.`
+                : 'To send the SOS SMS automatically, QuietKeep needs permission to send SMS. Without it, the SMS app opens and you press Send.'}
+              {phoneSos.sms_permission !== 'granted' && (
+                <>
+                  {' '}
+                  <button onClick={allowSosSms} style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(255,80,80,0.4)', background: 'rgba(255,80,80,0.12)', color: '#ff8080', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Allow SOS SMS
+                  </button>
+                </>
+              )}
+            </p>
+          )}
 
           {/* SOS hold button */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>

@@ -107,6 +107,9 @@ check('"no" is not a yes', !isSpokenYes('no'));
 check('"yesterday" is not a yes', !isSpokenYes('yesterday'));
 check('a long sentence starting with yes is not a yes', !isSpokenYes('yes but first remind me to buy milk tomorrow'));
 check('empty is not a yes', !isSpokenYes('') && !isSpokenYes(null));
+check('"yes please" / "haan ji" are a yes', isSpokenYes('yes please') && isSpokenYes('haan ji'));
+check('a short sentence that only STARTS with yes is not a yes ("haan paise bhejo")', !isSpokenYes('haan paise bhejo'));
+check('"ok call 9876543210" is not a yes', !isSpokenYes('ok call 9876543210'));
 
 // ── every non-do reason has something to say, and none of it says denied ─────
 {

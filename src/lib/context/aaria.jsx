@@ -41,6 +41,7 @@ import { speak, cancelSpeech, setSpeechAuthToken } from '@/components/VoiceTalkb
 import { endpointSilenceMsFor, MAX_LISTEN_MS } from '@/lib/endpointing';
 import {
   startListenStream, listenStreamWanted, streamingSupported, keepEngineWarm, recordLastListen,
+  nemotronWanted, engineFor,
 } from '@/lib/listen-stream';
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported, claimMic, releaseMic } from '@/lib/aaria-hotword';
@@ -724,6 +725,7 @@ export function AariaProvider({ children }) {
     const lang = speechLang(voiceLang);
     const session = startListenStream({
       lang,
+      engine: engineFor(lang, nemotronWanted()),
       // Listening for "which one?" - the names on offer go first, so the
       // recogniser leans toward the answers that are actually possible.
       keyterms: answerTurn && Array.isArray(choicesRef.current)

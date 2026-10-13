@@ -68,6 +68,34 @@ export function setListenStreamWanted(on, storage) {
   } catch {}
 }
 
+// NVIDIA Nemotron for English (Aaria plan item 7, due 6 November).
+// OFF unless the person switches it on in Voice settings. Measured through
+// the engine on 13 Oct 2026 (50 FLEURS English recordings): 7.7% word error,
+// finished sentence ~0.25 s after stop - faster than Sarvam, but Sarvam was
+// more accurate on the same set (4.3%). So it is a choice, not the default.
+const NEMOTRON_KEY = 'qk_listen_nemotron';
+
+export function nemotronWanted(storage) {
+  try {
+    const s = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
+    return s?.getItem(NEMOTRON_KEY) === '1';
+  } catch { return false; }
+}
+
+export function setNemotronWanted(on, storage) {
+  try {
+    const s = storage || localStorage;
+    s.setItem(NEMOTRON_KEY, on ? '1' : '0');
+  } catch {}
+}
+
+/** Which recogniser to ask the engine for. Nemotron serves English only;
+ *  every other language stays on the engine's default. */
+export function engineFor(lang, wantNemotron) {
+  const short = String(lang || '').split('-')[0].toLowerCase();
+  return wantNemotron && short === 'en' ? 'nemotron' : undefined;
+}
+
 /** What happened on the last turn - shown in Voice settings so a phone test has evidence. */
 export function recordLastListen(info, storage) {
   try {
@@ -92,6 +120,7 @@ export function cleanListenEvidence(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const out = {};
   if (['engine', 'phone', 'none'].includes(raw.path)) out.path = raw.path;
+  if (['nemotron', 'sarvam'].includes(raw.engine)) out.engine = raw.engine;
   for (const k of ['firstWordsMs', 'finaliseMs', 'keyterms', 'heardMs', 'speechMs', 'peak', 'floor', 'chars', 'micLiveMs']) {
     const v = raw[k];
     if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.round(v * 10000) / 10000;
@@ -279,6 +308,7 @@ class ListenStreamError extends Error {
  */
 export function startListenStream({
   lang,
+  engine,               // 'nemotron' to ask the engine for NVIDIA Nemotron (English only)
   keyterms = [],
   silenceMs,
   maxMs = 15000,
@@ -303,6 +333,7 @@ export function startListenStream({
   let ready = false, ended = false, stopSent = false;
   let speechSeen = false, firstWordsMs = null, tStop = null;
   let lastPartial = '';
+  let engineUsed = null;   // what the engine said it used, from its "ready"
   const finals = [];
   const pending = [];                 // frames captured before "ready"
   const framer = createFramer();
@@ -351,6 +382,7 @@ export function startListenStream({
     clearAll(); releaseAudio(); closeSocket();
     resolveFn({
       text,
+      ...(engineUsed ? { engine: engineUsed } : {}),
       firstWordsMs,
       finaliseMs: tStop === null ? null : Math.round(now() - tStop),
       keyterms: terms.length,
@@ -453,6 +485,7 @@ export function startListenStream({
       lang: String(lang || 'en').split('-')[0].toLowerCase(),
       endpointing: 'manual',
       ...(terms.length ? { keyterms: terms } : {}),
+      ...(engine ? { engine } : {}),
     }));
   };
   ws.onerror = () => { if (!ended && !stopSent) fail('socket error'); };
@@ -467,6 +500,7 @@ export function startListenStream({
     const ev = msg?.event;
     if (ev === 'ready') {
       ready = true;
+      engineUsed = msg.engine === 'nemotron' ? 'nemotron' : 'sarvam';
       clear('ready');
       while (pending.length) send(pending.shift());
     } else if (ev === 'partial') {

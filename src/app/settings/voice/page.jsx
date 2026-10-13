@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/context/auth';
 import { useLanguage } from '@/lib/context/language';
 import { availableWakeModes, getWakeMode, setWakeMode, getWakeWord } from '@/lib/wake-word-engine';
 import { isWebHotwordEnabled, setWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
-import { listenStreamWanted, setListenStreamWanted, readLastListen } from '@/lib/listen-stream';
+import { listenStreamWanted, setListenStreamWanted, readLastListen, nemotronWanted, setNemotronWanted } from '@/lib/listen-stream';
 
 const P = '#6366f1';
 const LANGS = [
@@ -50,6 +50,7 @@ export default function VoiceSettings() {
   const [webWake, setWebWake] = useState(false);
   const [webWakePossible, setWebWakePossible] = useState(false);
   const [streamOn, setStreamOn] = useState(true);
+  const [nemoOn, setNemoOn] = useState(false);
   const [lastListen, setLastListen] = useState(null);
 
   // recording state
@@ -72,7 +73,7 @@ export default function VoiceSettings() {
         setWakeName(w ? w.charAt(0).toUpperCase() + w.slice(1) : 'Aaria');
       } catch {}
       try { setWebWakePossible(isHotwordSupported()); setWebWake(isWebHotwordEnabled()); } catch {}
-      try { setStreamOn(listenStreamWanted()); setLastListen(readLastListen()); } catch {}
+      try { setStreamOn(listenStreamWanted()); setLastListen(readLastListen()); setNemoOn(nemotronWanted()); } catch {}
       try {
         const edge = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AariaEdge;
         if (edge) {
@@ -210,10 +211,20 @@ export default function VoiceSettings() {
                 If it cannot connect, your phone&apos;s own listener takes over automatically.
               </small></span>
           </label>
+          {streamOn && (
+            <label style={{ ...opt, borderColor: nemoOn ? P : 'rgba(0,0,0,.1)' }}>
+              <input type="checkbox" checked={nemoOn}
+                onChange={e => { setNemoOn(e.target.checked); setNemotronWanted(e.target.checked); }} />
+              <span><b style={{ fontSize: 14 }}>Try NVIDIA Nemotron for English (experimental)</b>
+                <small style={{ display: 'block', color: '#64748b', fontSize: 12 }}>
+                  English only. Finishes your sentence faster, but in our tests it made a few more mistakes than the standard listener. Other languages are not affected.
+                </small></span>
+            </label>
+          )}
           <p style={hint}>
             {!lastListen ? 'Last time: not used yet on this phone.'
               : lastListen.path === 'engine'
-                ? `Last time: heard through Aaria${lastListen.finaliseMs != null ? ` · ready ${(lastListen.finaliseMs / 1000).toFixed(1)} s after you stopped` : ''}${lastListen.keyterms ? ` · ${lastListen.keyterms} names known` : ''}.`
+                ? `Last time: heard through Aaria${lastListen.engine === 'nemotron' ? ' (NVIDIA Nemotron)' : ''}${lastListen.finaliseMs != null ? ` · ready ${(lastListen.finaliseMs / 1000).toFixed(1)} s after you stopped` : ''}${lastListen.keyterms ? ` · ${lastListen.keyterms} names known` : ''}.`
                 : lastListen.path === 'phone'
                   ? `Last time: your phone's own listener was used (${lastListen.reason}).`
                   : `Last time: nothing was sent (${lastListen.reason}).`}

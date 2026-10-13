@@ -308,6 +308,7 @@ class ListenStreamError extends Error {
  */
 export function startListenStream({
   lang,
+  engine,               // 'nemotron' to ask the engine for NVIDIA Nemotron (English only)
   keyterms = [],
   silenceMs,
   maxMs = 15000,

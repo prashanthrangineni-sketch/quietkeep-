@@ -3,7 +3,7 @@
 import {
   downsampleTo16k, floatToPcm16, createFramer, createLoudness, cleanKeyterms,
   listenStreamWanted, setListenStreamWanted, startListenStream, streamingSupported,
-  cleanListenEvidence,
+  cleanListenEvidence, nemotronWanted, setNemotronWanted, engineFor,
   READY_TIMEOUT_MS, FRAME_SAMPLES, ENGINE_HOLD_MS,
   keepEngineWarm, ENGINE_KEEP_WARM_MS, ENGINE_HEALTH_URL,
 } from '../src/lib/listen-stream.js';

@@ -162,6 +162,17 @@
             android:theme="@style/AppTheme"
             android:exported="false" />
 
+        <!-- SOS: ten-second countdown over the lock screen, then the phone
+             sends the SMS itself. No AI, no internet. -->
+        <activity
+            android:name=".activities.SosCountdownActivity"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:theme="@style/AppTheme"
+            android:exported="false" />
+
         <!-- QuietKeepCallScreeningService: Track A1 incoming call context moat -->
         <service
             android:name=".services.QuietKeepCallScreeningService"

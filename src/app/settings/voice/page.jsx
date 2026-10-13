@@ -211,10 +211,20 @@ export default function VoiceSettings() {
                 If it cannot connect, your phone&apos;s own listener takes over automatically.
               </small></span>
           </label>
+          {streamOn && (
+            <label style={{ ...opt, borderColor: nemoOn ? P : 'rgba(0,0,0,.1)' }}>
+              <input type="checkbox" checked={nemoOn}
+                onChange={e => { setNemoOn(e.target.checked); setNemotronWanted(e.target.checked); }} />
+              <span><b style={{ fontSize: 14 }}>Try NVIDIA Nemotron for English (experimental)</b>
+                <small style={{ display: 'block', color: '#64748b', fontSize: 12 }}>
+                  English only. Finishes your sentence faster, but in our tests it made a few more mistakes than the standard listener. Other languages are not affected.
+                </small></span>
+            </label>
+          )}
           <p style={hint}>
             {!lastListen ? 'Last time: not used yet on this phone.'
               : lastListen.path === 'engine'
-                ? `Last time: heard through Aaria${lastListen.finaliseMs != null ? ` · ready ${(lastListen.finaliseMs / 1000).toFixed(1)} s after you stopped` : ''}${lastListen.keyterms ? ` · ${lastListen.keyterms} names known` : ''}.`
+                ? `Last time: heard through Aaria${lastListen.engine === 'nemotron' ? ' (NVIDIA Nemotron)' : ''}${lastListen.finaliseMs != null ? ` · ready ${(lastListen.finaliseMs / 1000).toFixed(1)} s after you stopped` : ''}${lastListen.keyterms ? ` · ${lastListen.keyterms} names known` : ''}.`
                 : lastListen.path === 'phone'
                   ? `Last time: your phone's own listener was used (${lastListen.reason}).`
                   : `Last time: nothing was sent (${lastListen.reason}).`}

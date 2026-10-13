@@ -68,6 +68,34 @@ export function setListenStreamWanted(on, storage) {
   } catch {}
 }
 
+// NVIDIA Nemotron for English (Aaria plan item 7, due 6 November).
+// OFF unless the person switches it on in Voice settings. Measured through
+// the engine on 13 Oct 2026 (50 FLEURS English recordings): 7.7% word error,
+// finished sentence ~0.25 s after stop - faster than Sarvam, but Sarvam was
+// more accurate on the same set (4.3%). So it is a choice, not the default.
+const NEMOTRON_KEY = 'qk_listen_nemotron';
+
+export function nemotronWanted(storage) {
+  try {
+    const s = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
+    return s?.getItem(NEMOTRON_KEY) === '1';
+  } catch { return false; }
+}
+
+export function setNemotronWanted(on, storage) {
+  try {
+    const s = storage || localStorage;
+    s.setItem(NEMOTRON_KEY, on ? '1' : '0');
+  } catch {}
+}
+
+/** Which recogniser to ask the engine for. Nemotron serves English only;
+ *  every other language stays on the engine's default. */
+export function engineFor(lang, wantNemotron) {
+  const short = String(lang || '').split('-')[0].toLowerCase();
+  return wantNemotron && short === 'en' ? 'nemotron' : undefined;
+}
+
 /** What happened on the last turn - shown in Voice settings so a phone test has evidence. */
 export function recordLastListen(info, storage) {
   try {

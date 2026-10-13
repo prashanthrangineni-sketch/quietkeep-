@@ -496,6 +496,20 @@ export function AariaProvider({ children }) {
     setError('');
 
     try {
+      // LAYER 0 — SOS, ON ITS OWN PATH. Before the reflex, before the brain,
+      // before the network. Only when the WHOLE utterance is an SOS word
+      // ("my friend said SOS means..." is a sentence, not a command). On the
+      // phone this opens the ten-second countdown and the phone sends the
+      // SMS itself; on the web it opens the Emergency screen.
+      if (isSosUtterance(text)) {
+        const r = await triggerSOS('dock', { navigate: (p) => router.push(p) });
+        if (r.path === 'native' && r.started)      say('SOS. Ten seconds to cancel.');
+        else if (r.path === 'native')              say('SOS is already running.');
+        else                                       say('Opening Emergency. Hold the red button.');
+        setTranscript(''); setInterim(''); setOpen(false);
+        return;
+      }
+
       // LAYER 1 — reflex.
       const action = routeUtterance(text, { wakeWord: getWakeWord() });
 

@@ -1176,6 +1176,27 @@ export async function POST(request) {
     }
   }
 
+  // ── THE SAFETY CHECK, BEFORE AN AUTOMATIC ACTION ───────────────────────────
+  // The 2.5-second countdown card is a read-back with a cancel, not a spoken
+  // yes. The level table (src/lib/action-levels.js) lets it carry read-back
+  // actions only: navigation and trips. A call, a message or a purchase on the
+  // first turn is held until the person has said yes - today that is the
+  // "now or a reminder?" question above. Nothing is sent to a contact from
+  // here without that yes. (Previously a WhatsApp message to the contact was
+  // queued here with a 2.6-second cancel window; the queue had processed one
+  // row ever, which failed. That path is gone.)
+  const safety = isAutoEligible
+    ? decide(
+        { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
+        { spokenYes: false, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
+        { doneThisHour: 0 },   // read-back is uncapped; anything capped is refused here anyway (no yes yet)
+      )
+    : null
+  if (safety && safety.decision !== DECISION.DO) {
+    console.log('[safety] held auto-exec:', parsed.type, safety.level, safety.reason)
+    isAutoEligible = false
+  }
+
   if (isAutoEligible) {
     // v10: Extract navigation destination for Maps Intent in VoiceService
     const navQuery = (['navigation', 'trip'].includes(keep.intent_type))

@@ -354,5 +354,40 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   check('no network and no timers: it never throws', !threw);
 }
 
+// ── NVIDIA Nemotron for English (plan item 7) ───────────────────────────────
+{
+  const store = new Map();
+  const st = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) };
+  check('Nemotron is OFF until the person switches it on', nemotronWanted(st) === false);
+  setNemotronWanted(true, st);
+  check('…and on once switched on', nemotronWanted(st) === true);
+  check('English asks for nemotron', engineFor('en-IN', true) === 'nemotron');
+  check('Telugu never asks for nemotron, even switched on', engineFor('te-IN', true) === undefined);
+  check('switched off → engine default', engineFor('en', false) === undefined);
+  check('evidence keeps which engine heard it', cleanListenEvidence({ path: 'engine', engine: 'nemotron' })?.engine === 'nemotron');
+  check('evidence drops an unknown engine label', cleanListenEvidence({ path: 'engine', engine: 'x' })?.engine === undefined);
+}
+{
+  const w = makeWorld();
+  const s = startListenStream({ lang: 'en', engine: 'nemotron', silenceMs: 900, deps: w.deps });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  check('start carries engine: nemotron', w.json()[0]?.engine === 'nemotron');
+  w.hush(); w.hush(); w.hush();
+  w.engine({ event: 'ready', engine: 'nemotron' });
+  w.speak(); w.speak(); w.speak();
+  w.engine({ event: 'final', text: 'call Surya Kiran' });
+  w.clock.advance(1000);
+  w.engine({ event: 'done', text: 'call Surya Kiran' });
+  const r = await res;
+  check('the turn records that Nemotron heard it', r.ok && r.v.engine === 'nemotron' && r.v.text === 'call Surya Kiran', JSON.stringify(r.e?.reason || r.v));
+}
+{
+  const w = makeWorld();
+  startListenStream({ lang: 'en', silenceMs: 900, deps: w.deps });
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  check('without the switch the start message has no engine field', !('engine' in (w.json()[0] || {})));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

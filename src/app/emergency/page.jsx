@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/context/auth';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import NavbarClient from '@/components/NavbarClient';
+import { triggerSOS as phoneSOS, nativeSosAvailable, syncEmergencyContactsToPhone, requestSmsPermission, sosStatus } from '@/lib/sos';
 
 const RELATIONS = ['spouse', 'parent', 'sibling', 'child', 'friend', 'doctor', 'neighbour', 'other'];
 

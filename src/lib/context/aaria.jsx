@@ -725,6 +725,7 @@ export function AariaProvider({ children }) {
     const lang = speechLang(voiceLang);
     const session = startListenStream({
       lang,
+      engine: engineFor(lang, nemotronWanted()),
       // Listening for "which one?" - the names on offer go first, so the
       // recogniser leans toward the answers that are actually possible.
       keyterms: answerTurn && Array.isArray(choicesRef.current)

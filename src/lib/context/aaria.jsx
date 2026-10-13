@@ -380,6 +380,29 @@ export function AariaProvider({ children }) {
       setTranscript('');
       setChoices(Array.isArray(json.choices) && json.choices.length ? json.choices : null);
 
+      // THE ACTION, ONCE THE SAFETY CHECK SAID DO.
+      //
+      // 13 October 2026: "call Surya Kiran" ... "now" came back as "Calling
+      // Surya now." and this dock never dialled - it read tts_response and
+      // nothing else. auto_exec is present only when the server's level table
+      // (src/lib/action-levels.js) decided "do": a spoken yes on an unlocked
+      // phone for a call, read-back for navigation. It is carried out here,
+      // after the read-back has been said, never before.
+      if (json.auto_exec && !json.follow_up) {
+        const exec = json.auto_exec;
+        const wait = typeof exec.delay_ms === 'number' ? exec.delay_ms : 1000;
+        setTimeout(async () => {
+          try {
+            const { executeClientAction } = await import('@/lib/intent-executor');
+            const done = executeClientAction({
+              intent_type: exec.intent_type, content: exec.content || '',
+              contact_phone: exec.contact_phone || null, contact_name: exec.contact_name || null,
+            });
+            console.log('[Aaria] action:', exec.intent_type, done?.action_taken || null);
+          } catch (e) { console.warn('[Aaria] action failed:', e); }
+        }, wait);
+      }
+
       // WHEN AARIA ASKS, SHE LISTENS FOR THE ANSWER.
       //
       // 2 October 2026: Aaria asked "eppudu gurthu cheyamantaru?" and then sat

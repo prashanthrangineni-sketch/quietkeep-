@@ -42,6 +42,7 @@ import {
 } from '@/lib/decision-protocol' // v16: Phase 8 protocol adoption
 import { buildMemoryContext } from '@/lib/style-engine' // v15: Memory Context
 import { cleanListenEvidence } from '@/lib/listen-stream'
+import { decide, DECISION } from '@/lib/action-levels' // item 2: the safety check before every action
 
 export async function POST(request) {
   const authHeader = request.headers.get('Authorization') || ''
@@ -352,24 +353,81 @@ export async function POST(request) {
       },
     }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
 
+    // ── THE SAFETY CHECK, FOR "NOW" ────────────────────────────────────────
+    // "Call Surya Kiran?" ... "now" is the person's spoken yes to a call they
+    // just heard read back. Until 13 Oct 2026 the server replied "Calling Surya
+    // now." and NOTHING dialled: call_now was returned and no client read it -
+    // a false "done", the exact failure the plan's item 1 counts (target 0).
+    // Now the level table decides (src/lib/action-levels.js): a saved contact
+    // needs spoken yes + an unlocked phone; the app being in the foreground
+    // ('voice' / 'text' sources) is the unlock proof we have today. When it
+    // says do, the response carries auto_exec and the phone dials; when it
+    // does not, the reply says why in plain words and nothing is claimed.
+    let nowExec = null
+    let nowSafety = null
+    let nowTts = answerConfirmation(answer, openQuestion)
+    if (answer.kind === 'now') {
+      const { count: doneThisHour } = await supabase
+        .from('audit_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('action', 'action.spoken_yes')
+        .gte('created_at', new Date(Date.now() - 3_600_000).toISOString())
+        .then((r) => ({ count: r.error ? null : (r.count ?? 0) }))
+      nowSafety = decide(
+        { type: 'contact', contactSaved: !!openQuestion.contact_phone },
+        { spokenYes: true, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
+        { doneThisHour },
+      )
+      nowSafety.unlock_proof = ['voice', 'text'].includes(source) ? 'app_in_foreground' : null
+      if (nowSafety.decision === DECISION.DO && openQuestion.contact_phone) {
+        nowExec = {
+          keep_id:       openQuestion.id,
+          intent_type:   'contact',
+          confidence:    1,
+          contact_name:  openQuestion.contact_name || null,
+          contact_phone: openQuestion.contact_phone,
+          content:       openQuestion.content || text,
+          delay_ms:      1000,
+          proof:         'spoken_yes',
+        }
+        supabase.from('audit_log').insert({
+          user_id: user.id, action: 'action.spoken_yes', service: 'voice_capture',
+          details: { keep_id: openQuestion.id, level: nowSafety.level, reason: nowSafety.reason, source },
+        }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+      } else {
+        // Never "Calling now." for a call that will not be placed.
+        const who = openQuestion.contact_name || 'them'
+        nowTts = ({
+          needs_unlocked_phone: `Unlock the phone, then say now again to call ${who}.`,
+          hourly_limit_reached: `That is the limit of calls for this hour. ${who} is saved as a reminder.`,
+          hourly_count_unknown: `I could not check the hourly limit just now, so I have not called ${who}.`,
+          needs_pin:            `${who} is not a saved contact, so that needs your fingerprint or PIN in the app.`,
+          actions_paused:       `Actions are paused from your settings, so I have not called ${who}.`,
+        })[nowSafety.reason] || `I have not called ${who} just now.`
+      }
+    }
+
     return NextResponse.json({
       keep:              resolvedKeep || openQuestion,
       intent:            resolvedKeep || openQuestion,
       answered_question: true,
       answer_kind:       answer.kind,
       reminder:          answeredReminder,
+      safety:            nowSafety,
+      auto_exec:         nowExec,
       // A resolved contact keeps the reminder's existing time - returned so
       // the client re-arms the native alarm with the number now attached.
       reminder_at:       answer.kind === 'time' ? answer.reminderAt.toISOString()
                        : answer.kind === 'contact' ? (openQuestion.reminder_at || null)
                        : null,
-      call_now:          answer.kind === 'now',
+      call_now:          answer.kind === 'now' && !!nowExec,
       contact_matched:   answer.kind === 'contact'
         ? { name: answer.contact.name, phone: answer.contact.phone || null }
         : openQuestion.contact_phone
           ? { name: openQuestion.contact_name, phone: openQuestion.contact_phone }
           : null,
-      tts_response:      answerConfirmation(answer, openQuestion),
+      tts_response:      nowTts,
     }, { status: 200 })
   }
 
@@ -1118,6 +1176,27 @@ export async function POST(request) {
     }
   }
 
+  // ── THE SAFETY CHECK, BEFORE AN AUTOMATIC ACTION ───────────────────────────
+  // The 2.5-second countdown card is a read-back with a cancel, not a spoken
+  // yes. The level table (src/lib/action-levels.js) lets it carry read-back
+  // actions only: navigation and trips. A call, a message or a purchase on the
+  // first turn is held until the person has said yes - today that is the
+  // "now or a reminder?" question above. Nothing is sent to a contact from
+  // here without that yes. (Previously a WhatsApp message to the contact was
+  // queued here with a 2.6-second cancel window; the queue had processed one
+  // row ever, which failed. That path is gone.)
+  const safety = isAutoEligible
+    ? decide(
+        { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
+        { spokenYes: false, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
+        { doneThisHour: 0 },   // read-back is uncapped; anything capped is refused here anyway (no yes yet)
+      )
+    : null
+  if (safety && safety.decision !== DECISION.DO) {
+    console.log('[safety] held auto-exec:', parsed.type, safety.level, safety.reason)
+    isAutoEligible = false
+  }
+
   if (isAutoEligible) {
     // v10: Extract navigation destination for Maps Intent in VoiceService
     const navQuery = (['navigation', 'trip'].includes(keep.intent_type))
@@ -1140,24 +1219,6 @@ export async function POST(request) {
       delay_ms:         2500,
     }
 
-    if (keep.intent_type === 'contact' && keep.contact_phone) {
-      const cancelBefore = new Date(Date.now() + 2600)
-      const dedupKey     = `exec:${keep.id}:${keep.contact_phone}`
-      supabase.from('execution_queue').insert({
-        user_id:       user.id,
-        keep_id:       keep.id,
-        action_type:   'whatsapp_message',
-        payload: {
-          phone:        keep.contact_phone,
-          contact_name: keep.contact_name,
-          content:      keep.content,
-          intent_type:  keep.intent_type,
-        },
-        cancel_before: cancelBefore.toISOString(),
-        status:        'pending',
-        dedup_key:     dedupKey,
-      }).then(() => {}).catch(() => {})
-    }
   }
 
   const responseKeep = {
@@ -1241,6 +1302,7 @@ export async function POST(request) {
     entities:          parsed.entities,
     aaria,             // SOT P1: Aaria's read of utterances the regex missed (null otherwise)
     auto_exec,
+    safety,            // item 2: what the level table decided for this turn (null when nothing was automatic)
     // v2: geo intelligence fields
     geo_detected:   !!(parsed.geo?.detected || parsed.route?.detected),
     suggest_save:   suggestSave,  // true → prompt user to save this location

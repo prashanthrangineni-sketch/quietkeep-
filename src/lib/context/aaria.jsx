@@ -41,6 +41,7 @@ import { speak, cancelSpeech, setSpeechAuthToken } from '@/components/VoiceTalkb
 import { endpointSilenceMsFor, MAX_LISTEN_MS } from '@/lib/endpointing';
 import {
   startListenStream, listenStreamWanted, streamingSupported, keepEngineWarm, recordLastListen,
+  nemotronWanted, engineFor,
 } from '@/lib/listen-stream';
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported, claimMic, releaseMic } from '@/lib/aaria-hotword';

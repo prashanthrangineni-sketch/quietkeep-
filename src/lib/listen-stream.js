@@ -120,6 +120,7 @@ export function cleanListenEvidence(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const out = {};
   if (['engine', 'phone', 'none'].includes(raw.path)) out.path = raw.path;
+  if (['nemotron', 'sarvam'].includes(raw.engine)) out.engine = raw.engine;
   for (const k of ['firstWordsMs', 'finaliseMs', 'keyterms', 'heardMs', 'speechMs', 'peak', 'floor', 'chars', 'micLiveMs']) {
     const v = raw[k];
     if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.round(v * 10000) / 10000;

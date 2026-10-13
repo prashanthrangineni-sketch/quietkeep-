@@ -49,7 +49,27 @@ export default function EmergencyPage() {
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true });
     if (!error) setContacts(data || []);
+    // Keep a copy ON THE PHONE, so an SOS can send the SMS with no internet.
+    if (!error) {
+      syncEmergencyContactsToPhone(data || []).then((r) => {
+        if (r?.saved !== null) setPhoneSos((p) => ({ ...p, contacts_saved: r.saved }));
+      }).catch(() => {});
+    }
     setLoading(false);
+  }
+
+  // The phone's own SOS path (countdown + SMS radio): is it here, and may it send?
+  const [phoneSos, setPhoneSos] = useState({ available: false, sms_permission: null, contacts_saved: null });
+  useEffect(() => {
+    if (!nativeSosAvailable()) return;
+    sosStatus().then((s) => {
+      if (s) setPhoneSos({ available: true, sms_permission: s.sms_permission ?? null, contacts_saved: s.contacts_saved ?? null });
+      else setPhoneSos((p) => ({ ...p, available: true }));
+    }).catch(() => setPhoneSos((p) => ({ ...p, available: true })));
+  }, []);
+  async function allowSosSms() {
+    const r = await requestSmsPermission();
+    setPhoneSos((p) => ({ ...p, sms_permission: r?.sms_permission ?? p.sms_permission }));
   }
 
   function openAdd() {

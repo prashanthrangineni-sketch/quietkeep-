@@ -427,7 +427,7 @@ export async function POST(request) {
         : openQuestion.contact_phone
           ? { name: openQuestion.contact_name, phone: openQuestion.contact_phone }
           : null,
-      tts_response:      answerConfirmation(answer, openQuestion),
+      tts_response:      nowTts,
     }, { status: 200 })
   }
 

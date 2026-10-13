@@ -1219,24 +1219,6 @@ export async function POST(request) {
       delay_ms:         2500,
     }
 
-    if (keep.intent_type === 'contact' && keep.contact_phone) {
-      const cancelBefore = new Date(Date.now() + 2600)
-      const dedupKey     = `exec:${keep.id}:${keep.contact_phone}`
-      supabase.from('execution_queue').insert({
-        user_id:       user.id,
-        keep_id:       keep.id,
-        action_type:   'whatsapp_message',
-        payload: {
-          phone:        keep.contact_phone,
-          contact_name: keep.contact_name,
-          content:      keep.content,
-          intent_type:  keep.intent_type,
-        },
-        cancel_before: cancelBefore.toISOString(),
-        status:        'pending',
-        dedup_key:     dedupKey,
-      }).then(() => {}).catch(() => {})
-    }
   }
 
   const responseKeep = {

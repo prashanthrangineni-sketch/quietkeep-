@@ -229,7 +229,14 @@ export default function EmergencyPage() {
     }
   }
 
-  function triggerSOS() {
+  async function triggerSOS() {
+    // On the phone: its own countdown screen, then the phone sends the SMS
+    // itself (no internet needed). Only if that path is absent or refuses to
+    // start does the web flow below run (locate, then per-contact buttons).
+    if (nativeSosAvailable()) {
+      const r = await phoneSOS('emergency_screen');
+      if (r.started) return;
+    }
     setSosTrigger(true);
     getLocation();
   }

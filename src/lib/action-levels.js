@@ -174,9 +174,13 @@ export function decide(action, proof = {}, context = {}) {
  * scripts and romanisations the recogniser actually returns. Deliberately
  * short: a long sentence is a new instruction, not a yes.
  */
-const YES = /^(yes|yeah|yep|ya|yah|ok|okay|sure|do it|go ahead|confirm|haan|ha|han|haa|avunu|aunu|sare|sari|cheyyi|cheyi|karo|kar do|theek hai|thik hai|ఔను|అవును|సరే|చెయ్యి|हाँ|हां|ठीक है|करो|कर दो)(?=\s|$|[.,!?])/iu;
-// (?=\s|$|[.,!?]) rather than \b: \b only knows Latin letters, so it never
-// matched at the end of a Telugu or Devanagari word - found by the test.
+const YES_WORD = 'yes|yeah|yep|ya|yah|ok|okay|sure|do it|go ahead|confirm|haan|ha|han|haa|avunu|aunu|sare|sari|cheyyi|cheyi|karo|kar do|theek hai|thik hai|ఔను|అవును|సరే|చెయ్యి|हाँ|हां|ठीक है|करो|कर दो';
+// The WHOLE reply must be yes-words (plus "please"/"ji"), not merely start with
+// one: "haan paise bhejo" ("yes, send the money") begins with a yes and is a
+// new instruction - the attack set caught the earlier starts-with version.
+// A plain character class is used instead of \b: \b only knows Latin letters,
+// so it never matched at the end of a Telugu or Devanagari word.
+const YES = new RegExp(`^(?:${YES_WORD})(?:[\\s,]+(?:${YES_WORD}|please|ji|pls))*[.!?]*$`, 'iu');
 
 export function isSpokenYes(text) {
   const t = String(text || '').trim();

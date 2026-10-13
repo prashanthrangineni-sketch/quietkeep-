@@ -421,7 +421,7 @@ export async function POST(request) {
       reminder_at:       answer.kind === 'time' ? answer.reminderAt.toISOString()
                        : answer.kind === 'contact' ? (openQuestion.reminder_at || null)
                        : null,
-      call_now:          answer.kind === 'now',
+      call_now:          answer.kind === 'now' && !!nowExec,
       contact_matched:   answer.kind === 'contact'
         ? { name: answer.contact.name, phone: answer.contact.phone || null }
         : openQuestion.contact_phone

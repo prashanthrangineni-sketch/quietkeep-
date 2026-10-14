@@ -17,6 +17,7 @@ import { parseIntent, stripWakePhrase }    from '@/lib/intent-parser'
 import { collapseRepeats } from '@/lib/transcript-clean'
 import { impossibleSequences } from '@/lib/script-sanity'
 import { isFragment, measuredSpeechMs, caughtPartReply } from '@/lib/fragment-guard'
+import { cleanTurnTiming } from '@/lib/fillers'
 import { aariaAssist }   from '@/lib/aaria-act'
 import { aariaUnderstandLLM } from '@/lib/aaria-llm' // SOT P1: Aaria action brain for utterances regex can't parse
 import {

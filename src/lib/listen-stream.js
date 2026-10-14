@@ -539,7 +539,11 @@ export function startListenStream({
       try { ctx = new AC({ sampleRate: TARGET_RATE }); } catch { ctx = new AC(); }
       try { await ctx.resume?.(); } catch {}
       source = ctx.createMediaStreamSource(stream);
-      node = ctx.createScriptProcessor(4096, 1, 1);
+      // 1024, not 4096 (plan item 5, short commands): the first audio
+      // arrives after one buffer, so 4096 samples at 16 kHz held back the
+      // first 256 ms of every turn - the start of a short command. 1024 is
+      // 64 ms. The framer still emits 100 ms frames; only latency changes.
+      node = ctx.createScriptProcessor(1024, 1, 1);
       node.onaudioprocess = (e) => {
         if (ended || stopSent) return;
         const raw = e.inputBuffer.getChannelData(0);

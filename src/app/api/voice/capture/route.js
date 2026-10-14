@@ -16,6 +16,7 @@ import { createClient }   from '@supabase/supabase-js'
 import { parseIntent, stripWakePhrase }    from '@/lib/intent-parser'
 import { collapseRepeats } from '@/lib/transcript-clean'
 import { impossibleSequences } from '@/lib/script-sanity'
+import { isFragment, measuredSpeechMs, caughtPartReply } from '@/lib/fragment-guard'
 import { aariaAssist }   from '@/lib/aaria-act'
 import { aariaUnderstandLLM } from '@/lib/aaria-llm' // SOT P1: Aaria action brain for utterances regex can't parse
 import {
@@ -189,6 +190,29 @@ export async function POST(request) {
       reason: 'transcription_noise',
       detail: noiseReasons[0],
       tts_response: DIDNT_CATCH[lang] || DIDNT_CATCH.en,
+    })
+  }
+
+  // ── TOO LITTLE SPEECH TO TRUST (plan item 5, short commands) ─────────────
+  // 3 Oct 2026: of 11 turns with 1.4 s of speech or less, 8 came back as an
+  // invented phrase ("Surya Exactly", "I mean,") and were saved or acted on.
+  // When the phone measured the speech and it was shorter than the bar, ask
+  // again; write nothing, do nothing. Answer turns and unmeasured turns pass
+  // (see src/lib/fragment-guard.js). Placed before the idempotency key and
+  // every write, like the noise check above.
+  if (isFragment({ listen: listenEvidence, answering: body.answering === true })) {
+    supabase.from('audit_log').insert({
+      user_id: user.id,
+      action:  'transcript_rejected_as_fragment',
+      service: 'voice_capture',
+      details: { speech_ms: measuredSpeechMs(listenEvidence), heard_ms: listenEvidence?.heardMs ?? null, sample: text.slice(0, 120), source, language },
+    }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) })
+    return NextResponse.json({
+      ok: false,
+      not_saved: true,
+      reason: 'speech_fragment',
+      speech_ms: measuredSpeechMs(listenEvidence),
+      tts_response: caughtPartReply(language),
     })
   }
 

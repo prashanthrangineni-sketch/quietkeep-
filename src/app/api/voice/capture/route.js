@@ -192,6 +192,29 @@ export async function POST(request) {
     })
   }
 
+  // ── TOO LITTLE SPEECH TO TRUST (plan item 5, short commands) ─────────────
+  // 3 Oct 2026: of 11 turns with 1.4 s of speech or less, 8 came back as an
+  // invented phrase ("Surya Exactly", "I mean,") and were saved or acted on.
+  // When the phone measured the speech and it was shorter than the bar, ask
+  // again; write nothing, do nothing. Answer turns and unmeasured turns pass
+  // (see src/lib/fragment-guard.js). Placed before the idempotency key and
+  // every write, like the noise check above.
+  if (isFragment({ listen: listenEvidence, answering: body.answering === true })) {
+    supabase.from('audit_log').insert({
+      user_id: user.id,
+      action:  'transcript_rejected_as_fragment',
+      service: 'voice_capture',
+      details: { speech_ms: measuredSpeechMs(listenEvidence), heard_ms: listenEvidence?.heardMs ?? null, sample: text.slice(0, 120), source, language },
+    }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) })
+    return NextResponse.json({
+      ok: false,
+      not_saved: true,
+      reason: 'speech_fragment',
+      speech_ms: measuredSpeechMs(listenEvidence),
+      tts_response: caughtPartReply(language),
+    })
+  }
+
   // FIX: Idempotency check — prevent duplicate keeps from double-tap or loop re-entry.
   // Auto-generate a key if none supplied: SHA-256 of (userId + text + 60s window).
   // This means identical text from the same user within 60 seconds is deduplicated.

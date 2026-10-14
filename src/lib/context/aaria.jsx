@@ -302,6 +302,55 @@ export function AariaProvider({ children }) {
   const signedIn = !!user && !!accessToken;
   const here     = useMemo(() => pageLabel(pathname), [pathname]);
 
+  // ── thinking sounds (plan item 10, step 15) ────────────────────────────────
+  // While the brain works, a short "okay" / "సరే" after 700 ms of silence -
+  // the rules are in src/lib/fillers.js. The two clips for the current
+  // language are made once, ahead of time, and played from memory: a filler
+  // never waits on the network at the moment it is needed.
+  const fillerTokenRef = useRef(null);
+  fillerTokenRef.current = accessToken;
+  const fillerRef   = useRef(null);
+  const prevTurnRef = useRef(null);   // last turn's timing, sent with the next one
+  if (fillerRef.current === null && typeof window !== 'undefined') {
+    fillerRef.current = createFillerPlayer({
+      synth: async (text, lang) => {
+        const token = fillerTokenRef.current;
+        if (!token) throw new Error('signed out');
+        const res = await fetch('/api/voice/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ text, lang, quality_tier: 'standard' }),
+        });
+        if (!res.ok) throw new Error(`tts ${res.status}`);
+        const json = await res.json();
+        if (json?.audio) {
+          const bin = atob(json.audio);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+        }
+        return json?.audio_url || null;
+      },
+      play: (url) => {
+        const audio = new Audio(url);
+        // Registered as the active audio, so anything that interrupts speech
+        // (a tap, the real reply) stops the filler too.
+        window.__qkActiveAudio = audio;
+        audio.play().catch(() => {});
+        return {
+          stop: () => {
+            try { audio.pause(); audio.currentTime = 0; } catch {}
+            if (window.__qkActiveAudio === audio) window.__qkActiveAudio = null;
+          },
+        };
+      },
+    });
+  }
+  useEffect(() => {
+    if (!signedIn || silent) return;
+    fillerRef.current?.warm(speechLang(voiceLang));
+  }, [signedIn, silent, voiceLang]);
+
   // ── speaking ───────────────────────────────────────────────────────────────
   const say = useCallback((text) => {
     if (!text) return;

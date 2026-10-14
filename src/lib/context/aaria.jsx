@@ -37,7 +37,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { useLanguage } from '@/lib/context/language';
 import { routeUtterance, helpText, DESTINATIONS } from '@/lib/aaria-router';
-import { speak, cancelSpeech, setSpeechAuthToken } from '@/components/VoiceTalkback';
+import { speak, cancelSpeech, setSpeechAuthToken, isVoiceTalkbackOn } from '@/components/VoiceTalkback';
+import { createFillerPlayer } from '@/lib/fillers';
 import { endpointSilenceMsFor, MAX_LISTEN_MS } from '@/lib/endpointing';
 import {
   startListenStream, listenStreamWanted, streamingSupported, keepEngineWarm, recordLastListen,

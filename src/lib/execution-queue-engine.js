@@ -147,7 +147,10 @@ export async function processQueueItem(supabase, item, accessToken = null) {
   // Governor check before execution
   const govResult = await governAction(user_id, { intentType, score: confidence }, {
     frequency: 3, accept_count: 2, decay_weight: 1.0,
-  }).catch(() => ({ allowed: true, tier: 'suggest', reason: 'gov_error_fail_open' }));
+  // 14 Oct 2026: this used to FAIL OPEN - if the governor errored, the
+  // action was allowed. A safety check that lets everything through when it
+  // breaks is not a safety check. It now fails closed.
+  }).catch(() => ({ allowed: false, tier: 'blocked', reason: 'gov_error_fail_closed' }));
 
   if (!govResult.allowed) {
     await supabase.from('execution_queue')

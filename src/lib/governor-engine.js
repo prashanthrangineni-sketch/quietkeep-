@@ -134,6 +134,18 @@ export async function governAction(userId, action, pattern = {}) {
     };
   }
 
+  // RULE 5 (14 Oct 2026): THE ONE TABLE. Nothing that needs a spoken yes or
+  // a PIN may happen unasked, however confident the prediction or long the
+  // history. An automatic trigger has, by definition, nobody asking.
+  if (!mayActUnasked(intentType)) {
+    return {
+      allowed: true, tier: 'suggest',
+      reason: 'level_table_needs_yes',
+      risk_level: riskLevel,
+      details: { rule: 'action_levels_one_table' },
+    };
+  }
+
   // PASSED ALL GATES
   return {
     allowed: true, tier: 'auto',

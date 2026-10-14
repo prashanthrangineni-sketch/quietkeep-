@@ -435,6 +435,7 @@ export function AariaProvider({ children }) {
       });
       lastListenRef.current = null;   // it described THIS sentence only
       const json = await res.json().catch(() => null);
+      endFiller();   // the reply is here: the thinking sound stops now
       if (!res.ok || !json) {
         setError('I could not save that. It is still in the box — try again.');
         setStatus('idle');

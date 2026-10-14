@@ -27,6 +27,7 @@
 //   recordGovernDecision(supabase, userId, data) → void
 
 import { createClient } from '@supabase/supabase-js';
+import { governorRiskFor, mayActUnasked } from '@/lib/action-levels';
 
 // ── Risk classification ───────────────────────────────────────────────────────
 export const RISK_LEVELS = {
@@ -35,27 +36,15 @@ export const RISK_LEVELS = {
   SENSITIVE: 'sensitive',
 };
 
-const RISK_MAP = {
-  // SAFE — minimal impact, easily reversible
-  note:         RISK_LEVELS.SAFE,
-  reminder:     RISK_LEVELS.SAFE,
-  task:         RISK_LEVELS.SAFE,
-  // MODERATE — social/personal impact
-  contact:      RISK_LEVELS.MODERATE,
-  meeting:      RISK_LEVELS.MODERATE,
-  trip:         RISK_LEVELS.MODERATE,
-  // SENSITIVE — financial or irreversible
-  expense:      RISK_LEVELS.SENSITIVE,
-  invoice:      RISK_LEVELS.SENSITIVE,
-  purchase:     RISK_LEVELS.SENSITIVE,
-  ledger_credit:RISK_LEVELS.SENSITIVE,
-  ledger_debit: RISK_LEVELS.SENSITIVE,
-  document:     RISK_LEVELS.SENSITIVE,
-  compliance:   RISK_LEVELS.SENSITIVE,
-};
-
+// ONE TABLE (drift fix, 14 Oct 2026). This file used to keep its own map of
+// intent type -> risk (RISK_MAP), with different levels from the safety table
+// that governs spoken commands (src/lib/action-levels.js). Two tables can
+// disagree, and did: here a contact was 'moderate' and could auto-trigger;
+// there a call or message to anyone needs the person's spoken yes. The risk
+// word now comes from the one table. An unlisted type is 'sensitive' (it used
+// to be 'moderate'): a type nobody has classified is not one we act on.
 export function getRiskLevel(intentType) {
-  return RISK_MAP[intentType] || RISK_LEVELS.MODERATE; // unknown → moderate (safe default)
+  return governorRiskFor(intentType);
 }
 
 // ── Hard limits ───────────────────────────────────────────────────────────────
@@ -142,6 +131,18 @@ export async function governAction(userId, action, pattern = {}) {
       reason: `score_below_${riskLevel}_threshold`,
       risk_level: riskLevel,
       details: { score, required: minScore },
+    };
+  }
+
+  // RULE 5 (14 Oct 2026): THE ONE TABLE. Nothing that needs a spoken yes or
+  // a PIN may happen unasked, however confident the prediction or long the
+  // history. An automatic trigger has, by definition, nobody asking.
+  if (!mayActUnasked(intentType)) {
+    return {
+      allowed: true, tier: 'suggest',
+      reason: 'level_table_needs_yes',
+      risk_level: riskLevel,
+      details: { rule: 'action_levels_one_table' },
     };
   }
 

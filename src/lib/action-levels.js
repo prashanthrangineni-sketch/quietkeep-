@@ -67,6 +67,7 @@ const TABLE = Object.freeze({
   meeting:        LEVEL.READ_BACK,
   document:       LEVEL.READ_BACK,
   list_reminders: LEVEL.READ_BACK,
+  proactive_nudge: LEVEL.READ_BACK,  // an in-app notice to the person themself
   // spoken yes + unlocked
   contact:        LEVEL.SPOKEN_YES,   // a call or message to a SAVED contact
   whatsapp:       LEVEL.SPOKEN_YES,
@@ -203,5 +204,37 @@ export const SAY = Object.freeze({
   hourly_limit_reached:  'limit_reached',      // "That is the limit for this hour."
   hourly_count_unknown:  'limit_unknown',      // "I cannot check the hourly limit just now."
 });
+
+/**
+ * ONE TABLE. (Drift fix, 14 Oct 2026.)
+ *
+ * The older suggestions governor (src/lib/governor-engine.js) kept its own
+ * safe / moderate / sensitive map, with different levels from this file.
+ * Two tables can disagree; the plan says one. The governor now asks these
+ * two functions instead, so this file is the only place a level is decided.
+ *
+ * governorRiskFor - the governor's word for a type, read from TABLE:
+ *   read_back -> 'safe', spoken_yes -> 'moderate', pin / never -> 'sensitive'.
+ *   A contact with an unknown number is PIN here, so 'sensitive' there.
+ *
+ * mayActUnasked - may this type happen with NOBODY asking: no spoken yes,
+ *   no PIN, phone lock unknown. That is exactly an automatic action or a
+ *   proactive trigger. Only read-back types may; anything that reaches
+ *   another person or money may not, however confident the prediction.
+ */
+export function governorRiskFor(intentType) {
+  const level = levelFor({ type: intentType });
+  if (level === LEVEL.READ_BACK) return 'safe';
+  if (level === LEVEL.SPOKEN_YES) return 'moderate';
+  return 'sensitive';
+}
+
+export function mayActUnasked(intentType) {
+  return decide(
+    { type: intentType },
+    { spokenYes: false, unlocked: false, pin: false, ownerVoice: null },
+    { doneThisHour: 0 },
+  ).decision === DECISION.DO;
+}
 
 export const TABLE_FOR_DOCS = TABLE;

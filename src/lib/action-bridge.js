@@ -33,16 +33,18 @@ const SERVER = process.env.NEXT_PUBLIC_SITE_URL || 'https://quietkeep.com';
 export async function sendWhatsAppBridge(supabase, userId, params, record, accessToken) {
   if (!userId || !params?.message) return { ok: false, error: 'missing_params' };
 
-  // Governance gate
-  const govResult = await governAction(userId, {
-    intentType: 'contact', score: record.confidence,
-  }, { frequency: 5, accept_count: 2, decay_weight: 1.0 })
-  .catch(() => ({ allowed: false, tier: 'blocked', reason: 'gov_error' }));
-
-  if (!govResult.allowed || govResult.tier === 'blocked') {
-    record.evaluation_path = [...(record.evaluation_path || []), `blocked: ${govResult.reason}`];
-    writeAuditRecord(supabase, { ...record, status: 'blocked', execution_status: 'blocked_by_governor' });
-    return { ok: false, error: govResult.reason };
+  // ONE TABLE (src/lib/action-levels.js, 14 Oct 2026). A message to another
+  // person is spoken-yes level. This gate used to let through anything the
+  // governor did not BLOCK - 'suggest' included - and asked the governor with
+  // made-up history (frequency 5, accepts 2). So a queued message could go out
+  // with nobody having said yes. Now it goes only when the caller recorded
+  // the person's spoken yes where it was heard (the lock and hourly limits
+  // are checked there, by decide()). No caller records one today, so nothing
+  // is sent from here until a spoken-yes path feeds it.
+  if (params?.proof !== 'spoken_yes') {
+    record.evaluation_path = [...(record.evaluation_path || []), 'blocked: needs_spoken_yes'];
+    writeAuditRecord(supabase, { ...record, status: 'blocked', execution_status: 'blocked_needs_spoken_yes' });
+    return { ok: false, error: 'needs_spoken_yes' };
   }
 
   const result = await executeWithProtocol(record, async () => {

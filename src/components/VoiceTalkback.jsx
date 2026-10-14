@@ -86,6 +86,12 @@ export function setVoiceTalkback(enabled) {
   voiceEnabled = enabled;
 }
 
+// Read-only: whether spoken replies are on. The thinking sounds
+// (src/lib/fillers.js) play only when Aaria is allowed to speak at all.
+export function isVoiceTalkbackOn() {
+  return voiceEnabled;
+}
+
 // Read the current voice language from localStorage (set by LanguageProvider)
 function getCurrentLang() {
   try { return localStorage.getItem('qk_voice_lang') || 'en-IN'; } catch { return 'en-IN'; }

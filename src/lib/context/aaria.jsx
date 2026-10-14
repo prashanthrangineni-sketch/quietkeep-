@@ -394,6 +394,18 @@ export function AariaProvider({ children }) {
     }
     setStatus('thinking');
     brainBusyRef.current += 1;   // the turn is not over while this is in flight
+    // Thinking sound for this turn (fillers.js): silent unless the wait passes
+    // 700 ms; stopped the moment the reply arrives, before it is spoken.
+    const fillerEnd = (!silent && isVoiceTalkbackOn())
+      ? fillerRef.current?.begin(speechLang(voiceLang))
+      : null;
+    const endFiller = () => {
+      const timing = fillerEnd ? fillerEnd() : null;
+      if (timing) prevTurnRef.current = timing;
+      return timing;
+    };
+    const prevTurn = prevTurnRef.current;
+    prevTurnRef.current = null;   // reported once
     try {
       const res = await fetch('/api/voice/capture', {
         method: 'POST',

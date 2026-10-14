@@ -56,6 +56,15 @@
 
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
+    <!-- SEND_SMS: the SOS path only (activities/SosCountdownActivity). After
+         the ten-second countdown the phone sends the emergency SMS itself, so
+         SOS works with no internet and with the screen locked. Nothing else
+         in the app sends SMS. Play Console: this needs the SMS permissions
+         declaration under the "SOS / emergency" exception before release;
+         without the permission at runtime the SOS falls back to opening the
+         SMS composer with the message filled in. -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+
 
     <!-- Location: LocationService geo-trigger polling -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -150,6 +159,17 @@
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:excludeFromRecents="true"
+            android:theme="@style/AppTheme"
+            android:exported="false" />
+
+        <!-- SOS: ten-second countdown over the lock screen, then the phone
+             sends the SMS itself. No AI, no internet. -->
+        <activity
+            android:name=".activities.SosCountdownActivity"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
             android:theme="@style/AppTheme"
             android:exported="false" />
 

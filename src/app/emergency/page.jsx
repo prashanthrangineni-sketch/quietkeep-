@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/context/auth';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import NavbarClient from '@/components/NavbarClient';
+import { triggerSOS as phoneSOS, nativeSosAvailable, syncEmergencyContactsToPhone, requestSmsPermission, sosStatus } from '@/lib/sos';
 
 const RELATIONS = ['spouse', 'parent', 'sibling', 'child', 'friend', 'doctor', 'neighbour', 'other'];
 
@@ -48,7 +49,27 @@ export default function EmergencyPage() {
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true });
     if (!error) setContacts(data || []);
+    // Keep a copy ON THE PHONE, so an SOS can send the SMS with no internet.
+    if (!error) {
+      syncEmergencyContactsToPhone(data || []).then((r) => {
+        if (r?.saved !== null) setPhoneSos((p) => ({ ...p, contacts_saved: r.saved }));
+      }).catch(() => {});
+    }
     setLoading(false);
+  }
+
+  // The phone's own SOS path (countdown + SMS radio): is it here, and may it send?
+  const [phoneSos, setPhoneSos] = useState({ available: false, sms_permission: null, contacts_saved: null });
+  useEffect(() => {
+    if (!nativeSosAvailable()) return;
+    sosStatus().then((s) => {
+      if (s) setPhoneSos({ available: true, sms_permission: s.sms_permission ?? null, contacts_saved: s.contacts_saved ?? null });
+      else setPhoneSos((p) => ({ ...p, available: true }));
+    }).catch(() => setPhoneSos((p) => ({ ...p, available: true })));
+  }, []);
+  async function allowSosSms() {
+    const r = await requestSmsPermission();
+    setPhoneSos((p) => ({ ...p, sms_permission: r?.sms_permission ?? p.sms_permission }));
   }
 
   function openAdd() {
@@ -208,7 +229,14 @@ export default function EmergencyPage() {
     }
   }
 
-  function triggerSOS() {
+  async function triggerSOS() {
+    // On the phone: its own countdown screen, then the phone sends the SMS
+    // itself (no internet needed). Only if that path is absent or refuses to
+    // start does the web flow below run (locate, then per-contact buttons).
+    if (nativeSosAvailable()) {
+      const r = await phoneSOS('emergency_screen');
+      if (r.started) return;
+    }
     setSosTrigger(true);
     getLocation();
   }
@@ -244,6 +272,21 @@ export default function EmergencyPage() {
           <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
             Hold 3 seconds to trigger emergency
           </p>
+          {phoneSos.available && (
+            <p style={{ margin: '0 0 14px', fontSize: '12px', color: 'var(--text-muted)' }}>
+              {phoneSos.sms_permission === 'granted'
+                ? `This phone will send the SOS SMS itself after a 10-second countdown — no internet needed${typeof phoneSos.contacts_saved === 'number' ? ` (${phoneSos.contacts_saved} contact${phoneSos.contacts_saved === 1 ? '' : 's'} kept on the phone)` : ''}.`
+                : 'To send the SOS SMS automatically, QuietKeep needs permission to send SMS. Without it, the SMS app opens and you press Send.'}
+              {phoneSos.sms_permission !== 'granted' && (
+                <>
+                  {' '}
+                  <button onClick={allowSosSms} style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(255,80,80,0.4)', background: 'rgba(255,80,80,0.12)', color: '#ff8080', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Allow SOS SMS
+                  </button>
+                </>
+              )}
+            </p>
+          )}
 
           {/* SOS hold button */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>

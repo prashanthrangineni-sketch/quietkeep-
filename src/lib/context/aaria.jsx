@@ -37,7 +37,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { useLanguage } from '@/lib/context/language';
 import { routeUtterance, helpText, DESTINATIONS } from '@/lib/aaria-router';
-import { speak, cancelSpeech, setSpeechAuthToken } from '@/components/VoiceTalkback';
+import { speak, cancelSpeech, setSpeechAuthToken, isVoiceTalkbackOn } from '@/components/VoiceTalkback';
+import { createFillerPlayer } from '@/lib/fillers';
 import { endpointSilenceMsFor, MAX_LISTEN_MS } from '@/lib/endpointing';
 import {
   startListenStream, listenStreamWanted, streamingSupported, keepEngineWarm, recordLastListen,
@@ -301,6 +302,55 @@ export function AariaProvider({ children }) {
   const signedIn = !!user && !!accessToken;
   const here     = useMemo(() => pageLabel(pathname), [pathname]);
 
+  // ── thinking sounds (plan item 10, step 15) ────────────────────────────────
+  // While the brain works, a short "okay" / "సరే" after 700 ms of silence -
+  // the rules are in src/lib/fillers.js. The two clips for the current
+  // language are made once, ahead of time, and played from memory: a filler
+  // never waits on the network at the moment it is needed.
+  const fillerTokenRef = useRef(null);
+  fillerTokenRef.current = accessToken;
+  const fillerRef   = useRef(null);
+  const prevTurnRef = useRef(null);   // last turn's timing, sent with the next one
+  if (fillerRef.current === null && typeof window !== 'undefined') {
+    fillerRef.current = createFillerPlayer({
+      synth: async (text, lang) => {
+        const token = fillerTokenRef.current;
+        if (!token) throw new Error('signed out');
+        const res = await fetch('/api/voice/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ text, lang, quality_tier: 'standard' }),
+        });
+        if (!res.ok) throw new Error(`tts ${res.status}`);
+        const json = await res.json();
+        if (json?.audio) {
+          const bin = atob(json.audio);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+        }
+        return json?.audio_url || null;
+      },
+      play: (url) => {
+        const audio = new Audio(url);
+        // Registered as the active audio, so anything that interrupts speech
+        // (a tap, the real reply) stops the filler too.
+        window.__qkActiveAudio = audio;
+        audio.play().catch(() => {});
+        return {
+          stop: () => {
+            try { audio.pause(); audio.currentTime = 0; } catch {}
+            if (window.__qkActiveAudio === audio) window.__qkActiveAudio = null;
+          },
+        };
+      },
+    });
+  }
+  useEffect(() => {
+    if (!signedIn || silent) return;
+    fillerRef.current?.warm(speechLang(voiceLang));
+  }, [signedIn, silent, voiceLang]);
+
   // ── speaking ───────────────────────────────────────────────────────────────
   const say = useCallback((text) => {
     if (!text) return;
@@ -344,6 +394,18 @@ export function AariaProvider({ children }) {
     }
     setStatus('thinking');
     brainBusyRef.current += 1;   // the turn is not over while this is in flight
+    // Thinking sound for this turn (fillers.js): silent unless the wait passes
+    // 700 ms; stopped the moment the reply arrives, before it is spoken.
+    const fillerEnd = (!silent && isVoiceTalkbackOn())
+      ? fillerRef.current?.begin(speechLang(voiceLang))
+      : null;
+    const endFiller = () => {
+      const timing = fillerEnd ? fillerEnd() : null;
+      if (timing) prevTurnRef.current = timing;
+      return timing;
+    };
+    const prevTurn = prevTurnRef.current;
+    prevTurnRef.current = null;   // reported once
     try {
       const res = await fetch('/api/voice/capture', {
         method: 'POST',
@@ -363,6 +425,8 @@ export function AariaProvider({ children }) {
           // the turn). Stored with the capture so a "it cut me off" report can
           // be checked against what actually happened.
           ...(lastListenRef.current ? { listen: lastListenRef.current } : {}),
+          // The previous turn's reply time and thinking sound (item 10).
+          ...(prevTurn ? { prev_turn: prevTurn } : {}),
           // Where the phone is, when it already knows - so a place name is
           // matched to the one nearby, not the first one in the country.
           ...(() => { const p = lastKnownPosition(); return p ? { current_lat: p.latitude, current_lng: p.longitude } : {}; })(),
@@ -371,6 +435,7 @@ export function AariaProvider({ children }) {
       });
       lastListenRef.current = null;   // it described THIS sentence only
       const json = await res.json().catch(() => null);
+      endFiller();   // the reply is here: the thinking sound stops now
       if (!res.ok || !json) {
         setError('I could not save that. It is still in the box — try again.');
         setStatus('idle');
@@ -460,9 +525,10 @@ export function AariaProvider({ children }) {
       setError('Network problem. Nothing was lost — try again.');
       setStatus('idle');
     } finally {
+      endFiller();   // a network failure must not leave it playing
       brainBusyRef.current = Math.max(0, brainBusyRef.current - 1);
     }
-  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id]);
+  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id, silent]);
 
   // A tap on one of the offered names. Exact - the id goes with it, so two
   // contacts with the same name can be told apart.

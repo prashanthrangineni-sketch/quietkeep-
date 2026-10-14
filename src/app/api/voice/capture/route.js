@@ -17,6 +17,7 @@ import { parseIntent, stripWakePhrase }    from '@/lib/intent-parser'
 import { collapseRepeats } from '@/lib/transcript-clean'
 import { impossibleSequences } from '@/lib/script-sanity'
 import { isFragment, measuredSpeechMs, caughtPartReply } from '@/lib/fragment-guard'
+import { cleanTurnTiming } from '@/lib/fillers'
 import { aariaAssist }   from '@/lib/aaria-act'
 import { aariaUnderstandLLM } from '@/lib/aaria-llm' // SOT P1: Aaria action brain for utterances regex can't parse
 import {
@@ -104,6 +105,20 @@ export async function POST(request) {
   // How this sentence was heard (Aaria's engine or the phone, how long, what
   // ended the turn) - trimmed to a few known fields, null when not sent.
   const listenEvidence = cleanListenEvidence(body.listen)
+
+  // How long the PREVIOUS turn's reply took to reach the phone, and whether a
+  // thinking sound filled the wait (plan item 10). The dock can only know
+  // that after the reply arrives, so it rides on the next request. Stored as
+  // its own audit row; never read by anything below, never a reason to refuse.
+  const turnTiming = cleanTurnTiming(body.prev_turn)
+  if (turnTiming) {
+    supabase.from('audit_log').insert({
+      user_id: user.id,
+      action:  'voice_turn_timing',
+      service: 'voice_capture',
+      details: turnTiming,
+    }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) })
+  }
 
   if (!transcript || !transcript.trim()) {
     return NextResponse.json({ error: 'transcript is required' }, { status: 400 })

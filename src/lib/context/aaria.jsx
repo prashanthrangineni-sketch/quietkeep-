@@ -525,9 +525,10 @@ export function AariaProvider({ children }) {
       setError('Network problem. Nothing was lost — try again.');
       setStatus('idle');
     } finally {
+      endFiller();   // a network failure must not leave it playing
       brainBusyRef.current = Math.max(0, brainBusyRef.current - 1);
     }
-  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id]);
+  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id, silent]);
 
   // A tap on one of the offered names. Exact - the id goes with it, so two
   // contacts with the same name can be told apart.

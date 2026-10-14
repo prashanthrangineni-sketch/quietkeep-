@@ -67,6 +67,7 @@ const TABLE = Object.freeze({
   meeting:        LEVEL.READ_BACK,
   document:       LEVEL.READ_BACK,
   list_reminders: LEVEL.READ_BACK,
+  proactive_nudge: LEVEL.READ_BACK,  // an in-app notice to the person themself
   // spoken yes + unlocked
   contact:        LEVEL.SPOKEN_YES,   // a call or message to a SAVED contact
   whatsapp:       LEVEL.SPOKEN_YES,

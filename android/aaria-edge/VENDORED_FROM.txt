@@ -1,4 +1,4 @@
 Repository: https://github.com/PranixQuick/aaria-edge
-Commit: 3c6fb749c94c8b84b7ae4a9d996390ce438874c4 (main line of aaria-edge, after PR #15)
-Date: 2026-10-05
+Commit: 3d639978618dc58c66451602a56b5b1ff5494027 (main line of aaria-edge, after PR #16: second listener, switched off by default)
+Date: 2026-10-15
 Tests: live and run in PranixQuick/aaria-edge (not vendored)

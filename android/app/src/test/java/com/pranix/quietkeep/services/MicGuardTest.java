@@ -413,6 +413,24 @@ public class MicGuardTest {
     }
 
     @Test
+    public void testFreeToAPageWithoutTheBridge_listeningIsNeverTurnedOff() {
+        MicGuard.beforeCapture(context);       // asked while the wake bridge was there
+        web.bridge = false;                    // the page lost its wake bridge before the capture ended
+        MicGuard.afterCapture(context);
+        web.answer();                          // a "no bridge" answer arriving later changes nothing
+        assertEquals(1, count("qk_mic_release"));
+        assertEquals(0, turnedOff);
+        web.bridge = true;
+        web.answerAtOnce = true;
+        MicGuard.beforeCapture(context);
+        web.bridge = false;
+        MicGuard.afterCapture(context);        // "no bridge" answered at once
+        web.answer();
+        assertEquals(2, count("qk_mic_release"));
+        assertEquals("listening is never turned off for a 'free' the page could not take", 0, turnedOff);
+    }
+
+    @Test
     public void testNoActivity_theRealPageSaysThereIsNoPage() {
         assertFalse(new MicGuard.PageWeb().tell("qk_mic_claim", null));
     }

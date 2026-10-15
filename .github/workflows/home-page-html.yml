@@ -1,0 +1,41 @@
+# Check what a signed-out visitor, Google and a link preview get for "/".
+#
+# WHY THIS FILE EXISTS
+# The HTML the server sent for quietkeep.com was a lock emoji and "Verifying…":
+# the biometric gate in layout.jsx held the whole home page back until a check
+# that only runs in the browser. Search engines and WhatsApp previews saw an
+# empty login check. This builds the site, starts it with no session and fails
+# if the headline, the Start free button or the Play Store link are missing
+# from the HTML, or if "Verifying" is back. See scripts/check-home-html.mjs.
+
+name: Home page HTML
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  home-html:
+    name: Signed-out home page HTML
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Start the site and check "/" with no session
+        run: |
+          npx next start -p 3000 > next.log 2>&1 &
+          for i in $(seq 1 60); do curl -s -o /dev/null http://localhost:3000/ && break; sleep 1; done
+          node scripts/check-home-html.mjs http://localhost:3000 || { tail -50 next.log; exit 1; }

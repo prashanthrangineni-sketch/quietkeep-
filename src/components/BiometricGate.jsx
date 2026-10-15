@@ -19,9 +19,20 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
+
+// The public home page carries no private data, so it is never hidden behind
+// the "Verifying…" screen. Without this the HTML the server sends for "/" is
+// only that screen, and Google, link previews and slow phones see nothing.
+// Only the *checking* screen is skipped, and only while the path is exactly
+// "/": the lock screen still shows on "/" if the check fails, and any other
+// path (including /dashboard reached by the signed-in redirect from "/")
+// waits for the check exactly as before.
+const PUBLIC_PATH = '/';
 
 export default function BiometricGate({ children }) {
   const [status, setStatus] = useState('checking'); // checking | unlocked | locked
+  const pathname = usePathname();
 
   const runGate = useCallback(async () => {
     try {
@@ -64,7 +75,7 @@ export default function BiometricGate({ children }) {
   }, [runGate]);
 
   // Checking: render a minimal loading state (avoid flash)
-  if (status === 'checking') {
+  if (status === 'checking' && pathname !== PUBLIC_PATH) {
     return (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 9999,
@@ -109,6 +120,6 @@ export default function BiometricGate({ children }) {
     );
   }
 
-  // Unlocked: render children normally
+  // Unlocked (or "/" while checking): render children normally
   return children;
 }

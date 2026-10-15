@@ -431,7 +431,7 @@ export default function HomePage() {
           <div style={{ width: 24, height: 24, borderRadius: 6, background: 'linear-gradient(135deg,#5b5ef4,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ fontSize: 10, fontWeight: 900, color: '#fff' }}>QK</span>
           </div>
-          <span style={{ fontSize: 13, color: 'var(--text-subtle)' }}>© 2026 QuietKeep · <a href="https://pranix.in" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-subtle)', textDecoration: 'none' }}>Pranix AI Labs</a> · 🇮🇳 Made in India</span>
+          <span style={{ fontSize: 13, color: 'var(--text-subtle)' }}>© 2026 QuietKeep · <a href="https://pranixailabs.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-subtle)', textDecoration: 'none' }}>Pranix AI Labs</a> · 🇮🇳 Made in India</span>
         </div>
         <div style={{ display: 'flex', gap: 20 }}>
           {[['Pricing', '/pricing'], ['Brand', '/brand'], ['Business', '/biz-login'], ['Privacy', '/privacy']].map(([l, h]) => (

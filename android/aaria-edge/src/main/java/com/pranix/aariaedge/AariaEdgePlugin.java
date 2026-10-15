@@ -1481,6 +1481,11 @@ public class AariaEdgePlugin extends Plugin {
                 value.put("aliases", a);
             }
             memoryStore.put("preference", "wake_name", value.toString(), 3650);
+            // The second listener knows only "Aaria": another name stops it straight away.
+            if (!"aaria".equalsIgnoreCase(name.trim()) && secondListener != null) {
+                dropSecondListener();
+                reportSecondListenerProblem("Second listener stopped: it only listens for the name Aaria, and a different wake name was chosen");
+            }
             call.resolve();
         } catch (Exception e) {
             call.reject(e.getMessage());

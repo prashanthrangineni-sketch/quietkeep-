@@ -23,19 +23,23 @@ check('note, task -> safe', governorRiskFor('note') === 'safe' && governorRiskFo
 check('expense (a ledger line) -> moderate', governorRiskFor('expense') === 'moderate');
 check('contact with the number unknown -> sensitive (PIN level)', governorRiskFor('contact') === 'sensitive');
 check('money_transfer -> sensitive', governorRiskFor('money_transfer') === 'sensitive');
-check('an unlisted type (compliance) -> sensitive, never looser', governorRiskFor('compliance') === 'sensitive');
+check('an unlisted type (attendance) -> sensitive, never looser', governorRiskFor('attendance') === 'sensitive');
+// compliance joined the table on 15 Oct 2026 as read-back: a renewal date saved
+// and read back, like a reminder. Nothing reaches a person or money.
+check('compliance (now in the table) -> safe, like a reminder', governorRiskFor('compliance') === 'safe');
+check('none / confirm (nothing to do) -> sensitive, never automated', governorRiskFor('none') === 'sensitive' && governorRiskFor('confirm') === 'sensitive');
 check('empty -> sensitive', governorRiskFor('') === 'sensitive' && governorRiskFor(undefined) === 'sensitive');
 {
-  const word = { [LEVEL.READ_BACK]: 'safe', [LEVEL.SPOKEN_YES]: 'moderate', [LEVEL.PIN]: 'sensitive', [LEVEL.NEVER]: 'sensitive' };
+  const word = { [LEVEL.READ_BACK]: 'safe', [LEVEL.SPOKEN_YES]: 'moderate', [LEVEL.PIN]: 'sensitive', [LEVEL.NEVER]: 'sensitive', [LEVEL.NO_ACTION]: 'sensitive' };
   const bad = Object.keys(TABLE_FOR_DOCS).filter((t) => t !== 'contact' && governorRiskFor(t) !== word[levelFor({ type: t })]);
   check('every type in the table: the governor word agrees with the level', bad.length === 0, bad.join(','));
 }
 
 // ── nothing that reaches a person or money happens unasked ───────────────────
-for (const t of ['reminder', 'note', 'task', 'navigation', 'proactive_nudge']) {
+for (const t of ['reminder', 'note', 'task', 'navigation', 'proactive_nudge', 'compliance', 'trip']) {
   check(`${t} may happen unasked (read-back)`, mayActUnasked(t));
 }
-for (const t of ['contact', 'whatsapp', 'expense', 'invoice', 'purchase', 'ledger_debit', 'money_transfer', 'share_location', 'voice_clone', 'delete_all', 'compliance', '']) {
+for (const t of ['contact', 'whatsapp', 'expense', 'invoice', 'purchase', 'ledger_debit', 'money_transfer', 'share_location', 'voice_clone', 'delete_all', 'delete_note', 'none', 'confirm', 'attendance', '']) {
   check(`${t || '(empty)'} may NOT happen unasked`, !mayActUnasked(t));
 }
 

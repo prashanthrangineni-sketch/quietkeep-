@@ -45,6 +45,11 @@ import {
 import { buildMemoryContext } from '@/lib/style-engine' // v15: Memory Context
 import { cleanListenEvidence } from '@/lib/listen-stream'
 import { decide, DECISION } from '@/lib/action-levels' // item 2: the safety check before every action
+import {
+  NO_KEEP_INTENTS, BRAIN_TYPE, DELETE_ASKED, DELETE_ANSWERED,
+  planNoKeepTurn, isStrayConfirmation, matchKeepForDelete, deleteQuestion,
+  pendingDelete, readDeleteAnswer, deleteDecision, archivePatch, line,
+} from '@/lib/brain-turn' // confirm / delete / pay / none: reply, save nothing
 
 export async function POST(request) {
   const authHeader = request.headers.get('Authorization') || ''
@@ -256,6 +261,86 @@ export async function POST(request) {
       tts_response:  'Already saved.',
       deduplicated:  true,
     }, { status: 200 });
+  }
+
+  // ── "DELETE 'CALL RAVI TOMORROW'? YES OR NO?" ─────────────────────────────
+  // A voice delete is read back first (below, where the brain says "delete")
+  // and recorded as an audit row. This turn may be the answer. Only a spoken
+  // yes (isSpokenYes) carries it out, only when the level table says do, and
+  // carrying out means ARCHIVE - status closed + archived_at, what the app
+  // already does - never a hard delete. "No" keeps it. Anything else is a new
+  // instruction: the question lapses and the sentence is read as usual.
+  const unlockedNow = ['voice', 'text'].includes(source)
+  const { data: deleteRows } = await supabase
+    .from('audit_log')
+    .select('action,details,created_at')
+    .eq('user_id', user.id)
+    .in('action', [DELETE_ASKED, DELETE_ANSWERED])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .then((r) => (r.error ? { data: null } : r))
+  const askedDelete = pendingDelete(deleteRows)
+  if (askedDelete) {
+    const said = readDeleteAnswer(text)
+    const lang = askedDelete.lang || language
+    const record = (outcome, extra = {}) => supabase.from('audit_log').insert({
+      user_id: user.id, action: DELETE_ANSWERED, service: 'voice_capture',
+      details: { keep_id: askedDelete.keep_id, outcome, heard: text.slice(0, 120), source, ...extra },
+    }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+
+    if (said === 'no') {
+      record('kept')
+      return NextResponse.json({
+        ok: true, not_saved: true, deleted: false, delete_answer: 'no',
+        tts_response: line('delete_kept', lang),
+      }, { status: 200 })
+    }
+    if (said === 'yes') {
+      const { count: doneThisHour } = await supabase
+        .from('audit_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('action', 'action.spoken_yes')
+        .gte('created_at', new Date(Date.now() - 3_600_000).toISOString())
+        .then((r) => ({ count: r.error ? null : (r.count ?? 0) }))
+      const delSafety = deleteDecision({ spokenYes: true, unlocked: unlockedNow, doneThisHour })
+      if (delSafety.decision !== DECISION.DO) {
+        record('held', { reason: delSafety.reason })
+        return NextResponse.json({
+          ok: false, not_saved: true, deleted: false, safety: delSafety,
+          tts_response: line('delete_held', lang),
+        }, { status: 200 })
+      }
+      const { data: archived, error: archiveError } = await supabase
+        .from('keeps')
+        .update(archivePatch())
+        .eq('id', askedDelete.keep_id)
+        .eq('user_id', user.id)
+        .is('archived_at', null)
+        .select('id,content')
+        .maybeSingle()
+      if (archiveError || !archived) {
+        record('failed', { error: archiveError?.message?.slice(0, 120) || 'not_found' })
+        return NextResponse.json({
+          ok: false, not_saved: true, deleted: false, safety: delSafety,
+          tts_response: line('delete_failed', lang),
+        }, { status: 200 })
+      }
+      // An archived reminder must not still ring.
+      await supabase.from('reminders').update({ is_active: false })
+        .eq('keep_id', archived.id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error('[capture] reminder deactivate:', error.message) })
+      record('archived')
+      supabase.from('audit_log').insert({
+        user_id: user.id, action: 'action.spoken_yes', service: 'voice_capture',
+        details: { keep_id: archived.id, type: BRAIN_TYPE.delete, level: delSafety.level, reason: delSafety.reason, source },
+      }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+      return NextResponse.json({
+        ok: true, not_saved: true, deleted: true, archived_keep_id: archived.id, safety: delSafety,
+        tts_response: line('delete_done', lang, archived.content || askedDelete.content),
+      }, { status: 200 })
+    }
+    record('lapsed')
   }
 
   // ── IS THIS THE ANSWER TO THE QUESTION WE JUST ASKED? ────────────────────
@@ -470,6 +555,28 @@ export async function POST(request) {
     }, { status: 200 })
   }
 
+  // ── A YES OR NO THAT ANSWERS NOTHING ──────────────────────────────────────
+  // Every real answer has returned above. A bare "yes" / "avunu" / "haan" /
+  // "no" left over here answers no question, and was saved as a reminder
+  // four times out of six when the brain read it (run 38719122967). Decided
+  // before the brain runs, so it holds when the brain is down too. With a
+  // question still open, that question is asked again; otherwise Aaria asks
+  // what they mean. Nothing is saved.
+  if (isStrayConfirmation(text)) {
+    const plan = planNoKeepTurn({
+      intent: 'confirm', language,
+      pendingQuestionText: openQuestion && isPendingQuestion(openQuestion) ? askAgain(openQuestion) : null,
+    })
+    supabase.from('audit_log').insert({
+      user_id: user.id, action: 'voice.no_keep', service: 'voice_capture',
+      details: { kind: 'stray_confirmation', heard: text.slice(0, 120), source, language },
+    }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+    return NextResponse.json({
+      ok: true, not_saved: true, reason: 'stray_confirmation', safety: plan.safety,
+      tts_response: plan.tts,
+    }, { status: 200 })
+  }
+
   let parsed = parseIntent(text)
   let reminderAt = computeReminderAt(parsed.entities, undefined, text)
 
@@ -514,6 +621,64 @@ export async function POST(request) {
   const understanding = describeUnderstanding({
     decision: brainDecision, llmAssist, latencyMs: brainLatencyMs, failure: brainFailure, threshold: 0.55,
   })
+
+  // ── CONFIRM / DELETE / PAY / NONE: REPLY, SAVE NOTHING ────────────────────
+  // src/lib/brain-turn.js has the rules; src/lib/action-levels.js the levels.
+  if (llmAssist && llmAssist.confidence >= 0.55 && NO_KEEP_INTENTS.has(llmAssist.intent)) {
+    const replyLang = llmAssist.language || language
+    let tts = null
+    let safety = null
+    let deleteTarget = null
+    if (llmAssist.intent === 'delete') {
+      // Open items only, this person's, in this workspace.
+      let q = supabase
+        .from('keeps')
+        .select('id,content,voice_text,contact_name,intent_type,created_at')
+        .eq('user_id', user.id)
+        .is('archived_at', null)
+        .in('status', ['open', 'active', 'blocked', 'deferred', 'reminded'])
+        .order('created_at', { ascending: false })
+        .limit(100)
+      q = workspace_id ? q.eq('workspace_id', workspace_id) : q.is('workspace_id', null)
+      const { data: openItems } = await q.then((r) => (r.error ? { data: [] } : r))
+      const found = matchKeepForDelete(openItems || [], {
+        item: llmAssist.entities?.item || null,
+        person: llmAssist.entities?.person || null,
+        text,
+      })
+      tts = deleteQuestion(found, replyLang)
+      safety = deleteDecision({ spokenYes: false, unlocked: unlockedNow, doneThisHour: 0 })
+      if (found.match) {
+        deleteTarget = { id: found.match.id, content: found.match.content }
+        // The read-back is the question; the next turn's yes answers it.
+        await supabase.from('audit_log').insert({
+          user_id: user.id, action: DELETE_ASKED, service: 'voice_capture',
+          details: { keep_id: found.match.id, content: String(found.match.content || '').slice(0, 200), lang: replyLang, source },
+        }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+      }
+    } else {
+      const plan = planNoKeepTurn({
+        intent: llmAssist.intent, brainReply: llmAssist.reply, language: replyLang,
+        pendingQuestionText: openQuestion && isPendingQuestion(openQuestion) ? askAgain(openQuestion) : null,
+      })
+      tts = plan.tts
+      safety = plan.safety
+    }
+    supabase.from('audit_log').insert({
+      user_id: user.id, action: 'voice.no_keep', service: 'voice_capture',
+      details: { kind: llmAssist.intent, heard: text.slice(0, 120), source, language, understanding, delete_target: deleteTarget?.id || null },
+    }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+    return NextResponse.json({
+      ok: true,
+      not_saved: true,
+      reason: llmAssist.intent,
+      delete_target: deleteTarget,
+      awaiting_yes: !!deleteTarget,
+      safety,
+      understanding,
+      tts_response: tts,
+    }, { status: 200 })
+  }
 
   if (llmAssist && llmAssist.confidence >= 0.55) {
     // Map the brain's vocabulary onto the intent types this app executes.
@@ -1167,6 +1332,9 @@ export async function POST(request) {
     && !(parsed.type === 'contact' && !keep.contact_phone)
     && !isSourcePrediction
     && !(reminderAt && new Date(reminderAt).getTime() > Date.now() + 60_000)
+    // A trip the brain named ("plan a trip to Ooty next weekend") is saved
+    // and read back; it never opens Maps by itself.
+    && !(parsed.type === 'trip' && llmAssist?.intent === 'trip')
   )
 
   if (isAutoEligible && workspace_id) {

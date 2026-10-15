@@ -53,11 +53,21 @@ function langName(code) {
   return LANG_NAMES[base] || 'English';
 }
 
-// Intents this app can actually execute.
+// Intents the brain may answer. The first fourteen are things the app saves or
+// does. The last six (15 Oct 2026, measured gap list in
+// measurements/understanding-latest.md) are mostly things it must NOT save:
+//   trip, compliance  saved as their own keep types (read-back level)
+//   confirm           a bare yes / no / cancel - only means something as the
+//                     answer to a question Aaria asked; on its own it saves nothing
+//   delete            remove ONE existing item - read back, then a spoken yes
+//   pay               money leaving an account - never by voice (PIN level)
+//   none              thanks, small talk, a statement needing no action
+// What each one is allowed to do is decided by src/lib/action-levels.js, not here.
 export const INTENTS = [
   'reminder', 'task', 'contact', 'meeting', 'purchase',
   'expense', 'income', 'ledger_debit', 'sale', 'invoice',
   'document', 'navigation', 'query', 'note',
+  'trip', 'compliance', 'confirm', 'delete', 'pay', 'none',
 ];
 
 // THE CLOCK THE MODEL READS MUST BE THE USER'S.
@@ -108,7 +118,7 @@ waiting for you to speak, so emit only what you actually know:
   "clean_text": the same sentence, written the way the user meant it - words they spoke in English written in ENGLISH LETTERS, Telugu/Hindi/other words kept in their own script. Do not translate, do not add words. (Speech-to-text set to Telugu writes English as Telugu letters: "రిమాండ్ మీ టు పిక్ అప్ బియర్" is "Remind me to pick up beer"),
   "entities": {
     "place": ONLY when the reminder should fire on ARRIVING at, reaching, passing or being near a place ("when I reach Chintal Kunta", "when I'm at office", "on the way home near the bakery", "చింతల్ కుంట కి వెళ్ళినప్పుడు", "दफ्तर पहुंचूं तो") - the place name in ENGLISH LETTERS, nothing else ("Chintal Kunta"). A place is never a person. When you give a place, OMIT relative_minutes and datetime_iso unless the user ALSO named a time,
-    "person": the person's name in ENGLISH LETTERS only (write "Surya Kiran", never "సూర్య కిరణ్" or "सूर्य किरण"; the phone's contact list is in English letters and a name in another script matches nobody),
+    "person": the person's or shop's name in ENGLISH LETTERS only (write "Surya Kiran", never "సూర్య కిరణ్" or "सूर्य किरण"; "రాముకి" is "Ramu", "राजू को" is "Raju", "Gupta ji ne" is "Gupta", "Kapoor ke naam pe" is "Kapoor", "Kiran tho" is "Kiran", "Ravi Traders కి" is "Ravi Traders"; the phone's contact list is in English letters and a name in another script matches nobody). Whenever a name is said, give it - for every intent,
     "relative_minutes": number - when the user gave a DURATION FROM NOW ("in five minutes", "ek minute ke baad", "ఐదు నిమిషాల్లో", "in two hours" = 120). Give ONLY this and omit datetime_iso; the app adds it to the clock itself,
     "datetime_iso": absolute ISO 8601 datetime, ONLY when the user named a clock time or a day ("at ten", "tomorrow morning", "kal subah"),
     "amount": number,
@@ -151,7 +161,35 @@ OTHER RULES:
 - If the user wants to go somewhere or get directions ("set location to Charminar",
   "చార్మినార్ కి వెళ్ళాలి", "चारमीनार ले चलो"), intent = "navigation" and
   entities.item = ONLY the place name, in English letters. Reply that you are starting navigation.
-- If the user is asking a question rather than storing something, intent = "query".`;
+- If the user is asking a question rather than storing something, intent = "query" -
+  also when it asks about money, reminders or meetings already saved ("what did I
+  spend today", "repu naaku emaina reminders unnaya?", "आज कितना खर्च किया?").
+- Sold something = "sale" ("ammanu", "అమ్మాను", "becha", "sale ayindi"). Lent money or
+  gave on credit = "ledger_debit", direction "out" ("appu icchanu", "उधार दिए", "on credit"),
+  not expense. Someone paid back what they owed = "income", direction "in" ("baki ke de
+  diye", "tirigi icchadu"). Send someone a message = "contact".
+- "trip": plan or book travel - a trip, ticket, flight, train, bus, hotel. Put the place in entities.item.
+- "compliance": a licence, certificate, permit, registration, insurance or renewal with an
+  expiry or due date to track. Give datetime_iso when a date is said; do not ask for one.
+- "pay": send, transfer or pay money to someone NOW (UPI, PhonePe, Paytm, "pampu",
+  "bhej do", "transfer karo"). Not "I paid" (that is expense). Reply that payments are
+  done in the app with the PIN - never say you will send it.
+- "delete": remove, delete or cancel ONE item already saved ("delete the gym reminder",
+  "Ravi ki call reminder teeseyi", "हटा दो", "cancel kar do"). It names the item;
+  "cancel that" alone is "confirm". entities.item = the words that describe it;
+  person when it names someone. Reply by asking which item, never say it is deleted.
+- "confirm": ONLY a bare yes / no / okay / cancel with nothing else ("yes please", "okay",
+  "avunu", "sare", "haan ji", "ठीक है", "nahi, rehne do", "vaddu le", "no, cancel that").
+  A bare yes or no is ALWAYS "confirm", never "none". Not a new instruction.
+- "none": thanks, greetings, small talk, how the user feels, or a statement that needs
+  nothing done ("thank you", "nenu chala alasipoyanu", "just testing"). Never a bare yes or no.
+  Reply briefly. Nothing is saved.
+- Romanised Telugu numbers and times: okati 1, rendu 2, moodu 3, naalugu 4, aidu 5,
+  aaru 6, edu 7, enimidi 8, tommidi 9, padi 10, padakondu 11, pannendu 12, iravai 20,
+  vanda 100, veyyi 1000, vela thousand ("moodu vela" 3000); repu tomorrow, ellundi day
+  after tomorrow, ivala today, udayam morning, sayantram evening, ratri night,
+  nimishalu / nimishallo minutes, gantalu / gantalaki hours or o'clock
+  ("aidu nimishallo" = relative_minutes 5; "repu udayam padi gantalaki" = tomorrow 10:00).`;
 }
 
 // Escape hatch: if Sarvam ever changes its SSE shape, set SARVAM_STREAM=0 and
@@ -261,6 +299,19 @@ export function buildRequestBody({ model, prompt, stream }) {
   };
 }
 
+// A TIME WITH NO ZONE IS INDIA TIME. The prompt gives the model the clock in
+// Asia/Kolkata, but it sometimes answers "2026-10-16T08:00:00" with no offset.
+// The server runs in UTC, so new Date() read that as 8 AM UTC and an 8 AM
+// reminder fired at 1:30 PM IST (measured: 2 of 48 timed sentences, run
+// 38726346076). A bare date-time gets +05:30; anything else passes through.
+export function withIndiaZone(iso) {
+  if (typeof iso !== 'string') return iso ?? null;
+  const s = iso.trim();
+  if (!s) return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s)) return s;
+  return `${s}+05:30`;
+}
+
 /**
  * Turn the model's raw text into the object the capture route acts on.
  * Pure: no I/O. Returns { result } or { failure: 'no_json' | 'no_intent' }.
@@ -288,7 +339,7 @@ export function parseBrainResponse(raw, { clean, nowISO, language, model }) {
   // 30 September 2026 that arithmetic put "1 minute" thirty minutes out.
   const now = new Date(nowISO || Date.now());
   const relMin = Number(ents.relative_minutes);
-  let datetimeISO = ents.datetime_iso ?? null;
+  let datetimeISO = withIndiaZone(ents.datetime_iso ?? null);
   if (Number.isFinite(relMin) && relMin > 0 && relMin <= 60 * 24 * 366 && !isNaN(now.getTime())) {
     datetimeISO = new Date(now.getTime() + Math.round(relMin) * 60_000).toISOString();
   }

@@ -8,6 +8,11 @@
 //   aaria-llm-request-golden.json  url, headers and the exact body string
 //   aaria-llm-output-golden.json   what came back for fixed model answers
 // Both are compared byte-for-byte. If this fails, production behaviour moved.
+//
+// 15 Oct 2026: the request bodies were re-captured once, on purpose, when the
+// prompt gained the confirm / delete / pay / none / trip / compliance intents
+// and the romanised-Telugu examples. URL, headers, model, temperature,
+// max_tokens and stream were checked unchanged before re-capturing.
 
 import assert from 'node:assert/strict'
 import test from 'node:test'

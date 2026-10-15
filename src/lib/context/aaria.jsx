@@ -300,6 +300,27 @@ export function AariaProvider({ children }) {
 
   const silent   = isSilent(pathname);
   const signedIn = !!user && !!accessToken;
+
+  // WHICH BUSINESS, ON A BUSINESS SCREEN. (15 Oct 2026)
+  // This dock never sent a workspace, so on /b/... screens "mark Ravi absent
+  // today" could not reach the business records. On a business screen the
+  // workspace is resolved once (owner first, then membership -
+  // resolve-workspace.js) and sent as business_workspace_id. The server uses
+  // it ONLY for attendance / stock / payroll and checks the person's role in
+  // it before reading or writing anything; elsewhere nothing changes.
+  const workspaceRef = useRef({ userId: null, id: null });
+  const businessWorkspaceId = useCallback(async () => {
+    if (!user?.id || !/^\/b(\/|$)/.test(pathname || '')) return null;
+    if (workspaceRef.current.userId === user.id && workspaceRef.current.id) return workspaceRef.current.id;
+    try {
+      const [{ supabase }, { resolveWorkspace }] = await Promise.all([
+        import('@/lib/supabase'), import('@/lib/resolve-workspace'),
+      ]);
+      const ws = await resolveWorkspace(supabase, user.id, 'id');
+      workspaceRef.current = { userId: user.id, id: ws?.id || null };
+      return ws?.id || null;
+    } catch { return null; }
+  }, [user?.id, pathname]);
   const here     = useMemo(() => pageLabel(pathname), [pathname]);
 
   // ── thinking sounds (plan item 10, step 15) ────────────────────────────────
@@ -407,6 +428,7 @@ export function AariaProvider({ children }) {
     const prevTurn = prevTurnRef.current;
     prevTurnRef.current = null;   // reported once
     try {
+      const workspaceId = await businessWorkspaceId();
       const res = await fetch('/api/voice/capture', {
         method: 'POST',
         headers: {
@@ -417,6 +439,10 @@ export function AariaProvider({ children }) {
           transcript: text,
           source: 'voice',
           language: speechLang(voiceLang),
+          // Only for attendance / stock / payroll: NOT workspace_id, which
+          // would also switch on the older business ledger path that writes
+          // money lines without a spoken yes.
+          ...(workspaceId ? { business_workspace_id: workspaceId } : {}),
           // Page context. The understanding prompt is materially better when it
           // knows the user is staring at Invoices — "add 2000 for Ravi" is an
           // invoice there and an expense on the Money screen.
@@ -528,7 +554,7 @@ export function AariaProvider({ children }) {
       endFiller();   // a network failure must not leave it playing
       brainBusyRef.current = Math.max(0, brainBusyRef.current - 1);
     }
-  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id, silent]);
+  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id, silent, businessWorkspaceId]);
 
   // A tap on one of the offered names. Exact - the id goes with it, so two
   // contacts with the same name can be told apart.

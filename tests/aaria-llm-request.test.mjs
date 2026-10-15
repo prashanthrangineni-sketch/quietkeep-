@@ -13,6 +13,12 @@
 // prompt gained the confirm / delete / pay / none / trip / compliance intents
 // and the romanised-Telugu examples. URL, headers, model, temperature,
 // max_tokens and stream were checked unchanged before re-capturing.
+//
+// 15 Oct 2026 (later): re-captured once more, on purpose, when the prompt
+// gained attendance / stock / payroll and the who-gave-to-whom money rule.
+// Checked first: URL, headers, model, temperature, max_tokens and stream
+// unchanged; the parsed results differ ONLY by four new entity keys
+// (status, quantity, unit, stockOp), null for every existing answer.
 
 import assert from 'node:assert/strict'
 import test from 'node:test'

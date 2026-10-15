@@ -15,7 +15,11 @@
         "relativeMinutes": 5,
         "amount": null,
         "direction": null,
-        "item": null
+        "item": null,
+        "status": null,
+        "quantity": null,
+        "unit": null,
+        "stockOp": null
       },
       "missing": [],
       "reply": "In five minutes.",
@@ -39,7 +43,11 @@
         "relativeMinutes": null,
         "amount": 500,
         "direction": "in",
-        "item": null
+        "item": null,
+        "status": null,
+        "quantity": null,
+        "unit": null,
+        "stockOp": null
       },
       "missing": [],
       "reply": "Noted.",
@@ -63,7 +71,11 @@
         "relativeMinutes": null,
         "amount": null,
         "direction": null,
-        "item": null
+        "item": null,
+        "status": null,
+        "quantity": null,
+        "unit": null,
+        "stockOp": null
       },
       "missing": [],
       "reply": null,
@@ -87,7 +99,11 @@
         "relativeMinutes": null,
         "amount": null,
         "direction": null,
-        "item": null
+        "item": null,
+        "status": null,
+        "quantity": null,
+        "unit": null,
+        "stockOp": null
       },
       "missing": [
         "datetime"

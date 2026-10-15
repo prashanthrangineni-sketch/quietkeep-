@@ -23,7 +23,10 @@ check('note, task -> safe', governorRiskFor('note') === 'safe' && governorRiskFo
 check('expense (a ledger line) -> moderate', governorRiskFor('expense') === 'moderate');
 check('contact with the number unknown -> sensitive (PIN level)', governorRiskFor('contact') === 'sensitive');
 check('money_transfer -> sensitive', governorRiskFor('money_transfer') === 'sensitive');
-check('an unlisted type (attendance) -> sensitive, never looser', governorRiskFor('attendance') === 'sensitive');
+check('an unlisted type -> sensitive, never looser', governorRiskFor('gst_filing') === 'sensitive');
+// attendance / stock joined the table on 15 Oct 2026 at spoken-yes level.
+check('attendance, stock (spoken yes) -> moderate', governorRiskFor('attendance') === 'moderate' && governorRiskFor('stock') === 'moderate');
+check('salary_payment (PIN) -> sensitive', governorRiskFor('salary_payment') === 'sensitive');
 // compliance joined the table on 15 Oct 2026 as read-back: a renewal date saved
 // and read back, like a reminder. Nothing reaches a person or money.
 check('compliance (now in the table) -> safe, like a reminder', governorRiskFor('compliance') === 'safe');
@@ -39,7 +42,7 @@ check('empty -> sensitive', governorRiskFor('') === 'sensitive' && governorRiskF
 for (const t of ['reminder', 'note', 'task', 'navigation', 'proactive_nudge', 'compliance', 'trip']) {
   check(`${t} may happen unasked (read-back)`, mayActUnasked(t));
 }
-for (const t of ['contact', 'whatsapp', 'expense', 'invoice', 'purchase', 'ledger_debit', 'money_transfer', 'share_location', 'voice_clone', 'delete_all', 'delete_note', 'none', 'confirm', 'attendance', '']) {
+for (const t of ['contact', 'whatsapp', 'expense', 'invoice', 'purchase', 'ledger_debit', 'money_transfer', 'share_location', 'voice_clone', 'delete_all', 'delete_note', 'none', 'confirm', 'attendance', 'stock', 'salary_payment', 'gst_filing', '']) {
   check(`${t || '(empty)'} may NOT happen unasked`, !mayActUnasked(t));
 }
 

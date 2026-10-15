@@ -75,6 +75,9 @@ const TABLE = Object.freeze({
   document:       LEVEL.READ_BACK,
   list_reminders: LEVEL.READ_BACK,
   proactive_nudge: LEVEL.READ_BACK,  // an in-app notice to the person themself
+  payroll:        LEVEL.READ_BACK,   // a DRAFT pay summary from recorded attendance, shown and
+                                     // spoken; it writes nothing and pays nothing (business only)
+  stock_check:    LEVEL.READ_BACK,   // "how much sugar is left" - answered, nothing written
   // spoken yes + unlocked
   contact:        LEVEL.SPOKEN_YES,   // a call or message to a SAVED contact
   whatsapp:       LEVEL.SPOKEN_YES,
@@ -85,9 +88,13 @@ const TABLE = Object.freeze({
   ledger_debit:   LEVEL.SPOKEN_YES,
   sale:           LEVEL.SPOKEN_YES,
   delete_note:    LEVEL.SPOKEN_YES,   // one note; it is archived, not destroyed (brain intent 'delete')
+  attendance:     LEVEL.SPOKEN_YES,   // a staff attendance mark, read back first (business only)
+  stock:          LEVEL.SPOKEN_YES,   // an inventory change, read back first (business only);
+                                      // asking how much is left writes nothing and is no action
   // fingerprint / PIN
   call_unknown:   LEVEL.PIN,          // a number that is not a saved contact
   money_transfer: LEVEL.PIN,          // money leaving an account (UPI, payment; brain intent 'pay')
+  salary_payment: LEVEL.PIN,          // paying staff salary is money leaving an account: never by voice
   share_location: LEVEL.PIN,
   voice_clone:    LEVEL.PIN,
   // never by voice

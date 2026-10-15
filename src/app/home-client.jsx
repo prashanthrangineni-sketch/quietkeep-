@@ -348,7 +348,7 @@ export default function HomePage() {
         @media(max-width:720px){.nav-links a:not(.nav-cta){display:none}}
 
         .hero{max-width:1180px;margin:0 auto;padding:36px 24px 40px;display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
-        @media(max-width:900px){.hero{grid-template-columns:1fr;padding-top:12px}.hero-art{order:-1}}
+        @media(max-width:900px){.hero{grid-template-columns:1fr;padding-top:12px}.hero-art{min-height:400px}}
         .pill{display:inline-flex;gap:8px;align-items:center;background:#fff;border:1px solid rgba(99,102,241,.18);
           color:var(--ink);font-weight:700;font-size:13px;padding:8px 15px;border-radius:999px;box-shadow:0 4px 14px rgba(99,102,241,.1)}
         .hero h1{font-size:clamp(34px,5vw,54px);line-height:1.05;font-weight:800;letter-spacing:-1.5px;margin:18px 0 0}

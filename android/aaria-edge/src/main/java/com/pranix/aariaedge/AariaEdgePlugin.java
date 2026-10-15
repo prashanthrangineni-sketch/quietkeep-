@@ -1195,6 +1195,8 @@ public class AariaEdgePlugin extends Plugin {
         }
 
         DeviceState state = new DeviceState(batteryPct, charging, powerSave, thermalStatus, wakeOnBattery);
+        // The "secondListener" setting takes effect here, when listening starts. Off: nothing is made or loaded.
+        applySecondListener();
         if (appHold != null) appHold.cancel();
         boolean wasOn = listenController.isOn();
         listenController.turnOn(state);

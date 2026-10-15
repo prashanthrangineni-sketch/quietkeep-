@@ -917,6 +917,8 @@ public class AariaEdgePlugin extends Plugin {
         if (executor != null) {
             executor.shutdown();
         }
+        // Frees the second listener's engine, if there is one.
+        dropSecondListener();
     }
 
     @PluginMethod

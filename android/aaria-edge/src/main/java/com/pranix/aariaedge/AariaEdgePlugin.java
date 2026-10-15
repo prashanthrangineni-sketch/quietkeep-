@@ -1113,6 +1113,8 @@ public class AariaEdgePlugin extends Plugin {
             }
             isListeningPaused = false;
             pauseReason = null;
+            // "Turn off" releases the second listener too. It is made again at the next start if its setting is on.
+            dropSecondListener();
         }
         
         if (getContext() != null) {

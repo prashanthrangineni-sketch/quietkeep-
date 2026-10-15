@@ -20,6 +20,9 @@
 //               satisfy this level, so by voice alone it always stops.
 //   never       not an action Aaria takes at all (account changes, deleting
 //               everything, anything unrecognised).
+//   no_action   nothing to do: thanks / small talk ('none') and a bare yes or
+//               no that answers no question ('confirm'). Nothing is saved,
+//               nothing is done; Aaria only replies.
 //
 // THE DECISION
 //   do          every proof the level needs is present
@@ -27,6 +30,7 @@
 //   ask_unlock  the person said yes but the phone is not known to be unlocked
 //   ask_pin     needs fingerprint / PIN
 //   refuse      must not happen - and the reason says WHY, never "denied"
+//   nothing     there is no action to take (level no_action)
 //
 // THE FOUR RULES THE PLAN NAMES, AND WHERE EACH ONE STANDS
 //   1. the level table               - THIS FILE; enforced where decide() is called
@@ -44,6 +48,7 @@ export const LEVEL = Object.freeze({
   SPOKEN_YES: 'spoken_yes',
   PIN:        'pin',
   NEVER:      'never',
+  NO_ACTION:  'no_action',
 });
 
 export const DECISION = Object.freeze({
@@ -52,6 +57,7 @@ export const DECISION = Object.freeze({
   ASK_UNLOCK: 'ask_unlock',
   ASK_PIN:    'ask_pin',
   REFUSE:     'refuse',
+  NOTHING:    'nothing',
 });
 
 // Intent types as this app names them (src/lib/intent-parser, the brain's
@@ -63,7 +69,8 @@ const TABLE = Object.freeze({
   task:           LEVEL.READ_BACK,
   note:           LEVEL.READ_BACK,
   navigation:     LEVEL.READ_BACK,
-  trip:           LEVEL.READ_BACK,
+  trip:           LEVEL.READ_BACK,   // saved as a trip keep; the brain's trips never auto-open Maps
+  compliance:     LEVEL.READ_BACK,   // a licence / renewal tracked, with a reminder date when one is said
   meeting:        LEVEL.READ_BACK,
   document:       LEVEL.READ_BACK,
   list_reminders: LEVEL.READ_BACK,
@@ -77,16 +84,19 @@ const TABLE = Object.freeze({
   ledger_credit:  LEVEL.SPOKEN_YES,
   ledger_debit:   LEVEL.SPOKEN_YES,
   sale:           LEVEL.SPOKEN_YES,
-  delete_note:    LEVEL.SPOKEN_YES,   // one note; it is archived, not destroyed
+  delete_note:    LEVEL.SPOKEN_YES,   // one note; it is archived, not destroyed (brain intent 'delete')
   // fingerprint / PIN
   call_unknown:   LEVEL.PIN,          // a number that is not a saved contact
-  money_transfer: LEVEL.PIN,          // money leaving an account (UPI, payment)
+  money_transfer: LEVEL.PIN,          // money leaving an account (UPI, payment; brain intent 'pay')
   share_location: LEVEL.PIN,
   voice_clone:    LEVEL.PIN,
   // never by voice
   delete_all:     LEVEL.NEVER,
   account_change: LEVEL.NEVER,
   unknown:        LEVEL.NEVER,
+  // nothing to do - the reply is the whole turn
+  none:           LEVEL.NO_ACTION,
+  confirm:        LEVEL.NO_ACTION,    // a yes with no question pending creates nothing
 });
 
 // Per-hour ceilings for actions that reach other people or money. Chosen as
@@ -146,6 +156,10 @@ export function decide(action, proof = {}, context = {}) {
   if (context?.settings?.actions_paused === true) {
     return out(DECISION.REFUSE, 'actions_paused');
   }
+  // nothing to do is never "do", whatever proof came with it
+  if (level === LEVEL.NO_ACTION) {
+    return out(DECISION.NOTHING, 'nothing_to_do');
+  }
   // 2. a speaker check that says "not the owner" stops everything above read-back
   if (p.ownerVoice === false && level !== LEVEL.READ_BACK) {
     return out(DECISION.REFUSE, 'not_owner_voice');
@@ -191,6 +205,22 @@ export function isSpokenYes(text) {
 }
 
 /**
+ * Words that mean "no, don't" - the other answer to a read-back question.
+ * Same shape as isSpokenYes: the WHOLE reply must be no-words. Anything that
+ * is not a clear yes is already treated as not-yes; this only lets Aaria say
+ * "okay, I'll keep it" instead of treating "no" as a new instruction.
+ */
+const NO_WORD = 'no|nope|nah|cancel|stop|leave it|dont|don\'t|wait|nahi|nahin|na|mat karo|rehne do|rahne do|vaddu|oddu|vadhu|ledu|kaadu|aagu|aapu|వద్దు|లేదు|కాదు|ఆగు|ఆపు|नहीं|नही|मत करो|रहने दो|रुको';
+const NO = new RegExp(`^(?:${NO_WORD})(?:[\\s,]+(?:${NO_WORD}|please|ji|pls|thanks|thank you|le|that|it|this))*[.!?]*$`, 'iu');
+
+export function isSpokenNo(text) {
+  const t = String(text || '').trim();
+  if (!t) return false;
+  if (t.split(/\s+/).length > 4) return false;
+  return NO.test(t);
+}
+
+/**
  * What the person is told when the decision is not "do", as a reason code
  * the UI speaks in the person's own language. Never "denied", never "access".
  */
@@ -203,6 +233,7 @@ export const SAY = Object.freeze({
   not_a_voice_action:    'not_by_voice',       // "That is not something I do by voice."
   hourly_limit_reached:  'limit_reached',      // "That is the limit for this hour."
   hourly_count_unknown:  'limit_unknown',      // "I cannot check the hourly limit just now."
+  nothing_to_do:         'nothing_to_do',      // "Okay." / "What would you like me to do?"
 });
 
 /**

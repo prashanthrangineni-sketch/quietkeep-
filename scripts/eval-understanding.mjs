@@ -222,7 +222,11 @@ const GONE = /(deprecat|decommission|retired|no longer|not found|does not exist|
 
 // ── scoring ─────────────────────────────────────────────────────────────────
 const isGap = (c) => typeof c.expect?.intent === 'string' && c.expect.intent.startsWith('unsupported:')
-const ACTION_INTENTS = new Set(INTENTS.filter((i) => i !== 'note' && i !== 'query'))
+// Brain answers the capture route turns into a reply and NO keep
+// (src/lib/brain-turn.js NO_KEEP_INTENTS). Kept as a literal here so this
+// script stays free of the route's imports.
+const NO_KEEP = new Set(['none', 'confirm', 'pay', 'delete'])
+const ACTION_INTENTS = new Set(INTENTS.filter((i) => i !== 'note' && i !== 'query' && !NO_KEEP.has(i)))
 const normName = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '')
 
 function localParts(iso) {
@@ -283,6 +287,10 @@ function score(expect, got) {
   if (expect.direction) mark('direction', e.direction === expect.direction, `direction ${e.direction ?? 'none'} != ${expect.direction}`)
   if (expect.missing) mark('missing', (got?.missing || []).includes(expect.missing), `did not ask for ${expect.missing}`)
   if (expect.item === true) mark('item', !!e.item, 'no item')
+  // A sentence that must not save anything ("thank you", a stray "yes"):
+  // did the brain give an answer the route turns into a keep? A failed call
+  // counts as a keep - production then falls back to the regex parser.
+  if (expect.no_keep) mark('no_keep', !!got && NO_KEEP.has(got.intent), `would save a ${got?.intent ?? 'regex'} keep`)
   return { checks, fails }
 }
 
@@ -347,6 +355,8 @@ function summarise(m) {
     intent: pct(scored, 'intent'),
     intent_by_group: Object.fromEntries(GROUPS.map(([g]) => [g, pct(scored.filter((r) => r.group === g), 'intent')])),
     person: pct(scored, 'person'), time: pct(scored, 'time'), amount: pct(scored, 'amount'), direction: pct(scored, 'direction'),
+    no_keep: pct(scored, 'no_keep'),
+    keeps_from_no_keep_cases: scored.filter((r) => r.checks.no_keep === false).map((r) => ({ id: r.id, intent: r.intent })),
     full_pass: { ok: scored.filter((r) => r.pass).length, n: scored.length, pct: scored.length ? Math.round((1000 * scored.filter((r) => r.pass).length) / scored.length) / 10 : null },
     latency_ms: { answered: answered.length, p50: percentile(answered, 0.5), p95: percentile(answered, 0.95) },
     failures, http_codes: httpCodes,
@@ -415,6 +425,15 @@ function markdown(report) {
     L.push(`| ${m.id} | ${fmtPct(s.person)} | ${fmtPct(s.time)} | ${fmtPct(s.amount)} | ${fmtPct(s.direction)} | ${fmtPct(s.full_pass)} | ${fmtMs(s.latency_ms.p50)} | ${fmtMs(s.latency_ms.p95)} | ${f.timeout} / ${f.http}${codes ? ` (${codes})` : ''} / ${f.no_json} / ${f.threw} | ${price} |`)
   }
   L.push('', 'Reply times are over calls that returned an answer (n shown in the JSON). A failed call scores as wrong on every check it had. Percentages are over the cases that check applies to.', '')
+  L.push('## Sentences that must not save anything', '')
+  L.push('Thanks, small talk and a bare yes / no with nothing pending ("no_keep" cases). Saved nothing = the brain answered none, confirm, pay or delete, which the capture route turns into a reply and no keep. (A bare yes / no never reaches the brain in production - the route answers it first - so this is the brain\'s own score.)', '')
+  for (const m of report.models) {
+    const s = m.summary
+    if (!s) continue
+    const bad = s.keeps_from_no_keep_cases
+    L.push(`- ${m.id}: saved nothing on ${fmtPct(s.no_keep)}${bad.length ? `; would have saved a keep: ${bad.map((b) => `${b.id} (${b.intent ?? 'no answer'})`).join(', ')}` : ''}`)
+  }
+  L.push('')
   L.push('## Against the baseline (sarvam-105b-conversations)', '')
   for (const v of report.verdicts) L.push(`- ${v.id}: ${v.line}`)
   L.push('', '## Gap list - things people say that the brain has no name for', '')
@@ -424,7 +443,7 @@ function markdown(report) {
       ? Object.entries(g.brain_answered).map(([id, c]) => `${id}: ${Object.entries(c).map(([k, v]) => `${k}×${v}`).join(', ')}`).join('; ')
       : 'no model measured'))
   }
-  L.push('- **do nothing**: there is no "none" intent. Sentences that must not act ("thank you", "nenu chala alasipoyanu") are scored correct when the brain says query or note - but note still saves a keep.')
+  L.push('- confirm, delete, trip, compliance, pay and none left this list on 15 Oct 2026: the brain has words for them now and they are scored above.')
   L.push('', '## Not measured', '')
   const nm = report.models.filter((m) => m.status !== 'measured')
   if (!nm.length) L.push('- every requested model was measured')

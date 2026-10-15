@@ -54,7 +54,7 @@ function langName(code) {
 }
 
 // Intents this app can actually execute.
-const INTENTS = [
+export const INTENTS = [
   'reminder', 'task', 'contact', 'meeting', 'purchase',
   'expense', 'income', 'ledger_debit', 'sale', 'invoice',
   'document', 'navigation', 'query', 'note',
@@ -82,7 +82,7 @@ function clockFor(nowISO, timeZone) {
   return `${local} local time in ${timeZone} (the same instant is ${d.toISOString()} UTC)`;
 }
 
-function buildPrompt({ text, language, nowISO, timezone, workspaceMode, pageLabel }) {
+export function buildPrompt({ text, language, nowISO, timezone, workspaceMode, pageLabel }) {
   return `You are Aaria, the voice assistant inside QuietKeep. Decide what the app should DO with what the user said.
 
 CURRENT TIME: ${clockFor(nowISO, timezone)}
@@ -172,7 +172,7 @@ const STREAM_DISABLED = process.env.SARVAM_STREAM === '0';
  * Falls through to whatever it has accumulated if the stream ends first, so a
  * malformed or non-SSE body degrades to the same behaviour as before.
  */
-async function readUntilJsonComplete(body, ctrl) {
+export async function readUntilJsonComplete(body, ctrl) {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let sse = '';        // unparsed SSE buffer
@@ -233,6 +233,102 @@ async function readUntilJsonComplete(body, ctrl) {
 }
 
 /**
+ * The JSON body sent to the chat endpoint. Exported so the evaluation script
+ * (scripts/eval-understanding.mjs) sends every model exactly what production
+ * sends Sarvam; tests/aaria-llm-request.test.mjs pins the default body
+ * byte-for-byte.
+ */
+export function buildRequestBody({ model, prompt, stream }) {
+  return {
+    model,
+    temperature: 0.2,
+    // Generation time scales with tokens produced, and this is the single
+    // biggest component of voice latency (measured 13 Aug 2026: ~9s of a
+    // ~12s round trip is Sarvam generating this JSON). Everything the app
+    // actually acts on fits comfortably in 300.
+    // 300 -> 450 on 1 Oct 2026: clean_text repeats the sentence, and a
+    // Telugu sentence is token-heavy. Cut short, the JSON never closes and
+    // the whole answer is lost to the regex fallback. The stream still
+    // stops at the closing brace, so unused room costs nothing.
+    max_tokens: 450,
+    // Streaming does not make the model faster. It makes US faster: a
+    // non-streamed request cannot be read until the server has finished,
+    // so we also pay for whatever the model emits AFTER the closing brace
+    // -- trailing prose, a markdown fence, padding toward max_tokens. With
+    // the stream we stop at the brace and cancel the rest.
+    stream,
+    messages: [{ role: 'user', content: prompt }],
+  };
+}
+
+/**
+ * Turn the model's raw text into the object the capture route acts on.
+ * Pure: no I/O. Returns { result } or { failure: 'no_json' | 'no_intent' }.
+ * Exported so the evaluation script scores every model through the same
+ * parser production uses.
+ */
+export function parseBrainResponse(raw, { clean, nowISO, language, model }) {
+  const jsonText = raw.replace(/```json|```/g, '').trim();
+
+  let parsed;
+  try { parsed = JSON.parse(jsonText); }
+  catch {
+    const m = jsonText.match(/\{[\s\S]*\}/);
+    if (!m) return { failure: 'no_json' };
+    try { parsed = JSON.parse(m[0]); } catch { return { failure: 'no_json' }; }
+  }
+
+  if (!parsed || typeof parsed !== 'object' || !parsed.intent) return { failure: 'no_intent' };
+
+  const ents = parsed.entities || {};
+
+  // A DURATION IS ADDED HERE, BY CODE, NOT BY THE MODEL.
+  // relative_minutes wins over datetime_iso when both arrive: the number is
+  // what the user said; the clock time is the model's arithmetic, and on
+  // 30 September 2026 that arithmetic put "1 minute" thirty minutes out.
+  const now = new Date(nowISO || Date.now());
+  const relMin = Number(ents.relative_minutes);
+  let datetimeISO = ents.datetime_iso ?? null;
+  if (Number.isFinite(relMin) && relMin > 0 && relMin <= 60 * 24 * 366 && !isNaN(now.getTime())) {
+    datetimeISO = new Date(now.getTime() + Math.round(relMin) * 60_000).toISOString();
+  }
+
+  // A PLACE REMINDER HAS NO CLOCK TIME UNLESS ONE WAS SAID. If the model
+  // still sent a datetime within two minutes of now, that is "the moment
+  // you spoke", not a time the user asked for - drop it.
+  const place = typeof ents.place === 'string' && ents.place.trim()
+    ? ents.place.trim().slice(0, 80) : null;
+  if (place && datetimeISO && !(Number.isFinite(relMin) && relMin > 0)) {
+    const dt = new Date(datetimeISO);
+    if (!isNaN(dt.getTime()) && Math.abs(dt.getTime() - now.getTime()) < 2 * 60_000) datetimeISO = null;
+  }
+
+  return { result: {
+    intent: INTENTS.includes(parsed.intent) ? parsed.intent : 'note',
+    confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.7,
+    language: parsed.language_detected || language || 'en-IN',
+    cleanText: parsed.clean_text || clean,
+    // Only what the MODEL rewrote - null when it sent none, so callers can
+    // tell "cleaned" from "the raw words echoed back".
+    modelCleanText: typeof parsed.clean_text === 'string' && parsed.clean_text.trim()
+      ? parsed.clean_text.trim().slice(0, 1000) : null,
+    title: parsed.title || null,
+    entities: {
+      place,
+      person: ents.person ?? null,
+      datetimeISO,
+      relativeMinutes: Number.isFinite(relMin) && relMin > 0 ? Math.round(relMin) : null,
+      amount: typeof ents.amount === 'number' ? ents.amount : null,
+      direction: ents.direction ?? null,
+      item: ents.item ?? null,
+    },
+    missing: Array.isArray(parsed.missing) ? parsed.missing : [],
+    reply: typeof parsed.reply === 'string' && parsed.reply.trim() ? parsed.reply.trim() : null,
+    engine: model,
+  } };
+}
+
+/**
  * Understand an utterance; produce a spoken reply in the user's language.
  * Returns null on any failure so callers fall back safely.
  */
@@ -270,26 +366,7 @@ export async function aariaUnderstandLLM(text, opts = {}) {
         'api-subscription-key': apiKey,
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.2,
-        // Generation time scales with tokens produced, and this is the single
-        // biggest component of voice latency (measured 13 Aug 2026: ~9s of a
-        // ~12s round trip is Sarvam generating this JSON). Everything the app
-        // actually acts on fits comfortably in 300.
-        // 300 -> 450 on 1 Oct 2026: clean_text repeats the sentence, and a
-        // Telugu sentence is token-heavy. Cut short, the JSON never closes and
-        // the whole answer is lost to the regex fallback. The stream still
-        // stops at the closing brace, so unused room costs nothing.
-        max_tokens: 450,
-        // Streaming does not make the model faster. It makes US faster: a
-        // non-streamed request cannot be read until the server has finished,
-        // so we also pay for whatever the model emits AFTER the closing brace
-        // -- trailing prose, a markdown fence, padding toward max_tokens. With
-        // the stream we stop at the brace and cancel the rest.
-        stream: !STREAM_DISABLED,
-        messages: [{ role: 'user', content: prompt }],
-      }),
+      body: JSON.stringify(buildRequestBody({ model: MODEL, prompt, stream: !STREAM_DISABLED })),
       signal: ctrl.signal,
     });
 
@@ -302,64 +379,8 @@ export async function aariaUnderstandLLM(text, opts = {}) {
     const raw = (!STREAM_DISABLED && res.body)
       ? await readUntilJsonComplete(res.body, ctrl)
       : ((await res.json())?.choices?.[0]?.message?.content?.trim() || '');
-    const jsonText = raw.replace(/```json|```/g, '').trim();
-
-    let parsed;
-    try { parsed = JSON.parse(jsonText); }
-    catch {
-      const m = jsonText.match(/\{[\s\S]*\}/);
-      if (!m) return fail('no_json');
-      try { parsed = JSON.parse(m[0]); } catch { return fail('no_json'); }
-    }
-
-    if (!parsed || typeof parsed !== 'object' || !parsed.intent) return fail('no_intent');
-
-    const ents = parsed.entities || {};
-
-    // A DURATION IS ADDED HERE, BY CODE, NOT BY THE MODEL.
-    // relative_minutes wins over datetime_iso when both arrive: the number is
-    // what the user said; the clock time is the model's arithmetic, and on
-    // 30 September 2026 that arithmetic put "1 minute" thirty minutes out.
-    const now = new Date(opts.nowISO || Date.now());
-    const relMin = Number(ents.relative_minutes);
-    let datetimeISO = ents.datetime_iso ?? null;
-    if (Number.isFinite(relMin) && relMin > 0 && relMin <= 60 * 24 * 366 && !isNaN(now.getTime())) {
-      datetimeISO = new Date(now.getTime() + Math.round(relMin) * 60_000).toISOString();
-    }
-
-    // A PLACE REMINDER HAS NO CLOCK TIME UNLESS ONE WAS SAID. If the model
-    // still sent a datetime within two minutes of now, that is "the moment
-    // you spoke", not a time the user asked for - drop it.
-    const place = typeof ents.place === 'string' && ents.place.trim()
-      ? ents.place.trim().slice(0, 80) : null;
-    if (place && datetimeISO && !(Number.isFinite(relMin) && relMin > 0)) {
-      const dt = new Date(datetimeISO);
-      if (!isNaN(dt.getTime()) && Math.abs(dt.getTime() - now.getTime()) < 2 * 60_000) datetimeISO = null;
-    }
-
-    return {
-      intent: INTENTS.includes(parsed.intent) ? parsed.intent : 'note',
-      confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.7,
-      language: parsed.language_detected || opts.language || 'en-IN',
-      cleanText: parsed.clean_text || clean,
-      // Only what the MODEL rewrote - null when it sent none, so callers can
-      // tell "cleaned" from "the raw words echoed back".
-      modelCleanText: typeof parsed.clean_text === 'string' && parsed.clean_text.trim()
-        ? parsed.clean_text.trim().slice(0, 1000) : null,
-      title: parsed.title || null,
-      entities: {
-        place,
-        person: ents.person ?? null,
-        datetimeISO,
-        relativeMinutes: Number.isFinite(relMin) && relMin > 0 ? Math.round(relMin) : null,
-        amount: typeof ents.amount === 'number' ? ents.amount : null,
-        direction: ents.direction ?? null,
-        item: ents.item ?? null,
-      },
-      missing: Array.isArray(parsed.missing) ? parsed.missing : [],
-      reply: typeof parsed.reply === 'string' && parsed.reply.trim() ? parsed.reply.trim() : null,
-      engine: MODEL,
-    };
+    const { result, failure } = parseBrainResponse(raw, { clean, nowISO: opts.nowISO, language: opts.language, model: MODEL });
+    return failure ? fail(failure) : result;
   } catch (err) {
     if (err?.name !== 'AbortError') {
       console.error('[aaria-llm] error:', err?.message || String(err));

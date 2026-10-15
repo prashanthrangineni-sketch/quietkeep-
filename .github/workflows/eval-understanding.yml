@@ -1,0 +1,86 @@
+# Measure the understanding brain against several models.
+#
+# WHY THIS FILE EXISTS
+# Which model should read what people say to Aaria has been chosen by opinion.
+# This runs scripts/eval-understanding.mjs - the production prompt, request
+# body and parser, on the same ~160 sentences in six language groups - against
+# every model listed below, and commits the table it produces:
+#   measurements/understanding-latest.md    the table, readable on GitHub
+#   measurements/understanding-latest.json  every call, for checking the table
+#
+# workflow_dispatch ONLY. It makes paid calls, so it never runs on push or
+# pull_request. Start it from the Actions tab or:
+#     gh workflow run eval-understanding.yml --ref <branch>
+#
+# A provider whose secret is not set is written as "not measured - no key";
+# that is a result, not a failure. Keys come from repository secrets, reach
+# the script only through the environment, and are never printed.
+
+name: Evaluate understanding models
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: 'Comma-separated provider:model list (blank = the standard set)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write   # to commit the measurement files back to this branch
+
+concurrency:
+  group: eval-understanding-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    name: Measure models
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run the evaluation
+        env:
+          SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MODELS_INPUT: ${{ inputs.models }}
+        run: |
+          # The standard set. sarvam-105b-conversations is production's model
+          # and the baseline; the OpenRouter models are src/lib/llm.js
+          # DEFAULT_CHAIN's free entries.
+          MODELS="${MODELS_INPUT:-sarvam:sarvam-105b-conversations,sarvam:sarvam-30b,groq:llama-3.3-70b-versatile,gemini:gemini-2.5-flash-lite,openrouter:meta-llama/llama-3.3-70b-instruct:free,openrouter:google/gemma-2-9b-it:free,openrouter:mistralai/mistral-7b-instruct:free}"
+          args=()
+          IFS=',' read -ra list <<< "$MODELS"
+          for m in "${list[@]}"; do
+            m="$(echo "$m" | xargs)"
+            [ -n "$m" ] && args+=(--model "$m")
+          done
+          for k in SARVAM_API_KEY GROQ_API_KEY GEMINI_API_KEY OPENROUTER_API_KEY; do
+            if [ -n "${!k}" ]; then echo "$k: present"; else echo "$k: not set - that provider will be reported as not measured"; fi
+          done
+          node scripts/eval-understanding.mjs "${args[@]}" --out measurements/understanding-latest
+
+      - name: Commit the measurements to ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add measurements/understanding-latest.md measurements/understanding-latest.json
+          if git diff --cached --quiet; then
+            echo "No change to commit."
+            exit 0
+          fi
+          git commit -m "measurements: understanding model table (run ${{ github.run_id }})"
+          for i in 1 2 3; do
+            git pull --rebase origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}" && exit 0
+            sleep $((i * 5))
+          done
+          echo "Could not push the measurements." && exit 1

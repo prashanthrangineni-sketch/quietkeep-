@@ -1,0 +1,115 @@
+[
+  {
+    "answer": "{\"intent\":\"reminder\",\"confidence\":0.9,\"language_detected\":\"te-IN\",\"clean_text\":\"call Surya\",\"entities\":{\"person\":\"Surya Kiran\",\"relative_minutes\":5},\"reply\":\"In five minutes.\"}",
+    "result": {
+      "intent": "reminder",
+      "confidence": 0.9,
+      "language": "te-IN",
+      "cleanText": "call Surya",
+      "modelCleanText": "call Surya",
+      "title": null,
+      "entities": {
+        "place": null,
+        "person": "Surya Kiran",
+        "datetimeISO": "2026-10-01T12:09:00.000Z",
+        "relativeMinutes": 5,
+        "amount": null,
+        "direction": null,
+        "item": null
+      },
+      "missing": [],
+      "reply": "In five minutes.",
+      "engine": "sarvam-105b-conversations"
+    },
+    "failure": null
+  },
+  {
+    "answer": "```json\n{\"intent\":\"income\",\"confidence\":0.8,\"entities\":{\"amount\":500,\"direction\":\"in\",\"person\":\"Ramesh\"},\"missing\":[],\"reply\":\"  Noted.  \"}\n```",
+    "result": {
+      "intent": "income",
+      "confidence": 0.8,
+      "language": "en-IN",
+      "cleanText": "some words",
+      "modelCleanText": null,
+      "title": null,
+      "entities": {
+        "place": null,
+        "person": "Ramesh",
+        "datetimeISO": null,
+        "relativeMinutes": null,
+        "amount": 500,
+        "direction": "in",
+        "item": null
+      },
+      "missing": [],
+      "reply": "Noted.",
+      "engine": "sarvam-105b-conversations"
+    },
+    "failure": null
+  },
+  {
+    "answer": "Sure! {\"intent\":\"weird\",\"entities\":{\"place\":\"Chintal Kunta\",\"datetime_iso\":\"2026-10-01T12:04:30.000Z\"}} trailing",
+    "result": {
+      "intent": "note",
+      "confidence": 0.7,
+      "language": "en-IN",
+      "cleanText": "some words",
+      "modelCleanText": null,
+      "title": null,
+      "entities": {
+        "place": "Chintal Kunta",
+        "person": null,
+        "datetimeISO": null,
+        "relativeMinutes": null,
+        "amount": null,
+        "direction": null,
+        "item": null
+      },
+      "missing": [],
+      "reply": null,
+      "engine": "sarvam-105b-conversations"
+    },
+    "failure": null
+  },
+  {
+    "answer": "{\"intent\":\"reminder\",\"entities\":{\"datetime_iso\":\"2026-10-02T03:30:00.000Z\"},\"missing\":[\"datetime\"]}",
+    "result": {
+      "intent": "reminder",
+      "confidence": 0.7,
+      "language": "en-IN",
+      "cleanText": "some words",
+      "modelCleanText": null,
+      "title": null,
+      "entities": {
+        "place": null,
+        "person": null,
+        "datetimeISO": "2026-10-02T03:30:00.000Z",
+        "relativeMinutes": null,
+        "amount": null,
+        "direction": null,
+        "item": null
+      },
+      "missing": [
+        "datetime"
+      ],
+      "reply": null,
+      "engine": "sarvam-105b-conversations"
+    },
+    "failure": null
+  },
+  {
+    "answer": "no json here",
+    "result": null,
+    "failure": "no_json"
+  },
+  {
+    "answer": "{\"confidence\":0.9}",
+    "result": null,
+    "failure": "no_intent"
+  },
+  {
+    "answer": "{\"intent\":\"note\", broken",
+    "result": null,
+    "failure": "no_json"
+  }
+]

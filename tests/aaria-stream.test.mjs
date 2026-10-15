@@ -1,10 +1,6 @@
-import fs from 'fs';
-
-// Pull the reader out of the module so it can be exercised without a network.
-const src = fs.readFileSync(new URL('../src/lib/aaria-llm.js', import.meta.url), 'utf8');
-const fn = src.slice(src.indexOf('async function readUntilJsonComplete'),
-                     src.indexOf('export async function aariaUnderstandLLM'));
-const readUntilJsonComplete = new Function(`${fn}; return readUntilJsonComplete;`)();
+// The reader is exported from the module, so it is exercised directly,
+// without a network.
+import { readUntilJsonComplete } from '../src/lib/aaria-llm.js';
 
 function sseStream(chunks) {
   return new ReadableStream({

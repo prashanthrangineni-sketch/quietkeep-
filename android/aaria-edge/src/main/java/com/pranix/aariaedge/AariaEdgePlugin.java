@@ -247,7 +247,7 @@ public class AariaEdgePlugin extends Plugin {
                                         boolean hasCommand = false;
                                         String commandTranscript = "";
 
-                                        if (durationMs > 1500 + 300) {
+                                        if (durationMs > 1500 + 300 && !spotterAlone) {
                                             int maxSamples = 8000 * 16;
                                             short[] cmdData = audioData;
                                             if (audioData.length > maxSamples) {

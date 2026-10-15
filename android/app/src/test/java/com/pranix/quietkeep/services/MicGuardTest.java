@@ -379,6 +379,40 @@ public class MicGuardTest {
     }
 
     @Test
+    public void testTheFallbackIsGivenTheSameContext() {
+        final List<Context> given = new ArrayList<>();
+        MicGuard.fallback = (c) -> { given.add(c); turnedOff++; };
+        web.page = false;
+        MicGuard.beforeCapture(context);       // no page: the old turn-off at once
+        web.page = true; web.bridge = false;
+        MicGuard.beforeCapture(context);       // a page without the wake bridge: the old turn-off, later
+        web.answer();
+        assertEquals(2, given.size());
+        assertTrue("no page: the context MicGuard was given", given.get(0) == context);
+        assertTrue("no wake bridge: the context MicGuard was given", given.get(1) == context);
+    }
+
+    @Test
+    public void testSayingFreeFailsOrNoPage_listeningIsNeverTurnedOff() {
+        MicGuard.beforeCapture(context);
+        web.breaks = true;                     // saying "free" throws
+        MicGuard.afterCapture(context);
+        assertEquals(0, turnedOff);
+        web.breaks = false;
+        MicGuard.beforeCapture(context);
+        web.page = false;                      // the page is gone when the capture ends
+        MicGuard.afterCapture(context);
+        assertEquals(0, turnedOff);
+        web.page = true;
+        MicGuard.beforeCapture(context);
+        recording = false;                     // ended without telling us, and the page is gone for the "free"
+        web.page = false;
+        later.aMinutePasses();
+        assertEquals("listening is never turned off for a failed or unheard 'free'", 0, turnedOff);
+        assertEquals(0, later.waiting.size());
+    }
+
+    @Test
     public void testNoActivity_theRealPageSaysThereIsNoPage() {
         assertFalse(new MicGuard.PageWeb().tell("qk_mic_claim", null));
     }

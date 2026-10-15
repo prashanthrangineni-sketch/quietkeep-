@@ -52,7 +52,20 @@ public class AariaEdgePlugin extends Plugin {
     private ConsentStore consentStore;
     
     public static AariaEdgePlugin instance;
-    private WakeWordDetector wakeWordDetector;
+    // Read on the listening thread; replaced when the second listener is put in or taken out.
+    private volatile WakeWordDetector wakeWordDetector;
+    // The second listener ("secondListener" setting, off by default). Null unless the setting was on when
+    // listening last started; "Turn off" releases it and sets it back to null.
+    private KeywordSpotterWake secondListener;
+    private final Object secondListenerLock = new Object();
+    // Why the second listener could not load at the last start, kept after "Turn off" so it can still be read.
+    private volatile String secondListenerProblem;
+    static final String SECOND_LISTENER_PREF = "aaria_second_listener";
+    public interface SecondListenerMaker {
+        KeywordSpotterWake make(android.content.Context context);
+    }
+    /** How the second listener is made. Tests replace it to count or fake it. */
+    static SecondListenerMaker secondListenerMaker = KeywordSpotterWake::forPhone;
     // Read and written from the listening thread and from the app's calls.
     private volatile boolean isWaitingForWakeWord = false;
     private final Object nameLock = new Object();

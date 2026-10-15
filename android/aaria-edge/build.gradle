@@ -89,3 +89,68 @@ task downloadSherpaOnnx {
 }
 
 preBuild.dependsOn downloadSherpaOnnx
+
+// The second listener's model (sherpa-onnx English keyword spotter, see MODELS.md). Off by default at run time;
+// the files are packed into the app so it can be switched on. Downloaded, never committed.
+task downloadKeywordSpotter {
+    def archiveUrl = 'https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2'
+    def archiveFile = layout.buildDirectory.file("kws/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2").get().asFile
+    def expectedArchiveHash = 'F170013B4716E41B62B9BFD809687C207CEF798EF9BC6534D524E17AF9B6561A'
+    def outDir = file('src/main/assets/kws')
+    def expectedFiles = [
+        'encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx': '1E721676515BCD42A186979733981213C66C80DB680E1CC582DFEDF3BE76E678',
+        'decoder-epoch-12-avg-2-chunk-16-left-64.onnx'     : 'F61EBD3EED3773A44D088D53DFAE92DBB6AEC4839F4DCAEE2D402414741663A3',
+        'joiner-epoch-12-avg-2-chunk-16-left-64.int8.onnx' : 'EAE9DA0C7E1E6C6A3F4CC42D167899C388F6C6701B94CB96320E4F55DF79624C',
+        'tokens.txt'                                       : 'FD2DED4050A55D2B1578870BA8697D02371980217806B7558BD0A5CC60F3BA53',
+    ]
+
+    expectedFiles.keySet().each { outputs.file(new File(outDir, it)) }
+
+    doLast {
+        def sha256 = { File f ->
+            def digest = MessageDigest.getInstance('SHA-256')
+            f.withInputStream { is ->
+                byte[] buffer = new byte[8192]
+                int read
+                while ((read = is.read(buffer)) > 0) {
+                    digest.update(buffer, 0, read)
+                }
+            }
+            digest.digest().encodeHex().toString().toUpperCase()
+        }
+        def allPresent = expectedFiles.every { name, hash ->
+            def f = new File(outDir, name)
+            f.exists() && sha256(f) == hash
+        }
+        if (!allPresent) {
+            if (!archiveFile.exists()) {
+                archiveFile.parentFile.mkdirs()
+                new URL(archiveUrl).withInputStream { i -> archiveFile.withOutputStream { it << i } }
+            }
+            def archiveHash = sha256(archiveFile)
+            if (archiveHash != expectedArchiveHash) {
+                archiveFile.delete()
+                throw new GradleException("SHA-256 mismatch for the keyword spotter archive. Expected " + expectedArchiveHash + " but got " + archiveHash)
+            }
+            outDir.mkdirs()
+            copy {
+                from(tarTree(resources.bzip2(archiveFile))) {
+                    include expectedFiles.keySet().collect { "*/" + it }
+                    eachFile { it.path = it.name }
+                    includeEmptyDirs = false
+                }
+                into outDir
+            }
+        }
+        expectedFiles.each { name, hash ->
+            def f = new File(outDir, name)
+            if (!f.exists()) throw new GradleException("Keyword spotter file missing after download: " + name)
+            def got = sha256(f)
+            if (got != hash) {
+                throw new GradleException("SHA-256 mismatch for keyword spotter file " + name + ". Expected " + hash + " but got " + got)
+            }
+        }
+    }
+}
+
+preBuild.dependsOn downloadKeywordSpotter

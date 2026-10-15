@@ -92,6 +92,10 @@ export default function AariaConsentPage() {
   const poll = useRef(null);
   const listeners = useRef([]);
   const alive = useRef(true);
+  // Hidden testing section for the second listener ("Hey / Hi / Hello Aaria"). Opened by tapping the title
+  // 7 times within 5 seconds. null = hidden; otherwise { on, problem, busy, error }.
+  const [second, setSecond] = useState(null);
+  const titleTaps = useRef([]);
 
   useEffect(() => {
     alive.current = true;
@@ -133,6 +137,47 @@ export default function AariaConsentPage() {
     }
     const wake = window.__QK_WAKE__;
     try { return !!(wake && typeof wake.isWakeWordAvailable === 'function' && (await wake.isWakeWordAvailable())); } catch { return false; }
+  };
+
+  // Reads the second listener setting. Shown only if the plugin really answers: on the website there is no
+  // plugin, and an older app copy without these methods rejects the call, so the section never appears there.
+  const openSecondListener = async () => {
+    const plugin = getPlugin();
+    if (!plugin || typeof plugin.getSecondListener !== 'function' || typeof plugin.setSecondListener !== 'function') return;
+    try {
+      const r = await plugin.getSecondListener();
+      if (!alive.current || !r || typeof r.on !== 'boolean') return;
+      setSecond({ on: r.on, problem: typeof r.problem === 'string' ? r.problem : '', busy: false, error: '' });
+    } catch {
+      // Not supported by this app copy: stay hidden.
+    }
+  };
+
+  const onTitleTap = () => {
+    if (second) return;
+    const now = Date.now();
+    titleTaps.current = titleTaps.current.filter((t) => now - t < 5000).concat(now);
+    if (titleTaps.current.length >= 7) {
+      titleTaps.current = [];
+      openSecondListener();
+    }
+  };
+
+  const changeSecondListener = async (on) => {
+    const plugin = getPlugin();
+    if (!plugin || !second || second.busy) return;
+    setSecond((v) => (v ? { ...v, busy: true, error: '' } : v));
+    try {
+      await plugin.setSecondListener({ on });
+      let next = { on, problem: '' };
+      try {
+        const r = await plugin.getSecondListener();
+        if (r && typeof r.on === 'boolean') next = { on: r.on, problem: typeof r.problem === 'string' ? r.problem : '' };
+      } catch {}
+      if (alive.current) setSecond((v) => (v ? { ...v, ...next, busy: false, error: '' } : v));
+    } catch {
+      if (alive.current) setSecond((v) => (v ? { ...v, busy: false, error: 'Could not change the setting. Try again.' } : v));
+    }
   };
 
   const stopPolling = () => { if (poll.current) { clearInterval(poll.current); poll.current = null; } };
@@ -259,7 +304,7 @@ export default function AariaConsentPage() {
   const bullets = [1, 2, 3, 4].filter((n) => s['s1_bullet' + n + '_title']);
   return (
     <div style={box}>
-      <h1 style={{ fontSize: '1.4rem' }}>{rich(s.s1_title, name)}</h1>
+      <h1 style={{ fontSize: '1.4rem' }} onClick={onTitleTap}>{rich(s.s1_title, name)}</h1>
       <p>{rich(s.s1_intro, name)}</p>
       <ul style={{ paddingLeft: '1.2rem' }}>
         {bullets.map((n) => (
@@ -313,6 +358,28 @@ export default function AariaConsentPage() {
           {rich(s.s1_btn_turn_on, name)}
         </button>
       </div>
+      {second && (
+        // Testing only, for the founder's own phone. English on purpose.
+        <div style={{ marginTop: '1.5rem', padding: '0.75rem', border: '1px dashed #999', borderRadius: 8, fontSize: '0.9rem' }}>
+          <strong>Second listener (testing)</strong>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <input
+              type="checkbox"
+              role="switch"
+              aria-checked={second.on}
+              checked={second.on}
+              disabled={second.busy}
+              onChange={(e) => changeSecondListener(e.target.checked)}
+            />
+            {second.on ? 'On' : 'Off'}
+          </label>
+          <div style={{ marginTop: '0.25rem', opacity: 0.8 }}>
+            Takes effect the next time Aaria starts listening. Turn Aaria off and on again.
+          </div>
+          {second.problem ? <div style={{ marginTop: '0.25rem', fontSize: '0.8rem', opacity: 0.8 }}>{second.problem}</div> : null}
+          {second.error ? <div role="alert" style={{ marginTop: '0.25rem', fontSize: '0.8rem' }}>{second.error}</div> : null}
+        </div>
+      )}
     </div>
   );
 }

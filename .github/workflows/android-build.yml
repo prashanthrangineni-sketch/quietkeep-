@@ -87,6 +87,21 @@ jobs:
         # packed. This opens each finished APK and fails unless the recogniser is inside it.
         run: python3 scripts/check_apk_speech_engine.py $(find android -name '*.apk' -type f)
 
+      - name: Is the second listener's keyword spotter inside the APK
+        # Added with the second listener (aaria-edge 3d63997). The plugin's downloadKeywordSpotter task runs
+        # before every build, downloads the four model files and fails the build on any SHA-256 mismatch.
+        # This shows the checked files and fails unless all four are packed in each APK.
+        run: |
+          echo "Keyword spotter files after the build (SHA-256):"
+          sha256sum android/aaria-edge/src/main/assets/kws/*.onnx android/aaria-edge/src/main/assets/kws/tokens.txt
+          for apk in $(find android -name '*.apk' -type f); do
+            echo "== $apk"
+            unzip -l "$apk" | grep 'assets/kws/' || true
+            for f in encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx decoder-epoch-12-avg-2-chunk-16-left-64.onnx joiner-epoch-12-avg-2-chunk-16-left-64.int8.onnx tokens.txt; do
+              unzip -l "$apk" | grep -q "assets/kws/$f\$" || { echo "missing assets/kws/$f in $apk" >&2; exit 1; }
+            done
+          done
+
       - name: Keep the APKs
         uses: actions/upload-artifact@v4
         with:

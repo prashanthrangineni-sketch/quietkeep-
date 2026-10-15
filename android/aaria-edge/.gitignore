@@ -1,2 +1,5 @@
 libs/*.aar
 build/
+# The second listener's model files are downloaded by the downloadKeywordSpotter task (see MODELS.md in aaria-edge), never committed.
+src/main/assets/kws/*.onnx
+src/main/assets/kws/tokens.txt

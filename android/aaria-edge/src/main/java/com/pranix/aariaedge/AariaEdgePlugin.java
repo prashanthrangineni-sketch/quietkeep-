@@ -290,6 +290,12 @@ public class AariaEdgePlugin extends Plugin {
 
                                         JSObject ev = new JSObject();
                                         ev.put("id", wakeWordDetector.id());
+                                        // Only with the second listener on: which listener heard the name.
+                                        WakeWordDetector usedDetector = wakeWordDetector;
+                                        if (usedDetector instanceof EitherWakeWord) {
+                                            String heardBy = ((EitherWakeWord) usedDetector).heardBy();
+                                            if (heardBy != null) ev.put("heardBy", heardBy);
+                                        }
                                         ev.put("score", score);
                                         ev.put("t", t);
                                         ev.put("hasCommand", hasCommand);

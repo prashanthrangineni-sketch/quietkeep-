@@ -384,8 +384,17 @@ export function parseBrainResponse(raw, { clean, nowISO, language, model }) {
     if (!isNaN(dt.getTime()) && Math.abs(dt.getTime() - now.getTime()) < 2 * 60_000) datetimeISO = null;
   }
 
+  // A MONEY INTENT ALREADY SAYS WHICH WAY THE MONEY WENT. The model names
+  // the intent correctly and sometimes leaves "direction" out (2 of 38 in
+  // run 38744054174, both "income"). income is always in; expense and
+  // ledger_debit are always out. Only a MISSING direction is filled - one
+  // the model gave is kept as it is.
+  const intent = INTENTS.includes(parsed.intent) ? parsed.intent : 'note'
+  const DIRECTION_OF = { income: 'in', expense: 'out', ledger_debit: 'out' }
+  const direction = ents.direction ?? DIRECTION_OF[intent] ?? null
+
   return { result: {
-    intent: INTENTS.includes(parsed.intent) ? parsed.intent : 'note',
+    intent,
     confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.7,
     language: parsed.language_detected || language || 'en-IN',
     cleanText: parsed.clean_text || clean,
@@ -400,7 +409,7 @@ export function parseBrainResponse(raw, { clean, nowISO, language, model }) {
       datetimeISO,
       relativeMinutes: Number.isFinite(relMin) && relMin > 0 ? Math.round(relMin) : null,
       amount: typeof ents.amount === 'number' ? ents.amount : null,
-      direction: ents.direction ?? null,
+      direction,
       item: ents.item ?? null,
       // Business records only (attendance / stock); null everywhere else.
       status: typeof ents.status === 'string' && ents.status.trim() ? ents.status.trim().toLowerCase() : null,

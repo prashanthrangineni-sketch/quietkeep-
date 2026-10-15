@@ -60,6 +60,12 @@ check('paying salary may not happen unasked', !mayActUnasked('salary_payment'))
   check('parser: attendance status', a.intent === 'attendance' && a.entities.status === 'absent', JSON.stringify(a.entities))
   const s = parse({ intent: 'stock', confidence: 0.9, entities: { item: 'rice', quantity: 20, unit: 'kg', stock_op: 'add' } })
   check('parser: stock quantity / unit / op', s.entities.quantity === 20 && s.entities.unit === 'kg' && s.entities.stockOp === 'add', JSON.stringify(s.entities))
+  // A money intent with no direction: the intent says which way (run 38744054174).
+  check('parser: income with no direction -> in', parse({ intent: 'income', confidence: 0.9, entities: { amount: 2000 } }).entities.direction === 'in')
+  check('parser: expense with no direction -> out', parse({ intent: 'expense', confidence: 0.9, entities: {} }).entities.direction === 'out')
+  check('parser: ledger_debit with no direction -> out', parse({ intent: 'ledger_debit', confidence: 0.9, entities: {} }).entities.direction === 'out')
+  check('parser: a direction the model gave is kept', parse({ intent: 'income', confidence: 0.9, entities: { direction: 'out' } }).entities.direction === 'out')
+  check('parser: no direction invented for other intents', parse({ intent: 'sale', confidence: 0.9, entities: {} }).entities.direction === null)
   const r = parse({ intent: 'reminder', confidence: 0.9, entities: {} })
   check('parser: other intents get nulls', r.entities.status === null && r.entities.quantity === null && r.entities.stockOp === null)
 }

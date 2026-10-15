@@ -1258,6 +1258,125 @@ public class AariaEdgePlugin extends Plugin {
         }
     }
 
+    // ---- The second listener (a keyword spotter for "Aaria"), off by default ----
+
+    private boolean isSecondListenerOn() {
+        if (getContext() == null) return false;
+        android.content.SharedPreferences prefs = getContext().getSharedPreferences("aaria_prefs", android.content.Context.MODE_PRIVATE);
+        return prefs != null && prefs.getBoolean(SECOND_LISTENER_PREF, false);
+    }
+
+    /**
+     * Setting on: the spotter is made and loaded, and Aaria wakes when either listener hears the name.
+     * Setting off: whatever was made before is released; if nothing was made, nothing at all happens.
+     * A spotter that cannot load is logged and kept for getSecondListener(); the existing wake check works alone.
+     */
+    private void applySecondListener() {
+        if (!isSecondListenerOn()) {
+            dropSecondListener();
+            return;
+        }
+        // The spotter knows only the name "Aaria". Any other chosen name uses the existing wake check alone.
+        if (!wakeNameIsAaria()) {
+            dropSecondListener();
+            reportSecondListenerProblem("Second listener not used: it only listens for the name Aaria, and a different wake name is chosen");
+            return;
+        }
+        synchronized (secondListenerLock) {
+            if (secondListener != null) return;
+            WakeWordDetector existing = wakeWordDetector;
+            if (existing == null) {
+                reportSecondListenerProblem("Second listener not used: there is no wake check to pair it with");
+                return;
+            }
+            secondListenerProblem = null;
+            KeywordSpotterWake spotter;
+            try {
+                spotter = secondListenerMaker.make(getContext());
+                spotter.load(null);
+            } catch (Throwable t) {
+                secondListenerProblem = "Second listener could not be made: " + t;
+                try { android.util.Log.w("AariaEdge", secondListenerProblem, t); } catch (Throwable ignored) {}
+                return;
+            }
+            secondListener = spotter;
+            secondListenerProblem = spotter.problem();
+            if (spotter.isLoaded()) wakeWordDetector = new EitherWakeWord(existing, spotter);
+        }
+    }
+
+    private void reportSecondListenerProblem(String problem) {
+        secondListenerProblem = problem;
+        try { android.util.Log.w("AariaEdge", problem); } catch (Throwable ignored) {}
+    }
+
+    /** True when the wake name is the default "Aaria" (also when none is stored). */
+    private boolean wakeNameIsAaria() {
+        if (memoryStore == null) return true;
+        try {
+            JSONObject pref = memoryStore.get("preference", "wake_name");
+            if (pref == null) return true;
+            String name = new JSONObject(pref.getString("value")).optString("name", "Aaria");
+            return "aaria".equalsIgnoreCase(name.trim());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Puts the existing wake check back on its own and frees the spotter. Does nothing if there is none. */
+    private void dropSecondListener() {
+        synchronized (secondListenerLock) {
+            WakeWordDetector current = wakeWordDetector;
+            if (current instanceof EitherWakeWord) wakeWordDetector = ((EitherWakeWord) current).first();
+            if (secondListener != null) {
+                try {
+                    secondListener.release();
+                } catch (Throwable t) {
+                    try { android.util.Log.w("AariaEdge", "Second listener did not release cleanly", t); } catch (Throwable ignored) {}
+                }
+                secondListener = null;
+            }
+        }
+    }
+
+    /**
+     * Switches the second listener on or off: { on: boolean }. Off by default. The setting is stored on the
+     * phone and survives a restart. It takes effect the next time listening starts (startBackgroundListening),
+     * not straight away: listening that is on now carries on unchanged until it is turned off and on again.
+     */
+    @PluginMethod
+    public void setSecondListener(PluginCall call) {
+        Boolean on = call.getBoolean("on");
+        if (on == null) {
+            call.reject("on must be true or false");
+            return;
+        }
+        if (getContext() == null) {
+            call.reject("aaria_unavailable");
+            return;
+        }
+        android.content.SharedPreferences prefs = getContext().getSharedPreferences("aaria_prefs", android.content.Context.MODE_PRIVATE);
+        prefs.edit().putBoolean(SECOND_LISTENER_PREF, on).apply();
+        JSObject ret = new JSObject();
+        ret.put("on", on.booleanValue());
+        call.resolve(ret);
+    }
+
+    /**
+     * Returns { on } (the stored setting, false on a fresh install). When the second listener was asked for
+     * at the last start but could not load, also { problem } saying why.
+     */
+    @PluginMethod
+    public void getSecondListener(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("on", isSecondListenerOn());
+        KeywordSpotterWake spotter;
+        synchronized (secondListenerLock) { spotter = secondListener; }
+        String problem = spotter != null && spotter.problem() != null ? spotter.problem() : secondListenerProblem;
+        if (problem != null) ret.put("problem", problem);
+        call.resolve(ret);
+    }
+
     @PluginMethod
     public void stopBackgroundListening(PluginCall call) {
         if (!ensureReady()) { call.reject("aaria_unavailable"); return; }

@@ -50,6 +50,11 @@ import {
   planNoKeepTurn, isStrayConfirmation, matchKeepForDelete, deleteQuestion,
   pendingDelete, readDeleteAnswer, deleteDecision, archivePatch, line,
 } from '@/lib/brain-turn' // confirm / delete / pay / none: reply, save nothing
+import {
+  BUSINESS_INTENTS, BIZ_TYPE, BIZ_PERMISSION, BIZ_ASKED, BIZ_ANSWERED,
+  planAttendance, attendanceRows, planStock, stockOp, stockWrites, payrollDraft, payPeriod,
+  pendingBiz, readBizAnswer, bizDecision, bizLine, doneLine,
+} from '@/lib/business-voice' // attendance / stock / payroll: read back, write only on a spoken yes
 
 export async function POST(request) {
   const authHeader = request.headers.get('Authorization') || ''
@@ -105,7 +110,19 @@ export async function POST(request) {
     // wrong roughly half the time. Purely a hint — never a permission, never a
     // routing decision, so a forged value can only produce a worse guess.
     page_context  = null,
+    // The business the global Aaria dock is on (a /b/... screen). Used ONLY
+    // for attendance / stock / payroll, never as workspace_id: that would
+    // switch on the older ledger path below for every money sentence.
+    business_workspace_id = null,
   } = body
+
+  // Which business attendance / stock / payroll act in. A business capture
+  // (workspace_id) or the dock on a business screen. Never trusted alone:
+  // check_biz_permission confirms the person's role in it before any
+  // business table is read or written.
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const bizWorkspaceId = [workspace_id, business_workspace_id]
+    .find((w) => typeof w === 'string' && UUID.test(w)) || null
 
   // How this sentence was heard (Aaria's engine or the phone, how long, what
   // ended the turn) - trimmed to a few known fields, null when not sent.
@@ -275,10 +292,12 @@ export async function POST(request) {
     .from('audit_log')
     .select('action,details,created_at')
     .eq('user_id', user.id)
-    .in('action', [DELETE_ASKED, DELETE_ANSWERED])
+    .in('action', [DELETE_ASKED, DELETE_ANSWERED, BIZ_ASKED, BIZ_ANSWERED])
     .order('created_at', { ascending: false })
     .limit(1)
     .then((r) => (r.error ? { data: null } : r))
+  // The newest question is the only open one: a delete asked after a
+  // business read-back replaces it, and the other way round.
   const askedDelete = pendingDelete(deleteRows)
   if (askedDelete) {
     const said = readDeleteAnswer(text)
@@ -338,6 +357,132 @@ export async function POST(request) {
       return NextResponse.json({
         ok: true, not_saved: true, deleted: true, archived_keep_id: archived.id, safety: delSafety,
         tts_response: line('delete_done', lang, archived.content || askedDelete.content),
+      }, { status: 200 })
+    }
+    record('lapsed')
+  }
+
+  // ── "MARK RAVI ABSENT TODAY? YES OR NO?" ──────────────────────────────────
+  // Attendance and stock are read back first (below, where the brain names
+  // them) and the read-back is recorded as an audit row. This turn may be the
+  // answer. Only a spoken yes (isSpokenYes) writes, only in the workspace the
+  // question was asked in, only when the level table says do. "No" changes
+  // nothing. Anything else is a new instruction and the question lapses.
+  const askedBiz = pendingBiz(deleteRows, bizWorkspaceId)
+  if (askedBiz) {
+    const said = readBizAnswer(text)
+    const pend = askedBiz.pending
+    const lang = askedBiz.lang || language
+    const record = (outcome, extra = {}) => supabase.from('audit_log').insert({
+      user_id: user.id, action: BIZ_ANSWERED, service: 'voice_capture',
+      details: { workspace_id: bizWorkspaceId, type: pend.type, outcome, heard: text.slice(0, 120), source, ...extra },
+    }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+
+    if (said === 'no') {
+      record('kept')
+      return NextResponse.json({
+        ok: true, not_saved: true, business_written: false, biz_answer: 'no',
+        tts_response: bizLine('biz_kept', lang),
+      }, { status: 200 })
+    }
+    if (said === 'yes') {
+      // The person's role is checked again at the moment of writing.
+      const [resource, act] = BIZ_PERMISSION[pend.type] || []
+      const { data: allowed } = await supabase.rpc('check_biz_permission', {
+        p_user_id: user.id, p_workspace_id: bizWorkspaceId, p_resource: resource, p_action: act,
+      }).then((r) => (r.error ? { data: false } : r))
+      if (allowed !== true) {
+        record('refused', { reason: 'no_permission' })
+        return NextResponse.json({
+          ok: false, not_saved: true, business_written: false,
+          tts_response: bizLine('no_permission', lang),
+        }, { status: 200 })
+      }
+      const { count: doneThisHour } = await supabase
+        .from('audit_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('action', 'action.spoken_yes')
+        .gte('created_at', new Date(Date.now() - 3_600_000).toISOString())
+        .then((r) => ({ count: r.error ? null : (r.count ?? 0) }))
+      const bizSafety = bizDecision(pend.type, { spokenYes: true, unlocked: unlockedNow, doneThisHour })
+      if (bizSafety.decision !== DECISION.DO) {
+        // A locked phone: the question stays OPEN (a separate audit action,
+        // not BIZ_ANSWERED), so the yes said after unlocking still answers it.
+        // Anything else (hourly limit, paused): the question is closed.
+        const unlockOnly = bizSafety.decision === DECISION.ASK_UNLOCK
+        if (unlockOnly) {
+          supabase.from('audit_log').insert({
+            user_id: user.id, action: 'voice.biz_held', service: 'voice_capture',
+            details: { workspace_id: bizWorkspaceId, type: pend.type, reason: bizSafety.reason, source },
+          }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+        } else {
+          record('refused', { reason: bizSafety.reason })
+        }
+        return NextResponse.json({
+          ok: false, not_saved: true, business_written: false, safety: bizSafety,
+          tts_response: bizLine(unlockOnly ? 'biz_held' : 'biz_refused', lang),
+        }, { status: 200 })
+      }
+
+      let writeError = null
+      let written = pend
+      if (pend.type === BIZ_TYPE.attendance) {
+        const rows = attendanceRows(pend, { workspaceId: bizWorkspaceId, userId: user.id })
+        const { error } = rows.length
+          ? await supabase.from('attendance_logs').upsert(rows, { onConflict: 'workspace_id,member_id,log_date' })
+          : { error: { message: 'no_rows' } }
+        writeError = error
+      } else if (pend.type === BIZ_TYPE.stock) {
+        // Re-read the item: stock may have moved since the read-back (a sale
+        // on another phone). The change said aloud is applied to what is
+        // there NOW; "out of stock" is still zero.
+        let p = pend
+        if (pend.item_id) {
+          const { data: fresh } = await supabase.from('inventory_items')
+            .select('id,current_stock').eq('id', pend.item_id).eq('workspace_id', bizWorkspaceId).maybeSingle()
+          if (!fresh) writeError = { message: 'item_gone' }
+          else {
+            const now = Number(fresh.current_stock) || 0
+            const after = pend.op === 'out' ? 0 : now + pend.change
+            p = { ...pend, before: now, change: after - now, after }
+          }
+        }
+        const w = writeError ? null : stockWrites(p, { workspaceId: bizWorkspaceId })
+        if (!writeError && !w) writeError = { message: 'would_go_below_zero' }
+        if (w?.insertItem) {
+          const { data: created, error } = await supabase.from('inventory_items').insert(w.insertItem).select('id').single()
+          writeError = error
+          if (created) w.movement.item_id = created.id
+        } else if (w?.update) {
+          const { error } = await supabase.from('inventory_items')
+            .update({ current_stock: w.update.current_stock, updated_at: w.update.updated_at })
+            .eq('id', w.update.id).eq('workspace_id', bizWorkspaceId)
+          writeError = error
+        }
+        if (!writeError && w) {
+          await supabase.from('stock_movements').insert(w.movement)
+            .then(({ error }) => { if (error) console.error('[capture] stock movement:', error.message) })
+        }
+        written = p
+      } else {
+        writeError = { message: 'unknown_type' }
+      }
+      if (writeError) {
+        record('failed', { error: String(writeError.message || '').slice(0, 120) })
+        return NextResponse.json({
+          ok: false, not_saved: true, business_written: false, safety: bizSafety,
+          tts_response: bizLine('biz_failed', lang),
+        }, { status: 200 })
+      }
+      record('written')
+      supabase.from('audit_log').insert({
+        user_id: user.id, action: 'action.spoken_yes', service: 'voice_capture',
+        details: { workspace_id: bizWorkspaceId, type: pend.type, level: bizSafety.level, reason: bizSafety.reason, source },
+      }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+      return NextResponse.json({
+        ok: true, not_saved: true, business_written: true, business_type: pend.type, safety: bizSafety,
+        tts_response: doneLine(written, lang),
       }, { status: 200 })
     }
     record('lapsed')
@@ -677,6 +822,106 @@ export async function POST(request) {
       safety,
       understanding,
       tts_response: tts,
+    }, { status: 200 })
+  }
+
+  // ── ATTENDANCE / STOCK / PAYROLL: READ BACK, WRITE ONLY ON A SPOKEN YES ───
+  // src/lib/business-voice.js has the rules. This turn never writes a
+  // business record: attendance and stock are read back and wait for the next
+  // turn's yes (above); a stock question and the payroll draft only answer.
+  // No keep is saved either way. Personal mode writes nothing at all.
+  if (llmAssist && llmAssist.confidence >= 0.55 && BUSINESS_INTENTS.has(llmAssist.intent)) {
+    const replyLang = llmAssist.language || language
+    const intent = llmAssist.intent
+    const ents = llmAssist.entities || {}
+    const audit = (kind, extra = {}) => supabase.from('audit_log').insert({
+      user_id: user.id, action: 'voice.no_keep', service: 'voice_capture',
+      details: { kind, heard: text.slice(0, 120), source, language, understanding, workspace_id: bizWorkspaceId || null, ...extra },
+    }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+
+    if (!bizWorkspaceId) {
+      audit(`${intent}_personal_mode`)
+      return NextResponse.json({
+        ok: true, not_saved: true, reason: 'business_only', business_written: false, understanding,
+        tts_response: bizLine('business_only', replyLang),
+      }, { status: 200 })
+    }
+
+    const op = intent === 'stock' ? stockOp(ents.stockOp, text, ents.quantity) : null
+    const permKey = intent === 'stock' && op === 'check' ? 'stock_check' : intent
+    const [resource, act] = BIZ_PERMISSION[permKey]
+    const { data: allowed } = await supabase.rpc('check_biz_permission', {
+      p_user_id: user.id, p_workspace_id: bizWorkspaceId, p_resource: resource, p_action: act,
+    }).then((r) => (r.error ? { data: false } : r))
+    if (allowed !== true) {
+      audit(`${intent}_no_permission`)
+      return NextResponse.json({
+        ok: true, not_saved: true, reason: 'no_permission', business_written: false, understanding,
+        tts_response: bizLine('no_permission', replyLang),
+      }, { status: 200 })
+    }
+
+    let plan
+    let payrollOut = null
+    if (intent === 'attendance') {
+      const { data: members } = await supabase.from('business_members')
+        .select('id,name').eq('workspace_id', bizWorkspaceId).eq('status', 'active').order('name').limit(500)
+        .then((r) => (r.error ? { data: [] } : r))
+      plan = planAttendance({
+        members: members || [], person: ents.person, status: ents.status,
+        datetimeISO: ents.datetimeISO, text, language: replyLang,
+      })
+    } else if (intent === 'stock') {
+      const { data: items } = await supabase.from('inventory_items')
+        .select('id,name,sku,unit,current_stock').eq('workspace_id', bizWorkspaceId).limit(2000)
+        .then((r) => (r.error ? { data: [] } : r))
+      plan = planStock({
+        items: items || [], item: ents.item, quantity: ents.quantity, unit: ents.unit, op, text, language: replyLang,
+      })
+    } else {
+      const period = payPeriod()
+      const [{ data: members }, { data: logs }] = await Promise.all([
+        supabase.from('business_members')
+          .select('id,name,salary_type,basic_salary,daily_wage').eq('workspace_id', bizWorkspaceId).eq('status', 'active').order('name').limit(500)
+          .then((r) => (r.error ? { data: [] } : r)),
+        supabase.from('attendance_logs')
+          .select('member_id,log_date,status').eq('workspace_id', bizWorkspaceId)
+          .gte('log_date', period.start).lte('log_date', period.end).limit(20000)
+          .then((r) => (r.error ? { data: [] } : r)),
+      ])
+      const d = payrollDraft({ members: members || [], logs: logs || [], person: ents.person, text, language: replyLang })
+      plan = { tts: d.tts, pending: null }
+      payrollOut = d.draft
+    }
+
+    const type = BIZ_TYPE[intent]
+    if (plan.pending) {
+      // The read-back is the question; the next turn's yes answers it.
+      await supabase.from('audit_log').insert({
+        user_id: user.id, action: BIZ_ASKED, service: 'voice_capture',
+        details: { workspace_id: bizWorkspaceId, type, pending: plan.pending, lang: replyLang, source },
+      }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+    }
+    audit(intent, { op, awaiting_yes: !!plan.pending })
+    return NextResponse.json({
+      ok: true,
+      not_saved: true,
+      reason: intent,
+      business_type: type,
+      business_written: false,
+      awaiting_yes: !!plan.pending,
+      business_readback: plan.pending || null,
+      payroll_draft: payrollOut,
+      // Asking for a read-back: needs the yes. Answering only (payroll draft,
+      // "how much is left"): read-back level, nothing written. Asking who or
+      // how much: no decision yet.
+      safety: plan.pending
+        ? bizDecision(type, { spokenYes: false, unlocked: unlockedNow, doneThisHour: 0 })
+        : intent === 'payroll' ? decide({ type: BIZ_TYPE.payroll })
+        : plan.readOnly ? decide({ type: 'stock_check' })
+        : null,
+      understanding,
+      tts_response: plan.tts,
     }, { status: 200 })
   }
 

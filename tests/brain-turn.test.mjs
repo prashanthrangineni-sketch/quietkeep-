@@ -22,10 +22,13 @@ for (const i of ['trip', 'compliance', 'confirm', 'delete', 'pay', 'none']) {
   check(`brain intent list has ${i}`, INTENTS.includes(i))
   check(`parser keeps ${i} (not filed as note)`, parse({ intent: i, confidence: 0.9 }).intent === i)
 }
+// attendance / stock / payroll joined the brain on 15 Oct 2026 (business
+// workspace only; tests/business-voice.test.mjs has their rules).
 for (const i of ['attendance', 'stock', 'payroll']) {
-  check(`${i} is still not a brain intent (out of scope)`, !INTENTS.includes(i))
-  check(`${i} still parses to note, exactly as before`, parse({ intent: i, confidence: 0.9 }).intent === 'note')
+  check(`brain intent list has ${i}`, INTENTS.includes(i))
+  check(`parser keeps ${i} (not filed as note)`, parse({ intent: i, confidence: 0.9 }).intent === i)
 }
+check('an unknown word still parses to note', parse({ intent: 'gst_filing', confidence: 0.9 }).intent === 'note')
 
 // ── the level table ─────────────────────────────────────────────────────────
 check('delete -> delete_note, spoken yes', BRAIN_TYPE.delete === 'delete_note' && levelFor({ type: 'delete_note' }) === LEVEL.SPOKEN_YES)
@@ -34,7 +37,9 @@ check('none -> no action', levelFor({ type: 'none' }) === LEVEL.NO_ACTION)
 check('confirm -> no action', levelFor({ type: 'confirm' }) === LEVEL.NO_ACTION)
 check('trip -> read back', levelFor({ type: 'trip' }) === LEVEL.READ_BACK)
 check('compliance -> read back', levelFor({ type: 'compliance' }) === LEVEL.READ_BACK)
-check('attendance / stock / payroll stay unlisted (never)', ['attendance', 'stock', 'payroll'].every((t) => levelFor({ type: t }) === LEVEL.NEVER))
+check('attendance / stock -> spoken yes', ['attendance', 'stock'].every((t) => levelFor({ type: t }) === LEVEL.SPOKEN_YES))
+check('payroll (a draft that writes nothing) -> read back', levelFor({ type: 'payroll' }) === LEVEL.READ_BACK)
+check('salary_payment -> PIN', levelFor({ type: 'salary_payment' }) === LEVEL.PIN)
 {
   const r = decide({ type: 'none' }, { spokenYes: true, unlocked: true, pin: true })
   check('no action is never "do", even with every proof', r.decision === DECISION.NOTHING, JSON.stringify(r))

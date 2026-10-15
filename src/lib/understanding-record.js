@@ -37,6 +37,12 @@ export const MONEY_TYPES = new Set([
 export const ROMAN_INDIC =
   /\b(se|ko|ka|ki|ke|liye|diye|diya|aaye|aaya|mile|mila|rupaye|rupay|rupees|hazaar|hajaar|sau|lakh|kal|aaj|parso|subah|shaam|raat|baje|yaad|dilana|karna|chahiye|nahi|gurthu|repu|nenu|meeru|cheyyi|kavali|ivvu|vachindi|ravali)\b/i
 
+// Staff attendance, shop stock and salary (15 Oct 2026). Only the brain
+// knows these; the English regex files "out of stock: oil" as a task, and a
+// task with a time would not reach the brain at all.
+export const BUSINESS_WORDS =
+  /\b(attendance|absent|present|half[\s-]?day|stock|inventory|salary|salaries|payroll|wages|jeetham|jeetam|tankhwah|tankha|hazri|haaziri)\b|అటెండెన్స్|ఆబ్సెంట్|స్టాక్|జీతం|జీతాలు|हाज़िरी|हाजिरी|स्टॉक|तनख्वाह|सैलरी/i
+
 /**
  * Should the language model read this sentence, and why.
  *
@@ -58,6 +64,7 @@ export function whyBrainRun({ parsed, text, language, reminderAt }) {
   if (MONEY_TYPES.has(type)) reasons.push('money_shaped')
   if (ROMAN_INDIC.test(text || '')) reasons.push('romanised_indic')
   if ((type === 'reminder' || type === 'task') && !reminderAt) reasons.push('no_time_found')
+  if (BUSINESS_WORDS.test(text || '')) reasons.push('business_shaped')
 
   return { run: reasons.length > 0, reasons }
 }

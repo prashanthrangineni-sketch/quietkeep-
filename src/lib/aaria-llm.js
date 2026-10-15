@@ -63,11 +63,18 @@ function langName(code) {
 //   pay               money leaving an account - never by voice (PIN level)
 //   none              thanks, small talk, a statement needing no action
 // What each one is allowed to do is decided by src/lib/action-levels.js, not here.
+//
+// The last three (15 Oct 2026) are the shop's own records, business workspace
+// only, handled by src/lib/business-voice.js:
+//   attendance  mark a staff member present / absent / half day / leave
+//   stock       add to, take from, or ask about an inventory item
+//   payroll     a DRAFT salary worked out from recorded attendance - never paid
 export const INTENTS = [
   'reminder', 'task', 'contact', 'meeting', 'purchase',
   'expense', 'income', 'ledger_debit', 'sale', 'invoice',
   'document', 'navigation', 'query', 'note',
   'trip', 'compliance', 'confirm', 'delete', 'pay', 'none',
+  'attendance', 'stock', 'payroll',
 ];
 
 // THE CLOCK THE MODEL READS MUST BE THE USER'S.
@@ -123,7 +130,11 @@ waiting for you to speak, so emit only what you actually know:
     "datetime_iso": absolute ISO 8601 datetime, ONLY when the user named a clock time or a day ("at ten", "tomorrow morning", "kal subah"),
     "amount": number,
     "direction": "in" if money received, "out" if money spent/paid/given,
-    "item": string
+    "item": string,
+    "status": attendance only - "present" | "absent" | "half_day" | "leave",
+    "quantity": stock only - number, how much,
+    "unit": stock only - "kg", "litre", "bag", "packet", "pcs" ...,
+    "stock_op": stock only - "add" | "remove" | "out" (finished, none left) | "check" (asking how much)
   },
   "missing": array from ["datetime","person","amount","item"] — only what you truly need before acting; omit if you can act now,
   "reply": the sentence Aaria SPEAKS next
@@ -150,8 +161,15 @@ out loud that were never created.
 
 OTHER RULES:
 - "remind me to pay the electricity bill" is a reminder, NOT an invoice.
-- Money RECEIVED (aaye / received / వచ్చాయి / मिले) = "income", direction "in".
-  Money PAID (diye / spent / కట్టాను / दिए) = "expense", direction "out". Never swap these.
+- MONEY DIRECTION - ask WHO GAVE TO WHOM, never go by the verb "give" alone:
+  Someone ELSE gave / paid the user = "income", direction "in": "received 500 from Gupta",
+  "collected 2000 from Ravi", "Ravi paid me 300", "Gupta ji ne 500 de diye", "Gupta se 500
+  mile", "paise aaye", "Ravi nundi 500 vacchindi", "Ravi 500 ichadu", "baki tirigi icchadu",
+  "వచ్చింది" / "मिले" / "आए".
+  The USER gave / paid / spent = "expense", direction "out": "gave Gupta 500", "paid 500 to
+  Ravi", "Ravi ko 500 diye", "maine 500 diya", "Ravi ki 500 ichanu", "500 kharchu chesanu",
+  "కట్టాను" / "दिए". "X ne ... diya" and "X ichadu / ichindi" are X giving TO the user: "in".
+  Never swap these.
 - Resolve relative time against CURRENT TIME. "tomorrow morning" → next day 09:00 local.
 - For a reminder with no usable time AND no place, put "datetime" in "missing" and ASK.
 - A reminder with a "place" is complete: do NOT ask for a time, and in "reply" say
@@ -181,6 +199,18 @@ OTHER RULES:
 - "confirm": ONLY a bare yes / no / okay / cancel with nothing else ("yes please", "okay",
   "avunu", "sare", "haan ji", "ठीक है", "nahi, rehne do", "vaddu le", "no, cancel that").
   A bare yes or no is ALWAYS "confirm", never "none". Not a new instruction.
+- BUSINESS RECORDS (staff and shop stock). Use these in either mode; the app decides.
+  "attendance": staff present / absent / half day / leave ("mark Ravi absent today", "Ravi
+  ki half day", "sab present hain", "Lakshmi ee roju raaledu", "రవి ఈరోజు రాలేదు"). person =
+  the staff name, or "all" for everyone. Give "status". datetime_iso only if another day
+  is named. Reply as a question: "Mark Ravi absent today?"
+  "stock": shop inventory - adding, taking out, running out, running low, reorder, or asking
+  how much is left ("add 20 kg rice to stock", "out of stock: oil", "sugar stock entha undi",
+  "chawal ka stock kitna hai"). item = the product in English letters ("బియ్యం" / "chawal"
+  is "rice"), quantity, unit, stock_op. Asking how much is "stock" with stock_op "check",
+  never "query".
+  "payroll": working out staff salary or wages ("prepare this month's salary", "Ravi ki
+  entha jeetham", "salary banao"). person when one is named. Paying salary NOW is "pay".
 - "none": thanks, greetings, small talk, how the user feels, or a statement that needs
   nothing done ("thank you", "nenu chala alasipoyanu", "just testing"). Never a bare yes or no.
   Reply briefly. Nothing is saved.
@@ -354,8 +384,17 @@ export function parseBrainResponse(raw, { clean, nowISO, language, model }) {
     if (!isNaN(dt.getTime()) && Math.abs(dt.getTime() - now.getTime()) < 2 * 60_000) datetimeISO = null;
   }
 
+  // A MONEY INTENT ALREADY SAYS WHICH WAY THE MONEY WENT. The model names
+  // the intent correctly and sometimes leaves "direction" out (2 of 38 in
+  // run 38744054174, both "income"). income is always in; expense and
+  // ledger_debit are always out. Only a MISSING direction is filled - one
+  // the model gave is kept as it is.
+  const intent = INTENTS.includes(parsed.intent) ? parsed.intent : 'note'
+  const DIRECTION_OF = { income: 'in', expense: 'out', ledger_debit: 'out' }
+  const direction = ents.direction ?? DIRECTION_OF[intent] ?? null
+
   return { result: {
-    intent: INTENTS.includes(parsed.intent) ? parsed.intent : 'note',
+    intent,
     confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.7,
     language: parsed.language_detected || language || 'en-IN',
     cleanText: parsed.clean_text || clean,
@@ -370,8 +409,13 @@ export function parseBrainResponse(raw, { clean, nowISO, language, model }) {
       datetimeISO,
       relativeMinutes: Number.isFinite(relMin) && relMin > 0 ? Math.round(relMin) : null,
       amount: typeof ents.amount === 'number' ? ents.amount : null,
-      direction: ents.direction ?? null,
+      direction,
       item: ents.item ?? null,
+      // Business records only (attendance / stock); null everywhere else.
+      status: typeof ents.status === 'string' && ents.status.trim() ? ents.status.trim().toLowerCase() : null,
+      quantity: typeof ents.quantity === 'number' && Number.isFinite(ents.quantity) ? ents.quantity : null,
+      unit: typeof ents.unit === 'string' && ents.unit.trim() ? ents.unit.trim().slice(0, 20) : null,
+      stockOp: typeof ents.stock_op === 'string' && ents.stock_op.trim() ? ents.stock_op.trim().toLowerCase() : null,
     },
     missing: Array.isArray(parsed.missing) ? parsed.missing : [],
     reply: typeof parsed.reply === 'string' && parsed.reply.trim() ? parsed.reply.trim() : null,

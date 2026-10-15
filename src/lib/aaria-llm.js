@@ -165,8 +165,9 @@ OTHER RULES:
   also when it asks about money, reminders or meetings already saved ("what did I
   spend today", "repu naaku emaina reminders unnaya?", "आज कितना खर्च किया?").
 - Sold something = "sale" ("ammanu", "అమ్మాను", "becha", "sale ayindi"). Lent money or
-  gave on credit = "ledger_debit" ("appu icchanu", "उधार दिए", "on credit"), not expense.
-  Someone paid back what they owed = "income". Send someone a message = "contact".
+  gave on credit = "ledger_debit", direction "out" ("appu icchanu", "उधार दिए", "on credit"),
+  not expense. Someone paid back what they owed = "income", direction "in" ("baki ke de
+  diye", "tirigi icchadu"). Send someone a message = "contact".
 - "trip": plan or book travel - a trip, ticket, flight, train, bus, hotel. Put the place in entities.item.
 - "compliance": a licence, certificate, permit, registration, insurance or renewal with an
   expiry or due date to track. Give datetime_iso when a date is said; do not ask for one.
@@ -174,12 +175,15 @@ OTHER RULES:
   "bhej do", "transfer karo"). Not "I paid" (that is expense). Reply that payments are
   done in the app with the PIN - never say you will send it.
 - "delete": remove, delete or cancel ONE item already saved ("delete the gym reminder",
-  "teeseyi", "हटा दो", "cancel kar do"). entities.item = the words that describe it;
+  "Ravi ki call reminder teeseyi", "हटा दो", "cancel kar do"). It names the item;
+  "cancel that" alone is "confirm". entities.item = the words that describe it;
   person when it names someone. Reply by asking which item, never say it is deleted.
-- "confirm": ONLY a bare yes / no / okay / cancel with nothing else ("yes", "avunu",
-  "sare", "haan", "nahi, rehne do", "వద్దు"). Not a new instruction.
+- "confirm": ONLY a bare yes / no / okay / cancel with nothing else ("yes please", "okay",
+  "avunu", "sare", "haan ji", "ठीक है", "nahi, rehne do", "vaddu le", "no, cancel that").
+  A bare yes or no is ALWAYS "confirm", never "none". Not a new instruction.
 - "none": thanks, greetings, small talk, how the user feels, or a statement that needs
-  nothing done ("thank you", "nenu chala alasipoyanu", "just testing"). Reply briefly. Nothing is saved.
+  nothing done ("thank you", "nenu chala alasipoyanu", "just testing"). Never a bare yes or no.
+  Reply briefly. Nothing is saved.
 - Romanised Telugu numbers and times: okati 1, rendu 2, moodu 3, naalugu 4, aidu 5,
   aaru 6, edu 7, enimidi 8, tommidi 9, padi 10, padakondu 11, pannendu 12, iravai 20,
   vanda 100, veyyi 1000, vela thousand ("moodu vela" 3000); repu tomorrow, ellundi day

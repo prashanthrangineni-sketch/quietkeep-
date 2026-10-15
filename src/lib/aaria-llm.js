@@ -295,6 +295,19 @@ export function buildRequestBody({ model, prompt, stream }) {
   };
 }
 
+// A TIME WITH NO ZONE IS INDIA TIME. The prompt gives the model the clock in
+// Asia/Kolkata, but it sometimes answers "2026-10-16T08:00:00" with no offset.
+// The server runs in UTC, so new Date() read that as 8 AM UTC and an 8 AM
+// reminder fired at 1:30 PM IST (measured: 2 of 48 timed sentences, run
+// 38726346076). A bare date-time gets +05:30; anything else passes through.
+export function withIndiaZone(iso) {
+  if (typeof iso !== 'string') return iso ?? null;
+  const s = iso.trim();
+  if (!s) return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s)) return s;
+  return `${s}+05:30`;
+}
+
 /**
  * Turn the model's raw text into the object the capture route acts on.
  * Pure: no I/O. Returns { result } or { failure: 'no_json' | 'no_intent' }.
@@ -322,7 +335,7 @@ export function parseBrainResponse(raw, { clean, nowISO, language, model }) {
   // 30 September 2026 that arithmetic put "1 minute" thirty minutes out.
   const now = new Date(nowISO || Date.now());
   const relMin = Number(ents.relative_minutes);
-  let datetimeISO = ents.datetime_iso ?? null;
+  let datetimeISO = withIndiaZone(ents.datetime_iso ?? null);
   if (Number.isFinite(relMin) && relMin > 0 && relMin <= 60 * 24 * 366 && !isNaN(now.getTime())) {
     datetimeISO = new Date(now.getTime() + Math.round(relMin) * 60_000).toISOString();
   }

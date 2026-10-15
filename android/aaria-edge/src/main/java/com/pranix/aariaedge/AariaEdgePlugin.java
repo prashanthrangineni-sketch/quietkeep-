@@ -236,7 +236,13 @@ public class AariaEdgePlugin extends Plugin {
                                     }
                                     
                                     statsScored++;
-                                    float score = wakeWordDetector.score(wakeData);
+                                    WakeWordDetector detectorNow = wakeWordDetector;
+                                    float score = detectorNow.score(wakeData);
+                                    // Second listener on, and only the spotter heard the name: the recogniser did not hear it,
+                                    // so its words for the rest of the breath cannot be trusted. This is then a bare wake and
+                                    // the next thing said is the command. A wake the existing check heard is handled as before.
+                                    final boolean spotterAlone = detectorNow instanceof EitherWakeWord
+                                            && "keyword_spotter".equals(((EitherWakeWord) detectorNow).heardBy());
                                     if (score >= 0.8f) {
                                         boolean hasCommand = false;
                                         String commandTranscript = "";

@@ -1,0 +1,175 @@
+{
+  "measured_at": "2026-10-15T09:54:01.820Z",
+  "run_url": "https://github.com/prashanthrangineni-sketch/quietkeep-/actions/runs/38716318680",
+  "timeout_ms": 12000,
+  "cases": {
+    "total": 166,
+    "scored": 118,
+    "gap": 48
+  },
+  "models": [
+    {
+      "id": "sarvam:sarvam-105b-conversations",
+      "provider": "sarvam",
+      "model": "sarvam-105b-conversations",
+      "status": "not measured - no key",
+      "note": "SARVAM_API_KEY is not set",
+      "rows": [],
+      "summary": null,
+      "price": {
+        "text": "Sarvam's own docs disagree: one table lists ₹29.28 in / ₹73.2 out per 1M tokens for sarvam-105b-conversations, another lists sarvam-105b at ₹4 in / ₹16 out, and sarvam.ai/api-pricing says \"Free per token\". Unresolved - check the link.",
+        "url": "https://docs.sarvam.ai/api-reference-docs/pricing"
+      }
+    },
+    {
+      "id": "sarvam:sarvam-30b",
+      "provider": "sarvam",
+      "model": "sarvam-30b",
+      "status": "not measured - no key",
+      "note": "SARVAM_API_KEY is not set",
+      "rows": [],
+      "summary": null,
+      "price": {
+        "text": "Sarvam docs list sarvam-30b at ₹2.5 in / ₹10 out per 1M tokens; sarvam.ai/api-pricing says \"Free per token\". Unresolved - check the link.",
+        "url": "https://docs.sarvam.ai/api-reference-docs/pricing"
+      }
+    },
+    {
+      "id": "groq:llama-3.3-70b-versatile",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "status": "not measured - no key",
+      "note": "GROQ_API_KEY is not set",
+      "rows": [],
+      "summary": null,
+      "price": {
+        "text": "$0.59 in / $0.79 out per 1M tokens (as reported by third-party price trackers; Groq page not opened)",
+        "url": "https://groq.com/pricing"
+      }
+    },
+    {
+      "id": "gemini:gemini-2.5-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-2.5-flash-lite",
+      "status": "not measured - no key",
+      "note": "GEMINI_API_KEY is not set",
+      "rows": [],
+      "summary": null,
+      "price": {
+        "text": "$0.10 in / $0.40 out per 1M tokens, paid tier (as reported by third-party price trackers citing Google; Google page not opened)",
+        "url": "https://ai.google.dev/gemini-api/docs/pricing"
+      }
+    },
+    {
+      "id": "openrouter:meta-llama/llama-3.3-70b-instruct:free",
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.3-70b-instruct:free",
+      "status": "not measured - no key",
+      "note": "OPENROUTER_API_KEY is not set",
+      "rows": [],
+      "summary": null,
+      "price": {
+        "text": "$0 (OpenRouter \":free\" variant; rate-limited)",
+        "url": "https://openrouter.ai/meta-llama/llama-3.3-70b-instruct:free"
+      }
+    },
+    {
+      "id": "openrouter:google/gemma-2-9b-it:free",
+      "provider": "openrouter",
+      "model": "google/gemma-2-9b-it:free",
+      "status": "not measured - no key",
+      "note": "OPENROUTER_API_KEY is not set",
+      "rows": [],
+      "summary": null,
+      "price": {
+        "text": "$0 (OpenRouter \":free\" variant; rate-limited)",
+        "url": "https://openrouter.ai/google/gemma-2-9b-it:free"
+      }
+    },
+    {
+      "id": "openrouter:mistralai/mistral-7b-instruct:free",
+      "provider": "openrouter",
+      "model": "mistralai/mistral-7b-instruct:free",
+      "status": "not measured - no key",
+      "note": "OPENROUTER_API_KEY is not set",
+      "rows": [],
+      "summary": null,
+      "price": {
+        "text": "$0 (OpenRouter \":free\" variant; rate-limited)",
+        "url": "https://openrouter.ai/mistralai/mistral-7b-instruct:free"
+      }
+    }
+  ],
+  "verdicts": [
+    {
+      "id": "sarvam:sarvam-105b-conversations",
+      "line": "baseline not measured - no key - no comparison possible"
+    },
+    {
+      "id": "sarvam:sarvam-30b",
+      "line": "not measured - no key - no comparison"
+    },
+    {
+      "id": "groq:llama-3.3-70b-versatile",
+      "line": "not measured - no key - no comparison"
+    },
+    {
+      "id": "gemini:gemini-2.5-flash-lite",
+      "line": "not measured - no key - no comparison"
+    },
+    {
+      "id": "openrouter:meta-llama/llama-3.3-70b-instruct:free",
+      "line": "not measured - no key - no comparison"
+    },
+    {
+      "id": "openrouter:google/gemma-2-9b-it:free",
+      "line": "not measured - no key - no comparison"
+    },
+    {
+      "id": "openrouter:mistralai/mistral-7b-instruct:free",
+      "line": "not measured - no key - no comparison"
+    }
+  ],
+  "gaps": [
+    {
+      "name": "trip",
+      "cases": 6,
+      "brain_answered": {}
+    },
+    {
+      "name": "compliance",
+      "cases": 6,
+      "brain_answered": {}
+    },
+    {
+      "name": "confirm",
+      "cases": 6,
+      "brain_answered": {}
+    },
+    {
+      "name": "delete",
+      "cases": 6,
+      "brain_answered": {}
+    },
+    {
+      "name": "attendance",
+      "cases": 6,
+      "brain_answered": {}
+    },
+    {
+      "name": "stock",
+      "cases": 6,
+      "brain_answered": {}
+    },
+    {
+      "name": "payroll",
+      "cases": 6,
+      "brain_answered": {}
+    },
+    {
+      "name": "pay",
+      "cases": 6,
+      "brain_answered": {}
+    }
+  ]
+}

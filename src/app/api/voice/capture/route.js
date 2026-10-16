@@ -45,6 +45,7 @@ import {
 import { buildMemoryContext } from '@/lib/style-engine' // v15: Memory Context
 import { cleanListenEvidence } from '@/lib/listen-stream'
 import { decide, DECISION } from '@/lib/action-levels' // item 2: the safety check before every action
+import { recordStep } from '@/lib/step-log' // AG-AARIA-37: 100-task step recorder
 import {
   NO_KEEP_INTENTS, BRAIN_TYPE, DELETE_ASKED, DELETE_ANSWERED,
   planNoKeepTurn, isStrayConfirmation, matchKeepForDelete, deleteQuestion,
@@ -175,6 +176,21 @@ export async function POST(request) {
   // that lands, and it is deliberately the only place it is done.
   const rawText = collapseRepeats(transcript.trim())
   const text    = stripWakePhrase(rawText) || rawText
+  const turnStartTime = new Date().toISOString()
+  // Only the phone turns a run on (it sends tasks100_run). Validate it; ignore anything odd.
+  const rawRun = body?.tasks100_run
+  const runTaskId = rawRun && typeof rawRun === 'object' && typeof rawRun.task_id === 'string'
+    ? rawRun.task_id.trim().slice(0, 64)
+    : ''
+  const tasks100Run = runTaskId && /^[\w.-]+$/.test(runTaskId) ? { task_id: runTaskId } : null
+  let lastStepRecord = null
+  const logStep = (p) => {
+    if (!tasks100Run) return null
+    // persist:false: the server only returns the step; the phone stores it.
+    const s = recordStep({ ...p, startTime: turnStartTime, run: tasks100Run, persist: false })
+    if (s) lastStepRecord = s
+    return s
+  }
 
   // ── IS THIS SOMETHING A PERSON SAID? ─────────────────────────────────────
   //
@@ -323,6 +339,14 @@ export async function POST(request) {
         .gte('created_at', new Date(Date.now() - 3_600_000).toISOString())
         .then((r) => ({ count: r.error ? null : (r.count ?? 0) }))
       const delSafety = deleteDecision({ spokenYes: true, unlocked: unlockedNow, doneThisHour })
+      logStep({
+        heardText: text,
+        decidedAction: 'delete_note',
+        level: delSafety.level,
+        decision: delSafety.decision,
+        askedConfirmation: false,
+        result: delSafety.decision === DECISION.DO ? 'success' : 'refused',
+      })
       if (delSafety.decision !== DECISION.DO) {
         record('held', { reason: delSafety.reason })
         return NextResponse.json({
@@ -406,6 +430,14 @@ export async function POST(request) {
         .gte('created_at', new Date(Date.now() - 3_600_000).toISOString())
         .then((r) => ({ count: r.error ? null : (r.count ?? 0) }))
       const bizSafety = bizDecision(pend.type, { spokenYes: true, unlocked: unlockedNow, doneThisHour })
+      logStep({
+        heardText: text,
+        decidedAction: pend.type,
+        level: bizSafety.level,
+        decision: bizSafety.decision,
+        askedConfirmation: false,
+        result: bizSafety.decision === DECISION.DO ? 'success' : (bizSafety.decision === DECISION.ASK_UNLOCK ? 'pending_confirmation' : 'refused'),
+      })
       if (bizSafety.decision !== DECISION.DO) {
         // A locked phone: the question stays OPEN (a separate audit action,
         // not BIZ_ANSWERED), so the yes said after unlocking still answers it.
@@ -649,6 +681,14 @@ export async function POST(request) {
         { doneThisHour },
       )
       nowSafety.unlock_proof = ['voice', 'text'].includes(source) ? 'app_in_foreground' : null
+      logStep({
+        heardText: text,
+        decidedAction: 'contact',
+        level: nowSafety.level,
+        decision: nowSafety.decision,
+        askedConfirmation: false,
+        result: nowSafety.decision === DECISION.DO ? 'success' : 'refused',
+      })
       if (nowSafety.decision === DECISION.DO && openQuestion.contact_phone) {
         nowExec = {
           keep_id:       openQuestion.id,
@@ -711,6 +751,14 @@ export async function POST(request) {
     const plan = planNoKeepTurn({
       intent: 'confirm', language,
       pendingQuestionText: openQuestion && isPendingQuestion(openQuestion) ? askAgain(openQuestion) : null,
+    })
+    logStep({
+      heardText: text,
+      decidedAction: 'confirm',
+      level: plan.safety?.level,
+      decision: plan.safety?.decision,
+      askedConfirmation: false,
+      result: 'success',
     })
     supabase.from('audit_log').insert({
       user_id: user.id, action: 'voice.no_keep', service: 'voice_capture',
@@ -793,6 +841,14 @@ export async function POST(request) {
       })
       tts = deleteQuestion(found, replyLang)
       safety = deleteDecision({ spokenYes: false, unlocked: unlockedNow, doneThisHour: 0 })
+      logStep({
+        heardText: text,
+        decidedAction: 'delete_note',
+        level: safety.level,
+        decision: safety.decision,
+        askedConfirmation: true,
+        result: 'pending_confirmation',
+      })
       if (found.match) {
         deleteTarget = { id: found.match.id, content: found.match.content }
         // The read-back is the question; the next turn's yes answers it.
@@ -808,6 +864,14 @@ export async function POST(request) {
       })
       tts = plan.tts
       safety = plan.safety
+      logStep({
+        heardText: text,
+        decidedAction: llmAssist.intent,
+        level: safety?.level,
+        decision: safety?.decision,
+        askedConfirmation: ['ask_yes', 'ask_unlock', 'ask_pin'].includes(safety?.decision),
+        result: safety?.decision === DECISION.REFUSE ? 'refused' : 'success',
+      })
     }
     supabase.from('audit_log').insert({
       user_id: user.id, action: 'voice.no_keep', service: 'voice_capture',
@@ -915,11 +979,24 @@ export async function POST(request) {
       // Asking for a read-back: needs the yes. Answering only (payroll draft,
       // "how much is left"): read-back level, nothing written. Asking who or
       // how much: no decision yet.
-      safety: plan.pending
-        ? bizDecision(type, { spokenYes: false, unlocked: unlockedNow, doneThisHour: 0 })
-        : intent === 'payroll' ? decide({ type: BIZ_TYPE.payroll })
-        : plan.readOnly ? decide({ type: 'stock_check' })
-        : null,
+      safety: (() => {
+        const s = plan.pending
+          ? bizDecision(type, { spokenYes: false, unlocked: unlockedNow, doneThisHour: 0 })
+          : intent === 'payroll' ? decide({ type: BIZ_TYPE.payroll })
+          : plan.readOnly ? decide({ type: 'stock_check' })
+          : null;
+        if (s) {
+          logStep({
+            heardText: text,
+            decidedAction: type,
+            level: s.level,
+            decision: s.decision,
+            askedConfirmation: ['ask_yes', 'ask_unlock', 'ask_pin'].includes(s.decision) || !!plan.pending,
+            result: plan.pending ? 'pending_confirmation' : (s.decision === DECISION.DO ? 'success' : 'refused'),
+          });
+        }
+        return s;
+      })(),
       understanding,
       tts_response: plan.tts,
     }, { status: 200 })
@@ -1648,6 +1725,25 @@ export async function POST(request) {
     console.log('[safety] held auto-exec:', parsed.type, safety.level, safety.reason)
     isAutoEligible = false
   }
+  // Step log only (100-task run): the same decision computed separately, so
+  // the `safety` the app receives is exactly what it was before (null when
+  // nothing was automatic).
+  if (tasks100Run) {
+    const logSafety = safety || decide(
+      { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
+      { spokenYes: false, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
+      { doneThisHour: 0 },
+    )
+    const isAskingConfirm = ['ask_yes', 'ask_unlock', 'ask_pin'].includes(logSafety.decision)
+    logStep({
+      heardText: text,
+      decidedAction: parsed.type,
+      level: logSafety.level,
+      decision: logSafety.decision,
+      askedConfirmation: isAskingConfirm,
+      result: logSafety.decision === DECISION.DO ? 'success' : (isAskingConfirm ? 'pending_confirmation' : 'refused'),
+    })
+  }
 
   if (isAutoEligible) {
     // v10: Extract navigation destination for Maps Intent in VoiceService
@@ -1755,6 +1851,7 @@ export async function POST(request) {
     aaria,             // SOT P1: Aaria's read of utterances the regex missed (null otherwise)
     auto_exec,
     safety,            // item 2: what the level table decided for this turn (null when nothing was automatic)
+    ...(lastStepRecord ? { step_record: lastStepRecord } : {}),
     // v2: geo intelligence fields
     geo_detected:   !!(parsed.geo?.detected || parsed.route?.detected),
     suggest_save:   suggestSave,  // true → prompt user to save this location

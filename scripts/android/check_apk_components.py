@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Proves the phone-test APK lost ONLY notification access, nothing else.
+"""Proves the phone-test APK lost ONLY notification access and SMS permissions, nothing else.
 
 Why this exists: the phone-test build removes one <service> (PaymentNotificationListener) so Play
 Protect lets the downloaded APK install. Two layers do that removal - the manifest script run in
 android-release.yml and a text edit of the merged manifest in android/app/build.gradle - and a text
 edit can cut out more than it means to. So this compares the finished APK against the repository's
 own manifest: every activity, service, receiver, provider and permission the repository declares
-must still be inside, except the one listener. Prints the APK's full component list either way.
+must still be inside, except the one listener and the SMS permissions (SEND_SMS today). Prints
+the APK's full component list either way.
 
 usage: python3 scripts/android/check_apk_components.py <repo-manifest.xml> <aapt2-xmltree-dump.txt>
   repo-manifest.xml  the manifest as committed (e.g. from `git show HEAD:...`), not the edited one
@@ -19,6 +20,8 @@ import xml.etree.ElementTree as ET
 ANDROID = "{http://schemas.android.com/apk/res/android}"
 COMPONENTS = ("activity", "activity-alias", "service", "receiver", "provider")
 LEFT_OUT = {"com.pranix.quietkeep.services.PaymentNotificationListener"}
+# The phone-test build also leaves out every SMS / MMS / WAP-push permission (SEND_SMS today).
+LEFT_OUT_PERMISSION = re.compile(r"android\.permission\.[A-Z_]*(?:SMS|MMS|WAP_PUSH)[A-Z_]*$")
 
 
 def full_name(name, package):
@@ -73,8 +76,11 @@ def main():
 
     expected = {c for c in repo_components if c[1] not in LEFT_OUT}
     missing = sorted(expected - apk_components)
-    missing_perms = sorted(repo_permissions - apk_permissions)
+    expected_perms = {p for p in repo_permissions if not LEFT_OUT_PERMISSION.match(p)}
+    left_out_perms = sorted(repo_permissions - expected_perms)
+    missing_perms = sorted(expected_perms - apk_permissions)
     still_there = sorted(c for c in apk_components if c[1] in LEFT_OUT)
+    still_perms = sorted(p for p in apk_permissions if LEFT_OUT_PERMISSION.match(p))
 
     for kind, name in missing:
         print(f"FAIL: {kind} {name} is in the repository manifest but missing from the APK", file=sys.stderr)
@@ -82,10 +88,12 @@ def main():
         print(f"FAIL: permission {p} is in the repository manifest but missing from the APK", file=sys.stderr)
     for kind, name in still_there:
         print(f"FAIL: {kind} {name} should have been left out but is in the APK", file=sys.stderr)
-    if missing or missing_perms or still_there:
+    for p in still_perms:
+        print(f"FAIL: permission {p} should have been left out but is in the APK", file=sys.stderr)
+    if missing or missing_perms or still_there or still_perms:
         sys.exit(1)
-    print(f"ok: all {len(expected)} components and {len(repo_permissions)} permissions the repository "
-          f"declares are in the APK; only {', '.join(sorted(LEFT_OUT))} was left out")
+    print(f"ok: all {len(expected)} components and {len(expected_perms)} permissions the repository "
+          f"declares are in the APK; left out only {', '.join(sorted(LEFT_OUT) + left_out_perms)}")
 
 
 if __name__ == "__main__":

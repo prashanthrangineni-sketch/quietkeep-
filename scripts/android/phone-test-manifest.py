@@ -33,6 +33,17 @@ subject to this block.
 
 Fails loudly if the block is not found, rather than producing an APK that
 would be refused on the phone.
+
+SMS PERMISSIONS TOO (added 16 Oct 2026)
+---------------------------------------
+On 16 Oct an APK that already lacked notification access was blocked the same
+way. SEND_SMS - added on 13-14 Oct for the SOS text - was not on the list
+above, but public reports of this Play Protect block say it refuses a
+downloaded app that asks for any SMS permission, SEND_SMS included. So the
+phone-test build also leaves out every SMS / MMS / WAP-push permission. Without
+SEND_SMS the SOS countdown opens the SMS app with the message filled in and the
+person presses Send (SosCountdownActivity checks the permission first). The
+Play Store build keeps SEND_SMS.
 """
 
 import re
@@ -54,7 +65,18 @@ if trimmed == source:
 if "NotificationListenerService" in trimmed or "BIND_NOTIFICATION_LISTENER_SERVICE" in trimmed:
     sys.exit("a notification-listener declaration is still in the manifest")
 
+# Every SMS / MMS / WAP-push permission (SEND_SMS today). Matching the family,
+# not one name, so a new one is left out too. Not required to be present.
+SMS_PERM = r'android\.permission\.[A-Z_]*(?:SMS|MMS|WAP_PUSH)[A-Z_]*'
+trimmed, removed = re.subn(
+    r'[ \t]*<uses-permission(?:-sdk-23)?\s[^>]*android:name="' + SMS_PERM + r'"[^>]*/>[ \t]*\n?',
+    "", trimmed)
+left = re.findall(r'<uses-permission[^>]*"(' + SMS_PERM + r')"', trimmed)
+if left:
+    sys.exit("an SMS permission is still in the manifest: " + ", ".join(left))
+
 with open(PATH, "w", encoding="utf-8") as f:
     f.write(trimmed)
 
 print("phone-test build: left out PaymentNotificationListener (notification access)")
+print(f"phone-test build: left out {removed} SMS permission declaration(s)")

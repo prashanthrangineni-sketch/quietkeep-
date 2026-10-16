@@ -43,6 +43,7 @@ on:
     paths:
       - '.github/workflows/android-release.yml'
       - 'scripts/android/phone-test-manifest.py'
+      - 'scripts/android/check_apk_components.py'
   push:
     branches: [main]
     paths:
@@ -152,6 +153,11 @@ jobs:
                 bad=1
               fi
             done
+            # Nothing else may be lost: every component and permission the
+            # repository's own manifest declares (as committed, not as edited
+            # on this runner) must still be inside, except the listener.
+            git show HEAD:android/app/src/main/AndroidManifest.xml > "$RUNNER_TEMP/repo-manifest.xml"
+            python3 scripts/android/check_apk_components.py "$RUNNER_TEMP/repo-manifest.xml" "$TREE" || bad=1
           done
           test "$bad" = 0 || exit 1
           echo "ok: none of RECEIVE_SMS, READ_SMS, BIND_NOTIFICATION_LISTENER_SERVICE, BIND_ACCESSIBILITY_SERVICE in the APK"

@@ -45,7 +45,7 @@ import {
 import { buildMemoryContext } from '@/lib/style-engine' // v15: Memory Context
 import { cleanListenEvidence } from '@/lib/listen-stream'
 import { decide, DECISION } from '@/lib/action-levels' // item 2: the safety check before every action
-import { recordStep, getActiveRun } from '@/lib/step-log' // AG-AARIA-37: 100-task step recorder
+import { recordStep } from '@/lib/step-log' // AG-AARIA-37: 100-task step recorder
 import {
   NO_KEEP_INTENTS, BRAIN_TYPE, DELETE_ASKED, DELETE_ANSWERED,
   planNoKeepTurn, isStrayConfirmation, matchKeepForDelete, deleteQuestion,

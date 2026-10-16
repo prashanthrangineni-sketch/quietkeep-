@@ -19,6 +19,11 @@
 // Checked first: URL, headers, model, temperature, max_tokens and stream
 // unchanged; the parsed results differ ONLY by four new entity keys
 // (status, quantity, unit, stockOp), null for every existing answer.
+//
+// 16 Oct 2026: re-captured once more, on purpose, when the attendance prompt
+// gained the Hindi script example "आज रमेश की छुट्टी लगा दो" so leave sentences
+// are understood as attendance. URL, headers, model, temperature, max_tokens
+// and stream checked unchanged before re-capturing.
 
 import assert from 'node:assert/strict'
 import test from 'node:test'

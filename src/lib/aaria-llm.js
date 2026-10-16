@@ -201,7 +201,7 @@ OTHER RULES:
   A bare yes or no is ALWAYS "confirm", never "none". Not a new instruction.
 - BUSINESS RECORDS (staff and shop stock). Use these in either mode; the app decides.
   "attendance": staff present / absent / half day / leave ("mark Ravi absent today", "Ravi
-  ki half day", "sab present hain", "Lakshmi ee roju raaledu", "రవి ఈరోజు రాలేదు"). person =
+  ki half day", "sab present hain", "Lakshmi ee roju raaledu", "రవి ఈరోజు రాలేదు", "आज रमेश की छुट्टी लगा दो"). person =
   the staff name, or "all" for everyone. Give "status". datetime_iso only if another day
   is named. Reply as a question: "Mark Ravi absent today?"
   "stock": shop inventory - adding, taking out, running out, running low, reorder, or asking

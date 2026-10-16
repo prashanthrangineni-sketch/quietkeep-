@@ -44,6 +44,8 @@ on:
       - '.github/workflows/android-release.yml'
       - 'scripts/android/phone-test-manifest.py'
       - 'scripts/android/check_apk_components.py'
+      # A change here could stop the listener being found - fail before merge.
+      - 'android/app/src/main/AndroidManifest.xml'
   push:
     branches: [main]
     paths:

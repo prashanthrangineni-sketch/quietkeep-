@@ -10,6 +10,7 @@ import { useLanguage } from '@/lib/context/language';
 import { availableWakeModes, getWakeMode, setWakeMode, getWakeWord } from '@/lib/wake-word-engine';
 import { isWebHotwordEnabled, setWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 import { listenStreamWanted, setListenStreamWanted, readLastListen, nemotronWanted, setNemotronWanted } from '@/lib/listen-stream';
+import { getActiveRun, startRun, stopRun, getSteps, clearSteps, exportSteps } from '@/lib/step-log';
 
 const P = '#6366f1';
 const LANGS = [
@@ -52,6 +53,65 @@ export default function VoiceSettings() {
   const [streamOn, setStreamOn] = useState(true);
   const [nemoOn, setNemoOn] = useState(false);
   const [lastListen, setLastListen] = useState(null);
+  const [activeRun, setActiveRun] = useState(null);
+  const [taskIdInput, setTaskIdInput] = useState('');
+  const [stepCount, setStepCount] = useState(0);
+  const [copyFeedback, setCopyFeedback] = useState('');
+
+  useEffect(() => {
+    try {
+      const run = getActiveRun();
+      setActiveRun(run);
+      setStepCount(getSteps().length);
+    } catch {}
+  }, []);
+
+  function handleStartRun() {
+    if (!taskIdInput.trim()) return;
+    const run = startRun(taskIdInput.trim());
+    setActiveRun(run);
+    setTaskIdInput('');
+    setStepCount(getSteps().length);
+  }
+
+  function handleStopRun() {
+    stopRun();
+    setActiveRun(null);
+    setStepCount(getSteps().length);
+  }
+
+  function handleClearSteps() {
+    clearSteps();
+    setStepCount(0);
+  }
+
+  function handleDownloadSteps() {
+    const text = exportSteps();
+    if (!text) return;
+    const blob = new Blob([text], { type: 'application/x-jsonlines;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tasks100_steps_${activeRun?.task_id || 'run'}.jsonl`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleCopySteps() {
+    const text = exportSteps();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyFeedback('Copied!');
+      setTimeout(() => setCopyFeedback(''), 2000);
+    } catch {
+      setCopyFeedback('Failed to copy');
+      setTimeout(() => setCopyFeedback(''), 2000);
+    }
+  }
+
 
   // recording state
   const [consent, setConsent] = useState(false);
@@ -383,6 +443,85 @@ export default function VoiceSettings() {
             <span style={{ ...knob, transform: prefs.voice_input_enabled ? 'translateX(20px)' : 'translateX(0)' }} />
           </button>
         </div>
+        {/* Developer / 100-Task Step Log */}
+        <details style={{ ...card, padding: 14 }}>
+          <summary style={{ fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer', outline: 'none' }}>
+            🛠️ Developer: 100-Task Step Log {activeRun ? `(Active: ${activeRun.task_id})` : '(Off)'}
+          </summary>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,.08)' }}>
+            <p style={{ ...hint, margin: '0 0 10px', color: '#475569' }}>
+              On-device recorder for the 100-task evaluation run. Records step timestamps, transcribed text, action levels, and decisions locally. Off by default. Nothing is sent to any server.
+            </p>
+
+            {activeRun ? (
+              <div style={{ marginBottom: 12, padding: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8 }}>
+                <p style={{ margin: 0, fontSize: 13, color: '#166534', fontWeight: 600 }}>
+                  Active Task ID: <span style={{ fontFamily: 'monospace' }}>{activeRun.task_id}</span>
+                </p>
+                <p style={{ margin: '4px 0 10px', fontSize: 12, color: '#15803d' }}>
+                  Recorded steps: {stepCount}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleStopRun}
+                  style={{ ...btn, background: '#dc2626', padding: '8px 14px', fontSize: 13 }}
+                >
+                  Stop Run
+                </button>
+              </div>
+            ) : (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                  Start 100-Task Run
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    placeholder="Enter task ID (e.g. task-01)"
+                    value={taskIdInput}
+                    onChange={(e) => setTaskIdInput(e.target.value)}
+                    style={{ ...inp, padding: '8px 12px', fontSize: 13, flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleStartRun}
+                    style={{ ...btn, padding: '8px 14px', fontSize: 13 }}
+                  >
+                    Start Run
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={handleDownloadSteps}
+                disabled={stepCount === 0}
+                style={{ ...pill, opacity: stepCount === 0 ? 0.5 : 1, textAlign: 'center' }}
+              >
+                📥 Download Steps (.jsonl)
+              </button>
+              <button
+                type="button"
+                onClick={handleCopySteps}
+                disabled={stepCount === 0}
+                style={{ ...pill, opacity: stepCount === 0 ? 0.5 : 1, textAlign: 'center' }}
+              >
+                📋 {copyFeedback || 'Copy Steps'}
+              </button>
+              <button
+                type="button"
+                onClick={handleClearSteps}
+                disabled={stepCount === 0}
+                style={{ ...pill, opacity: stepCount === 0 ? 0.5 : 1, textAlign: 'center', color: '#dc2626' }}
+              >
+                🗑️ Clear ({stepCount})
+              </button>
+            </div>
+          </div>
+        </details>
+
         {saving && <p style={{ ...hint, textAlign: 'center' }}>saving…</p>}
       </div>
     </div>

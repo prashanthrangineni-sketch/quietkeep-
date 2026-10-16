@@ -51,6 +51,7 @@ import { checkForNotices } from '@/lib/aaria-watch';
 import { isSpeaking, looksLikeSelfEcho } from '@/lib/barge-in';
 import { lastKnownPosition } from '@/lib/geo';
 import { isSosUtterance, triggerSOS } from '@/lib/sos';
+import { getActiveRun, recordStep } from '@/lib/step-log';
 
 const AariaContext = createContext(null);
 
@@ -439,6 +440,7 @@ export function AariaProvider({ children }) {
           transcript: text,
           source: 'voice',
           language: speechLang(voiceLang),
+          ...(getActiveRun() ? { tasks100_run: getActiveRun() } : {}),
           // Only for attendance / stock / payroll: NOT workspace_id, which
           // would also switch on the older business ledger path that writes
           // money lines without a spoken yes.
@@ -461,6 +463,9 @@ export function AariaProvider({ children }) {
       });
       lastListenRef.current = null;   // it described THIS sentence only
       const json = await res.json().catch(() => null);
+      if (json?.step_record) {
+        try { recordStep(json.step_record); } catch {}
+      }
       endFiller();   // the reply is here: the thinking sound stops now
       if (!res.ok || !json) {
         setError('I could not save that. It is still in the box — try again.');
@@ -594,6 +599,17 @@ export function AariaProvider({ children }) {
       // phone this opens the ten-second countdown and the phone sends the
       // SMS itself; on the web it opens the Emergency screen.
       if (isSosUtterance(text)) {
+        if (getActiveRun()) {
+          try {
+            recordStep({
+              heard_text: text,
+              decided_action: 'sos',
+              action_level: 'pin',
+              asked_confirmation: true,
+              result: 'sos_triggered',
+            });
+          } catch {}
+        }
         const r = await triggerSOS('dock', { navigate: (p) => router.push(p) });
         if (r.path === 'native' && r.started)      say('SOS. Ten seconds to cancel.');
         else if (r.path === 'native')              say('SOS is already running.');

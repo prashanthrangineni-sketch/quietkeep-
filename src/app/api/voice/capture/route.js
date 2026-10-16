@@ -1707,24 +1707,36 @@ export async function POST(request) {
   // here without that yes. (Previously a WhatsApp message to the contact was
   // queued here with a 2.6-second cancel window; the queue had processed one
   // row ever, which failed. That path is gone.)
-  const safety = decide(
-    { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
-    { spokenYes: false, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
-    { doneThisHour: 0 },   // read-back is uncapped; anything capped is refused here anyway (no yes yet)
-  )
-  if (isAutoEligible && safety.decision !== DECISION.DO) {
+  const safety = isAutoEligible
+    ? decide(
+        { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
+        { spokenYes: false, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
+        { doneThisHour: 0 },   // read-back is uncapped; anything capped is refused here anyway (no yes yet)
+      )
+    : null
+  if (safety && safety.decision !== DECISION.DO) {
     console.log('[safety] held auto-exec:', parsed.type, safety.level, safety.reason)
     isAutoEligible = false
   }
-  const isAskingConfirm = ['ask_yes', 'ask_unlock', 'ask_pin'].includes(safety.decision)
-  logStep({
-    heardText: text,
-    decidedAction: parsed.type,
-    level: safety.level,
-    decision: safety.decision,
-    askedConfirmation: isAskingConfirm,
-    result: safety.decision === DECISION.DO ? 'success' : (isAskingConfirm ? 'pending_confirmation' : 'refused'),
-  })
+  // Step log only (100-task run): the same decision computed separately, so
+  // the `safety` the app receives is exactly what it was before (null when
+  // nothing was automatic).
+  if (tasks100Run) {
+    const logSafety = safety || decide(
+      { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
+      { spokenYes: false, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
+      { doneThisHour: 0 },
+    )
+    const isAskingConfirm = ['ask_yes', 'ask_unlock', 'ask_pin'].includes(logSafety.decision)
+    logStep({
+      heardText: text,
+      decidedAction: parsed.type,
+      level: logSafety.level,
+      decision: logSafety.decision,
+      askedConfirmation: isAskingConfirm,
+      result: logSafety.decision === DECISION.DO ? 'success' : (isAskingConfirm ? 'pending_confirmation' : 'refused'),
+    })
+  }
 
   if (isAutoEligible) {
     // v10: Extract navigation destination for Maps Intent in VoiceService

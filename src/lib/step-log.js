@@ -282,8 +282,12 @@ export function recordStep(params = {}) {
     },
   };
 
-  existingSteps.push(stepObj);
-  saveSteps(existingSteps);
+  // persist:false = build the step but do not store it here (server side).
+  // The phone stores it after the reply arrives, so nothing is kept on the server.
+  if (params.persist !== false) {
+    existingSteps.push(stepObj);
+    saveSteps(existingSteps);
+  }
 
   return stepObj;
 }

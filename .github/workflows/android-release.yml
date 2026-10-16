@@ -1,15 +1,27 @@
 name: Android Signed Build
 
 # WHY THIS EXISTS
-# android-build.yml produces a DEBUG apk. Android signs those with a throwaway
-# key that every developer machine on earth shares, and Google Play Protect
-# treats an app carrying it, asking for contacts and a microphone, exactly the
-# way it treated ours: "App blocked to protect your device", with no way past.
+# android-build.yml produces a DEBUG apk. This builds a RELEASE apk instead,
+# signed with a key generated here, in the job, used once and destroyed with
+# the runner - the file the founder downloads onto a phone for testing.
 #
-# This builds a RELEASE apk instead, signed with a key generated here, in the
-# job, used once and destroyed with the runner. That is a proper release
-# signature rather than the shared debug one, which is what Play Protect
-# objects to.
+# WHY THE PHONE-TEST APK LEAVES OUT NOTIFICATION ACCESS
+# This file used to say the shared DEBUG signature was why Google Play Protect
+# said "App blocked to protect your device". That was wrong. On 16 Oct 2026 an
+# APK from this workflow, properly signed, was blocked just the same: "This app
+# can request access to sensitive data". That is Play Protect's enhanced fraud
+# protection, live in India. It blocks an app installed from a browser,
+# messaging app or file manager that asks for RECEIVE_SMS, READ_SMS, a
+# notification listener (BIND_NOTIFICATION_LISTENER_SERVICE) or an
+# accessibility service (BIND_ACCESSIBILITY_SERVICE). The signature does not
+# matter; the permission does.
+#
+# QuietKeep asks for one of them: PaymentNotificationListener (UPI expense
+# auto-capture). So before building, scripts/android/phone-test-manifest.py
+# cuts that one service out of the manifest ON THIS RUNNER'S CHECKOUT ONLY.
+# The repository's manifest, and so the Play Store build, keeps it. After the
+# build, the finished APK is opened and the job fails if any of the four is
+# still inside. Expense auto-capture is the only thing this test APK cannot do.
 #
 # WHY NOT THE FOUNDER'S REAL KEY
 # Because it is not needed to get a build onto a phone for testing, and a
@@ -25,6 +37,12 @@ name: Android Signed Build
 
 on:
   workflow_dispatch:
+  # Runs on a pull request that changes this file or the manifest script, so
+  # the result is visible before merge.
+  pull_request:
+    paths:
+      - '.github/workflows/android-release.yml'
+      - 'scripts/android/phone-test-manifest.py'
   push:
     branches: [main]
     paths:
@@ -55,6 +73,12 @@ jobs:
 
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Leave notification access out of the phone-test manifest
+        # Edits the manifest on this runner's checkout only - never committed.
+        # Fails if the PaymentNotificationListener block is not found, rather
+        # than building an APK the phone would refuse.
+        run: python3 scripts/android/phone-test-manifest.py android/app/src/main/AndroidManifest.xml
 
       - name: Make a one-off signing key
         # Generated fresh every run and thrown away with the runner. It exists
@@ -90,6 +114,47 @@ jobs:
           find android -name '*.apk' -type f -print -exec ls -lh {} \;
           test -n "$(find android -name '*-release.apk' -type f -print -quit)" \
             || { echo "no release APK produced - failing rather than uploading nothing" >&2; exit 1; }
+
+      - name: Does the APK ask for anything Play Protect blocks downloads for
+        # Reads the manifest out of the finished APK itself, not out of the
+        # source, and fails if any of the four permissions Play Protect blocks
+        # a downloaded app for is still there. Prints the APK's full
+        # permission list either way.
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          BT="$SDK/build-tools/$(ls "$SDK/build-tools" | sort -V | tail -1)"
+          AAPT2="$BT/aapt2"
+          test -x "$AAPT2" || { echo "aapt2 not found under $SDK/build-tools" >&2; exit 1; }
+          echo "using $AAPT2"
+          APKS=$(find android -name '*-release.apk' -type f)
+          test -n "$APKS" || { echo "no release APK to check" >&2; exit 1; }
+          bad=0
+          for apk in $APKS; do
+            echo "== $apk"
+            echo "-- permissions in the APK:"
+            "$AAPT2" dump permissions "$apk"
+            TREE="$RUNNER_TEMP/apk-manifest.txt"
+            "$AAPT2" dump xmltree --file AndroidManifest.xml "$apk" > "$TREE"
+            test -s "$TREE" || { echo "could not read the APK's manifest" >&2; exit 1; }
+            # Proves the search below can see a permission at all: INTERNET is
+            # always asked for. If this fails, the check is blind, not clean.
+            grep -qF '"android.permission.INTERNET"' "$TREE" \
+              || { echo "could not find INTERNET in the APK manifest dump - check is blind" >&2; exit 1; }
+            for name in \
+              android.permission.RECEIVE_SMS \
+              android.permission.READ_SMS \
+              android.permission.BIND_NOTIFICATION_LISTENER_SERVICE \
+              android.permission.BIND_ACCESSIBILITY_SERVICE \
+              android.service.notification.NotificationListenerService \
+              android.accessibilityservice.AccessibilityService; do
+              if grep -F "\"$name\"" "$TREE"; then
+                echo "FAIL: $apk contains $name - Play Protect would block this download" >&2
+                bad=1
+              fi
+            done
+          done
+          test "$bad" = 0 || exit 1
+          echo "ok: none of RECEIVE_SMS, READ_SMS, BIND_NOTIFICATION_LISTENER_SERVICE, BIND_ACCESSIBILITY_SERVICE in the APK"
 
       - name: Is the speech engine really inside the APK
         # Added 3 Oct 2026. Every check was green on a build whose speech recogniser had never been

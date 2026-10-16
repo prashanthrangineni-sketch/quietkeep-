@@ -464,7 +464,8 @@ export function AariaProvider({ children }) {
       lastListenRef.current = null;   // it described THIS sentence only
       const json = await res.json().catch(() => null);
       if (json?.step_record) {
-        try { recordStep(json.step_record); } catch {}
+        // The phone counts the steps, so drop the server's number.
+        try { recordStep({ ...json.step_record, step: undefined }); } catch {}
       }
       endFiller();   // the reply is here: the thinking sound stops now
       if (!res.ok || !json) {

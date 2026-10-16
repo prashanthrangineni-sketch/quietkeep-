@@ -204,5 +204,19 @@ delete process.env.QK_TASKS100_RUN;
 check('cleaning env var deactivates run', isRunActive() === false);
 clearSteps();
 
+// ── 10. Server builds a step but stores nothing (persist:false) ─────────────
+const serverStep = recordStep({ heard_text: 'server side', decided_action: 'note', run: { task_id: 'task-srv' }, persist: false });
+check('persist:false still returns the step', serverStep?.task_id === 'task-srv');
+check('persist:false stores nothing', getSteps().length === 0);
+
+// ── 11. Phone re-numbers a step that came back from the server ──────────────
+startRun('task-phone');
+recordStep({ heard_text: 'first', decided_action: 'note' });
+const fromServer = { ...serverStep, task_id: 'task-phone', step: 1 };
+const renumbered = recordStep({ ...fromServer, step: undefined });
+check('phone re-numbers server step (2, not 1)', renumbered.step === 2);
+stopRun();
+clearSteps();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

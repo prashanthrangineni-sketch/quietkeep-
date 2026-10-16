@@ -13,9 +13,9 @@ READ_SMS, NOTIFICATION_LISTENER or ACCESSIBILITY - and the person has no way
 past it. (Google's developer guidance on Play Protect warnings lists the
 four.)
 
-QuietKeep asks for exactly one of them: PaymentNotificationListener, the
-"read my UPI payment notifications and log the expense" feature. Nothing else
-in the manifest is on the list.
+On 1 October QuietKeep asked for exactly one of them: PaymentNotificationListener,
+the "read my UPI payment notifications and log the expense" feature. (SEND_SMS
+came later - see "SMS PERMISSIONS TOO" below.)
 
 The earlier explanation in android-release.yml - that the shared DEBUG
 signature was what Play Protect objected to - was wrong. A properly signed

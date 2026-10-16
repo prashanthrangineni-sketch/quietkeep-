@@ -177,10 +177,17 @@ export async function POST(request) {
   const rawText = collapseRepeats(transcript.trim())
   const text    = stripWakePhrase(rawText) || rawText
   const turnStartTime = new Date().toISOString()
-  const tasks100Run = body?.tasks100_run || getActiveRun()
+  // Only the phone turns a run on (it sends tasks100_run). Validate it; ignore anything odd.
+  const rawRun = body?.tasks100_run
+  const runTaskId = rawRun && typeof rawRun === 'object' && typeof rawRun.task_id === 'string'
+    ? rawRun.task_id.trim().slice(0, 64)
+    : ''
+  const tasks100Run = runTaskId && /^[\w.-]+$/.test(runTaskId) ? { task_id: runTaskId } : null
   let lastStepRecord = null
   const logStep = (p) => {
-    const s = recordStep({ ...p, startTime: turnStartTime, run: tasks100Run })
+    if (!tasks100Run) return null
+    // persist:false: the server only returns the step; the phone stores it.
+    const s = recordStep({ ...p, startTime: turnStartTime, run: tasks100Run, persist: false })
     if (s) lastStepRecord = s
     return s
   }

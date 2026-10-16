@@ -56,6 +56,7 @@ on:
     paths:
       - 'android/**'
       - '.github/workflows/android-release.yml'
+      - 'scripts/android/**'
 
 jobs:
   signed:

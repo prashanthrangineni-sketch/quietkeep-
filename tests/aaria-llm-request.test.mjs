@@ -21,9 +21,10 @@
 // (status, quantity, unit, stockOp), null for every existing answer.
 //
 // 16 Oct 2026: re-captured once more, on purpose, when the attendance prompt
-// gained the Hindi script example "सुनीता आज काम पर नहीं आई" so absence/leave
-// sentences are understood as attendance. URL, headers, model, temperature,
-// max_tokens and stream checked unchanged before re-capturing.
+// gained Hindi script absence and leave examples ("सुनीता आज काम पर नहीं आई",
+// "सुनीता की छुट्टी लगा दो") so absence and leave sentences are understood
+// as attendance. URL, headers, model, temperature, max_tokens and stream
+// checked unchanged before re-capturing.
 
 import assert from 'node:assert/strict'
 import test from 'node:test'

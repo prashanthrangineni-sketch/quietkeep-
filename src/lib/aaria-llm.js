@@ -69,12 +69,22 @@ function langName(code) {
 //   attendance  mark a staff member present / absent / half day / leave
 //   stock       add to, take from, or ask about an inventory item
 //   payroll     a DRAFT salary worked out from recorded attendance - never paid
+//
+// The last six (17 Oct 2026, hand-off DRV-03 from the Drive thread) are Drive
+// Mode, handled by src/lib/drive-voice.js; none of them saves a keep:
+//   save_last_60s  seal the black box's last 60 seconds on the phone
+//   share_record   share a sealed drive record with someone (not wired yet)
+//   read_health    how the car is doing (OBD reader, later card)
+//   read_faults    engine fault codes (OBD reader, later card)
+//   hazard_ahead   is anything reported on the road ahead
+//   stay_awake     the rider is sleepy / asks to be kept awake
 export const INTENTS = [
   'reminder', 'task', 'contact', 'meeting', 'purchase',
   'expense', 'income', 'ledger_debit', 'sale', 'invoice',
   'document', 'navigation', 'query', 'note',
   'trip', 'compliance', 'confirm', 'delete', 'pay', 'none',
   'attendance', 'stock', 'payroll',
+  'save_last_60s', 'share_record', 'read_health', 'read_faults', 'hazard_ahead', 'stay_awake',
 ];
 
 // THE CLOCK THE MODEL READS MUST BE THE USER'S.
@@ -212,6 +222,19 @@ OTHER RULES:
   never "query".
   "payroll": working out staff salary or wages ("prepare this month's salary", "Ravi ki
   entha jeetham", "salary banao"). person when one is named. Paying salary NOW is "pay".
+- DRIVE MODE (on the road, car or bike). Nothing here is ever a reminder, note or task:
+  "save_last_60s": keep / save what just happened on the drive - "save last 60", "save the
+  record", "black box save", "save that clip", "ippude jarigindi save cheyyi", "రికార్డ్ సేవ్
+  చెయ్యి", "abhi wala record save karo", "रिकॉर्ड सेव करो". Reply that you are saving it.
+  "share_record": send a saved drive record to someone ("share the record with Ravi",
+  "accident video Ravi ko bhejo", "రికార్డ్ రవి కి పంపు"). person = who it goes to.
+  "read_health": how the vehicle is doing ("how is my car", "bike condition ela undi",
+  "gaadi theek hai?", "కారు ఎలా ఉంది"). "read_faults": engine faults, warning or error codes
+  ("any engine faults", "check engine light enduku", "engine mein koi problem hai?").
+  "hazard_ahead": anything on the road ahead - potholes, braking spots ("anything ahead",
+  "road ela undi mundu", "aage koi khatra hai?", "ముందు ఏమైనా ఉందా").
+  "stay_awake": the driver is sleepy or asks to be kept awake ("keep me awake", "I'm sleepy",
+  "nidra vastondi", "neend aa rahi hai", "నిద్ర వస్తోంది"). Not "none".
 - "none": thanks, greetings, small talk, how the user feels, or a statement that needs
   nothing done ("thank you", "nenu chala alasipoyanu", "just testing"). Never a bare yes or no.
   Reply briefly. Nothing is saved.

@@ -78,6 +78,14 @@ const TABLE = Object.freeze({
   payroll:        LEVEL.READ_BACK,   // a DRAFT pay summary from recorded attendance, shown and
                                      // spoken; it writes nothing and pays nothing (business only)
   stock_check:    LEVEL.READ_BACK,   // "how much sugar is left" - answered, nothing written
+  // Drive (hand-off DRV-03, 17 Oct 2026; src/lib/drive-voice.js). Saving the
+  // black box record seals the last 60 seconds ON THE PHONE - nothing leaves
+  // it, so it is done at once and said back. The rest only answer.
+  drive_save_record:  LEVEL.READ_BACK,
+  drive_read_health:  LEVEL.READ_BACK,
+  drive_read_faults:  LEVEL.READ_BACK,
+  drive_hazard_ahead: LEVEL.READ_BACK,
+  drive_stay_awake:   LEVEL.READ_BACK,
   // spoken yes + unlocked
   contact:        LEVEL.SPOKEN_YES,   // a call or message to a SAVED contact
   whatsapp:       LEVEL.SPOKEN_YES,
@@ -91,6 +99,8 @@ const TABLE = Object.freeze({
   attendance:     LEVEL.SPOKEN_YES,   // a staff attendance mark, read back first (business only)
   stock:          LEVEL.SPOKEN_YES,   // an inventory change, read back first (business only);
                                       // asking how much is left writes nothing and is no action
+  drive_share_record: LEVEL.SPOKEN_YES, // a sealed drive record sent to another person: read back
+                                        // WHO, then a spoken yes (sending is a later Drive card)
   // fingerprint / PIN
   call_unknown:   LEVEL.PIN,          // a number that is not a saved contact
   money_transfer: LEVEL.PIN,          // money leaving an account (UPI, payment; brain intent 'pay')

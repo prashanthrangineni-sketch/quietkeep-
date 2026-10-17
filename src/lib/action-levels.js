@@ -258,6 +258,11 @@ export function decide(action, proof = {}, context = {}) {
   if (level === LEVEL.READ_BACK) {
     return out(DECISION.DO, 'read_back');
   }
+  // 5. the speed gate: nothing that needs the screen while moving
+  const moving = isMoving(context?.speedKmh);
+  if (moving && needsScreen(action?.type, level)) {
+    return out(DECISION.REFUSE, 'wait_until_stopped');
+  }
   // 3. limits, for anything that reaches people or money
   if (!withinLimits(level, context?.doneThisHour ?? null)) {
     return out(DECISION.REFUSE,

@@ -478,13 +478,14 @@ export function AariaProvider({ children }) {
       // DRIVE MODE ACTIONS (hand-off DRV-03, 17 Oct 2026). Present only when
       // the server's level table said "do". Carried out here, on the phone:
       // seal the black box's last 60 seconds, read the hazard map ahead, or
-      // the stay-awake companion. What is said is the RESULT, never a promise
+      // the stay-awake companion, or read the connected car reader. What is said is the RESULT, never a promise
       // - "Saved the last 60 seconds" only once the phone says it sealed one.
       if (json.drive_action?.action) {
         try {
-          const [{ runDriveAction }, blackbox, hazards, rideGuard] = await Promise.all([
+          const [{ runDriveAction }, blackbox, hazards, rideGuard, carReader] = await Promise.all([
             import('@/lib/drive-voice'), import('@/lib/blackbox'),
             import('@/lib/hazard-alerts'), import('@/lib/ride-guard'),
+            import('@/lib/obd/active-reader'),
           ]);
           const said = await runDriveAction(json.drive_action.action, {
             language: json.drive_action.language || voiceLang,
@@ -492,6 +493,9 @@ export function AariaProvider({ children }) {
               isBlackboxAvailable: blackbox.isBlackboxAvailable,
               saveLast60s: blackbox.saveLast60s,
               isRideGuardActive: rideGuard.isRideGuardActive,
+              // the car reader Drive Mode connected (read-only; null when none)
+              describeCar: carReader.describeCar,
+              describeFaults: carReader.describeFaults,
               phraseFor: hazards.phraseFor,
               position: () => {
                 const p = lastKnownPosition(5 * 60 * 1000);

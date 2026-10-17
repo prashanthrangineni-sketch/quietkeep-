@@ -24,8 +24,9 @@ This document contains the exact declarations, justifications, and configuration
   * **Server Endpoint:** `src/app/api/perception/signal/route.js` lines 99-103.
   * **Storage:** Transmitted foreground app package names and names are securely sent to the server via HTTPS and persisted in the user's database (`ingest_passive_signal` RPC).
 
-### B. `ACCESS_BACKGROUND_LOCATION` (Background Location)
-* **Declared in:** `AndroidManifest.xml`
+### B. `ACCESS_BACKGROUND_LOCATION` (Background Location) — NOT DECLARED, DO NOT CLAIM
+> **Status checked 17 Oct 2026 against `AndroidManifest.xml` on main:** this permission was removed for the v1.2.0 submission and `LocationService` is not declared. Do **not** fill in the Play background-location declaration for this release. The text below is kept only for when geo-triggers return (planned 1.3.0, with a prominent disclosure screen).
+* **Declared in:** (not declared today)
 * **Used by:** `LocationService.java` via `FusedLocationProviderClient`.
 * **Justification:**
   QuietKeep supports "Geo Triggers" (location-based keeps and reminders). When a user records a keep like *"Remind me to buy groceries when I arrive at the supermarket,"* the app requires continuous background location polling (every 5 minutes) to trigger the notification immediately upon entering the geofence. 
@@ -53,6 +54,23 @@ This document contains the exact declarations, justifications, and configuration
 
 ---
 
+### F. Foreground service types (Android 14+, Play Console → App content → Foreground service permissions)
+Added by Drive card DRV-09 on 17 Oct 2026. Each line is a service that is really started in the app, checked against the manifest and code on main.
+
+| Permission / type | Service | Started when | What the user sees | Play "task" to select | Use-case text to paste |
+| --- | --- | --- | --- | --- | --- |
+| `FOREGROUND_SERVICE_LOCATION` / `location` | `BlackboxService` | The user enters **Drive Mode** (`src/app/drive/page.jsx` calls `QkBlackbox.start()`); stopped when they leave it | Ongoing notification "Drive Mode Active — Recording crash data for your safety" | Location — "Navigation / safety while driving" (user-initiated) | "While the user has Drive Mode open, QuietKeep keeps a rolling 60-second record of the phone's motion sensors and GPS so that, if a crash or hard stop is detected, the last 45 seconds and next 15 seconds are saved as a sealed crash record the driver owns. The service starts only when the user opens Drive Mode and stops when they leave it. Nothing is kept unless a crash, hard stop or the user's own voice command triggers a save." |
+| `FOREGROUND_SERVICE_MICROPHONE` / `microphone` | `BlackboxService` | Only if the user switched ON "Include the last 60 seconds of cabin audio…" **and** granted the microphone | Same notification | Microphone — user-initiated recording | **Do not declare this use for the Drive release:** v1 captures no audio (`audio_status: opted_in_not_captured_v1`, see `docs/qkedr-v1.md`). Declare it only in the release that ships cabin audio. |
+| `FOREGROUND_SERVICE_MICROPHONE` / `microphone` | `VoiceService` | Wake-word listening ("Hey Aaria") | Ongoing listening notification | Owned by the **voice thread** — not filled by Drive | — |
+| `FOREGROUND_SERVICE_DATA_SYNC` / `dataSync` | `KeepAliveService` | Owned by the existing app | — | Not part of Drive | — |
+
+**Video for the reviewer (Play asks for one for the location type):** record on one phone: open QuietKeep → Drive Mode → notification appears → tilt the phone in the hidden desk-test mode → a record appears under "Last records" → leave Drive Mode → notification disappears. 30–45 seconds. (Recorded in phase 2, when the founder does the desk test.)
+
+### G. `SEND_SMS` (SOS)
+Owned by the voice thread (SOS countdown, PR #161). Drive calls the existing SOS and adds no SMS of its own. Listed here only so the Drive release does not ship without it: the Play "SMS and Call Log" declaration must use the **emergency / SOS exception** before any release that includes `SosCountdownActivity`.
+
+---
+
 ## 2. Data Safety & Privacy Declarations
 
 ### A. Location
@@ -61,6 +79,14 @@ This document contains the exact declarations, justifications, and configuration
 * **Shared:** No (only transmitted to secure user-owned DB for geofence evaluation)
 * **Ephemeral:** No (coordinates of saved geo-triggered keeps are stored in database)
 * **Users can delete:** Yes (via "Delete Account" or deleting individual keeps)
+
+### A2. Drive Mode crash records (DRV-01, added 17 Oct 2026)
+* **Data types:** Precise location (GPS fixes in the record), App activity → "Other actions" (motion-sensor readings around a crash), Device or other IDs (Android ID in the record header).
+* **Collected:** Yes — only while Drive Mode is open, and only **kept** when a crash, hard stop or the user's own "save last 60" triggers a record. The rolling buffer itself lives in phone memory and is overwritten every 60 seconds.
+* **Shared:** No. Uploaded only to the user's own private storage (`blackbox-records` bucket, owner-only access, checked 17 Oct 2026: another user and a signed-out visitor both see 0 rows).
+* **Encrypted in transit:** Yes (HTTPS). Each record is also signed with a key held in the phone's Android Keystore so tampering is detectable.
+* **Optional:** Yes — Drive Mode is optional; cabin audio is a separate opt-in and is **not captured in this version**.
+* **Users can delete:** Yes, by request — the `/delete-account` page asks the user to email the deletion request (it is handled by hand today). Whoever handles it must remove both the database rows (they go automatically when the user account is deleted, `on delete cascade`) **and** the files under `blackbox-records/<user id>/` in storage, which do not go automatically. There is no per-record delete in the app yet — a crash record is append-only by design. **State this honestly in the Data safety form.**
 
 ### B. Personal Info
 * **Data Type:** Name, Email address, User IDs

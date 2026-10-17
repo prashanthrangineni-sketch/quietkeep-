@@ -1,0 +1,302 @@
+[
+  {
+    "id": "case-01",
+    "designed": "alert",
+    "note": "Prompt fluent English response across all three questions",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 800, "speechEndAt": 2000, "transcript": "I am feeling great" },
+      { "askedAt": 10000, "speechStartAt": 10900, "speechEndAt": 12100, "transcript": "Next town is Pune" },
+      { "askedAt": 20000, "speechStartAt": 20800, "speechEndAt": 21800, "transcript": "Ginger tea please" }
+    ]
+  },
+  {
+    "id": "case-02",
+    "designed": "alert",
+    "note": "Fluent Romanised Telugu",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1000, "speechEndAt": 2200, "transcript": "chala bagundi ride" },
+      { "askedAt": 10000, "speechStartAt": 11100, "speechEndAt": 12300, "transcript": "next town Suryapet" },
+      { "askedAt": 20000, "speechStartAt": 21200, "speechEndAt": 22200, "transcript": "irani chai kavali" }
+    ]
+  },
+  {
+    "id": "case-03",
+    "designed": "alert",
+    "note": "Fluent Telugu Script",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 900, "speechEndAt": 2000, "transcript": "నేను బాగున్నాను అండీ" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 12200, "transcript": "తర్వాత ఊరు ఖమ్మం" },
+      { "askedAt": 20000, "speechStartAt": 20900, "speechEndAt": 21900, "transcript": "మసాలా టీ ఇష్టం" }
+    ]
+  },
+  {
+    "id": "case-04",
+    "designed": "alert",
+    "note": "Fluent Romanised Hindi",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1100, "speechEndAt": 2300, "transcript": "main bilkul theek" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 12200, "transcript": "agla shahar panipat" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "adrak wali chai" }
+    ]
+  },
+  {
+    "id": "case-05",
+    "designed": "alert",
+    "note": "Fluent Hindi Script",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 800, "speechEndAt": 2000, "transcript": "मैं बहुत अच्छा हूँ" },
+      { "askedAt": 10000, "speechStartAt": 10900, "speechEndAt": 12100, "transcript": "अगला शहर मेरठ" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "इलायची वाली चाय" }
+    ]
+  },
+  {
+    "id": "case-06",
+    "designed": "alert",
+    "note": "Borderline threshold edge: exactly 1 late reply at 1800ms (1 point total)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1800, "speechEndAt": 3000, "transcript": "I am feeling wide awake" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 12200, "transcript": "Next town is Hyderabad" },
+      { "askedAt": 20000, "speechStartAt": 21100, "speechEndAt": 22100, "transcript": "Lemon tea please" }
+    ]
+  },
+  {
+    "id": "case-07",
+    "designed": "alert",
+    "note": "Borderline threshold edge: prompt single word reply (1 point total)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 900, "speechEndAt": 1400, "transcript": "Hyderabad" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 12200, "transcript": "all good here" },
+      { "askedAt": 20000, "speechStartAt": 20900, "speechEndAt": 21900, "transcript": "lemon tea please" }
+    ]
+  },
+  {
+    "id": "case-08",
+    "designed": "alert",
+    "note": "Borderline threshold edge: exactly 1 slow speech rate reply at 1.0 wps (1 point total)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1200, "speechEndAt": 3200, "transcript": "feeling fine" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 12200, "transcript": "next town is Alwal" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "black tea always" }
+    ]
+  },
+  {
+    "id": "case-09",
+    "designed": "alert",
+    "note": "Borderline latency edge: 1790ms just below 1800ms threshold (0 points total)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1790, "speechEndAt": 3000, "transcript": "feeling very active" },
+      { "askedAt": 10000, "speechStartAt": 11200, "speechEndAt": 12400, "transcript": "Warangal coming up" },
+      { "askedAt": 20000, "speechStartAt": 21100, "speechEndAt": 22100, "transcript": "green tea thanks" }
+    ]
+  },
+  {
+    "id": "case-10",
+    "designed": "alert",
+    "note": "Code-mixed Telugu and English, lively cadence",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1000, "speechEndAt": 2200, "transcript": "nenu super unnanu" },
+      { "askedAt": 10000, "speechStartAt": 11100, "speechEndAt": 12500, "transcript": "next stop is tollgate" },
+      { "askedAt": 20000, "speechStartAt": 20900, "speechEndAt": 21900, "transcript": "strong filter coffee" }
+    ]
+  },
+  {
+    "id": "case-11",
+    "designed": "alert",
+    "note": "Conversational Hindi romanised, prompt and fluent",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 950, "speechEndAt": 2100, "transcript": "mast chal raha" },
+      { "askedAt": 10000, "speechStartAt": 11050, "speechEndAt": 12200, "transcript": "karnal aane wala" },
+      { "askedAt": 20000, "speechStartAt": 20950, "speechEndAt": 22000, "transcript": "kulhad wali chai" }
+    ]
+  },
+  {
+    "id": "case-12",
+    "designed": "alert",
+    "note": "Single-word Telugu script answer with two fluent follow-ups (1 point total)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1000, "speechEndAt": 1500, "transcript": "బాగున్నాను" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 12200, "transcript": "Warangal bypass ahead" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "hot ginger tea" }
+    ]
+  },
+  {
+    "id": "case-13",
+    "designed": "alert",
+    "note": "Speech rate boundary: 2 words in 1.6s gives exactly 1.25 wps >= 1.2 threshold (0 points)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1000, "speechEndAt": 2600, "transcript": "sab theek" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 12200, "transcript": "Delhi border next" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "kadak adrak chai" }
+    ]
+  },
+  {
+    "id": "case-14",
+    "designed": "alert",
+    "note": "All Telugu script, crisp responses",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 900, "speechEndAt": 2000, "transcript": "చాలా బాగుంది రోడ్" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 12300, "transcript": "నల్గొండ దగ్గర ఉంది" },
+      { "askedAt": 20000, "speechStartAt": 21100, "speechEndAt": 22200, "transcript": "నాకు టీ వద్దు" }
+    ]
+  },
+  {
+    "id": "case-15",
+    "designed": "alert",
+    "note": "Late reply edge at 1850ms with two fast replies (1 point total)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1700, "speechEndAt": 2900, "transcript": "feeling completely awake" },
+      { "askedAt": 10000, "speechStartAt": 11850, "speechEndAt": 13200, "transcript": "next stop is hotel" },
+      { "askedAt": 20000, "speechStartAt": 21100, "speechEndAt": 22300, "transcript": "milk tea please" }
+    ]
+  },
+  {
+    "id": "case-16",
+    "designed": "drowsy",
+    "note": "Two consecutive missed replies (rule: any 2 no_reply in last 3 -> drowsy)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": null, "speechEndAt": null, "transcript": "" },
+      { "askedAt": 10000, "speechStartAt": null, "speechEndAt": null, "transcript": "" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "I am okay" }
+    ]
+  },
+  {
+    "id": "case-17",
+    "designed": "drowsy",
+    "note": "All three check questions unanswered",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": null, "speechEndAt": null, "transcript": "" },
+      { "askedAt": 10000, "speechStartAt": null, "speechEndAt": null, "transcript": "" },
+      { "askedAt": 20000, "speechStartAt": null, "speechEndAt": null, "transcript": "" }
+    ]
+  },
+  {
+    "id": "case-18",
+    "designed": "drowsy",
+    "note": "One missed reply and one slow reply (score 5)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": null, "speechEndAt": null, "transcript": "" },
+      { "askedAt": 10000, "speechStartAt": 13500, "speechEndAt": 15500, "transcript": "feeling very sleepy" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "stop at dhaba" }
+    ]
+  },
+  {
+    "id": "case-19",
+    "designed": "drowsy",
+    "note": "Repeated confusion asking to repeat what/sorry (score 6)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1000, "speechEndAt": 1500, "transcript": "what?" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 11500, "transcript": "sorry" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "I am fine" }
+    ]
+  },
+  {
+    "id": "case-20",
+    "designed": "drowsy",
+    "note": "Telugu rider murmuring only fillers (score 6)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1000, "speechEndAt": 1500, "transcript": "umm" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 11500, "transcript": "emo" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "ha" }
+    ]
+  },
+  {
+    "id": "case-21",
+    "designed": "drowsy",
+    "note": "Hindi script rider murmuring only fillers (score 6)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1000, "speechEndAt": 1500, "transcript": "हम्म" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 11500, "transcript": "अच्छा" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "हाँ" }
+    ]
+  },
+  {
+    "id": "case-22",
+    "designed": "drowsy",
+    "note": "Borderline Drowsy: Score exactly 4 (2 late replies + 2 one-word replies)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 2000, "speechEndAt": 2500, "transcript": "tired" },
+      { "askedAt": 10000, "speechStartAt": 12200, "speechEndAt": 12700, "transcript": "Suryapet" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22200, "transcript": "lemon tea please" }
+    ]
+  },
+  {
+    "id": "case-23",
+    "designed": "drowsy",
+    "note": "Borderline Drowsy: Score exactly 4 (1 slow reply + 2 one-word replies)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 3200, "speechEndAt": 4400, "transcript": "feeling so tired" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 11500, "transcript": "Secunderabad" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 21500, "transcript": "coffee" }
+    ]
+  },
+  {
+    "id": "case-24",
+    "designed": "drowsy",
+    "note": "Borderline Drowsy: Score exactly 4 (1 asked_repeat + 1 slow_reply)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1000, "speechEndAt": 2200, "transcript": "em annav" },
+      { "askedAt": 10000, "speechStartAt": 13100, "speechEndAt": 14300, "transcript": "next town Alwal" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "any tea fine" }
+    ]
+  },
+  {
+    "id": "case-25",
+    "designed": "drowsy",
+    "note": "Sluggish speech in Telugu script with slow reply (score 5)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 3200, "speechEndAt": 6700, "transcript": "నేను పడుకోవాలి ఉంది" },
+      { "askedAt": 10000, "speechStartAt": 13200, "speechEndAt": 14400, "transcript": "ఊరు తెలియదు అండీ" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "టీ వద్దు నిద్ర వస్తుంది" }
+    ]
+  },
+  {
+    "id": "case-26",
+    "designed": "drowsy",
+    "note": "Sluggish speech in Hindi script with asked_repeat (score 5)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 3500, "speechEndAt": 7500, "transcript": "नींद आ रही है" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 12200, "transcript": "phir se" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "chai peena hai" }
+    ]
+  },
+  {
+    "id": "case-27",
+    "designed": "drowsy",
+    "note": "Repeated confusion in Telugu script (score 6)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 1000, "speechEndAt": 1500, "transcript": "ఏంటి" },
+      { "askedAt": 10000, "speechStartAt": 11000, "speechEndAt": 11500, "transcript": "మళ్ళీ" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "ఇప్పుడు విన్నాను" }
+    ]
+  },
+  {
+    "id": "case-28",
+    "designed": "drowsy",
+    "note": "Hindi script repeat ask plus slow reply (score 5)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 2500, "speechEndAt": 3500, "transcript": "क्या बोला" },
+      { "askedAt": 10000, "speechStartAt": 13200, "speechEndAt": 14400, "transcript": "agla gaon pata nahi" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "kuch bhi chalega" }
+    ]
+  },
+  {
+    "id": "case-29",
+    "designed": "drowsy",
+    "note": "Borderline Drowsy: Exactly 1 missed reply (3 pts) + 1 late reply (1 pt) = 4 points",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": null, "speechEndAt": null, "transcript": "" },
+      { "askedAt": 10000, "speechStartAt": 12000, "speechEndAt": 13500, "transcript": "chala alasi poyanu" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "tea vaddu water kavali" }
+    ]
+  },
+  {
+    "id": "case-30",
+    "designed": "drowsy",
+    "note": "Borderline Drowsy: Two slow replies > 3000ms (2 + 2 = 4 points)",
+    "replies": [
+      { "askedAt": 0, "speechStartAt": 3500, "speechEndAt": 5500, "transcript": "I am feeling exhausted" },
+      { "askedAt": 10000, "speechStartAt": 13200, "speechEndAt": 15200, "transcript": "town is far away" },
+      { "askedAt": 20000, "speechStartAt": 21000, "speechEndAt": 22000, "transcript": "I will stop now" }
+    ]
+  }
+]

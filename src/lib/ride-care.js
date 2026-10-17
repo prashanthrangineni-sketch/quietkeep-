@@ -47,6 +47,17 @@ const NIGHT_LINES = [
   (m) => `Still going, ${m} minutes. If your eyes feel heavy, stop now rather than in ten minutes.`,
 ];
 
+const CHECK_QUESTIONS = [
+  'Quick check: say how you are feeling.',
+  'Quick check: what is the next town?',
+  'Quick check: say your favourite tea.',
+];
+
+const FIRMER_LINES = [
+  'You sound tired. Please pull over at the next safe place and rest.',
+  'Your replies are slow. Stop now, have tea or water, and rest ten minutes.',
+];
+
 /**
  * @param {object} [opts]
  * @param {() => Date} [opts.clock] injectable for tests
@@ -66,15 +77,15 @@ export function createStayAwakeCompanion({ clock = () => new Date() } = {}) {
     },
 
     /**
-     * @param {{ at:number, speedKmh:number|null, somethingElseSpokeAt?:number }} s
-     * @returns {{ phrase:string, ridingMinutes:number, night:boolean }|null}
+     * @param {{ at:number, speedKmh:number|null, somethingElseSpokeAt?:number, drowsy?:boolean }} s
+     * @returns {{ phrase:string, ridingMinutes:number, night:boolean, askedCheck:boolean }|null}
      */
-    update({ at, speedKmh, somethingElseSpokeAt = 0 }) {
+    update({ at, speedKmh, somethingElseSpokeAt = 0, drowsy = false }) {
       const moving = typeof speedKmh === 'number' && speedKmh >= MOVING_KMH;
 
       if (moving) {
         // A stop of five minutes or more is a real break; the clock restarts.
-        if (!ridingSinceAt || at - lastMovingAt > 5 * MINUTE) {
+        if (ridingSinceAt == null || at - lastMovingAt > 5 * MINUTE) {
           ridingSinceAt = at;
           spokenCount = 0;
           lastSpokeAt = 0;
@@ -82,12 +93,15 @@ export function createStayAwakeCompanion({ clock = () => new Date() } = {}) {
         lastMovingAt = at;
       }
 
-      if (!moving || !ridingSinceAt) return null;
+      if (!moving || ridingSinceAt == null) return null;
 
       const now = clock();
       const night = isNight(now);
       const first = night ? NIGHT_FIRST_MS : DAY_FIRST_MS;
-      const repeat = night ? NIGHT_REPEAT_MS : DAY_REPEAT_MS;
+      let repeat = night ? NIGHT_REPEAT_MS : DAY_REPEAT_MS;
+      if (drowsy) {
+        repeat = Math.round(repeat / 2);
+      }
 
       const riding = at - ridingSinceAt;
       if (riding < first) return null;
@@ -96,11 +110,19 @@ export function createStayAwakeCompanion({ clock = () => new Date() } = {}) {
       if (somethingElseSpokeAt && at - somethingElseSpokeAt < QUIET_AFTER_OTHER_SPEECH_MS) return null;
 
       lastSpokeAt = at;
-      const lines = night ? NIGHT_LINES : DAY_LINES;
-      const line = lines[spokenCount % lines.length];
+      let basePhrase;
+      if (drowsy) {
+        basePhrase = FIRMER_LINES[spokenCount % FIRMER_LINES.length];
+      } else {
+        const lines = night ? NIGHT_LINES : DAY_LINES;
+        basePhrase = lines[spokenCount % lines.length](minutesOf(riding));
+      }
+
+      const question = CHECK_QUESTIONS[spokenCount % CHECK_QUESTIONS.length];
+      const phrase = `${basePhrase} ${question}`;
       spokenCount += 1;
 
-      return { phrase: line(minutesOf(riding)), ridingMinutes: minutesOf(riding), night };
+      return { phrase, ridingMinutes: minutesOf(riding), night, askedCheck: true };
     },
   };
 }

@@ -21,6 +21,7 @@
 import { createCrashDetector } from '@/lib/crash-detect';
 import { createHazardWarner, metresBetween } from '@/lib/hazard-alerts';
 import { createStayAwakeCompanion } from '@/lib/ride-care';
+import { createFatigueTracker } from '@/lib/fatigue-voice';
 import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
 
@@ -88,7 +89,7 @@ function makeToast(text) {
   setTimeout(() => el.remove(), 7000);
 }
 
-function createListener({ onCancelWord, onHelpWord }) {
+function createListener({ onCancelWord, onHelpWord, onAnyReply }) {
   const SR = typeof window !== 'undefined'
     ? (window.SpeechRecognition || window.webkitSpeechRecognition)
     : null;
@@ -108,6 +109,7 @@ function createListener({ onCancelWord, onHelpWord }) {
         onCancelWord(said);
         return;
       }
+      onAnyReply?.(said, now());
     }
   }
 
@@ -158,9 +160,28 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   let lastCrash = null;
   let armedAt = now();
 
+  const tracker = createFatigueTracker();
+  let noReplyTimer = null;
+  let lastFatigueLevel = tracker.level();
+
+  function checkFatigueLevelChange() {
+    const current = tracker.classify?.() || { level: tracker.level(), reasons: [] };
+    if (current.level !== lastFatigueLevel) {
+      lastFatigueLevel = current.level;
+      onState?.('fatigue', { level: current.level, reasons: current.reasons });
+    }
+  }
+
   const listener = createListener({
     onCancelWord: () => { if (overlayShown) cancel('voice'); },
     onHelpWord: () => { if (!overlayShown) trigger({ manual: true }); },
+    onAnyReply: (said, at) => {
+      if (overlayShown) return;
+      if (!tracker.hasPendingQuestion()) return;
+      if (noReplyTimer) { clearTimeout(noReplyTimer); noReplyTimer = null; }
+      tracker.recordReply({ transcript: said, at, startAt: at, endAt: at });
+      checkFatigueLevelChange();
+    },
   });
 
   function hide() {
@@ -337,11 +358,28 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   function checkStayAwake(kmh) {
     if (overlayShown) return;
     const at = now();
-    const nudge = companion.update({ at, speedKmh: kmh, somethingElseSpokeAt: lastSpokeAt });
+    const nudge = companion.update({
+      at,
+      speedKmh: kmh,
+      somethingElseSpokeAt: lastSpokeAt,
+      drowsy: tracker.level() === 'drowsy',
+    });
     if (!nudge) return;
     speak(nudge.phrase);
     lastSpokeAt = at;
     onState?.('stay_awake', nudge);
+
+    const words = nudge.phrase.trim().split(/\s+/).length;
+    const speechDurationMs = Math.round((words / 2.5) * 1000);
+    const questionAskedAt = at + speechDurationMs;
+    tracker.recordQuestion(questionAskedAt);
+
+    if (noReplyTimer) clearTimeout(noReplyTimer);
+    noReplyTimer = setTimeout(() => {
+      noReplyTimer = null;
+      tracker.recordNoReply(questionAskedAt + 8000);
+      checkFatigueLevelChange();
+    }, speechDurationMs + 8000);
   }
 
   function trigger(detail = {}) {
@@ -492,6 +530,8 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   guard = {
     stop() {
       hide();
+      if (noReplyTimer) { clearTimeout(noReplyTimer); noReplyTimer = null; }
+      tracker.reset();
       listener.stop();
       panel.remove();
       if (typeof window !== 'undefined') window.removeEventListener('devicemotion', onMotion);

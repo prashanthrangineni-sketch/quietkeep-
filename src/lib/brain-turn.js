@@ -268,11 +268,11 @@ export function readDeleteAnswer(text) {
  * The safety decision for carrying out a delete the person said yes to.
  * The archive happens only when this says DO.
  */
-export function deleteDecision({ spokenYes, unlocked, doneThisHour }) {
+export function deleteDecision({ spokenYes, unlocked, doneThisHour, speedKmh = null }) {
   return decide(
     { type: BRAIN_TYPE.delete },
     { spokenYes: spokenYes === true, unlocked: unlocked === true, pin: false, ownerVoice: null },
-    { doneThisHour },
+    { doneThisHour, speedKmh },   // speedKmh: DRV-02 speed gate (null = unknown, no change)
   )
 }
 

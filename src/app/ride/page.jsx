@@ -18,6 +18,7 @@ import NavbarClient from '@/components/NavbarClient';
 import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
 import { createCrashDetector, magnitudeFromMotionEvent } from '@/lib/crash-detect';
+import { setDriveSpeed } from '@/lib/drive-speed';
 
 const COUNTDOWN_SECS = 30;
 
@@ -136,6 +137,7 @@ export default function RideSafetyPage() {
       setGps({ state: 'ready', text: `Location ready, accurate to about ${Math.round(pos.coords.accuracy)} metres.` });
       const kmh = pos.coords.speed != null ? Math.max(0, pos.coords.speed * 3.6) : null;
       if (kmh != null && detector) { setSpeedKmh(Math.round(kmh)); detector.feedSpeed({ kmh }); }
+      if (kmh != null) setDriveSpeed(kmh); // DRV-02: Aaria sends this to the server's speed gate
     };
     const onErr = (err) => {
       const text = err?.code === 1

@@ -40,8 +40,78 @@
 //                                       unknown and never treated as true
 //   3. action limits                  - ACTION_LIMITS + withinLimits()
 //   4. remote off-switch              - settings.actions_paused -> refuse
+//   5. the speed gate (DRV-02)         - context.speedKmh: while moving, nothing
+//                                       that needs the screen; long reads wait
 //
 // "Unknown is null": a missing proof is never assumed present.
+
+// ── THE SPEED GATE (hand-off DRV-02 from the Drive thread, 17 Oct 2026) ─────
+// Road law and the Drive plan: hands-free only while driving; the app must
+// never invite a tap at speed. "Moving" = GPS speed at or above 8 km/h - above
+// walking pace, so a person walking with the phone is not treated as driving.
+//
+// While moving:
+//   - an action that needs the SCREEN is refused with the reason
+//     'wait_until_stopped' ("I'll do that when you stop"): every PIN-level
+//     action (fingerprint/PIN is on the screen), the screen-only types below,
+//     and a spoken-yes action whose only missing proof is the unlocked phone
+//     (unlocking is a screen action).
+//   - a spoken-yes action stays VOICE-ONLY: Aaria still asks "yes or no?" out
+//     loud and does it on a spoken yes when the app is already in front.
+//   - read-back actions are unchanged (navigation, reminders, notes: all said
+//     out loud, nothing to touch).
+//   - a long read is deferred: see readWhileMoving() below.
+//
+// Speed is passed by the caller as context.speedKmh. Missing or not a number
+// means "not known to be moving" and the gate does nothing - every caller that
+// does not pass a speed today behaves exactly as before. (Unknown is recorded
+// as unknown; it is not assumed to be driving, which would block the app for
+// everyone the moment GPS is off.)
+export const MOVING_SPEED_KMH = 8;
+
+export function isMoving(speedKmh) {
+  return typeof speedKmh === 'number' && Number.isFinite(speedKmh) && speedKmh >= MOVING_SPEED_KMH;
+}
+
+// Types whose action itself is something to look at or tap, whatever level.
+const SCREEN_ONLY = Object.freeze(new Set([
+  'purchase',   // opens a purchase page to finish in the browser / app
+  'invoice',    // an invoice is checked on screen before it is saved
+]));
+
+export function needsScreen(type, level) {
+  return level === LEVEL.PIN || SCREEN_ONLY.has(String(type || ''));
+}
+
+// A long read while moving: say a short version now, keep the rest for when
+// the vehicle stops. Chosen, not measured: about 15 seconds of speech.
+export const MOVING_MAX_WORDS = 40;
+export const MOVING_MAX_ITEMS = 3;
+
+/**
+ * How much of a reply to speak while moving.
+ * @param {{ text?: string, items?: Array }} reply
+ * @param {number|null} speedKmh
+ * @returns {{ deferred: boolean, sayItems: number|null, sayWords: number|null, reason: string|null }}
+ *   deferred=false -> say it all, as now. deferred=true -> say only the first
+ *   sayItems items / sayWords words plus "the rest when you stop", and keep
+ *   the rest for later.
+ */
+export function readWhileMoving(reply = {}, speedKmh = null) {
+  const all = { deferred: false, sayItems: null, sayWords: null, reason: null };
+  if (!isMoving(speedKmh)) return all;
+  const items = Array.isArray(reply?.items) ? reply.items.length : 0;
+  const words = String(reply?.text || '').trim().split(/\s+/).filter(Boolean).length;
+  if (items > MOVING_MAX_ITEMS || words > MOVING_MAX_WORDS) {
+    return {
+      deferred: true,
+      sayItems: items > MOVING_MAX_ITEMS ? MOVING_MAX_ITEMS : null,
+      sayWords: words > MOVING_MAX_WORDS ? MOVING_MAX_WORDS : null,
+      reason: 'long_read_while_moving',
+    };
+  }
+  return all;
+}
 
 export const LEVEL = Object.freeze({
   READ_BACK:  'read_back',
@@ -161,7 +231,8 @@ export function withinLimits(level, doneThisHour) {
  *   unlocked    the phone is unlocked (app in the foreground counts)
  *   pin         fingerprint / PIN was given for THIS action
  *   ownerVoice  a speaker check said this is the owner (null = no check exists)
- * @param {object} context  { doneThisHour?: number|null, settings?: { actions_paused?: boolean } }
+ * @param {object} context  { doneThisHour?: number|null, settings?: { actions_paused?: boolean },
+ *                             speedKmh?: number|null }   (speedKmh: GPS speed; see the speed gate)
  * @returns {{ level, decision, reason, needs: string[] }}
  */
 export function decide(action, proof = {}, context = {}) {
@@ -187,6 +258,11 @@ export function decide(action, proof = {}, context = {}) {
   if (level === LEVEL.READ_BACK) {
     return out(DECISION.DO, 'read_back');
   }
+  // 5. the speed gate: nothing that needs the screen while moving
+  const moving = isMoving(context?.speedKmh);
+  if (moving && needsScreen(action?.type, level)) {
+    return out(DECISION.REFUSE, 'wait_until_stopped');
+  }
   // 3. limits, for anything that reaches people or money
   if (!withinLimits(level, context?.doneThisHour ?? null)) {
     return out(DECISION.REFUSE,
@@ -197,7 +273,12 @@ export function decide(action, proof = {}, context = {}) {
   }
   // spoken_yes
   if (p.spokenYes !== true) return out(DECISION.ASK_YES, 'needs_spoken_yes', ['spoken_yes']);
-  if (p.unlocked !== true)  return out(DECISION.ASK_UNLOCK, 'needs_unlocked_phone', ['unlocked']);
+  if (p.unlocked !== true) {
+    // unlocking is a screen action: while moving it waits until the stop
+    return moving
+      ? out(DECISION.REFUSE, 'wait_until_stopped')
+      : out(DECISION.ASK_UNLOCK, 'needs_unlocked_phone', ['unlocked']);
+  }
   return out(DECISION.DO, 'spoken_yes_and_unlocked');
 }
 
@@ -251,6 +332,8 @@ export const SAY = Object.freeze({
   hourly_limit_reached:  'limit_reached',      // "That is the limit for this hour."
   hourly_count_unknown:  'limit_unknown',      // "I cannot check the hourly limit just now."
   nothing_to_do:         'nothing_to_do',      // "Okay." / "What would you like me to do?"
+  wait_until_stopped:    'wait_until_stopped', // "I'll do that when you stop."
+  long_read_while_moving: 'rest_when_stopped', // "...and three more. I'll read the rest when you stop."
 });
 
 /**

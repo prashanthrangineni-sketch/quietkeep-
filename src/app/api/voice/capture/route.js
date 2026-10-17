@@ -57,6 +57,8 @@ import {
   pendingBiz, readBizAnswer, bizDecision, bizLine, doneLine,
 } from '@/lib/business-voice' // attendance / stock / payroll: read back, write only on a spoken yes
 import { DRIVE_INTENTS, planDriveTurn } from '@/lib/drive-voice' // Drive Mode intents (DRV-03): no keep, phone acts
+import { cleanSpeedKmh } from '@/lib/drive-speed' // DRV-02 speed gate: the phone's GPS speed in Drive Mode
+import { waitUntilStoppedLine, speakWhileMoving } from '@/lib/moving-lines'
 
 export async function POST(request) {
   const authHeader = request.headers.get('Authorization') || ''
@@ -129,6 +131,11 @@ export async function POST(request) {
   // How this sentence was heard (Aaria's engine or the phone, how long, what
   // ended the turn) - trimmed to a few known fields, null when not sent.
   const listenEvidence = cleanListenEvidence(body.listen)
+
+  // DRV-02 speed gate. The Aaria dock sends the phone's GPS speed while
+  // Drive Mode or a ride is running; otherwise null, and the gate in
+  // decide() does nothing (unknown speed is never assumed to be driving).
+  const speedKmh = cleanSpeedKmh(body.speed_kmh)
 
   // How long the PREVIOUS turn's reply took to reach the phone, and whether a
   // thinking sound filled the wait (plan item 10). The dock can only know
@@ -339,7 +346,7 @@ export async function POST(request) {
         .eq('action', 'action.spoken_yes')
         .gte('created_at', new Date(Date.now() - 3_600_000).toISOString())
         .then((r) => ({ count: r.error ? null : (r.count ?? 0) }))
-      const delSafety = deleteDecision({ spokenYes: true, unlocked: unlockedNow, doneThisHour })
+      const delSafety = deleteDecision({ spokenYes: true, unlocked: unlockedNow, doneThisHour, speedKmh })
       logStep({
         heardText: text,
         decidedAction: 'delete_note',
@@ -352,7 +359,7 @@ export async function POST(request) {
         record('held', { reason: delSafety.reason })
         return NextResponse.json({
           ok: false, not_saved: true, deleted: false, safety: delSafety,
-          tts_response: line('delete_held', lang),
+          tts_response: delSafety.reason === 'wait_until_stopped' ? waitUntilStoppedLine(lang) : line('delete_held', lang),
         }, { status: 200 })
       }
       const { data: archived, error: archiveError } = await supabase
@@ -430,7 +437,7 @@ export async function POST(request) {
         .eq('action', 'action.spoken_yes')
         .gte('created_at', new Date(Date.now() - 3_600_000).toISOString())
         .then((r) => ({ count: r.error ? null : (r.count ?? 0) }))
-      const bizSafety = bizDecision(pend.type, { spokenYes: true, unlocked: unlockedNow, doneThisHour })
+      const bizSafety = bizDecision(pend.type, { spokenYes: true, unlocked: unlockedNow, doneThisHour, speedKmh })
       logStep({
         heardText: text,
         decidedAction: pend.type,
@@ -443,7 +450,10 @@ export async function POST(request) {
         // A locked phone: the question stays OPEN (a separate audit action,
         // not BIZ_ANSWERED), so the yes said after unlocking still answers it.
         // Anything else (hourly limit, paused): the question is closed.
-        const unlockOnly = bizSafety.decision === DECISION.ASK_UNLOCK
+        // Moving (DRV-02): held like a locked phone, so the yes said after
+        // stopping still answers it.
+        const movingHold = bizSafety.reason === 'wait_until_stopped'
+        const unlockOnly = bizSafety.decision === DECISION.ASK_UNLOCK || movingHold
         if (unlockOnly) {
           supabase.from('audit_log').insert({
             user_id: user.id, action: 'voice.biz_held', service: 'voice_capture',
@@ -454,7 +464,7 @@ export async function POST(request) {
         }
         return NextResponse.json({
           ok: false, not_saved: true, business_written: false, safety: bizSafety,
-          tts_response: bizLine(unlockOnly ? 'biz_held' : 'biz_refused', lang),
+          tts_response: movingHold ? waitUntilStoppedLine(lang) : bizLine(unlockOnly ? 'biz_held' : 'biz_refused', lang),
         }, { status: 200 })
       }
 
@@ -679,7 +689,7 @@ export async function POST(request) {
       nowSafety = decide(
         { type: 'contact', contactSaved: !!openQuestion.contact_phone },
         { spokenYes: true, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
-        { doneThisHour },
+        { doneThisHour, speedKmh },
       )
       nowSafety.unlock_proof = ['voice', 'text'].includes(source) ? 'app_in_foreground' : null
       logStep({
@@ -714,6 +724,7 @@ export async function POST(request) {
           hourly_count_unknown: `I could not check the hourly limit just now, so I have not called ${who}.`,
           needs_pin:            `${who} is not a saved contact, so that needs your fingerprint or PIN in the app.`,
           actions_paused:       `Actions are paused from your settings, so I have not called ${who}.`,
+          wait_until_stopped:   waitUntilStoppedLine(language),
         })[nowSafety.reason] || `I have not called ${who} just now.`
       }
     }
@@ -841,7 +852,7 @@ export async function POST(request) {
         text,
       })
       tts = deleteQuestion(found, replyLang)
-      safety = deleteDecision({ spokenYes: false, unlocked: unlockedNow, doneThisHour: 0 })
+      safety = deleteDecision({ spokenYes: false, unlocked: unlockedNow, doneThisHour: 0, speedKmh })
       logStep({
         heardText: text,
         decidedAction: 'delete_note',
@@ -899,7 +910,7 @@ export async function POST(request) {
   if (llmAssist && llmAssist.confidence >= 0.55 && DRIVE_INTENTS.has(llmAssist.intent)) {
     const replyLang = llmAssist.language || language
     const plan = planDriveTurn({ intent: llmAssist.intent, entities: llmAssist.entities || {}, language: replyLang })
-    const safety = decide({ type: plan.type }, { spokenYes: false, unlocked: unlockedNow, pin: false, ownerVoice: null }, { doneThisHour: 0 })
+    const safety = decide({ type: plan.type }, { spokenYes: false, unlocked: unlockedNow, pin: false, ownerVoice: null }, { doneThisHour: 0, speedKmh })
     const act = safety.decision === DECISION.DO && plan.deviceAction ? plan.deviceAction : null
     logStep({
       heardText: text,
@@ -1017,7 +1028,7 @@ export async function POST(request) {
       // how much: no decision yet.
       safety: (() => {
         const s = plan.pending
-          ? bizDecision(type, { spokenYes: false, unlocked: unlockedNow, doneThisHour: 0 })
+          ? bizDecision(type, { spokenYes: false, unlocked: unlockedNow, doneThisHour: 0, speedKmh })
           : intent === 'payroll' ? decide({ type: BIZ_TYPE.payroll })
           : plan.readOnly ? decide({ type: 'stock_check' })
           : null;
@@ -1754,7 +1765,7 @@ export async function POST(request) {
     ? decide(
         { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
         { spokenYes: false, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
-        { doneThisHour: 0 },   // read-back is uncapped; anything capped is refused here anyway (no yes yet)
+        { doneThisHour: 0, speedKmh },   // read-back is uncapped; anything capped is refused here anyway (no yes yet)
       )
     : null
   if (safety && safety.decision !== DECISION.DO) {
@@ -1768,7 +1779,7 @@ export async function POST(request) {
     const logSafety = safety || decide(
       { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
       { spokenYes: false, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
-      { doneThisHour: 0 },
+      { doneThisHour: 0, speedKmh },
     )
     const isAskingConfirm = ['ask_yes', 'ask_unlock', 'ask_pin'].includes(logSafety.decision)
     logStep({
@@ -1834,10 +1845,28 @@ export async function POST(request) {
   const timeAmbiguous   = parsed.type === 'reminder' && reminderAt && !hasSpecificTime && !brainResolvedTime;
   const needsReminderPrompt = (parsed.type === 'note' || parsed.type === 'task') && !reminderAt && /remind|remember|later/i.test(text);
 
+  // DRV-02 speed gate, last word on what is SAID while moving. Anything that
+  // needs the screen (PIN level, a purchase, an invoice) is held with the
+  // founder's line; a long reply is cut to the first part plus "the rest when
+  // you stop". With no speed (not driving, or GPS unknown) nothing changes.
+  let spokenReply = tts_response
+  if (speedKmh != null) {
+    const gate = decide(
+      { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
+      { spokenYes: false, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
+      { doneThisHour: 0, speedKmh },
+    )
+    if (gate.reason === 'wait_until_stopped') {
+      spokenReply = waitUntilStoppedLine(language)
+    } else {
+      spokenReply = speakWhileMoving(spokenReply, speedKmh, language).text
+    }
+  }
+
   return NextResponse.json({
     keep:              responseKeep,
     intent:            responseKeep,
-    tts_response,
+    tts_response:      spokenReply,
       // What the brain understood — the UI uses `missing` to ask the next
       // question out loud instead of silently saving a half-understood keep.
       assistant: llmAssist

@@ -581,11 +581,11 @@ export function readBizAnswer(text) {
 }
 
 /** The safety decision for a business write. The write happens only on DO. */
-export function bizDecision(type, { spokenYes, unlocked, doneThisHour }) {
+export function bizDecision(type, { spokenYes, unlocked, doneThisHour, speedKmh = null }) {
   return decide(
     { type },
     { spokenYes: spokenYes === true, unlocked: unlocked === true, pin: false, ownerVoice: null },
-    { doneThisHour },
+    { doneThisHour, speedKmh },   // speedKmh: DRV-02 speed gate (null = unknown, no change)
   )
 }
 

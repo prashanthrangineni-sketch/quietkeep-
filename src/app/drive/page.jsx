@@ -26,6 +26,7 @@ import { ObdReader, createPluginTransport } from '@/lib/obd/reader';
 import { ObdSimulator } from '@/lib/obd/simulator';
 import { startObdFeed } from '@/lib/obd/blackbox-feed';
 import { setActiveReader } from '@/lib/obd/active-reader';
+import { setDriveSpeed, clearDriveSpeed } from '@/lib/drive-speed';
 
 // drivespeak: thin wrapper — onEnd callback for sequential speech+action
 function drivespeak(text, onEnd) {
@@ -107,6 +108,31 @@ export default function DriveModePage() {
     // Upload sealed records now and on every reconnect (DRV-01 step 7)
     const stopSync = startBlackboxSync(supabase);
 
+    // DRV-02 speed gate: keep the phone's GPS speed fresh while Drive Mode is
+    // open, so Aaria can pass it to the server's safety check. Uses the
+    // fix's own speed, else distance / time between two fixes.
+    let speedWatch = null;
+    let prevFix = null;
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      try {
+        speedWatch = navigator.geolocation.watchPosition((pos) => {
+          const c = pos.coords;
+          let kmh = typeof c.speed === 'number' && c.speed >= 0 ? c.speed * 3.6 : null;
+          if (kmh == null && prevFix) {
+            const dt = (pos.timestamp - prevFix.t) / 1000;
+            if (dt > 0 && dt < 30) {
+              const R = 6371000, toRad = (d) => d * Math.PI / 180;
+              const dLat = toRad(c.latitude - prevFix.lat), dLng = toRad(c.longitude - prevFix.lng);
+              const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(prevFix.lat)) * Math.cos(toRad(c.latitude)) * Math.sin(dLng / 2) ** 2;
+              kmh = (2 * R * Math.asin(Math.sqrt(h)) / dt) * 3.6;
+            }
+          }
+          prevFix = { lat: c.latitude, lng: c.longitude, t: pos.timestamp };
+          if (kmh != null) setDriveSpeed(kmh);
+        }, () => {}, { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 });
+      } catch { speedWatch = null; }
+    }
+
     return () => {
       clearInterval(t);
       if ('speechSynthesis' in window) cancelSpeech();
@@ -120,6 +146,8 @@ export default function DriveModePage() {
         try { obdReaderRef.current.destroy(); } catch {}
       }
       setActiveReader(null);
+      if (speedWatch != null) { try { navigator.geolocation.clearWatch(speedWatch); } catch {} }
+      clearDriveSpeed();
       stopBlackbox();
       stopSync();
     };

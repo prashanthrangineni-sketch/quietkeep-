@@ -52,6 +52,7 @@ import { isSpeaking, looksLikeSelfEcho } from '@/lib/barge-in';
 import { lastKnownPosition } from '@/lib/geo';
 import { isSosUtterance, triggerSOS } from '@/lib/sos';
 import { getActiveRun, recordStep } from '@/lib/step-log';
+import { getDriveSpeedKmh } from '@/lib/drive-speed'; // DRV-02 speed gate
 
 const AariaContext = createContext(null);
 
@@ -441,6 +442,10 @@ export function AariaProvider({ children }) {
           source: 'voice',
           language: speechLang(voiceLang),
           ...(getActiveRun() ? { tasks100_run: getActiveRun() } : {}),
+          // DRV-02 speed gate: the phone's GPS speed while Drive Mode or a
+          // ride is running (src/lib/drive-speed.js). Omitted when unknown or
+          // stale, so the server's safety check behaves exactly as before.
+          ...(getDriveSpeedKmh() != null ? { speed_kmh: getDriveSpeedKmh() } : {}),
           // Only for attendance / stock / payroll: NOT workspace_id, which
           // would also switch on the older business ledger path that writes
           // money lines without a spoken yes.

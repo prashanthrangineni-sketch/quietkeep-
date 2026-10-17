@@ -88,6 +88,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(OCRPlugin.class);
         registerPlugin(SOSPlugin.class);
         registerPlugin(QkBlackboxPlugin.class);
+        registerPlugin(com.pranix.quietkeep.plugins.QkObdPlugin.class);
 
         super.onCreate(savedInstanceState);
 

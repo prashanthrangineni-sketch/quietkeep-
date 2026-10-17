@@ -25,6 +25,7 @@ import { startBlackboxSync, syncPendingRecords } from '@/lib/blackbox-sync';
 import { ObdReader, createPluginTransport } from '@/lib/obd/reader';
 import { ObdSimulator } from '@/lib/obd/simulator';
 import { startObdFeed } from '@/lib/obd/blackbox-feed';
+import { setActiveReader } from '@/lib/obd/active-reader';
 
 // drivespeak: thin wrapper — onEnd callback for sequential speech+action
 function drivespeak(text, onEnd) {
@@ -118,6 +119,7 @@ export default function DriveModePage() {
       if (obdReaderRef.current) {
         try { obdReaderRef.current.destroy(); } catch {}
       }
+      setActiveReader(null);
       stopBlackbox();
       stopSync();
     };
@@ -159,6 +161,7 @@ export default function DriveModePage() {
       const reader = new ObdReader(transport);
       await reader.connect();
       obdReaderRef.current = reader;
+      setActiveReader(reader); // so "how is my car?" by voice uses this same reader
       if (obdFeedStopRef.current) {
         try { obdFeedStopRef.current(); } catch {}
         obdFeedStopRef.current = null;
@@ -185,6 +188,7 @@ export default function DriveModePage() {
     if (obdReaderRef.current) {
       obdReaderRef.current.destroy();
       obdReaderRef.current = null;
+      setActiveReader(null);
     }
     if (!obdSimulated && window.Capacitor?.Plugins?.QkObd) {
       try { await window.Capacitor.Plugins.QkObd.disconnect(); } catch {}

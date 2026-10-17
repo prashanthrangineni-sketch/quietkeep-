@@ -38,6 +38,14 @@
 // under plain node in tests/listen-stream.test.mjs.
 
 export const LISTEN_STREAM_URL = 'wss://pranix-aaria.onrender.com/api/voice/listen-stream';
+// The engine checks who opens a listening socket (pranix-aaria
+// src/caller_auth.py). A browser cannot set headers on a WebSocket, so the
+// short-lived pass rides as ?pass=. No pass -> the URL is exactly as before.
+export function withPass(url, pass) {
+  if (!pass || typeof pass !== 'string') return url;
+  return `${url}${url.includes('?') ? '&' : '?'}pass=${encodeURIComponent(pass)}`;
+}
+
 export const ENGINE_HEALTH_URL = 'https://pranix-aaria.onrender.com/api/health';
 
 export const TARGET_RATE   = 16000;

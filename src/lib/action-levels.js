@@ -231,7 +231,8 @@ export function withinLimits(level, doneThisHour) {
  *   unlocked    the phone is unlocked (app in the foreground counts)
  *   pin         fingerprint / PIN was given for THIS action
  *   ownerVoice  a speaker check said this is the owner (null = no check exists)
- * @param {object} context  { doneThisHour?: number|null, settings?: { actions_paused?: boolean } }
+ * @param {object} context  { doneThisHour?: number|null, settings?: { actions_paused?: boolean },
+ *                             speedKmh?: number|null }   (speedKmh: GPS speed; see the speed gate)
  * @returns {{ level, decision, reason, needs: string[] }}
  */
 export function decide(action, proof = {}, context = {}) {

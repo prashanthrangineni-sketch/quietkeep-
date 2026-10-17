@@ -14,6 +14,14 @@ import { speak, cancelSpeech } from '@/components/VoiceTalkback';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { isNavigationRequest, extractDestination, navigationUrl } from '@/lib/intent-executor';
+import {
+  startBlackbox,
+  stopBlackbox,
+  freezeBlackbox,
+  listBlackboxRecords,
+  requestMicPermission,
+} from '@/lib/blackbox';
+import { startBlackboxSync, syncPendingRecords } from '@/lib/blackbox-sync';
 
 // drivespeak: thin wrapper — onEnd callback for sequential speech+action
 function drivespeak(text, onEnd) {
@@ -36,6 +44,14 @@ export default function DriveModePage() {
   const [timeStr, setTimeStr] = useState('');
   // callConfirm: { name, phone, countdown } — shown as overlay before call fires
   const [callConfirm, setCallConfirm] = useState(null);
+
+  // Black box (DRV-01) state
+  const [audioOptIn, setAudioOptIn] = useState(false);
+  const [testMode, setTestMode] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
+  const [devTapCount, setDevTapCount] = useState(0);
+  const [records, setRecords] = useState([]);
+  const [shareToast, setShareToast] = useState(null);
   const recognitionRef = useRef(null);
   const keepIdxRef = useRef(0);
   const keepsRef = useRef([]);
@@ -62,11 +78,24 @@ export default function DriveModePage() {
     tick();
     const t = setInterval(tick, 30000);
     setTimeout(() => drivespeak('Drive Mode on. Tap a button or say a command.'), 600);
+
+    // Start blackbox recording for Drive Mode
+    const optIn = typeof window !== 'undefined' && localStorage.getItem('qk_blackbox_audio_opt_in') === 'true';
+    const testM = typeof window !== 'undefined' && localStorage.getItem('qk_blackbox_test_mode') === 'true';
+    setAudioOptIn(optIn);
+    setTestMode(testM);
+    startBlackbox({ audioOptIn: optIn, testMode: testM });
+    listBlackboxRecords().then(r => setRecords(r.records || []));
+    // Upload sealed records now and on every reconnect (DRV-01 step 7)
+    const stopSync = startBlackboxSync(supabase);
+
     return () => {
       clearInterval(t);
       if ('speechSynthesis' in window) cancelSpeech();
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
       if (callTimerRef.current) clearInterval(callTimerRef.current);
+      stopBlackbox();
+      stopSync();
     };
   }, [user, authLoading]);
 
@@ -189,6 +218,17 @@ export default function DriveModePage() {
       recordUpkeep({ event: 'service' });
     } else if (cmd.includes('sos')) {
       drivespeak('S O S activated.', () => { window.location.href = '/emergency'; });
+    } else if (cmd.includes('save last 60') || cmd.includes('save 60') || cmd.includes('black box') || cmd.includes('save record')) {
+      drivespeak('Saving. Recording fifteen more seconds.');
+      freezeBlackbox('voice_save').then((r) => {
+        if (r && r.saved) {
+          drivespeak(r.sealed ? 'Record saved and sealed.' : 'Record saved, but it could not be sealed.');
+          listBlackboxRecords().then(x => setRecords(x.records || []));
+          syncPendingRecords(supabase).catch(() => {});
+        } else {
+          drivespeak('Black box is not recording. Record not saved.');
+        }
+      });
     } else if (cmd.includes('home') || cmd.includes('dashboard')) {
       drivespeak('Leaving drive mode.', () => { window.location.href = '/dashboard'; });
     } else if (cmd.includes('keep') || cmd.includes('read')) {
@@ -268,9 +308,31 @@ export default function DriveModePage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <BackButton size={34} />
           <span style={{ fontSize: 18 }}>🛣️</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Drive Mode</span>
+          <span
+            onClick={() => {
+              const next = devTapCount + 1;
+              setDevTapCount(next);
+              if (next >= 5) drivespeak('Developer settings active.');
+            }}
+            style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}
+          >
+            Drive Mode
+          </span>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => {
+              setShowSetup(s => !s);
+              if (!showSetup) listBlackboxRecords().then(r => setRecords(r.records || []));
+            }}
+            style={{
+              fontSize: 11, color: '#6366f1', background: '#6366f115',
+              border: '1px solid #6366f130', padding: '4px 8px', borderRadius: 8,
+              cursor: 'pointer', fontFamily: 'inherit'
+            }}
+          >
+            ⚙️ Setup
+          </button>
           <span style={{ fontSize: 14, fontWeight: 700, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{timeStr}</span>
           <span style={{ fontSize: 11, color: '#6366f1' }}>
             {keeps.length} keep{keeps.length !== 1 ? 's' : ''}
@@ -383,6 +445,169 @@ export default function DriveModePage() {
           <span>💬</span> WhatsApp — I'm Driving
         </button>
       </div>
+
+      {/* Setup & Black Box Records Overlay */}
+      {showSetup && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9998,
+          background: 'rgba(0,0,0,0.85)',
+          display: 'flex', flexDirection: 'column',
+          padding: '24px 16px', overflowY: 'auto',
+          backdropFilter: 'blur(8px)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: 'var(--text)' }}>Drive Mode Setup & Records</h2>
+            <button
+              onClick={() => setShowSetup(false)}
+              style={{
+                background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff',
+                fontSize: 16, width: 32, height: 32, borderRadius: '50%', cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Audio opt-in toggle */}
+          <div style={{
+            background: 'var(--card-bg, #1e293b)', padding: 16, borderRadius: 14,
+            border: '1px solid var(--border, #334155)', marginBottom: 16
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <label htmlFor="audio-opt-in" style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text)', cursor: 'pointer' }}>
+                Include the last 60 seconds of cabin audio if a crash happens? Never saved or uploaded unless an impact is detected.
+              </label>
+              <input
+                id="audio-opt-in"
+                type="checkbox"
+                checked={audioOptIn}
+                onChange={async (e) => {
+                  const checked = e.target.checked;
+                  if (checked) {
+                    const res = await requestMicPermission();
+                    if (res.granted) {
+                      setAudioOptIn(true);
+                      if (typeof window !== 'undefined') localStorage.setItem('qk_blackbox_audio_opt_in', 'true');
+                      startBlackbox({ audioOptIn: true, testMode });
+                    } else {
+                      setAudioOptIn(false);
+                      if (typeof window !== 'undefined') localStorage.setItem('qk_blackbox_audio_opt_in', 'false');
+                      drivespeak('Microphone permission required for cabin audio.');
+                    }
+                  } else {
+                    setAudioOptIn(false);
+                    if (typeof window !== 'undefined') localStorage.setItem('qk_blackbox_audio_opt_in', 'false');
+                    startBlackbox({ audioOptIn: false, testMode });
+                  }
+                }}
+                style={{ width: 22, height: 22, cursor: 'pointer', accentColor: '#6366f1', flexShrink: 0 }}
+              />
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
+              Default: OFF · Records are sealed on the phone with the Android Keystore. Audio recording itself arrives in a later update — today only your choice is saved.
+            </div>
+          </div>
+
+          {/* Test mode switch (developer switch) */}
+          {(devTapCount >= 5 || testMode) && (
+            <div style={{
+              background: 'rgba(234, 179, 8, 0.1)', padding: 16, borderRadius: 14,
+              border: '1px solid rgba(234, 179, 8, 0.3)', marginBottom: 16
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#facc15' }}>Developer: Desk Test Mode</div>
+                  <div style={{ fontSize: 12, color: '#e2e8f0', marginTop: 2 }}>
+                    Tilt phone past 60° for 3 s at 0 km/h to trigger packet
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={testMode}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setTestMode(checked);
+                    if (typeof window !== 'undefined') localStorage.setItem('qk_blackbox_test_mode', checked ? 'true' : 'false');
+                    startBlackbox({ audioOptIn, testMode: checked });
+                  }}
+                  style={{ width: 20, height: 20, cursor: 'pointer', accentColor: '#eab308' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Last records list */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>Last records</h3>
+              <button
+                onClick={() => listBlackboxRecords().then(r => setRecords(r.records || []))}
+                style={{ fontSize: 11, background: 'transparent', border: 'none', color: '#818cf8', cursor: 'pointer' }}
+              >
+                Refresh
+              </button>
+            </div>
+
+            {records.length === 0 ? (
+              <div style={{
+                padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13,
+                background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px dashed #334155'
+              }}>
+                No black box records on this device yet.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {records.map((r, i) => (
+                  <div key={r.id || i} style={{
+                    background: 'var(--card-bg, #1e293b)', padding: 12, borderRadius: 12,
+                    border: '1px solid var(--border, #334155)', display: 'flex',
+                    alignItems: 'center', justifyContent: 'space-between', gap: 12
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                        {r.started_at ? new Date(r.started_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }) : (r.id || 'Recent')}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                        Trigger: <span style={{ color: '#818cf8' }}>{r.trigger || 'unknown'}</span>
+                        {' · Place: '}
+                        {typeof r.lat === 'number' && typeof r.lon === 'number'
+                          ? `${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}`
+                          : 'no GPS fix'}
+                        {r.sealed === false && <span style={{ color: '#f87171' }}> · NOT sealed</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShareToast('Coming soon');
+                        setTimeout(() => setShareToast(null), 2500);
+                      }}
+                      style={{
+                        padding: '6px 14px', borderRadius: 8, background: 'rgba(99,102,241,0.2)',
+                        border: '1px solid rgba(99,102,241,0.4)', color: '#a5b4fc',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit'
+                      }}
+                    >
+                      Share
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Share Toast */}
+      {shareToast && (
+        <div style={{
+          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 10000, background: '#1e293b', color: '#f8fafc',
+          border: '1px solid #6366f1', padding: '10px 20px', borderRadius: 20,
+          fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+        }}>
+          {shareToast}
+        </div>
+      )}
 
       <div style={{ textAlign: 'center', padding: '0 16px 16px', color: '#334155', fontSize: 11 }}>
         🛡️ Eyes on road. Say "call [name]" — exact name required. 4-second cancel window.

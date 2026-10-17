@@ -27,6 +27,7 @@ import com.getcapacitor.BridgeActivity;
 import com.pranix.quietkeep.plugins.ContactsPlugin;
 import com.pranix.quietkeep.plugins.OCRPlugin;
 import com.pranix.quietkeep.plugins.PerceptionPlugin;
+import com.pranix.quietkeep.plugins.QkBlackboxPlugin;
 import com.pranix.quietkeep.plugins.ReminderAlarmPlugin;
 import com.pranix.quietkeep.plugins.SOSPlugin;
 import com.pranix.quietkeep.plugins.VoicePlugin;
@@ -86,6 +87,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(com.pranix.aariaedge.AariaEdgePlugin.class);
         registerPlugin(OCRPlugin.class);
         registerPlugin(SOSPlugin.class);
+        registerPlugin(QkBlackboxPlugin.class);
 
         super.onCreate(savedInstanceState);
 

@@ -354,6 +354,11 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     overlayShown = true;
     onState?.('suspected_crash', detail);
 
+    // DRV-01: Call into blackbox plugin when existing crash detector fires (without changing its logic)
+    if (typeof window !== 'undefined' && window.Capacitor?.Plugins?.QkBlackbox) {
+      try { window.Capacitor.Plugins.QkBlackbox.saveLast60s({ trigger: 'crash_detector' }); } catch {}
+    }
+
     speak(detail.manual
       ? 'I heard you ask for help. Sending your location in thirty seconds. Tap I am okay to stop.'
       : 'I think you may have had an accident. Are you okay? Say I am okay, or tap the button. Otherwise I will alert your family in thirty seconds.');

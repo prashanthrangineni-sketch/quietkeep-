@@ -28,6 +28,9 @@
          or AudioRecord.read() silently returns 0 bytes on every call. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
 
+    <!-- Required on Android 14+ (API 34) for BlackboxService FOREGROUND_SERVICE_TYPE_LOCATION -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
     <!-- Data-sync foreground type for KeepAliveService -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
@@ -199,6 +202,13 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- BlackboxService: DRV-01 foreground service for rolling 60s crash buffer (.qkedr) -->
+        <service
+            android:name=".services.BlackboxService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location|microphone" />
 
         <!-- LocationService declaration removed 22 Aug 2026 along with
              FOREGROUND_SERVICE_LOCATION. The class stays in the source tree

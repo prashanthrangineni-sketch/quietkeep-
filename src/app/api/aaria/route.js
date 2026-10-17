@@ -39,7 +39,7 @@ export async function POST(req) {
 
     const res = await fetch(`${AARIA_BASE_URL}/api/voice/understand`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: engineHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         text: text.trim(),
         product: 'QuietKeep',
@@ -66,7 +66,7 @@ export async function POST(req) {
     try {
       const speakRes = await fetch(`${AARIA_BASE_URL}/api/voice/speak`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: engineHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           text: data?.intent && data.intent !== 'unknown' ? `Got it: ${data.intent}` : 'One moment.',
           lang: lang_hint || 'en',

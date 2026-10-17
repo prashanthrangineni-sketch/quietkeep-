@@ -161,4 +161,20 @@ public class BlackboxLogicTest {
         tamperedSig[5] ^= 0x01;
         assertFalse("tampered signature MUST fail verification", BlackboxLogic.verify(packet, tamperedSig, pubKey));
     }
+
+    // ── Review fix (17 Oct 2026): 200 ms window edge ─────────────────────────
+
+    @Test
+    public void testAccelIntegration_stopsAtWindowEdge() {
+        // 20 m/s² at 10 ms spacing, samples 0..210 ms. Only 0..200 ms may be
+        // integrated: 20 × 0.2 = 4.0 m/s, below the 4.17 m/s threshold.
+        int n = 22;
+        double[] s = new double[n * 4];
+        for (int i = 0; i < n; i++) {
+            s[i * 4] = i * 10_000;
+            s[i * 4 + 1] = 20;
+        }
+        assertEquals(4.0, BlackboxLogic.maxSpeedDropAccel(s, n), 1e-9);
+        assertFalse(BlackboxLogic.isSpeedDropAccel(s, n));
+    }
 }

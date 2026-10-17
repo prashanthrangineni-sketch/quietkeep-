@@ -22,13 +22,10 @@ import com.pranix.quietkeep.services.BlackboxService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.security.KeyFactory;
-import java.security.PublicKey;
-import java.security.Signature;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
+import java.util.regex.Pattern;
 
 /**
  * QkBlackbox — Capacitor plugin for the on-phone crash black box.
@@ -46,6 +43,8 @@ import java.util.Base64;
 )
 public class QkBlackboxPlugin extends Plugin {
     private static final String TAG = "QK_BLACKBOX_PLUGIN";
+    /** Record ids are always event_<epoch ms>; anything else is refused (no path traversal). */
+    private static final Pattern RECORD_ID = Pattern.compile("^event_\\d{10,16}$");
 
     /**
      * Start the black box recording (called when Drive Mode starts).
@@ -103,40 +102,40 @@ public class QkBlackboxPlugin extends Plugin {
     public void saveLast60s(PluginCall call) {
         try {
             String trigger = call.getString("trigger", "voice_save");
-            // The service has a static externalTrigger that we cannot call on the
-            // service object directly from here, so we send a broadcast or use the
-            // static callback mechanism. For simplicity, we restart the freeze
-            // through the service's pendingTrigger mechanism.
-            //
-            // A cleaner approach: BlackboxService exposes a static reference.
-            // This is pragmatic for a v1 implementation.
+            if (!BlackboxService.isRunning()) {
+                JSObject res = new JSObject();
+                res.put("saved", false);
+                res.put("reason", "not_running");
+                call.resolve(res);
+                return;
+            }
+            // Resolves when the packet is closed (15 s after the trigger).
             BlackboxService.onFreezeComplete = () -> {
-                JSONObject result = BlackboxService.lastFreezeResult;
-                if (result != null) {
-                    JSObject res = new JSObject();
-                    try {
-                        res.put("id", result.optString("id", ""));
-                        res.put("trigger", result.optString("trigger", trigger));
-                        res.put("hash", result.optString("hash", ""));
-                        res.put("path", result.optString("path", ""));
-                    } catch (Exception ignored) {}
-                    call.resolve(res);
-                } else {
-                    call.resolve(new JSObject());
-                }
                 BlackboxService.onFreezeComplete = null;
+                JSONObject result = BlackboxService.lastFreezeResult;
+                JSObject res = new JSObject();
+                if (result != null) {
+                    res.put("saved", true);
+                    res.put("id", result.optString("id", ""));
+                    res.put("trigger", result.optString("trigger", trigger));
+                    res.put("hash", result.optString("hash", ""));
+                    res.put("sealed", result.optBoolean("sealed", false));
+                } else {
+                    res.put("saved", false);
+                    res.put("reason", "no_result");
+                }
+                call.resolve(res);
             };
 
-            // Send a broadcast to the running service to trigger a freeze
-            Intent intent = new Intent("com.pranix.quietkeep.BLACKBOX_FREEZE");
-            intent.putExtra("trigger", trigger);
-            intent.setPackage(getContext().getPackageName());
-            getContext().sendBroadcast(intent);
-
-            // Also try direct static call if service is running
-            // (The service should pick up the intent within the post-trigger window)
-
+            // Delivered through onStartCommand (ACTION_FREEZE). The first
+            // version sent a broadcast that no receiver listened for, so
+            // voice and crash-detector freezes never reached the service.
+            Intent intent = new Intent(getContext(), BlackboxService.class);
+            intent.setAction(BlackboxService.ACTION_FREEZE);
+            intent.putExtra(BlackboxService.EXTRA_TRIGGER, trigger);
+            getContext().startService(intent);
         } catch (Exception e) {
+            BlackboxService.onFreezeComplete = null;
             Log.e(TAG, "saveLast60s failed: " + e.getMessage(), e);
             call.reject("saveLast60s failed: " + e.getMessage());
         }
@@ -170,9 +169,16 @@ public class QkBlackboxPlugin extends Plugin {
                             record.put("started_at", header.optString("started_at", ""));
                             record.put("ended_at", header.optString("ended_at", ""));
                             record.put("audio_opt_in", header.optBoolean("audio_opt_in", false));
+                            record.put("audio_status", header.optString("audio_status", "off"));
+                            JSONObject fix = header.optJSONObject("last_fix");
+                            if (fix != null) {
+                                record.put("lat", fix.optDouble("lat"));
+                                record.put("lon", fix.optDouble("lon"));
+                            }
+                            record.put("bytes", f.length());
 
-                            // Read hash from the signature file if present
                             File sigFile = new File(dir, f.getName() + ".sig");
+                            record.put("sealed", sigFile.exists());
                             if (sigFile.exists()) {
                                 record.put("signature", new String(readFile(sigFile), "UTF-8").trim());
                             }
@@ -202,6 +208,10 @@ public class QkBlackboxPlugin extends Plugin {
     public void verify(PluginCall call) {
         try {
             String id = call.getString("id", "");
+            if (!RECORD_ID.matcher(id).matches()) {
+                call.reject("Invalid record id");
+                return;
+            }
             File dir = new File(getContext().getFilesDir(), "blackbox");
             File packetFile = new File(dir, id + ".qkedr");
             File sigFile = new File(dir, id + ".qkedr.sig");
@@ -217,20 +227,63 @@ public class QkBlackboxPlugin extends Plugin {
             String hashHex = bytesToHex(hash);
 
             boolean valid = false;
-            if (sigFile.exists() && pubFile.exists()) {
-                String sigB64 = new String(readFile(sigFile), "UTF-8").trim();
-                String pubB64 = new String(readFile(pubFile), "UTF-8").trim();
-                valid = BlackboxLogic.verifyBase64(data, sigB64, pubB64);
+            boolean sealed = sigFile.exists() && pubFile.exists();
+            if (sealed) {
+                byte[] sig = b64(new String(readFile(sigFile), "UTF-8").trim());
+                byte[] pub = b64(new String(readFile(pubFile), "UTF-8").trim());
+                valid = BlackboxLogic.verify(data, sig, pub);
             }
 
             JSObject res = new JSObject();
             res.put("valid", valid);
+            res.put("sealed", sealed);
             res.put("hash", hashHex);
             res.put("id", id);
             call.resolve(res);
         } catch (Exception e) {
             Log.e(TAG, "verify failed: " + e.getMessage(), e);
             call.reject("verify failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Read one record for upload. { id } -> { id, data (base64), signature,
+     * public_key, header fields }. Used by src/lib/blackbox-sync.js.
+     */
+    @PluginMethod
+    public void readRecord(PluginCall call) {
+        try {
+            String id = call.getString("id", "");
+            if (!RECORD_ID.matcher(id).matches()) {
+                call.reject("Invalid record id");
+                return;
+            }
+            File dir = new File(getContext().getFilesDir(), "blackbox");
+            File packetFile = new File(dir, id + ".qkedr");
+            if (!packetFile.exists()) {
+                call.reject("Record not found: " + id);
+                return;
+            }
+            byte[] data = readFile(packetFile);
+            int newline = indexOf(data, (byte) '\n');
+            JSONObject header = newline > 0
+                ? new JSONObject(new String(data, 0, newline, "UTF-8")) : new JSONObject();
+            File sigFile = new File(dir, id + ".qkedr.sig");
+            File pubFile = new File(dir, id + ".qkedr.pub");
+
+            JSObject res = new JSObject();
+            res.put("id", id);
+            res.put("data", android.util.Base64.encodeToString(data, android.util.Base64.NO_WRAP));
+            res.put("hash", bytesToHex(BlackboxLogic.sha256(data)));
+            res.put("signature", sigFile.exists() ? new String(readFile(sigFile), "UTF-8").trim() : "");
+            res.put("public_key", pubFile.exists() ? new String(readFile(pubFile), "UTF-8").trim() : "");
+            res.put("trigger", header.optString("trigger", "unknown"));
+            res.put("started_at", header.optString("started_at", ""));
+            res.put("ended_at", header.optString("ended_at", ""));
+            call.resolve(res);
+        } catch (Exception e) {
+            Log.e(TAG, "readRecord failed: " + e.getMessage(), e);
+            call.reject("readRecord failed: " + e.getMessage());
         }
     }
 
@@ -275,11 +328,16 @@ public class QkBlackboxPlugin extends Plugin {
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private static byte[] readFile(File f) throws Exception {
-        try (FileInputStream fis = new FileInputStream(f)) {
+        // readFully: a single read() may return fewer bytes than asked.
+        try (DataInputStream in = new DataInputStream(new FileInputStream(f))) {
             byte[] bytes = new byte[(int) f.length()];
-            fis.read(bytes);
+            in.readFully(bytes);
             return bytes;
         }
+    }
+
+    private static byte[] b64(String s) {
+        return android.util.Base64.decode(s, android.util.Base64.DEFAULT);
     }
 
     private static int indexOf(byte[] arr, byte val) {

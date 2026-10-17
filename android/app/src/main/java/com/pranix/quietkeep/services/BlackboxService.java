@@ -45,7 +45,6 @@ import java.security.Signature;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -64,6 +63,13 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
     private static final int NOTIFICATION_ID = 9901;
     public static final String EXTRA_AUDIO_OPT_IN = "audio_opt_in";
     public static final String EXTRA_TEST_MODE = "test_mode";
+    /** Intent action: freeze the running buffer (crash detector / SAVE_LAST_60S). */
+    public static final String ACTION_FREEZE = "com.pranix.quietkeep.BLACKBOX_FREEZE";
+    public static final String EXTRA_TRIGGER = "trigger";
+
+    /** True while sensors are recording (between start and stop of Drive Mode). */
+    private static volatile boolean running = false;
+    public static boolean isRunning() { return running; }
 
     // ── Ring buffers ─────────────────────────────────────────────────────
     // IMU: 100 Hz × 60 s = 6000 samples. Each: timestamp_us + 6 floats
@@ -116,6 +122,20 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // Freeze request from the plugin (crash detector or voice SAVE_LAST_60S).
+        // Handled here, via startService, because the service never registered
+        // a broadcast receiver — the broadcast the first version sent was lost.
+        if (intent != null && ACTION_FREEZE.equals(intent.getAction())) {
+            if (running) {
+                String trigger = intent.getStringExtra(EXTRA_TRIGGER);
+                final String t = trigger != null ? trigger : "voice_save";
+                sensorHandler.post(() -> triggerFreeze(t));
+            } else {
+                Log.w(TAG, "Freeze requested but Drive Mode recording is not running");
+                if (!running) stopSelf(startId);
+            }
+            return START_STICKY;
+        }
         if (intent != null) {
             audioOptIn = intent.getBooleanExtra(EXTRA_AUDIO_OPT_IN, false);
             testMode = intent.getBooleanExtra(EXTRA_TEST_MODE, false);
@@ -136,8 +156,14 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
     public void onDestroy() {
         stopSensors();
         stopGps();
+        running = false;
+        // Drive Mode stopped inside the 15 s post-trigger window: close the
+        // packet now with what was recorded, rather than losing the crash.
+        if (postTriggerRunnable != null && frozen.get()) {
+            sensorHandler.removeCallbacks(postTriggerRunnable);
+            sensorHandler.post(postTriggerRunnable);
+        }
         if (sensorThread != null) sensorThread.quitSafely();
-        if (postTriggerRunnable != null) mainHandler.removeCallbacks(postTriggerRunnable);
         Log.d(TAG, "BlackboxService destroyed");
         super.onDestroy();
     }
@@ -171,8 +197,11 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
     // ── Sensors ──────────────────────────────────────────────────────────
 
     private void startSensors() {
+        // Idempotent: Drive Mode re-sends start() when a setting changes.
+        stopSensors();
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         if (sensorManager == null) return;
+        running = true;
 
         // Linear accelerometer (gravity removed)
         Sensor accel = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
@@ -204,6 +233,7 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
     // ── GPS ───────────────────────────────────────────────────────────────
 
     private void startGps() {
+        stopGps();
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (locationManager == null) return;
 
@@ -234,8 +264,9 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (frozen.get()) return; // don't overwrite while freezing pre-trigger
-
+        // Keep recording while frozen: the ring holds exactly 60 s, so the
+        // 15 s written after the trigger overwrite only the oldest 15 s and
+        // the packet ends up as 45 s before + 15 s after (spec step 4).
         int type = event.sensor.getType();
 
         if (type == Sensor.TYPE_LINEAR_ACCELERATION) {
@@ -254,7 +285,6 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
 
     @Override
     public void onLocationChanged(Location location) {
-        if (frozen.get()) return;
 
         double speedMs = location.hasSpeed() ? location.getSpeed() : 0;
         double speedKmh = speedMs * 3.6;
@@ -268,8 +298,8 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             location.hasAccuracy() ? location.getAccuracy() : 999
         );
 
-        // GPS speed-drop check
-        if (BlackboxLogic.isSpeedDropGps(lastGpsSpeedKmh, speedKmh)) {
+        // GPS speed-drop check (not while a packet is already being recorded)
+        if (!frozen.get() && BlackboxLogic.isSpeedDropGps(lastGpsSpeedKmh, speedKmh)) {
             triggerFreeze("speed_drop_gps");
         }
         lastGpsSpeedKmh = speedKmh;
@@ -366,6 +396,7 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
 
         // Stop overwriting the pre-trigger buffer. Continue recording for 15 s.
         postTriggerRunnable = () -> {
+            if (!frozen.get()) return; // already closed (stop during window)
             try {
                 closePacket(triggerType);
             } catch (Exception e) {
@@ -374,7 +405,9 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             frozen.set(false);
             pendingTrigger.set(null);
         };
-        mainHandler.postDelayed(postTriggerRunnable, BlackboxLogic.POST_TRIGGER_MS);
+        // Posted on the sensor thread so the packet is read on the same thread
+        // that writes the ring — no torn samples.
+        sensorHandler.postDelayed(postTriggerRunnable, BlackboxLogic.POST_TRIGGER_MS);
     }
 
     // ── Packet assembly ──────────────────────────────────────────────────
@@ -397,11 +430,29 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             header.put("post_trigger_ms", window[3]);
             header.put("sample_rate_hz", BlackboxLogic.IMU_RATE_HZ);
             header.put("gps_rate_hz", BlackboxLogic.GPS_RATE_HZ);
+            // IMU timestamps are the sensor clock (boot time, µs); GPS ones are
+            // wall clock (µs). wall_us = imu_us + imu_clock_offset_us.
+            header.put("imu_clock_offset_us",
+                System.currentTimeMillis() * 1000L - android.os.SystemClock.elapsedRealtimeNanos() / 1000L);
             header.put("audio_opt_in", audioOptIn);
-            header.put("audio_codec", audioOptIn ? "opus" : JSONObject.NULL);
+            // Audio capture is NOT built in v1 (see docs/qkedr-v1.md). The
+            // opt-in is recorded honestly; no codec is claimed.
+            header.put("audio_codec", JSONObject.NULL);
+            header.put("audio_status", audioOptIn ? "opted_in_not_captured_v1" : "off");
             header.put("imu_samples", imuCount);
             header.put("gps_samples", gpsCount);
-            header.put("audio_bytes", 0); // Audio capture placeholder
+            header.put("audio_bytes", 0);
+            if (gpsCount > 0) {
+                int last = ((gpsHead - 1) % GPS_CAPACITY + GPS_CAPACITY) % GPS_CAPACITY;
+                JSONObject fix = new JSONObject();
+                fix.put("lat", gpsValues[last][0]);
+                fix.put("lon", gpsValues[last][1]);
+                fix.put("accuracy_m", gpsValues[last][5]);
+                fix.put("speed_kmh", gpsValues[last][3] * 3.6);
+                header.put("last_fix", fix);
+            } else {
+                header.put("last_fix", JSONObject.NULL);
+            }
 
             byte[] headerBytes = (header.toString() + "\n").getBytes("UTF-8");
 
@@ -448,6 +499,8 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             String hashHex = bytesToHex(hash);
             String sigB64 = "";
             String pubB64 = "";
+            boolean sealed = false;
+            String sealError = null;
 
             try {
                 // Use Android Keystore if available
@@ -455,21 +508,15 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
                 ks.load(null);
                 String alias = "qk_blackbox_seal";
                 if (!ks.containsAlias(alias)) {
-                    // Generate key in Keystore
-                    android.security.keystore.KeyGenParameterSpec spec =
-                        new android.security.keystore.KeyGenParameterSpec.Builder(
-                            alias,
-                            android.security.keystore.KeyProperties.PURPOSE_SIGN
-                                | android.security.keystore.KeyProperties.PURPOSE_VERIFY)
-                            .setDigests(android.security.keystore.KeyProperties.DIGEST_SHA256)
-                            .setSignaturePaddings(android.security.keystore.KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
-                            .setKeySize(2048)
-                            .setIsStrongBoxBacked(hasStrongBox())
-                            .build();
-                    KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                        android.security.keystore.KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore");
-                    kpg.initialize(spec);
-                    kpg.generateKeyPair();
+                    boolean strongBox = hasStrongBox();
+                    try {
+                        generateSealKey(alias, strongBox);
+                    } catch (Exception sbErr) {
+                        if (!strongBox) throw sbErr;
+                        // StrongBox present but refused the key — fall back to TEE.
+                        Log.w(TAG, "StrongBox key failed, using TEE: " + sbErr.getMessage());
+                        generateSealKey(alias, false);
+                    }
                 }
                 PrivateKey privKey = (PrivateKey) ks.getKey(alias, null);
                 PublicKey pubKey = ks.getCertificate(alias).getPublicKey();
@@ -478,15 +525,21 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
                 sig.update(packet);
                 byte[] signature = sig.sign();
 
-                sigB64 = Base64.getEncoder().encodeToString(signature);
-                pubB64 = Base64.getEncoder().encodeToString(pubKey.getEncoded());
+                // android.util.Base64: java.util.Base64 needs API 26, minSdk is 23.
+                sigB64 = android.util.Base64.encodeToString(signature, android.util.Base64.NO_WRAP);
+                pubB64 = android.util.Base64.encodeToString(pubKey.getEncoded(), android.util.Base64.NO_WRAP);
 
                 // Write signature and public key files
                 writeText(new File(dir, filename + ".qkedr.sig"), sigB64);
                 writeText(new File(dir, filename + ".qkedr.pub"), pubB64);
+                sealed = true;
 
             } catch (Exception e) {
-                Log.w(TAG, "Keystore sealing failed, falling back to unsigned: " + e.getMessage());
+                // Not silent: the record is kept (a crash record beats none) but
+                // it is flagged sealed=false everywhere it surfaces, and verify()
+                // will report it as not valid.
+                sealError = e.getClass().getSimpleName() + ": " + e.getMessage();
+                Log.e(TAG, "Keystore sealing FAILED — record kept UNSEALED: " + sealError);
             }
 
             // Build result for the JS layer
@@ -497,6 +550,9 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             result.put("ended_at", header.getString("ended_at"));
             result.put("hash", hashHex);
             result.put("signature", sigB64);
+            result.put("public_key", pubB64);
+            result.put("sealed", sealed);
+            if (sealError != null) result.put("seal_error", sealError);
             result.put("path", packetFile.getAbsolutePath());
             lastFreezeResult = result;
 
@@ -508,6 +564,24 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
         } catch (Exception e) {
             Log.e(TAG, "closePacket failed: " + e.getMessage(), e);
         }
+    }
+
+    private void generateSealKey(String alias, boolean strongBox) throws Exception {
+        android.security.keystore.KeyGenParameterSpec.Builder b =
+            new android.security.keystore.KeyGenParameterSpec.Builder(
+                alias,
+                android.security.keystore.KeyProperties.PURPOSE_SIGN
+                    | android.security.keystore.KeyProperties.PURPOSE_VERIFY)
+                .setDigests(android.security.keystore.KeyProperties.DIGEST_SHA256)
+                .setSignaturePaddings(android.security.keystore.KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+                .setKeySize(2048);
+        // setIsStrongBoxBacked exists only on API 28+; calling it on 23–27
+        // throws NoSuchMethodError (an Error, not caught as Exception).
+        if (Build.VERSION.SDK_INT >= 28) b.setIsStrongBoxBacked(strongBox);
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+            android.security.keystore.KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore");
+        kpg.initialize(b.build());
+        kpg.generateKeyPair();
     }
 
     private boolean hasStrongBox() {

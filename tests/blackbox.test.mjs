@@ -303,5 +303,59 @@ console.log('── Black Box v1 (.qkedr) Unit Tests ──');
   delete globalThis.window;
 }
 
+// ── 6. Review fixes (17 Oct 2026) ─────────────────────────────────────────────
+{
+  // 200 ms window boundary: 20 m/s² for samples at 0..200 ms (10 ms apart)
+  // integrates to 4.0 m/s (< 4.17, no trigger). The first version also
+  // integrated the 210 ms sample and reached 4.2 m/s (a false trigger).
+  const s = [];
+  for (let i = 0; i <= 21; i++) s.push(i * 10_000, 20, 0, 0);
+  const drop = maxSpeedDropAccel(s, 22);
+  check('accel integration stops at the 200 ms window edge (no extra sample)',
+    Math.abs(drop - 4.0) < 1e-9, `got ${drop}`);
+  check('20 m/s² for exactly 200 ms does not trigger (4.0 < 4.17 m/s)', !isSpeedDropAccel(s, 22));
+}
+
+{
+  const { syncPendingRecords, storagePathFor, base64ToBytes } = await import('../src/lib/blackbox-sync.js');
+
+  check('storage path is <user id>/<record id>.qkedr (matches the bucket policy)',
+    storagePathFor('u1', 'event_1700000000000') === 'u1/event_1700000000000.qkedr');
+  check('base64ToBytes decodes', base64ToBytes('AAEC').join(',') === '0,1,2');
+
+  const mem = new Map();
+  const storage = { getItem: k => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  const uploads = [], rows = [];
+  let failUploadOnce = true;
+  const fakeSupabase = {
+    auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) },
+    storage: { from: (b) => ({ upload: async (path) => {
+      if (failUploadOnce) { failUploadOnce = false; return { error: { message: 'network down' } }; }
+      uploads.push(b + ':' + path); return { error: null };
+    } }) },
+    from: (t) => ({ insert: async (row) => { rows.push({ t, ...row }); return { error: null }; } }),
+  };
+  const fakePlugin = {
+    list: async () => ({ records: [{ id: 'event_1700000000000' }] }),
+    readRecord: async ({ id }) => ({ id, data: 'AAEC', hash: 'h', signature: 'sig', public_key: 'pub',
+      trigger: 'impact_g', started_at: '2026-10-17T00:00:00Z', ended_at: '2026-10-17T00:01:00Z' }),
+  };
+
+  const r1 = await syncPendingRecords(fakeSupabase, { plugin: fakePlugin, storage });
+  check('a failed upload is reported, not marked synced', r1.failed.length === 1 && r1.uploaded.length === 0);
+  const r2 = await syncPendingRecords(fakeSupabase, { plugin: fakePlugin, storage });
+  check('retry uploads the record and inserts one row',
+    r2.uploaded.length === 1 && uploads[0] === 'blackbox-records:u1/event_1700000000000.qkedr' && rows.length === 1);
+  check('row carries owner, storage_path, public_key and sealed',
+    rows[0].t === 'blackbox_events' && rows[0].owner === 'u1' && rows[0].public_key === 'pub' && rows[0].sealed === true);
+  const r3 = await syncPendingRecords(fakeSupabase, { plugin: fakePlugin, storage });
+  check('an already-synced record is not uploaded twice', r3.uploaded.length === 0 && rows.length === 1);
+
+  const r4 = await syncPendingRecords({ auth: { getUser: async () => ({ data: { user: null } }) } }, { plugin: fakePlugin, storage: null });
+  check('signed out: nothing is uploaded', r4.skipped === 'signed_out');
+  const r5 = await syncPendingRecords(fakeSupabase, { plugin: null, storage });
+  check('not native: sync is skipped', r5.skipped === 'not_native');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

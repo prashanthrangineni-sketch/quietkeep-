@@ -99,6 +99,9 @@ public final class BlackboxLogic {
 
             for (int j = windowStart + 1; j < count; j++) {
                 long tj = (long) samples[j * 4];
+                // Stop BEFORE integrating a sample that lies past the 200 ms
+                // window (the first version added one sample too many).
+                if (tj - t0 > SPEED_DROP_WINDOW_MS * 1000) break;
                 long dt_us = tj - (long) samples[(j - 1) * 4];
                 if (dt_us <= 0) continue;
 

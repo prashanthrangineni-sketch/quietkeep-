@@ -21,6 +21,7 @@ import {
   listBlackboxRecords,
   requestMicPermission,
 } from '@/lib/blackbox';
+import { startBlackboxSync, syncPendingRecords } from '@/lib/blackbox-sync';
 
 // drivespeak: thin wrapper — onEnd callback for sequential speech+action
 function drivespeak(text, onEnd) {
@@ -85,6 +86,8 @@ export default function DriveModePage() {
     setTestMode(testM);
     startBlackbox({ audioOptIn: optIn, testMode: testM });
     listBlackboxRecords().then(r => setRecords(r.records || []));
+    // Upload sealed records now and on every reconnect (DRV-01 step 7)
+    const stopSync = startBlackboxSync(supabase);
 
     return () => {
       clearInterval(t);
@@ -92,6 +95,7 @@ export default function DriveModePage() {
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
       if (callTimerRef.current) clearInterval(callTimerRef.current);
       stopBlackbox();
+      stopSync();
     };
   }, [user, authLoading]);
 
@@ -215,8 +219,16 @@ export default function DriveModePage() {
     } else if (cmd.includes('sos')) {
       drivespeak('S O S activated.', () => { window.location.href = '/emergency'; });
     } else if (cmd.includes('save last 60') || cmd.includes('save 60') || cmd.includes('black box') || cmd.includes('save record')) {
-      freezeBlackbox('voice_save');
-      drivespeak('Saving last sixty seconds.');
+      drivespeak('Saving. Recording fifteen more seconds.');
+      freezeBlackbox('voice_save').then((r) => {
+        if (r && r.saved) {
+          drivespeak(r.sealed ? 'Record saved and sealed.' : 'Record saved, but it could not be sealed.');
+          listBlackboxRecords().then(x => setRecords(x.records || []));
+          syncPendingRecords(supabase).catch(() => {});
+        } else {
+          drivespeak('Black box is not recording. Record not saved.');
+        }
+      });
     } else if (cmd.includes('home') || cmd.includes('dashboard')) {
       drivespeak('Leaving drive mode.', () => { window.location.href = '/dashboard'; });
     } else if (cmd.includes('keep') || cmd.includes('read')) {
@@ -322,6 +334,9 @@ export default function DriveModePage() {
             ⚙️ Setup
           </button>
           <span style={{ fontSize: 14, fontWeight: 700, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{timeStr}</span>
+          <span style={{ fontSize: 11, color: '#6366f1' }}>
+            {keeps.length} keep{keeps.length !== 1 ? 's' : ''}
+          </span>
           <a href="/driving" style={{ fontSize: 11, color: '#6366f1', textDecoration: 'none', background: '#6366f115', border: '1px solid #6366f130', padding: '4px 10px', borderRadius: 8 }}>
             Log ›
           </a>
@@ -489,7 +504,7 @@ export default function DriveModePage() {
               />
             </div>
             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
-              Default: OFF · Sealed locally on phone with Keystore
+              Default: OFF · Records are sealed on the phone with the Android Keystore. Audio recording itself arrives in a later update — today only your choice is saved.
             </div>
           </div>
 
@@ -553,7 +568,12 @@ export default function DriveModePage() {
                         {r.started_at ? new Date(r.started_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }) : (r.id || 'Recent')}
                       </div>
                       <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                        Trigger: <span style={{ color: '#818cf8' }}>{r.trigger || 'unknown'}</span> · Place: Local
+                        Trigger: <span style={{ color: '#818cf8' }}>{r.trigger || 'unknown'}</span>
+                        {' · Place: '}
+                        {typeof r.lat === 'number' && typeof r.lon === 'number'
+                          ? `${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}`
+                          : 'no GPS fix'}
+                        {r.sealed === false && <span style={{ color: '#f87171' }}> · NOT sealed</span>}
                       </div>
                     </div>
                     <button

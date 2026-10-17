@@ -40,17 +40,20 @@ A single line of minified JSON, terminated by a newline (`0x0A`). Fields:
 | `post_trigger_ms` | integer  | Milliseconds of data after the trigger (≈ 15000).  |
 | `sample_rate_hz`  | integer  | IMU sample rate, nominally `100`.                  |
 | `gps_rate_hz`     | integer  | GPS fix rate, nominally `1`.                       |
-| `audio_opt_in`    | boolean  | Whether cabin audio was opted in and captured.     |
-| `audio_codec`     | string?  | `"opus"` if audio present, else `null`.            |
+| `audio_opt_in`    | boolean  | Whether the driver opted in to cabin audio.        |
+| `audio_status`    | string   | `off`, or `opted_in_not_captured_v1` (see below).  |
+| `audio_codec`     | string?  | Always `null` in v1 (no audio is captured yet).    |
+| `imu_clock_offset_us` | integer | Add to an IMU timestamp to get wall-clock µs.   |
+| `last_fix`        | object?  | `{lat, lon, accuracy_m, speed_kmh}` of the newest GPS fix, or `null`. |
 | `imu_samples`     | integer  | Number of IMU sample records in the binary block.  |
 | `gps_samples`     | integer  | Number of GPS sample records in the binary block.  |
-| `audio_bytes`     | integer  | Length of the Opus audio section, or `0`.           |
+| `audio_bytes`     | integer  | Length of the audio section. Always `0` in v1.      |
 
 ### 2. Binary Sample Blocks
 
 #### IMU block (immediately after header newline)
 
-Each record is 28 bytes, little-endian:
+Each record is 32 bytes, little-endian:
 
 | Offset | Size | Type    | Field          |
 |--------|------|---------|----------------|
@@ -62,7 +65,10 @@ Each record is 28 bytes, little-endian:
 | 24     | 4    | float32 | gyro_y (rad/s) |
 | 28     | 4    | float32 | gyro_z (rad/s) |
 
-Total IMU block size: `imu_samples × 28` bytes.
+Total IMU block size: `imu_samples × 32` bytes (8-byte timestamp + six 4-byte floats).
+
+IMU `timestamp_us` is the sensor clock (time since boot). GPS `timestamp_us` is
+wall-clock UTC. To put both on one timeline: `wall_us = imu_us + imu_clock_offset_us`.
 
 #### GPS block (immediately after IMU block)
 
@@ -80,10 +86,14 @@ Each record is 40 bytes, little-endian:
 
 Total GPS block size: `gps_samples × 40` bytes.
 
-### 3. Opus Audio (optional)
+### 3. Audio section — RESERVED, NOT IMPLEMENTED IN v1
 
-Present only when `audio_opt_in` is `true` and `audio_bytes > 0`. Raw Opus
-frames at 16 kHz mono, 32 kbps. Exactly `audio_bytes` bytes long.
+v1 captures **no audio**, even when the driver opts in. The opt-in choice is
+stored and written to the header (`audio_status: "opted_in_not_captured_v1"`)
+so the setting is ready, but there is no microphone ring buffer yet and
+`audio_bytes` is always `0`. A later card adds a 60-second Opus ring
+(planned: 16 kHz mono, ~32 kbps) and fills this section; until then no codec
+is claimed in the header.
 
 ## Trigger Conditions
 
@@ -107,6 +117,12 @@ On trigger:
 
 Total packet duration: 60 seconds.
 
+How this is achieved: the ring buffer holds exactly 60 s and keeps recording
+after the trigger. The 15 s written after the trigger overwrite the oldest 15 s,
+so when the packet closes the ring holds 45 s before + 15 s after. New triggers
+are ignored until the packet closes. If Drive Mode stops inside the 15 s
+window, the packet is closed immediately with what was recorded.
+
 ## Sealing
 
 1. Compute **SHA-256** of the entire `.qkedr` file (header + binary + audio).
@@ -115,6 +131,10 @@ Total packet duration: 60 seconds.
 3. Store alongside the `.qkedr` file:
    - `<name>.qkedr.sig` — raw signature bytes (Base64-encoded)
    - `<name>.qkedr.pub` — X.509-encoded public key (Base64-encoded)
+4. If the Keystore refuses (rare, old or broken devices), the record is still
+   kept — a crash record beats none — but it is **flagged** `sealed: false` in
+   the freeze result, in `list()`, in the UI ("NOT sealed") and in the
+   `blackbox_events.sealed` column, and `verify()` returns `valid: false`.
 
 ### Verification
 
@@ -131,7 +151,12 @@ produce a different hash and fail verification.
 - **On-device**: app-private storage (`Context.getFilesDir()/blackbox/`).
 - **Supabase table**: `blackbox_events` (see migration).
 - **Supabase bucket**: `blackbox-records` (private, owner-only).
-- **Upload policy**: upload when online; retry on network reconnect.
+- **Upload policy**: upload when online; retry on network reconnect
+  (`src/lib/blackbox-sync.js`, started by Drive Mode). File path in the bucket:
+  `<user id>/<record id>.qkedr`. An already-uploaded file or an existing row
+  counts as done, so retries converge. Synced ids are remembered on the phone.
+- **Supabase row** also carries `public_key` and `sealed`, so a record can be
+  verified off the phone.
 
 ## Intent Layer — NOTE for the Intent Layer owner
 

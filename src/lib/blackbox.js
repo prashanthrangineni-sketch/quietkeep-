@@ -160,6 +160,8 @@ export function maxSpeedDropAccel(samples, count) {
     const t0 = samples[windowStart * 4];
     for (let j = windowStart + 1; j < count; j++) {
       const tj = samples[j * 4];
+      // Stop BEFORE integrating a sample past the 200 ms window.
+      if (tj - t0 > CONSTANTS.SPEED_DROP_WINDOW_MS * 1000) break;
       const dt_us = tj - samples[(j - 1) * 4];
       if (dt_us <= 0) continue;
       const dt_s = dt_us / 1000000.0;

@@ -320,6 +320,7 @@ export function startListenStream({
   keyterms = [],
   silenceMs,
   maxMs = 15000,
+  pass = null,          // short-lived engine pass from /api/voice/engine-pass (never the key)
   onPartial = () => {},
   onSpeech = () => {},
   onLive = () => {},     // the microphone is open and audio is flowing

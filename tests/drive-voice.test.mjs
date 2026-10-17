@@ -53,13 +53,34 @@ test('share reads back WHO and sends nothing; no phone action yet', () => {
   assert.match(te.tts, /Suresh/)
 })
 
-test('car health and faults wait for the car reader', () => {
+test('car health and faults ask the phone to read the car reader', () => {
   for (const i of ['read_health', 'read_faults']) {
     const p = planDriveTurn({ intent: i, language: 'en-IN' })
-    assert.equal(p.deviceAction, null)
+    assert.equal(p.deviceAction, i)
     assert.equal(p.tts, 'Connect the car reader first, then ask me again.')
   }
-  assert.equal(DEVICE_ACTION.read_health, null)
+})
+
+test('phone: car reader answers, or asks to connect it, never invents', async () => {
+  const health = await runDriveAction('read_health', {
+    language: 'en-IN', deps: { describeCar: async () => 'Engine is fine. Coolant 90 degrees.' },
+  })
+  assert.equal(health, 'Engine is fine. Coolant 90 degrees.')
+  const faults = await runDriveAction('read_faults', {
+    language: 'en-IN', deps: { describeFaults: async () => 'No fault codes are stored in the car.' },
+  })
+  assert.equal(faults, 'No fault codes are stored in the car.')
+  // no reader connected -> null -> connect first (in the rider's language)
+  const none = await runDriveAction('read_health', { language: 'te-IN', deps: { describeCar: async () => null } })
+  assert.equal(none, driveLine('reader_first', 'te-IN'))
+  // reader code not on this build -> connect first
+  const missing = await runDriveAction('read_faults', { language: 'en-IN', deps: {} })
+  assert.equal(missing, 'Connect the car reader first, then ask me again.')
+  // reader connected but the read failed -> say so, not "connect first"
+  const broke = await runDriveAction('read_health', {
+    language: 'en-IN', deps: { describeCar: async () => { throw new Error('timeout') } },
+  })
+  assert.equal(broke, driveLine('reader_failed', 'en-IN'))
 })
 
 test('server never says the record was saved - the phone says that', () => {
@@ -72,7 +93,7 @@ test('phone: save seals with the voice trigger and says the result', async () =>
   let trigger = null
   const said = await runDriveAction('save_last_60s', {
     language: 'en-IN',
-    deps: { isBlackboxAvailable: () => true, saveLast60s: async (t) => { trigger = t; return { id: 'r1' } } },
+    deps: { isBlackboxAvailable: () => true, saveLast60s: async (t) => { trigger = t; return { saved: true, id: 'r1', sealed: true } } },
   })
   assert.equal(trigger, 'voice_save')
   assert.equal(said, 'Saved the last 60 seconds of the drive.')
@@ -85,6 +106,23 @@ test('phone: save outside the app or on failure does not claim success', async (
     language: 'en-IN', deps: { isBlackboxAvailable: () => true, saveLast60s: async () => null },
   })
   assert.equal(failed, 'I could not save the record just now. Try once more.')
+})
+
+test('phone: only saved:true is said as saved (DRV-03 hand-off 2)', async () => {
+  const run = (r) => runDriveAction('save_last_60s', {
+    language: 'en-IN', deps: { isBlackboxAvailable: () => true, saveLast60s: async () => r },
+  })
+  // Drive Mode not recording: an object comes back, but nothing was saved
+  assert.equal(await run({ saved: false, reason: 'not_running' }), driveLine('save_no_box', 'en-IN'))
+  assert.equal(await run({ saved: false, reason: 'no_result' }), driveLine('save_failed', 'en-IN'))
+  assert.equal(await run({ id: 'r1' }), driveLine('save_failed', 'en-IN'))
+  // saved but the seal failed: say so
+  assert.equal(await run({ saved: true, id: 'r1', sealed: false }), driveLine('saved_unsealed', 'en-IN'))
+  assert.equal(await run({ saved: true, id: 'r1' }), driveLine('saved', 'en-IN'))
+  const threw = await runDriveAction('save_last_60s', {
+    language: 'en-IN', deps: { isBlackboxAvailable: () => true, saveLast60s: async () => { throw new Error('x') } },
+  })
+  assert.equal(threw, driveLine('save_failed', 'en-IN'))
 })
 
 test('phone: hazard ahead uses the shared map and a sayable distance', async () => {

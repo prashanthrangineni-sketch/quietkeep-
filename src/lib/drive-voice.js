@@ -8,8 +8,9 @@
 //                  black box's last 60 seconds on the phone (PR #178)
 //   share_record   not wired yet: read back WHO it would go to, send nothing
 //   read_health,
-//   read_faults    answered by the OBD reader later (card DRV-06); until then
-//                  "Connect the car reader first"
+//   read_faults    the car reader Drive Mode connected (DRV-06,
+//                  src/lib/obd/active-reader.js describeCar / describeFaults,
+//                  read-only); no reader connected -> "Connect the car reader first"
 //   hazard_ahead   the ride guard's shared hazard map (src/lib/hazard-alerts.js,
 //                  /api/ride/hazards-near)
 //   stay_awake     the stay-awake companion runs inside the ride guard
@@ -43,8 +44,8 @@ export const DRIVE_TYPE = Object.freeze({
 export const DEVICE_ACTION = Object.freeze({
   save_last_60s: 'save_last_60s',
   share_record:  null,             // later Drive card
-  read_health:   null,             // later Drive card (DRV-06)
-  read_faults:   null,
+  read_health:   'read_health',    // car reader (DRV-06), read-only
+  read_faults:   'read_faults',
   hazard_ahead:  'hazard_ahead',
   stay_awake:    'stay_awake',
 });
@@ -58,11 +59,13 @@ const LINES = {
   en: {
     saving:         'Saving the last 60 seconds.',
     saved:          'Saved the last 60 seconds of the drive.',
+    saved_unsealed: 'Saved the last 60 seconds, but the record could not be sealed, so it may not hold up as proof.',
     save_no_box:    'The black box only works in the QuietKeep app with Drive Mode on.',
     save_failed:    'I could not save the record just now. Try once more.',
     share_who:      (who) => `Share the record with ${who}? Sharing is not ready yet, so nothing has been sent.`,
     share_nobody:   'Sharing records is not ready yet, so nothing has been sent.',
     reader_first:   'Connect the car reader first, then ask me again.',
+    reader_failed:  'I could not read the car just now. Try again in a moment.',
     hazard_looking: 'Checking the road ahead.',
     hazard_none:    'Nothing reported on the road ahead.',
     hazard_found:   (phrase, m) => `${phrase.replace(/\s*just ahead\.?$/i, '')} in about ${m} metres.`,
@@ -73,11 +76,13 @@ const LINES = {
   hi: {
     saving:         'पिछले 60 सेकंड सेव कर रही हूँ।',
     saved:          'ड्राइव के पिछले 60 सेकंड सेव हो गए।',
+    saved_unsealed: 'पिछले 60 सेकंड सेव हो गए, पर रिकॉर्ड सील नहीं हो पाया, इसलिए यह सबूत के तौर पर कमज़ोर हो सकता है।',
     save_no_box:    'ब्लैक बॉक्स सिर्फ़ QuietKeep ऐप में ड्राइव मोड चालू होने पर काम करता है।',
     save_failed:    'अभी रिकॉर्ड सेव नहीं हो पाया। एक बार फिर कोशिश कीजिए।',
     share_who:      (who) => `रिकॉर्ड ${who} को भेजूँ? शेयर करना अभी तैयार नहीं है, कुछ नहीं भेजा गया।`,
     share_nobody:   'रिकॉर्ड शेयर करना अभी तैयार नहीं है, कुछ नहीं भेजा गया।',
     reader_first:   'पहले कार रीडर जोड़िए, फिर मुझसे पूछिए।',
+    reader_failed:  'अभी कार की जानकारी नहीं पढ़ पाई। थोड़ी देर में फिर पूछिए।',
     hazard_looking: 'आगे का रास्ता देख रही हूँ।',
     hazard_none:    'आगे के रास्ते पर कुछ रिपोर्ट नहीं हुआ है।',
     hazard_found:   (_phrase, m) => `लगभग ${m} मीटर आगे राइडर अक्सर अचानक ब्रेक लगाते हैं। संभलकर चलिए।`,
@@ -88,11 +93,13 @@ const LINES = {
   te: {
     saving:         'చివరి 60 సెకన్లు సేవ్ చేస్తున్నాను.',
     saved:          'డ్రైవ్ లో చివరి 60 సెకన్లు సేవ్ అయ్యాయి.',
+    saved_unsealed: 'చివరి 60 సెకన్లు సేవ్ అయ్యాయి, కానీ రికార్డ్ సీల్ కాలేదు, కాబట్టి సాక్ష్యంగా బలహీనంగా ఉండొచ్చు.',
     save_no_box:    'బ్లాక్ బాక్స్ QuietKeep యాప్ లో డ్రైవ్ మోడ్ ఆన్ లో ఉన్నప్పుడు మాత్రమే పని చేస్తుంది.',
     save_failed:    'ఇప్పుడు రికార్డ్ సేవ్ కాలేదు. ఇంకోసారి ప్రయత్నించండి.',
     share_who:      (who) => `రికార్డ్ ${who} కి పంపాలా? షేర్ చేయడం ఇంకా సిద్ధంగా లేదు, ఏమీ పంపలేదు.`,
     share_nobody:   'రికార్డ్ షేర్ చేయడం ఇంకా సిద్ధంగా లేదు, ఏమీ పంపలేదు.',
     reader_first:   'ముందు కార్ రీడర్ కనెక్ట్ చేసి, మళ్ళీ అడగండి.',
+    reader_failed:  'ఇప్పుడు కార్ వివరాలు చదవలేకపోయాను. కాసేపట్లో మళ్ళీ అడగండి.',
     hazard_looking: 'ముందున్న రోడ్డు చూస్తున్నాను.',
     hazard_none:    'ముందున్న రోడ్డులో ఏమీ రిపోర్ట్ కాలేదు.',
     hazard_found:   (_phrase, m) => `సుమారు ${m} మీటర్ల ముందు రైడర్లు సడన్ గా బ్రేక్ వేస్తుంటారు. జాగ్రత్తగా వెళ్ళండి.`,
@@ -172,8 +179,23 @@ export async function runDriveAction(action, { language, deps }) {
   const d = deps || {};
   if (action === 'save_last_60s') {
     if (!d.isBlackboxAvailable?.()) return driveLine('save_no_box', language);
-    const r = await d.saveLast60s?.('voice_save');
-    return r ? driveLine('saved', language) : driveLine('save_failed', language);
+    let r = null;
+    try { r = await d.saveLast60s?.('voice_save'); } catch { r = null; }
+    // saveLast60s resolves an object even when nothing was saved
+    // ({ saved:false, reason:'not_running' } when Drive Mode is not recording),
+    // so only an explicit saved:true may be said as "Saved".
+    if (r?.saved === true) return driveLine(r.sealed === false ? 'saved_unsealed' : 'saved', language);
+    if (r?.reason === 'not_running') return driveLine('save_no_box', language);
+    return driveLine('save_failed', language);
+  }
+  if (action === 'read_health' || action === 'read_faults') {
+    // describeCar / describeFaults (src/lib/obd/active-reader.js) return the
+    // sentence to say, or null when no car reader is connected.
+    const read = action === 'read_health' ? d.describeCar : d.describeFaults;
+    if (typeof read !== 'function') return driveLine('reader_first', language);
+    let line = null;
+    try { line = await read(); } catch { return driveLine('reader_failed', language); }
+    return typeof line === 'string' && line.trim() ? line.trim() : driveLine('reader_first', language);
   }
   if (action === 'hazard_ahead') {
     const pos = d.position?.();

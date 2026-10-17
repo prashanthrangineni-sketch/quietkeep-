@@ -1,3 +1,4 @@
+import { engineHeaders } from './aaria-pass.js';
 // src/lib/aaria-act.js
 // Aaria as the ACTION BRAIN (SOT P1).
 //

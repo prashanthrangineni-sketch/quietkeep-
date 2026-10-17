@@ -334,7 +334,7 @@ export function startListenStream({
   const setT = deps.setTimeout || setTimeout;
   const clearT = deps.clearTimeout || clearTimeout;
   const now = deps.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
-  const url = deps.url || LISTEN_STREAM_URL;
+  const url = withPass(deps.url || LISTEN_STREAM_URL, pass);
 
   const t0 = now();
   const terms = cleanKeyterms(keyterms);

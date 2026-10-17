@@ -78,7 +78,12 @@ export function startObdFeed(reader, options = {}) {
       consecutiveFailures = 0;
 
       const sample = {
-        at: snapshot?.at || new Date(clock()).toISOString(),
+        // Epoch milliseconds as a NUMBER: the native side must not parse ISO
+        // strings (java.time needs Android 8+, the app supports Android 6+).
+        at: (() => {
+          const t = typeof snapshot?.at === 'number' ? snapshot.at : Date.parse(snapshot?.at);
+          return Number.isFinite(t) ? t : clock();
+        })(),
         speedKmh: (snapshot && typeof snapshot.speedKmh === 'number' && Number.isFinite(snapshot.speedKmh))
           ? snapshot.speedKmh : null,
         rpm: (snapshot && typeof snapshot.rpm === 'number' && Number.isFinite(snapshot.rpm))

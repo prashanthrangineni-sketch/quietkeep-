@@ -136,6 +136,16 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
         return true;
     }
 
+    /** Readings whose wall-clock time falls inside the packet window. */
+    private int countObdInWindow(long windowStartUs) {
+        int n = 0;
+        for (int i = 0; i < obdCount; i++) {
+            int idx = ((obdHead - obdCount + i) % OBD_CAPACITY + OBD_CAPACITY) % OBD_CAPACITY;
+            if (obdTimestamps[idx] >= windowStartUs) n++;
+        }
+        return n;
+    }
+
     private void pushObdInternal(long timestampUs, float speedKmh, float rpm,
                                  float loadPct, float coolantC, float voltage,
                                  int flags, String source) {
@@ -487,7 +497,7 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             header.put("audio_status", audioOptIn ? "opted_in_not_captured_v1" : "off");
             header.put("imu_samples", imuCount);
             header.put("gps_samples", gpsCount);
-            header.put("obd_samples", obdCount);
+            header.put("obd_samples", countObdInWindow(window[0] * 1000L));
             header.put("obd_record_bytes", BlackboxLogic.OBD_RECORD_BYTES);
             header.put("obd_source", latestObdSource != null ? latestObdSource : JSONObject.NULL);
             header.put("audio_bytes", 0);
@@ -531,8 +541,16 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             // Binary OBD block (format_version 2)
             ByteBuffer obdBuf = ByteBuffer.allocate(obdCount * BlackboxLogic.OBD_RECORD_BYTES);
             obdBuf.order(ByteOrder.LITTLE_ENDIAN);
+            // Only car readings inside this packet's 60 s window. The ring keeps
+            // the last 120 readings whatever their age, so if the reader
+            // dropped out minutes ago its old readings must not be presented
+            // as if they belonged to this crash.
+            long obdWindowStartUs = window[0] * 1000L;
+            int obdIncluded = 0;
             for (int i = 0; i < obdCount; i++) {
                 int idx = ((obdHead - obdCount + i) % OBD_CAPACITY + OBD_CAPACITY) % OBD_CAPACITY;
+                if (obdTimestamps[idx] < obdWindowStartUs) continue;
+                obdIncluded++;
                 byte[] rec = BlackboxLogic.encodeObdRecord(
                     obdTimestamps[idx],
                     obdValues[idx][0],

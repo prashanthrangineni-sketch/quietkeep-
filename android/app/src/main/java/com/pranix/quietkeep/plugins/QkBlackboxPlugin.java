@@ -113,6 +113,9 @@ public class QkBlackboxPlugin extends Plugin {
             long timestampUs;
             if (atStr != null) {
                 try {
+                    // java.time exists only on Android 8+ (API 26); minSdk is 23 and a
+                    // missing class is an Error that would crash, so guard it.
+                    if (Build.VERSION.SDK_INT < 26) throw new IllegalArgumentException("no java.time");
                     timestampUs = java.time.Instant.parse(atStr).toEpochMilli() * 1000L;
                 } catch (Exception e) {
                     try {

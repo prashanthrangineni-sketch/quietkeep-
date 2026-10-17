@@ -48,7 +48,7 @@ await (async () => {
     Number.isFinite(pushed[0].rpm) &&
     Number.isFinite(pushed[0].voltage)
   );
-  check('pushed samples have ISO timestamp', typeof pushed[0].at === 'string' && pushed[0].at.includes('T'));
+  check('pushed samples carry epoch-ms number timestamps (no ISO parsing on old Android)', typeof pushed[0].at === 'number' && Number.isFinite(pushed[0].at) && pushed[0].at > 0);
 })();
 
 // ── 2. Never overlaps reads under slow replies ───────────────────────────────

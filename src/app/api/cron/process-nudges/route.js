@@ -26,6 +26,7 @@ export const dynamic = 'force-dynamic';
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { inAppType, planNudge, queueUpdate } from '@/lib/nudge-delivery';
 
 const BATCH = 25;         // nudges per run (kept small to stay under plan limits)
 const MAX_RETRY = 5;      // give up after this many failures
@@ -83,14 +84,18 @@ async function handle(req) {
 
   const db = svc();
   const nowIso = new Date().toISOString();
+  const nowMs = Date.parse(nowIso);
 
   // Pull due, undelivered, not-exhausted nudges, highest priority first.
+  // WhatsApp-channel nudges are left for a future WhatsApp sender and are not
+  // picked up here, so they cannot loop.
   const { data: due, error } = await db
     .from('nudge_queue')
     .select('id,user_id,nudge_type,title,body,payload,channel,scheduled_for,keep_id,retry_count,workspace_id,domain_type')
     .eq('delivered', false)
     .lte('scheduled_for', nowIso)
     .lt('retry_count', MAX_RETRY)
+    .or('channel.is.null,channel.neq.whatsapp')
     .order('priority_score', { ascending: false, nullsFirst: false })
     .order('scheduled_for', { ascending: true })
     .limit(BATCH);
@@ -102,31 +107,45 @@ async function handle(req) {
     return NextResponse.json({ ok: true, processed: 0, at: nowIso });
   }
 
-  let sent = 0, failed = 0, skipped = 0;
+  let sent = 0, failed = 0, skipped = 0, expired = 0, writeErrors = 0;
+
+  // Every write is checked. Before 17 Oct 2026 the database refused these
+  // writes silently and the same nudges were re-sent every 5 minutes.
+  async function closeOut(n, outcome) {
+    const { error: upErr } = await db.from('nudge_queue').update(queueUpdate(outcome, nowIso)).eq('id', n.id);
+    if (upErr) {
+      writeErrors++;
+      console.error('[cron/process-nudges] queue update refused', n.id, upErr.message);
+    }
+  }
 
   for (const n of due) {
-    const title = n.title || 'QuietKeep';
-    const body = n.body || '';
-    const url = (n.payload && (n.payload.url || n.payload.action_url)) || '/dashboard';
-    const channel = (n.channel || 'push').toLowerCase();
+    const plan = planNudge(n, nowMs);
 
-    // WhatsApp-channel nudges need the outbound WA pipeline + opt-in; not
-    // auto-sent here to avoid half-doing it. Left queued, flagged, not retried
-    // into oblivion. (TODO: dedicated WA dispatch once server-auth is fixed.)
-    if (channel === 'whatsapp') {
+    if (plan.action === 'expire') {
+      expired++;
+      await closeOut(n, { kind: 'expired', reason: plan.reason });
+      continue;
+    }
+    if (plan.action === 'skip_whatsapp') {
       skipped++;
-      await db.from('nudge_queue').update({ delivery_status: 'skipped_whatsapp' }).eq('id', n.id);
+      await closeOut(n, { kind: 'skipped_whatsapp' });
       continue;
     }
 
+    const title = n.title || 'QuietKeep';
+    const body = n.body || '';
+    const url = (n.payload && (n.payload.url || n.payload.action_url)) || '/dashboard';
+
     try {
       const push = await sendPush({ user_id: n.user_id, title, body, url });
+      if (!push.ok) throw new Error(`push_status_${push.status}`);
 
-      // Always mirror into the in-app feed. Populate BOTH body and message so
+      // Mirror into the in-app feed. Populate BOTH body and message so
       // InAppNotifications.jsx (which selects `message`/`read_at`) renders it.
-      await db.from('proactive_nudges').insert({
+      const { error: insErr } = await db.from('proactive_nudges').insert({
         user_id: n.user_id,
-        nudge_type: n.nudge_type || 'reminder',
+        nudge_type: inAppType(n.nudge_type),
         title,
         body,
         message: body || title,
@@ -137,29 +156,17 @@ async function handle(req) {
         scheduled_for: n.scheduled_for,
         sent_at: nowIso,
       });
+      if (insErr) throw new Error(`in_app_insert_${insErr.code || 'error'}: ${insErr.message}`);
 
-      if (push.ok) {
-        await db.from('nudge_queue').update({
-          delivered: true,
-          delivered_at: nowIso,
-          delivery_status: push.soft ? 'delivered_no_push_sub' : 'sent',
-        }).eq('id', n.id);
-        sent++;
-      } else {
-        throw new Error(`push_status_${push.status}`);
-      }
+      await closeOut(n, { kind: 'sent', noPushSubscription: !!push.soft });
+      sent++;
     } catch (e) {
       failed++;
-      await db.from('nudge_queue').update({
-        retry_count: (n.retry_count || 0) + 1,
-        last_error: String(e.message || e).slice(0, 300),
-        failed_at: nowIso,
-        delivery_status: 'failed',
-      }).eq('id', n.id);
+      await closeOut(n, { kind: 'failed', retryCount: n.retry_count, error: e.message || e });
     }
   }
 
-  return NextResponse.json({ ok: true, processed: due.length, sent, failed, skipped, at: nowIso });
+  return NextResponse.json({ ok: true, processed: due.length, sent, failed, skipped, expired, writeErrors, at: nowIso });
 }
 
 export async function GET(req) { return handle(req); }

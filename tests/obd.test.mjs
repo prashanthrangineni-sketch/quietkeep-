@@ -437,5 +437,19 @@ await (async () => {
   );
 })();
 
+// ── Allow-list (review fix, 17 Oct 2026) ─────────────────────────────────────
+{
+  const refused = (c) => { try { assertReadOnlyCommand(c); return false; } catch { return true; } };
+  for (const c of ['AT@3 QKTEST', 'ATSH 7E0', 'ATBRD 23', 'ATMA', 'ATPB C0 01', 'ATWM 81 10 F1 3E',
+                   '2E F1 90 00', '22 F1 90', '10 03', '3E 00', '14 FF FF FF', '0400', '04', '0 4', '07', '0A',
+                   '010C; 04', 'hello', '']) {
+    check(`refuses '${c}'`, refused(c));
+  }
+  for (const c of ['ATZ', 'AT E0', 'atl0', 'ATS0', 'ATH1', 'ATSP0', 'ATDPN', 'ATRV',
+                   '0100', '010C', '01 0D', '0105', '010C1', '03', '0902']) {
+    check(`allows '${c}'`, !refused(c));
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

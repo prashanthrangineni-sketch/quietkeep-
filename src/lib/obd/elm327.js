@@ -4,37 +4,52 @@
 
 /**
  * Validates that an OBD or AT command is strictly read-only.
- * Mode 04 (clear codes/faults) and any AT command writing to non-volatile memory
- * (e.g. ATPP, ATSD, ATCS) are permanently blocked.
+ *
+ * ALLOW-LIST, not a block-list (review fix, 17 Oct 2026): the first version
+ * only blocked a few known writes (mode 04, ATPP, ATSD, ATCS) and let every
+ * other AT command through — including AT@3, which writes the adapter's
+ * one-time identifier to its permanent memory. Now only the exact commands
+ * this reader needs are allowed; everything else is refused.
+ *
+ *   OBD: mode 01 (live data), 03 (stored faults), 09 (vehicle info) only,
+ *        hex digits only, optional trailing response-count digit.
+ *   AT : reset/identify/format/protocol-auto commands listed below only.
+ * The same list is enforced again in QkObdPlugin.java.
  */
+export const ALLOWED_AT = new Set([
+  'Z', 'WS', 'D', 'I', 'RV', 'DP', 'DPN',
+  'E0', 'E1', 'L0', 'L1', 'S0', 'S1', 'H0', 'H1',
+  'SP0', 'AT0', 'AT1', 'AT2',
+]);
+
 export function assertReadOnlyCommand(command) {
   if (typeof command !== 'string') {
     throw new Error('Command must be a string');
   }
-  const cmd = command.trim().toUpperCase();
+  const cmd = command.replace(/\s+/g, '').toUpperCase();
+  if (!cmd) throw new Error('Command forbidden: empty command');
 
-  // Permanently block Mode 04 (clear DTCs / reset check engine light)
-  if (cmd.startsWith('04') || cmd === '4') {
-    throw new Error(`Command forbidden: Mode 04 (clear trouble codes) is strictly prohibited`);
-  }
-
-  // Block any non-read OBD mode. Allowed modes are 01, 03, 09 (and standard AT commands)
-  if (/^[0-9A-F]{2}/i.test(cmd)) {
-    const mode = cmd.slice(0, 2);
-    if (!['01', '03', '09'].includes(mode)) {
-      throw new Error(`Command forbidden: OBD Mode ${mode} is not allowed (only 01, 03, 09 are permitted)`);
-    }
-  }
-
-  // Block AT commands that write to EEPROM / non-volatile memory or change device config permanently
   if (cmd.startsWith('AT')) {
-    const atCmd = cmd.slice(2);
-    // ATPP: Programmable Parameters (writes to EEPROM)
-    // ATSD: Save Data to EEPROM
-    // ATCS: Checksum store
-    if (atCmd.startsWith('PP') || atCmd.startsWith('SD') || atCmd.startsWith('CS')) {
-      throw new Error(`Command forbidden: AT command '${cmd}' writes to non-volatile memory`);
+    const at = cmd.slice(2);
+    if (!ALLOWED_AT.has(at)) {
+      throw new Error(`Command forbidden: AT command '${cmd}' is not on the read-only allow-list`);
     }
+    return;
+  }
+
+  if (!/^[0-9A-F]+$/.test(cmd)) {
+    throw new Error(`Command forbidden: '${cmd}' is not a hex OBD request`);
+  }
+  if (cmd.startsWith('04')) {
+    throw new Error('Command forbidden: Mode 04 (clear trouble codes) is strictly prohibited');
+  }
+  const mode = cmd.slice(0, 2);
+  const ok =
+    (mode === '01' && /^01[0-9A-F]{2}[0-9A-F]?$/.test(cmd)) ||
+    (mode === '03' && /^03[0-9A-F]?$/.test(cmd)) ||
+    (mode === '09' && /^09[0-9A-F]{2}[0-9A-F]?$/.test(cmd));
+  if (!ok) {
+    throw new Error(`Command forbidden: OBD request '${cmd}' is not allowed (only modes 01, 03, 09 reads)`);
   }
 }
 

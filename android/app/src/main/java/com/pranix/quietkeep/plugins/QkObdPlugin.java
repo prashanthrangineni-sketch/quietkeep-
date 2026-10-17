@@ -424,6 +424,13 @@ public class QkObdPlugin extends Plugin {
             return;
         }
 
+        // Read-only allow-list, enforced natively as well as in elm327.js so
+        // no JavaScript path can send a write to the car or the adapter.
+        if (!isAllowedReadOnly(command)) {
+            call.reject("Command forbidden: not on the read-only allow-list");
+            return;
+        }
+
         if (mGatt == null || mWriteChar == null || !mConnected) {
             call.reject("Not connected to vehicle OBD reader");
             return;
@@ -450,6 +457,22 @@ public class QkObdPlugin extends Plugin {
         } catch (Exception e) {
             call.reject("Failed to write to OBD characteristic: " + e.getMessage());
         }
+    }
+
+    private static final java.util.Set<String> ALLOWED_AT = new java.util.HashSet<>(java.util.Arrays.asList(
+        "Z", "WS", "D", "I", "RV", "DP", "DPN", "E0", "E1", "L0", "L1",
+        "S0", "S1", "H0", "H1", "SP0", "AT0", "AT1", "AT2"));
+
+    /** Same rules as assertReadOnlyCommand() in src/lib/obd/elm327.js. */
+    static boolean isAllowedReadOnly(String command) {
+        if (command == null) return false;
+        String cmd = command.replaceAll("\\s+", "").toUpperCase(java.util.Locale.US);
+        if (cmd.isEmpty()) return false;
+        if (cmd.startsWith("AT")) return ALLOWED_AT.contains(cmd.substring(2));
+        if (!cmd.matches("[0-9A-F]+")) return false;
+        return cmd.matches("01[0-9A-F]{2}[0-9A-F]?")
+            || cmd.matches("03[0-9A-F]?")
+            || cmd.matches("09[0-9A-F]{2}[0-9A-F]?");
     }
 
     @PluginMethod

@@ -23,6 +23,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { recentSpokenNames, namesAsWhisperPrompt } from '@/lib/spoken-names';
+import { engineHeaders } from '@/lib/aaria-pass';
 
 export const dynamic = 'force-dynamic';
 

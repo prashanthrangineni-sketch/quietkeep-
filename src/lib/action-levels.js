@@ -40,6 +40,8 @@
 //                                       unknown and never treated as true
 //   3. action limits                  - ACTION_LIMITS + withinLimits()
 //   4. remote off-switch              - settings.actions_paused -> refuse
+//   5. the speed gate (DRV-02)         - context.speedKmh: while moving, nothing
+//                                       that needs the screen; long reads wait
 //
 // "Unknown is null": a missing proof is never assumed present.
 

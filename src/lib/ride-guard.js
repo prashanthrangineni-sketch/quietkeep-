@@ -32,6 +32,10 @@ const CANCEL_WORDS = [
 ];
 const HELP_PHRASE = /help[^a-z]+help/i; // "help help" or "help help help"
 
+// Typical delay between the end of speech and the recogniser's final
+// result (end-of-speech silence). An estimate, used only by the fatigue check.
+const RECOGNISER_FINAL_DELAY_MS = 800;
+
 let guard = null; // the one live guard; a ride never needs two
 
 function now() { return Date.now(); }
@@ -93,7 +97,7 @@ function createListener({ onCancelWord, onHelpWord, onAnyReply }) {
   const SR = typeof window !== 'undefined'
     ? (window.SpeechRecognition || window.webkitSpeechRecognition)
     : null;
-  if (!SR) return { start() {}, stop() {} };
+  if (!SR) return { start() {}, stop() {}, isListening() { return false; } };
 
   let rec = null;
   let wanted = false;
@@ -104,12 +108,16 @@ function createListener({ onCancelWord, onHelpWord, onAnyReply }) {
       const said = (event.results[i][0]?.transcript || '').toLowerCase().trim();
       if (!said) continue;
       if (HELP_PHRASE.test(said)) { onHelpWord(said); return; }
+      // DRV-04: any spoken answer counts for the fatigue check — including
+      // "I'm fine" / "okay", which are also cancel words. Without this the
+      // most likely answer to "how are you feeling?" was dropped and then
+      // scored as NO reply (3 points), pushing an alert rider to 'drowsy'.
+      onAnyReply?.(said, now());
       const clean = said.replace(/[^a-z\s']/g, ' ').replace(/\s+/g, ' ').trim();
       if (CANCEL_WORDS.some(w => clean === w || clean.endsWith(' ' + w) || clean.startsWith(w + ' '))) {
         onCancelWord(said);
         return;
       }
-      onAnyReply?.(said, now());
     }
   }
 
@@ -140,7 +148,11 @@ function createListener({ onCancelWord, onHelpWord, onAnyReply }) {
     rec = null;
   }
 
-  return { start, stop };
+  // DRV-04: the fatigue check only asks when the mic is really listening;
+  // a busy or denied mic must never be scored as "the rider did not answer".
+  function isListening() { return !!rec; }
+
+  return { start, stop, isListening };
 }
 
 /**
@@ -162,6 +174,7 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
 
   const tracker = createFatigueTracker();
   let noReplyTimer = null;
+  let questionAskedAtMs = 0;
   let lastFatigueLevel = tracker.level();
 
   function checkFatigueLevelChange() {
@@ -178,8 +191,20 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     onAnyReply: (said, at) => {
       if (overlayShown) return;
       if (!tracker.hasPendingQuestion()) return;
+      // Ignore what the mic hears while our own question is still being
+      // spoken (the phone's speaker echoing Aaria), so an echo can never
+      // count as the rider answering.
+      if (at < questionAskedAtMs || /quick check/i.test(String(said))) return;
       if (noReplyTimer) { clearTimeout(noReplyTimer); noReplyTimer = null; }
-      tracker.recordReply({ transcript: said, at, startAt: at, endAt: at });
+      // The recogniser only reports when the answer is FINISHED (after its
+      // end-of-speech silence). Estimate when speaking started so the reply
+      // time is not inflated by the length of the answer itself. Speaking
+      // speed is therefore not measurable live (slow_speech never fires
+      // from this path) — documented in docs/fatigue-voice-v1.md.
+      const words = String(said).trim().split(/\s+/).filter(Boolean).length;
+      const endAt = at - RECOGNISER_FINAL_DELAY_MS;
+      const startAt = endAt - Math.round((words / 2.5) * 1000);
+      tracker.recordReply({ transcript: said, at, startAt, endAt: null });
       checkFatigueLevelChange();
     },
   });
@@ -372,7 +397,10 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     const words = nudge.phrase.trim().split(/\s+/).length;
     const speechDurationMs = Math.round((words / 2.5) * 1000);
     const questionAskedAt = at + speechDurationMs;
+    // Ask only when the mic is really listening (see isListening above).
+    if (!listener.isListening()) return;
     tracker.recordQuestion(questionAskedAt);
+    questionAskedAtMs = questionAskedAt;
 
     if (noReplyTimer) clearTimeout(noReplyTimer);
     noReplyTimer = setTimeout(() => {

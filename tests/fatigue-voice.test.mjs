@@ -266,6 +266,24 @@ import { createStayAwakeCompanion } from '../src/lib/ride-care.js';
   eq('drowsy nudge contains check question 2 (rotated)', nudge90?.phrase.includes('Quick check: say your favourite tea.'), true);
 }
 
+// ── Live wiring guards (review fixes, 17 Oct 2026) ────────────────────────────
+// ride-guard.js imports the app (@/...) so it cannot run in plain node; these
+// read its source to pin the three behaviours that stop false "drowsy" results.
+{
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('../src/lib/ride-guard.js', import.meta.url), 'utf8');
+  const handle = src.slice(src.indexOf('function handle('), src.indexOf('function start()'));
+  const replyAt = handle.indexOf('onAnyReply');
+  const cancelAt = handle.indexOf('CANCEL_WORDS');
+  const check = (n, ok) => eq(n, !!ok, true);
+  check('"I am fine" (a cancel word) still counts as an answer: reply is recorded before the cancel-word check',
+    replyAt > 0 && cancelAt > 0 && replyAt < cancelAt);
+  check('no question is asked (so no "no reply" can be scored) when the mic is not listening',
+    /if \(!listener\.isListening\(\)\) return;\s*tracker\.recordQuestion/.test(src));
+  check('our own spoken question echoing into the mic is ignored',
+    /quick check/i.test(src.slice(src.indexOf('onAnyReply: (said, at)'), src.indexOf('onAnyReply: (said, at)') + 900)));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
 

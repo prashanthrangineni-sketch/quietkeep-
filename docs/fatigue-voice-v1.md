@@ -67,6 +67,15 @@ When classified as **`drowsy`**:
 
 ---
 
+## 3b. How it runs live on the phone — honest limits (review, 17 Oct 2026)
+
+- **When it asks:** only when the ride guard's microphone listener is really running. If the mic is busy (for example Aaria is listening) or not allowed, no question is recorded, so silence can never be scored as "no reply".
+- **Any answer counts:** "I'm fine", "okay", "theek hu", "bagunnanu" are also the crash check-in's cancel words. Outside a crash check-in they are now counted as answers to the fatigue question (the first version dropped them and then scored the rider as not answering).
+- **Echo guard:** anything the mic hears before our question has finished, or that contains "quick check", is ignored, so the phone's own voice never counts as the rider's answer.
+- **Timing is estimated:** the browser recogniser reports a reply only when it is finished, after about 0.8 s of silence. The reply time is estimated as: final result time − 0.8 s − (words ÷ 2.5 per second). Because the speaking time itself is estimated, **slow speech cannot be measured live**, so that rule fires only when real start/end times are supplied (tests, a future native recogniser).
+- **Language:** the ride guard's listener runs in en-IN. Telugu/Hindi answers are transcribed as best it can; the timing rules still work, and the word rules (fillers, "malli", "kya") work on romanised text.
+- **Field proof is phase 2:** the card's real proof (30 scripted replies, spoken on a phone during a ride) happens after the hardware arrives. Today's proof is the 30 fixture cases plus the unit tests.
+
 ## 4. What It Does NOT Do
 
 - **No Camera / No Ocular Tracking**: Does not use camera feeds, eye tracking, PERCLOS, head-pose estimation, or facial landmark models.

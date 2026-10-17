@@ -866,8 +866,10 @@ export function AariaProvider({ children }) {
     if (silent || !signedIn) return;
     const stopWarm = keepEngineWarm();
     refreshNames();
-    return stopWarm;
-  }, [silent, signedIn, refreshNames]);
+    refreshPass();
+    const passTimer = setInterval(() => { refreshPass(); }, 5 * 60 * 1000);
+    return () => { clearInterval(passTimer); stopWarm?.(); };
+  }, [silent, signedIn, refreshNames, refreshPass]);
 
   const startListening = useCallback(() => {
     if (typeof window === 'undefined') return;

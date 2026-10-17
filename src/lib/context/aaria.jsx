@@ -834,6 +834,32 @@ export function AariaProvider({ children }) {
     return namesRef.current.names;
   }, [accessToken]);
 
+  // The engine pass for the listening socket (src/lib/aaria-pass.js,
+  // /api/voice/engine-pass). Kept ready BEFORE a tap, the same way as the
+  // names, so opening the microphone never waits on it. A pass lasts 10
+  // minutes; it is fetched again when under 3 minutes remain. No pass ->
+  // the socket opens exactly as before.
+  const passRef = useRef({ pass: null, expiresAt: 0 });
+  const refreshPass = useCallback(async () => {
+    if (!accessToken) return null;
+    if (passRef.current.pass && passRef.current.expiresAt - Date.now() > 3 * 60 * 1000) return passRef.current.pass;
+    try {
+      const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const kill = setTimeout(() => ctl?.abort(), 5000);
+      const res = await fetch('/api/voice/engine-pass', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: ctl?.signal,
+      });
+      clearTimeout(kill);
+      const json = await res.json().catch(() => null);
+      if (json?.pass && Number(json.expires_at) > Date.now()) {
+        passRef.current = { pass: json.pass, expiresAt: Number(json.expires_at) };
+      }
+    } catch {}
+    return passRef.current.pass;
+  }, [accessToken]);
+  const currentPass = () => (passRef.current.pass && passRef.current.expiresAt > Date.now() + 15000 ? passRef.current.pass : null);
+
   // Wake the engine and fetch the names before the first tap, not during it,
   // and keep the engine awake while QuietKeep stays on screen (see keepEngineWarm).
   useEffect(() => {

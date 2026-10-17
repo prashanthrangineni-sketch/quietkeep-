@@ -51,11 +51,20 @@ public final class BlackboxLogic {
     public static final int IMU_RATE_HZ = 100;
     /** GPS fix rate in Hz. */
     public static final int GPS_RATE_HZ = 1;
+    /** OBD sample rate in Hz. */
+    public static final int OBD_RATE_HZ = 2;
 
     /** Bytes per IMU sample record (timestamp_us + 3 accel + 3 gyro floats). */
     public static final int IMU_RECORD_BYTES = 8 + 6 * 4;  // 32 bytes
     /** Bytes per GPS sample record. */
     public static final int GPS_RECORD_BYTES = 8 + 2 * 8 + 4 * 4;  // 40 bytes
+    /** Bytes per OBD sample record (timestamp_us + 5 floats + uint8 flags + 3 padding). */
+    public static final int OBD_RECORD_BYTES = 32;
+
+    /** OBD flag bit0: Check-engine light (MIL) is ON. */
+    public static final int OBD_FLAG_MIL_ON = 0x01;
+    /** OBD flag bit1: At least one field value is missing (NaN). */
+    public static final int OBD_FLAG_VALUE_MISSING = 0x02;
 
     // ── Trigger checks ───────────────────────────────────────────────────
 
@@ -209,6 +218,157 @@ public final class BlackboxLogic {
      */
     public static int gpsBufferCapacity() {
         return gpsSamplesForDuration(TOTAL_DURATION_MS);
+    }
+
+    /**
+     * Bytes per OBD record.
+     */
+    public static int obdRecordBytes() {
+        return OBD_RECORD_BYTES;
+    }
+
+    /**
+     * How many OBD samples fit in a given duration.
+     */
+    public static int obdSamplesForDuration(long durationMs) {
+        return (int) (durationMs * OBD_RATE_HZ / 1000);
+    }
+
+    /**
+     * Ring buffer capacity for OBD samples (2 Hz x 60 s = 120 records).
+     */
+    public static int obdBufferCapacity() {
+        return obdSamplesForDuration(TOTAL_DURATION_MS);
+    }
+
+    // ── OBD record encoding & decoding ───────────────────────────────────
+
+    /**
+     * POJO representing a single decoded OBD record from the black box ring buffer.
+     */
+    public static final class ObdRecord {
+        public final long timestampUs;
+        public final float speedKmh;
+        public final float rpm;
+        public final float loadPct;
+        public final float coolantC;
+        public final float voltage;
+        public final int flags;
+
+        public ObdRecord(long timestampUs, float speedKmh, float rpm, float loadPct, float coolantC, float voltage, int flags) {
+            this.timestampUs = timestampUs;
+            this.speedKmh = speedKmh;
+            this.rpm = rpm;
+            this.loadPct = loadPct;
+            this.coolantC = coolantC;
+            this.voltage = voltage;
+            this.flags = flags;
+        }
+
+        public boolean isMilOn() {
+            return (flags & OBD_FLAG_MIL_ON) != 0;
+        }
+
+        public boolean isValueMissing() {
+            return (flags & OBD_FLAG_VALUE_MISSING) != 0;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            ObdRecord r = (ObdRecord) o;
+            return timestampUs == r.timestampUs &&
+                    Float.compare(r.speedKmh, speedKmh) == 0 &&
+                    Float.compare(r.rpm, rpm) == 0 &&
+                    Float.compare(r.loadPct, loadPct) == 0 &&
+                    Float.compare(r.coolantC, coolantC) == 0 &&
+                    Float.compare(r.voltage, voltage) == 0 &&
+                    flags == r.flags;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Long.hashCode(timestampUs);
+            result = 31 * result + Float.hashCode(speedKmh);
+            result = 31 * result + Float.hashCode(rpm);
+            result = 31 * result + Float.hashCode(loadPct);
+            result = 31 * result + Float.hashCode(coolantC);
+            result = 31 * result + Float.hashCode(voltage);
+            result = 31 * result + flags;
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "ObdRecord{" +
+                    "timestampUs=" + timestampUs +
+                    ", speedKmh=" + speedKmh +
+                    ", rpm=" + rpm +
+                    ", loadPct=" + loadPct +
+                    ", coolantC=" + coolantC +
+                    ", voltage=" + voltage +
+                    ", flags=" + flags +
+                    '}';
+        }
+    }
+
+    /**
+     * Encode an OBD record into 32 bytes little-endian.
+     * Missing values (NaN) automatically have OBD_FLAG_VALUE_MISSING bit set.
+     */
+    public static byte[] encodeObdRecord(long timestampUs, float speedKmh, float rpm,
+                                         float loadPct, float coolantC, float voltage, int flags) {
+        ByteBuffer buf = ByteBuffer.allocate(OBD_RECORD_BYTES);
+        buf.order(ByteOrder.LITTLE_ENDIAN);
+        buf.putLong(timestampUs);
+        buf.putFloat(speedKmh);
+        buf.putFloat(rpm);
+        buf.putFloat(loadPct);
+        buf.putFloat(coolantC);
+        buf.putFloat(voltage);
+        int finalFlags = flags;
+        if (Float.isNaN(speedKmh) || Float.isNaN(rpm) || Float.isNaN(loadPct)
+                || Float.isNaN(coolantC) || Float.isNaN(voltage)) {
+            finalFlags |= OBD_FLAG_VALUE_MISSING;
+        }
+        buf.put((byte) (finalFlags & 0xFF));
+        buf.put((byte) 0);
+        buf.put((byte) 0);
+        buf.put((byte) 0);
+        return buf.array();
+    }
+
+    /**
+     * Encode an ObdRecord instance into 32 bytes little-endian.
+     */
+    public static byte[] encodeObdRecord(ObdRecord record) {
+        return encodeObdRecord(record.timestampUs, record.speedKmh, record.rpm,
+                record.loadPct, record.coolantC, record.voltage, record.flags);
+    }
+
+    /**
+     * Decode a 32-byte little-endian OBD record starting at the specified offset.
+     */
+    public static ObdRecord decodeObdRecord(byte[] bytes, int offset) {
+        ByteBuffer buf = ByteBuffer.wrap(bytes, offset, OBD_RECORD_BYTES);
+        buf.order(ByteOrder.LITTLE_ENDIAN);
+        long timestampUs = buf.getLong();
+        float speedKmh = buf.getFloat();
+        float rpm = buf.getFloat();
+        float loadPct = buf.getFloat();
+        float coolantC = buf.getFloat();
+        float voltage = buf.getFloat();
+        int flags = buf.get() & 0xFF;
+        buf.get(); buf.get(); buf.get(); // 3 padding bytes
+        return new ObdRecord(timestampUs, speedKmh, rpm, loadPct, coolantC, voltage, flags);
+    }
+
+    /**
+     * Decode a 32-byte little-endian OBD record.
+     */
+    public static ObdRecord decodeObdRecord(byte[] bytes) {
+        return decodeObdRecord(bytes, 0);
     }
 
     // ── Seal / verify ────────────────────────────────────────────────────

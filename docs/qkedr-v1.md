@@ -1,6 +1,7 @@
-# .qkedr v1 — QuietKeep Event Data Record
+# .qkedr v1 & v2 — QuietKeep Event Data Record
 
 Version 1 · DRV-01 · October 2026
+Version 2 · DRV-08 (Black Box v2: Car-Reader Data) · October 2026
 
 ## Purpose
 
@@ -9,15 +10,23 @@ buffer is frozen on impact or on the SOS phrase, signed with a key from the
 Android Keystore, kept in app-private storage, and synced to Supabase when
 online.
 
+In format_version 2 (DRV-08), when a car reader is connected, the crash record
+also carries the vehicle's own telemetry (speed, rpm, engine load, coolant temp,
+battery voltage, and check-engine status) for the same 60 seconds at 2 Hz.
+
 ## File Layout
 
-A `.qkedr` file is a concatenation of three sections, in order:
+A `.qkedr` file is a concatenation of sections, in order:
 
 ```
 ┌────────────────────────────────┐
 │  JSON Header (UTF-8, newline)  │  variable length, terminated by 0x0A
 ├────────────────────────────────┤
-│  Binary Sample Blocks          │  fixed-size records
+│  Binary IMU Sample Block       │  fixed-size records (32 bytes each)
+├────────────────────────────────┤
+│  Binary GPS Sample Block       │  fixed-size records (40 bytes each)
+├────────────────────────────────┤
+│  Binary OBD Sample Block (v2)  │  fixed-size records (32 bytes each)
 ├────────────────────────────────┤
 │  Opus Audio (optional)         │  raw Opus packets, only if audio_opt_in
 └────────────────────────────────┘
@@ -29,7 +38,8 @@ A single line of minified JSON, terminated by a newline (`0x0A`). Fields:
 
 | Field             | Type     | Description                                        |
 |-------------------|----------|----------------------------------------------------|
-| `version`         | integer  | Always `1` for this spec.                          |
+| `version`         | integer  | Base file format version (`1` for filename/base compatibility). |
+| `format_version`  | integer  | Packet specification version (`2` in DRV-08).      |
 | `device_id`       | string   | `Settings.Secure.ANDROID_ID` or equivalent.        |
 | `vehicle_id`      | string?  | Vehicle UUID from the app, or `null`.               |
 | `trigger`         | string   | One of: `impact_g`, `speed_drop_accel`, `speed_drop_gps`, `crash_detector`, `voice_save`, `test_tilt`. |
@@ -42,12 +52,15 @@ A single line of minified JSON, terminated by a newline (`0x0A`). Fields:
 | `gps_rate_hz`     | integer  | GPS fix rate, nominally `1`.                       |
 | `audio_opt_in`    | boolean  | Whether the driver opted in to cabin audio.        |
 | `audio_status`    | string   | `off`, or `opted_in_not_captured_v1` (see below).  |
-| `audio_codec`     | string?  | Always `null` in v1 (no audio is captured yet).    |
+| `audio_codec`     | string?  | Always `null` in v1/v2 (no audio is captured yet). |
 | `imu_clock_offset_us` | integer | Add to an IMU timestamp to get wall-clock µs.   |
 | `last_fix`        | object?  | `{lat, lon, accuracy_m, speed_kmh}` of the newest GPS fix, or `null`. |
 | `imu_samples`     | integer  | Number of IMU sample records in the binary block.  |
 | `gps_samples`     | integer  | Number of GPS sample records in the binary block.  |
-| `audio_bytes`     | integer  | Length of the audio section. Always `0` in v1.      |
+| `obd_samples`     | integer  | Number of OBD sample records in the binary block (`0` if disconnected). |
+| `obd_record_bytes`| integer  | Size of each OBD record in bytes (`32`).           |
+| `obd_source`      | string?  | Car reader name, `"simulated"`, or `null`.         |
+| `audio_bytes`     | integer  | Length of the audio section. Always `0` in v1/v2.  |
 
 ### 2. Binary Sample Blocks
 
@@ -67,7 +80,7 @@ Each record is 32 bytes, little-endian:
 
 Total IMU block size: `imu_samples × 32` bytes (8-byte timestamp + six 4-byte floats).
 
-IMU `timestamp_us` is the sensor clock (time since boot). GPS `timestamp_us` is
+IMU `timestamp_us` is the sensor clock (time since boot). GPS and OBD `timestamp_us` are
 wall-clock UTC. To put both on one timeline: `wall_us = imu_us + imu_clock_offset_us`.
 
 #### GPS block (immediately after IMU block)
@@ -85,6 +98,31 @@ Each record is 40 bytes, little-endian:
 | 36     | 4    | float32 | accuracy (metres)         |
 
 Total GPS block size: `gps_samples × 40` bytes.
+
+#### OBD block (immediately after GPS block — format_version 2)
+
+Each record is 32 bytes, little-endian (nominal rate 2 Hz, capacity 120 samples for 60 s):
+
+| Offset | Size | Type    | Field                     | Description                            |
+|--------|------|---------|---------------------------|----------------------------------------|
+| 0      | 8    | int64   | timestamp_us              | Wall-clock UTC timestamp in µs.        |
+| 8      | 4    | float32 | speedKmh                  | Vehicle speed reported by car (km/h).  |
+| 12     | 4    | float32 | rpm                       | Engine speed (rev/min).                |
+| 14     | 4    | float32 | loadPct                   | Calculated engine load (%).            |
+| 20     | 4    | float32 | coolantC                  | Engine coolant temperature (°C).       |
+| 24     | 4    | float32 | voltage                   | Control module / battery voltage (V).  |
+| 28     | 1    | uint8   | flags                     | Bitflags: bit0 = MIL on, bit1 = missing. |
+| 29     | 3    | bytes   | padding                   | 3 bytes zero-padding for 32-byte alignment. |
+
+Total OBD block size: `obd_samples × 32` bytes.
+
+**NaN and Flag Encoding**:
+- Any sensor reading that the car or protocol does not support or failed to return is encoded as IEEE 754 float32 `NaN`.
+- When any float value in the record is `NaN`, bit 1 (`0x02`) of `flags` (`OBD_FLAG_VALUE_MISSING`) is set.
+- When the vehicle check-engine light (MIL) is illuminated, bit 0 (`0x01`) of `flags` (`OBD_FLAG_MIL_ON`) is set.
+
+**Backward Compatibility**:
+A packet recorded when no car reader is connected has `obd_samples: 0`, and the OBD block is 0 bytes. The binary portion is byte-for-byte identical to format_version 1, ensuring all v1 decoders parse it without modification.
 
 ### 3. Audio section — RESERVED, NOT IMPLEMENTED IN v1
 
@@ -180,3 +218,27 @@ The toggle text is exactly:
 > or uploaded unless an impact is detected."
 
 Default: **OFF**.
+
+## Speed Agreement & Verification (format_version 2)
+
+Format_version 2 crash records contain both on-phone GPS speed fixes (nominally 1 Hz)
+and vehicle ECU speed readings (nominally 2 Hz).
+
+The `compareSpeeds(obdSamples, gpsSamples)` helper (exported by `@/lib/obd/blackbox-feed`
+and `@/lib/blackbox`) verifies temporal and kinematic alignment:
+
+```js
+const { pairs, maxDiffKmh, meanDiffKmh } = compareSpeeds(obdSamples, gpsSamples);
+```
+
+- **Algorithm**: Pairs each GPS fix with the nearest OBD sample within 500 ms (`|t_gps - t_obd| <= 500 ms`).
+- **Output**:
+  - `pairs`: Array of matched pairs (`{ gps, obd, gpsSpeedKmh, obdSpeedKmh, diffKmh, timeDeltaMs }`), with `.length` and `.valueOf()` supporting numeric thresholds (`pairs >= 10`).
+  - `maxDiffKmh`: Maximum absolute speed difference across all matched pairs in km/h.
+  - `meanDiffKmh`: Mean speed difference across all matched pairs in km/h.
+
+### Phase-2 Ride Proof Note
+
+In unit tests and simulated driving, the agreement helper validates the algorithm against `ObdSimulator`.
+The full phase-2 ride proof ("car speed matches GPS within 1 km/h on a real road test") waits for
+the physical Bluetooth OBD-II reader hardware on a live vehicle drive.

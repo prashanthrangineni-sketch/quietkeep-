@@ -23,6 +23,12 @@ import {
   list,
   verify,
   isBlackboxAvailable,
+  pushObd,
+  obdRecordBytes,
+  obdBufferCapacity,
+  obdSamplesForDuration,
+  encodeObdRecord,
+  decodeObdRecord,
 } from '../src/lib/blackbox.js';
 
 let pass = 0, fail = 0;
@@ -270,6 +276,9 @@ console.log('── Black Box v1 (.qkedr) Unit Tests ──');
   const verifyRes = await verify('fake-id');
   check('verify() returns valid:false when not native', verifyRes.valid === false && verifyRes.reason === 'not_native');
 
+  const pushRes = await pushObd({ speedKmh: 45 });
+  check('pushObd() returns accepted:false when not native', pushRes.accepted === false && pushRes.reason === 'not_native');
+
   // Test with mock Capacitor plugin
   const calls = [];
   globalThis.window = {
@@ -281,6 +290,7 @@ console.log('── Black Box v1 (.qkedr) Unit Tests ──');
           saveLast60s: async (opts) => { calls.push(['saveLast60s', opts]); return { id: 'evt_1', ...opts }; },
           list: async () => ({ records: [{ id: 'evt_1', trigger: 'impact_g', started_at: '2026-10-17T10:00:00Z' }] }),
           verify: async (opts) => ({ valid: opts.id === 'evt_1', hash: 'abc', id: opts.id }),
+          pushObd: async (opts) => { calls.push(['pushObd', opts]); return { accepted: true }; },
         },
       },
     },
@@ -299,6 +309,9 @@ console.log('── Black Box v1 (.qkedr) Unit Tests ──');
 
   const mockVerify = await verify('evt_1');
   check('verify() returns valid true for existing record', mockVerify.valid === true);
+
+  const mockPush = await pushObd({ speedKmh: 60, rpm: 2000, source: 'simulated' });
+  check('pushObd() forwards sample to plugin and resolves accepted:true', mockPush.accepted === true);
 
   delete globalThis.window;
 }
@@ -355,6 +368,83 @@ console.log('── Black Box v1 (.qkedr) Unit Tests ──');
   check('signed out: nothing is uploaded', r4.skipped === 'signed_out');
   const r5 = await syncPendingRecords(fakeSupabase, { plugin: null, storage });
   check('not native: sync is skipped', r5.skipped === 'not_native');
+}
+
+// ── 7. Black Box v2 with OBD Records (Task Card DRV-08) ──────────────────────
+{
+  check('OBD record size is 32 bytes', obdRecordBytes() === 32 && CONSTANTS.OBD_RECORD_BYTES === 32);
+  check('OBD buffer capacity is 120 samples (2 Hz x 60 s)', obdBufferCapacity() === 120);
+  check('OBD sample counts: total 120, pre 90, post 30',
+    obdSamplesForDuration(CONSTANTS.TOTAL_DURATION_MS) === 120 &&
+    obdSamplesForDuration(CONSTANTS.PRE_TRIGGER_MS) === 90 &&
+    obdSamplesForDuration(CONSTANTS.POST_TRIGGER_MS) === 30
+  );
+
+  // Round-trip encode and decode
+  const origSample = {
+    timestampUs: 1700000123456,
+    speedKmh: 55.5,
+    rpm: 2200.0,
+    loadPct: 40.0,
+    coolantC: 85.0,
+    voltage: 14.2,
+    flags: 0,
+    mil: false,
+  };
+
+  const enc1 = encodeObdRecord(origSample);
+  check('encodeObdRecord returns 32-byte buffer', enc1.byteLength === 32);
+
+  const dec1 = decodeObdRecord(enc1);
+  check('round-trip timestampUs matches', dec1.timestampUs === origSample.timestampUs);
+  check('round-trip speedKmh matches', Math.abs(dec1.speedKmh - origSample.speedKmh) < 0.01);
+  check('round-trip rpm matches', Math.abs(dec1.rpm - origSample.rpm) < 0.01);
+  check('round-trip loadPct matches', Math.abs(dec1.loadPct - origSample.loadPct) < 0.01);
+  check('round-trip coolantC matches', Math.abs(dec1.coolantC - origSample.coolantC) < 0.01);
+  check('round-trip voltage matches', Math.abs(dec1.voltage - origSample.voltage) < 0.01);
+  check('round-trip flags match 0', dec1.flags === 0 && !dec1.mil && !dec1.valueMissing);
+
+  // Positional encode round-trip
+  const encPos = encodeObdRecord(1700000123456, 60.0, 2500.0, 35.0, 90.0, 14.1, 0);
+  const decPos = decodeObdRecord(encPos);
+  check('positional encodeObdRecord round-trip matches', Math.abs(decPos.speedKmh - 60.0) < 0.01 && decPos.rpm === 2500);
+
+  // NaN and flag handling
+  const nanSample = {
+    timestampUs: 1700000999000,
+    speedKmh: NaN,
+    rpm: 800,
+    loadPct: null,
+    coolantC: 90,
+    voltage: undefined,
+    mil: true,
+  };
+  const encNan = encodeObdRecord(nanSample);
+  const decNan = decodeObdRecord(encNan);
+  check('NaN / null values decode as NaN',
+    Number.isNaN(decNan.speedKmh) && Number.isNaN(decNan.loadPct) && Number.isNaN(decNan.voltage)
+  );
+  check('valid fields decode correctly alongside NaNs', decNan.rpm === 800 && decNan.coolantC === 90);
+  check('mil flag bit0 is set', decNan.mil === true && (decNan.flags & CONSTANTS.OBD_FLAG_MIL_ON) !== 0);
+  check('valueMissing flag bit1 is automatically set for NaN/missing fields',
+    decNan.valueMissing === true && (decNan.flags & CONSTANTS.OBD_FLAG_VALUE_MISSING) !== 0
+  );
+  check('combined flags equal OBD_FLAG_MIL_ON | OBD_FLAG_VALUE_MISSING',
+    decNan.flags === (CONSTANTS.OBD_FLAG_MIL_ON | CONSTANTS.OBD_FLAG_VALUE_MISSING)
+  );
+
+  // v2 packet with 0 OBD samples equals v1 layout
+  const imuBytes = Buffer.alloc(10 * CONSTANTS.IMU_RECORD_BYTES);
+  for (let i = 0; i < imuBytes.length; i++) imuBytes[i] = (i * 3) & 0xff;
+  const gpsBytes = Buffer.alloc(2 * CONSTANTS.GPS_RECORD_BYTES);
+  for (let i = 0; i < gpsBytes.length; i++) gpsBytes[i] = (i * 7) & 0xff;
+
+  const v1BinaryPayload = Buffer.concat([imuBytes, gpsBytes]);
+  const v2ZeroObdBinaryPayload = Buffer.concat([imuBytes, gpsBytes, Buffer.alloc(0)]);
+
+  check('v2 packet with 0 OBD samples has byte-for-byte identical binary payload to v1',
+    v1BinaryPayload.equals(v2ZeroObdBinaryPayload)
+  );
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

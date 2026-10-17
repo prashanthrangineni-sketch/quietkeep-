@@ -896,6 +896,7 @@ export function AariaProvider({ children }) {
     setMicLive(false);
     setStatus('listening');
     refreshNames();   // for the NEXT turn, if the list was not loaded yet
+    refreshPass();    // likewise the engine pass
 
     const lang = speechLang(voiceLang);
     const session = startListenStream({

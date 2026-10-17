@@ -23,6 +23,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { recentSpokenNames, namesAsWhisperPrompt } from '@/lib/spoken-names';
+import { engineHeaders } from '@/lib/aaria-pass';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,7 +149,7 @@ async function transcribeGroq({ buffer, name, lang, names = [] }) {
 async function transcribeAaria({ base64, lang, names = [] }) {
   const res = await fetch(`${AARIA_BASE_URL}/api/voice/listen`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: engineHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
       audio_base64: base64,
       lang_hint: toIso639(lang) || 'en',

@@ -1,3 +1,4 @@
+import { engineHeaders } from './aaria-pass.js';
 // src/lib/aaria-act.js
 // Aaria as the ACTION BRAIN (SOT P1).
 //
@@ -58,7 +59,7 @@ async function postJSON(path, body, timeoutMs) {
   try {
     const res = await fetch(`${AARIA_BASE_URL}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: engineHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });

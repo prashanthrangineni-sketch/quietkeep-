@@ -38,6 +38,14 @@
 // under plain node in tests/listen-stream.test.mjs.
 
 export const LISTEN_STREAM_URL = 'wss://pranix-aaria.onrender.com/api/voice/listen-stream';
+// The engine checks who opens a listening socket (pranix-aaria
+// src/caller_auth.py). A browser cannot set headers on a WebSocket, so the
+// short-lived pass rides as ?pass=. No pass -> the URL is exactly as before.
+export function withPass(url, pass) {
+  if (!pass || typeof pass !== 'string') return url;
+  return `${url}${url.includes('?') ? '&' : '?'}pass=${encodeURIComponent(pass)}`;
+}
+
 export const ENGINE_HEALTH_URL = 'https://pranix-aaria.onrender.com/api/health';
 
 export const TARGET_RATE   = 16000;
@@ -312,6 +320,7 @@ export function startListenStream({
   keyterms = [],
   silenceMs,
   maxMs = 15000,
+  pass = null,          // short-lived engine pass from /api/voice/engine-pass (never the key)
   onPartial = () => {},
   onSpeech = () => {},
   onLive = () => {},     // the microphone is open and audio is flowing
@@ -325,7 +334,7 @@ export function startListenStream({
   const setT = deps.setTimeout || setTimeout;
   const clearT = deps.clearTimeout || clearTimeout;
   const now = deps.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
-  const url = deps.url || LISTEN_STREAM_URL;
+  const url = withPass(deps.url || LISTEN_STREAM_URL, pass);
 
   const t0 = now();
   const terms = cleanKeyterms(keyterms);

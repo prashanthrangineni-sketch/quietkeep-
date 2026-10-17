@@ -24,6 +24,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { extractAudio } from '@/lib/aaria-audio';
+import { engineHeaders } from '@/lib/aaria-pass';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,7 @@ export async function POST(req) {
   try {
     const res = await fetch(`${AARIA_BASE_URL}/api/voice/speak`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: engineHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         text,
         lang,

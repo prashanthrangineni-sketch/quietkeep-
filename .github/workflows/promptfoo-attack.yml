@@ -1,0 +1,55 @@
+# The 200-message attack set against the Sarvam understanding brain, with
+# promptfoo (plan item 2, drift fix 2).
+#
+# workflow_dispatch ONLY: it makes ~200 paid Sarvam calls, so it never runs on
+# push or pull_request. The gate it applies is checked offline on every pull
+# request by tests/promptfoo-gate.test.mjs.
+#
+# No SARVAM_API_KEY secret -> the run says "not run - no key" and stops green.
+# That is a result, not a pass: nothing was measured. The key reaches the
+# provider only through the environment and is never printed.
+
+name: Promptfoo attack test (Sarvam brain)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  attack:
+    name: 200 attacks through the Sarvam brain
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check the key is present (never printed)
+        id: key
+        env:
+          SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
+        run: |
+          if [ -n "$SARVAM_API_KEY" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; echo "SARVAM_API_KEY: present";
+          else echo "present=false" >> "$GITHUB_OUTPUT"; echo "SARVAM_API_KEY: not set - not run, nothing measured"; fi
+
+      - name: Run promptfoo
+        if: steps.key.outputs.present == 'true'
+        env:
+          SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
+          PROMPTFOO_DISABLE_TELEMETRY: '1'
+          PROMPTFOO_DISABLE_UPDATE: '1'
+        run: |
+          npx --yes promptfoo@0.123.1 eval -c promptfoo/sarvam-attack.yaml --no-cache -o promptfoo-results.json
+
+      - name: Keep the results
+        if: always() && steps.key.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: promptfoo-attack-results
+          path: promptfoo-results.json
+          if-no-files-found: ignore

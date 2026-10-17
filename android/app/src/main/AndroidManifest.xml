@@ -75,6 +75,25 @@
          SMS composer with the message filled in. -->
     <uses-permission android:name="android.permission.SEND_SMS" />
 
+    <!-- Bluetooth Low Energy (OBD-II car reader, DRV-06) -->
+    <!-- Android 12+ (API 31+) permissions -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Android 11 and below (API <= 30) permissions -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="false" />
+
 
     <!-- Location: LocationService geo-trigger polling -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />

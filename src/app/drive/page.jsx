@@ -22,6 +22,8 @@ import {
   requestMicPermission,
 } from '@/lib/blackbox';
 import { startBlackboxSync, syncPendingRecords } from '@/lib/blackbox-sync';
+import { ObdReader, createPluginTransport } from '@/lib/obd/reader';
+import { ObdSimulator } from '@/lib/obd/simulator';
 
 // drivespeak: thin wrapper — onEnd callback for sequential speech+action
 function drivespeak(text, onEnd) {
@@ -52,6 +54,17 @@ export default function DriveModePage() {
   const [devTapCount, setDevTapCount] = useState(0);
   const [records, setRecords] = useState([]);
   const [shareToast, setShareToast] = useState(null);
+
+  // Car reader (OBD-II, DRV-06) state
+  const [obdSimulated, setObdSimulated] = useState(false);
+  const [obdStatus, setObdStatus] = useState('Disconnected');
+  const [obdConnected, setObdConnected] = useState(false);
+  const [obdScanning, setObdScanning] = useState(false);
+  const [obdDevices, setObdDevices] = useState([]);
+  const [obdSummaryText, setObdSummaryText] = useState('');
+  const [obdReading, setObdReading] = useState(false);
+  const obdReaderRef = useRef(null);
+
   const recognitionRef = useRef(null);
   const keepIdxRef = useRef(0);
   const keepsRef = useRef([]);
@@ -82,8 +95,10 @@ export default function DriveModePage() {
     // Start blackbox recording for Drive Mode
     const optIn = typeof window !== 'undefined' && localStorage.getItem('qk_blackbox_audio_opt_in') === 'true';
     const testM = typeof window !== 'undefined' && localStorage.getItem('qk_blackbox_test_mode') === 'true';
+    const obdSim = typeof window !== 'undefined' && localStorage.getItem('qk_obd_use_simulated') === 'true';
     setAudioOptIn(optIn);
     setTestMode(testM);
+    setObdSimulated(obdSim);
     startBlackbox({ audioOptIn: optIn, testMode: testM });
     listBlackboxRecords().then(r => setRecords(r.records || []));
     // Upload sealed records now and on every reconnect (DRV-01 step 7)
@@ -94,10 +109,93 @@ export default function DriveModePage() {
       if ('speechSynthesis' in window) cancelSpeech();
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
       if (callTimerRef.current) clearInterval(callTimerRef.current);
+      if (obdReaderRef.current) {
+        try { obdReaderRef.current.destroy(); } catch {}
+      }
       stopBlackbox();
       stopSync();
     };
   }, [user, authLoading]);
+
+  async function connectCarReader(targetDevice = null) {
+    setObdStatus('Connecting...');
+    setObdSummaryText('');
+    try {
+      let transport;
+      if (obdSimulated) {
+        transport = new ObdSimulator();
+      } else {
+        const plugin = window.Capacitor?.Plugins?.QkObd;
+        if (!plugin) {
+          throw new Error('Bluetooth OBD plugin not available. On desktop or web, enable "Use simulated car" in developer options below.');
+        }
+        if (!targetDevice) {
+          setObdScanning(true);
+          setObdStatus('Scanning for car readers...');
+          const scanRes = await plugin.scan({ timeoutMs: 5000 });
+          setObdScanning(false);
+          const devs = scanRes?.devices || [];
+          setObdDevices(devs);
+          if (devs.length === 0) {
+            setObdStatus('No Bluetooth OBD readers found nearby.');
+            return;
+          }
+          if (devs.length > 1) {
+            setObdStatus(`Found ${devs.length} device(s). Pick one below to connect.`);
+            return;
+          }
+          targetDevice = devs[0];
+        }
+        await plugin.connect({ address: targetDevice.address });
+        transport = createPluginTransport(plugin);
+      }
+
+      const reader = new ObdReader(transport);
+      await reader.connect();
+      obdReaderRef.current = reader;
+      setObdConnected(true);
+      setObdStatus(obdSimulated ? 'Connected (Simulated Car)' : `Connected: ${targetDevice?.name || 'Car reader'}`);
+      setObdDevices([]);
+      drivespeak('Car reader connected.');
+    } catch (err) {
+      setObdConnected(false);
+      setObdStatus(`Connection failed: ${err.message || 'unknown error'}`);
+      drivespeak('Could not connect to car reader.');
+    }
+  }
+
+  async function disconnectCarReader() {
+    if (obdReaderRef.current) {
+      obdReaderRef.current.destroy();
+      obdReaderRef.current = null;
+    }
+    if (!obdSimulated && window.Capacitor?.Plugins?.QkObd) {
+      try { await window.Capacitor.Plugins.QkObd.disconnect(); } catch {}
+    }
+    setObdConnected(false);
+    setObdStatus('Disconnected');
+    setObdSummaryText('');
+    drivespeak('Car reader disconnected.');
+  }
+
+  async function readCarNow() {
+    if (!obdReaderRef.current) return;
+    setObdReading(true);
+    setObdStatus('Reading vehicle data...');
+    try {
+      const snapshot = await obdReaderRef.current.readSnapshot();
+      const faults = await obdReaderRef.current.readFaults();
+      const summary = obdReaderRef.current.summary(snapshot, faults);
+      setObdSummaryText(summary);
+      setObdStatus(obdSimulated ? 'Connected (Simulated Car)' : 'Connected');
+      drivespeak(summary);
+    } catch (err) {
+      setObdStatus(`Read error: ${err.message || 'unknown'}`);
+      drivespeak('Could not read vehicle data.');
+    } finally {
+      setObdReading(false);
+    }
+  }
 
   function readNextKeep() {
     const k = keepsRef.current;
@@ -508,6 +606,104 @@ export default function DriveModePage() {
             </div>
           </div>
 
+          {/* Car reader card (OBD-II, DRV-06) */}
+          <div style={{
+            background: 'var(--card-bg, #1e293b)', padding: 16, borderRadius: 14,
+            border: '1px solid var(--border, #334155)', marginBottom: 16
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>🚗</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Car reader</span>
+              </div>
+              <span style={{
+                fontSize: 11, padding: '3px 8px', borderRadius: 6,
+                background: obdConnected ? 'rgba(34, 197, 94, 0.15)' : 'rgba(148, 163, 184, 0.15)',
+                color: obdConnected ? '#4ade80' : '#94a3b8', fontWeight: 600
+              }}>
+                {obdConnected ? 'Connected' : 'Offline'}
+              </span>
+            </div>
+
+            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12, lineHeight: 1.4 }}>
+              Status: <span style={{ color: obdConnected ? '#38bdf8' : 'var(--text)' }}>{obdStatus}</span>
+            </div>
+
+            {/* Discovered device picker if multiple devices found during scan */}
+            {obdDevices.length > 0 && !obdConnected && (
+              <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ fontSize: 11, color: '#facc15', fontWeight: 600 }}>Select OBD Device:</div>
+                {obdDevices.map((dev) => (
+                  <button
+                    key={dev.address}
+                    onClick={() => connectCarReader(dev)}
+                    style={{
+                      padding: '8px 12px', borderRadius: 8, textAlign: 'left',
+                      background: dev.isObdCandidate ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.05)',
+                      border: dev.isObdCandidate ? '1px solid #6366f1' : '1px solid #334155',
+                      color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', justifyContent: 'space-between'
+                    }}
+                  >
+                    <span>{dev.name || 'Unnamed'}</span>
+                    <span style={{ fontSize: 10, color: '#94a3b8' }}>{dev.address}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              {!obdConnected ? (
+                <button
+                  onClick={() => connectCarReader()}
+                  disabled={obdScanning}
+                  style={{
+                    flex: 1, padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                    background: '#6366f1', color: '#fff', border: 'none', cursor: 'pointer',
+                    opacity: obdScanning ? 0.7 : 1
+                  }}
+                >
+                  {obdScanning ? 'Scanning...' : 'Connect car reader'}
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={readCarNow}
+                    disabled={obdReading}
+                    style={{
+                      flex: 2, padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                      background: '#10b981', color: '#fff', border: 'none', cursor: 'pointer',
+                      opacity: obdReading ? 0.7 : 1
+                    }}
+                  >
+                    {obdReading ? 'Reading car...' : 'Read car now'}
+                  </button>
+                  <button
+                    onClick={disconnectCarReader}
+                    style={{
+                      flex: 1, padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                      background: 'rgba(239, 68, 68, 0.15)', color: '#f87171',
+                      border: '1px solid rgba(239, 68, 68, 0.3)', cursor: 'pointer'
+                    }}
+                  >
+                    Disconnect
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Spoken summary display box */}
+            {obdSummaryText && (
+              <div style={{
+                marginTop: 12, padding: 12, borderRadius: 10,
+                background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)',
+                fontSize: 12, color: '#d1fae5', lineHeight: 1.5
+              }}>
+                💬 &ldquo;{obdSummaryText}&rdquo;
+              </div>
+            )}
+          </div>
+
           {/* Test mode switch (developer switch) */}
           {(devTapCount >= 5 || testMode) && (
             <div style={{
@@ -529,6 +725,34 @@ export default function DriveModePage() {
                     setTestMode(checked);
                     if (typeof window !== 'undefined') localStorage.setItem('qk_blackbox_test_mode', checked ? 'true' : 'false');
                     startBlackbox({ audioOptIn, testMode: checked });
+                  }}
+                  style={{ width: 20, height: 20, cursor: 'pointer', accentColor: '#eab308' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Simulated car developer switch */}
+          {(devTapCount >= 5 || testMode || obdSimulated) && (
+            <div style={{
+              background: 'rgba(234, 179, 8, 0.1)', padding: 16, borderRadius: 14,
+              border: '1px solid rgba(234, 179, 8, 0.3)', marginBottom: 16
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#facc15' }}>Developer: Use simulated car</div>
+                  <div style={{ fontSize: 12, color: '#e2e8f0', marginTop: 2 }}>
+                    Simulate ELM327 BLE car (coolant warming, idle RPM, faults)
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={obdSimulated}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setObdSimulated(checked);
+                    if (typeof window !== 'undefined') localStorage.setItem('qk_obd_use_simulated', checked ? 'true' : 'false');
+                    if (obdConnected) disconnectCarReader();
                   }}
                   style={{ width: 20, height: 20, cursor: 'pointer', accentColor: '#eab308' }}
                 />

@@ -273,7 +273,12 @@ export function decide(action, proof = {}, context = {}) {
   }
   // spoken_yes
   if (p.spokenYes !== true) return out(DECISION.ASK_YES, 'needs_spoken_yes', ['spoken_yes']);
-  if (p.unlocked !== true)  return out(DECISION.ASK_UNLOCK, 'needs_unlocked_phone', ['unlocked']);
+  if (p.unlocked !== true) {
+    // unlocking is a screen action: while moving it waits until the stop
+    return moving
+      ? out(DECISION.REFUSE, 'wait_until_stopped')
+      : out(DECISION.ASK_UNLOCK, 'needs_unlocked_phone', ['unlocked']);
+  }
   return out(DECISION.DO, 'spoken_yes_and_unlocked');
 }
 

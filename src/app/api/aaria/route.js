@@ -10,6 +10,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createClient } from '@supabase/supabase-js';
+import { engineHeaders } from '@/lib/aaria-pass';
 
 const AARIA_BASE_URL = 'https://pranix-aaria.onrender.com';
 

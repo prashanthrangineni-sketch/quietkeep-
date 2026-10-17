@@ -332,6 +332,8 @@ export const SAY = Object.freeze({
   hourly_limit_reached:  'limit_reached',      // "That is the limit for this hour."
   hourly_count_unknown:  'limit_unknown',      // "I cannot check the hourly limit just now."
   nothing_to_do:         'nothing_to_do',      // "Okay." / "What would you like me to do?"
+  wait_until_stopped:    'wait_until_stopped', // "I'll do that when you stop."
+  long_read_while_moving: 'rest_when_stopped', // "...and three more. I'll read the rest when you stop."
 });
 
 /**

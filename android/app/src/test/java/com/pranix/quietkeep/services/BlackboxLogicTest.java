@@ -177,4 +177,88 @@ public class BlackboxLogicTest {
         assertEquals(4.0, BlackboxLogic.maxSpeedDropAccel(s, n), 1e-9);
         assertFalse(BlackboxLogic.isSpeedDropAccel(s, n));
     }
+
+    // ── 5. OBD Record & v2 Packet (Task Card DRV-08) ─────────────────────────
+
+    @Test
+    public void testObdRecordBytesAndCapacity() {
+        assertEquals(32, BlackboxLogic.obdRecordBytes());
+        assertEquals(32, BlackboxLogic.OBD_RECORD_BYTES);
+        assertEquals(120, BlackboxLogic.obdBufferCapacity());
+        assertEquals(120, BlackboxLogic.obdSamplesForDuration(BlackboxLogic.TOTAL_DURATION_MS));
+        assertEquals(90, BlackboxLogic.obdSamplesForDuration(BlackboxLogic.PRE_TRIGGER_MS));
+        assertEquals(30, BlackboxLogic.obdSamplesForDuration(BlackboxLogic.POST_TRIGGER_MS));
+    }
+
+    @Test
+    public void testObdRecord_encodeDecodeRoundTrip() {
+        long t = 1_700_000_123_456L;
+        float speed = 55.5f;
+        float rpm = 2200.0f;
+        float load = 40.0f;
+        float coolant = 85.0f;
+        float voltage = 14.2f;
+        int flags = 0;
+
+        byte[] enc = BlackboxLogic.encodeObdRecord(t, speed, rpm, load, coolant, voltage, flags);
+        assertEquals(32, enc.length);
+
+        BlackboxLogic.ObdRecord dec = BlackboxLogic.decodeObdRecord(enc);
+        assertEquals(t, dec.timestampUs);
+        assertEquals(speed, dec.speedKmh, 0.001f);
+        assertEquals(rpm, dec.rpm, 0.001f);
+        assertEquals(load, dec.loadPct, 0.001f);
+        assertEquals(coolant, dec.coolantC, 0.001f);
+        assertEquals(voltage, dec.voltage, 0.001f);
+        assertEquals(0, dec.flags);
+        assertFalse(dec.isMilOn());
+        assertFalse(dec.isValueMissing());
+
+        assertEquals(new BlackboxLogic.ObdRecord(t, speed, rpm, load, coolant, voltage, flags), dec);
+    }
+
+    @Test
+    public void testObdRecord_nanAndFlagHandling() {
+        long t = 1_700_000_999_000L;
+        // speed, load and voltage are NaN; MIL on
+        byte[] enc = BlackboxLogic.encodeObdRecord(t, Float.NaN, 800f, Float.NaN, 90f, Float.NaN, BlackboxLogic.OBD_FLAG_MIL_ON);
+        assertEquals(32, enc.length);
+
+        BlackboxLogic.ObdRecord dec = BlackboxLogic.decodeObdRecord(enc);
+        assertEquals(t, dec.timestampUs);
+        assertTrue(Float.isNaN(dec.speedKmh));
+        assertEquals(800f, dec.rpm, 0.001f);
+        assertTrue(Float.isNaN(dec.loadPct));
+        assertEquals(90f, dec.coolantC, 0.001f);
+        assertTrue(Float.isNaN(dec.voltage));
+        assertTrue(dec.isMilOn());
+        assertTrue("NaN field must automatically set OBD_FLAG_VALUE_MISSING", dec.isValueMissing());
+        assertEquals(BlackboxLogic.OBD_FLAG_MIL_ON | BlackboxLogic.OBD_FLAG_VALUE_MISSING, dec.flags);
+    }
+
+    @Test
+    public void testV2PacketWithZeroObdSamplesEqualsV1Layout() {
+        // Mock IMU block (e.g. 5 samples * 32 bytes = 160 bytes)
+        byte[] imu = new byte[5 * BlackboxLogic.IMU_RECORD_BYTES];
+        for (int i = 0; i < imu.length; i++) imu[i] = (byte) (i * 3);
+
+        // Mock GPS block (e.g. 2 samples * 40 bytes = 80 bytes)
+        byte[] gps = new byte[2 * BlackboxLogic.GPS_RECORD_BYTES];
+        for (int i = 0; i < gps.length; i++) gps[i] = (byte) (i * 7);
+
+        // v1 binary payload: imu + gps
+        byte[] v1Payload = new byte[imu.length + gps.length];
+        System.arraycopy(imu, 0, v1Payload, 0, imu.length);
+        System.arraycopy(gps, 0, v1Payload, imu.length, gps.length);
+
+        // v2 binary payload with 0 OBD samples: imu + gps + (0 obd bytes)
+        byte[] obd0 = new byte[0];
+        byte[] v2Payload = new byte[imu.length + gps.length + obd0.length];
+        System.arraycopy(imu, 0, v2Payload, 0, imu.length);
+        System.arraycopy(gps, 0, v2Payload, imu.length, gps.length);
+        System.arraycopy(obd0, 0, v2Payload, imu.length + gps.length, obd0.length);
+
+        assertTrue("v2 packet with 0 OBD samples must have byte-for-byte identical binary payload to v1",
+                Arrays.equals(v1Payload, v2Payload));
+    }
 }

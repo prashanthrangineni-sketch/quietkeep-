@@ -24,6 +24,7 @@ import {
 import { startBlackboxSync, syncPendingRecords } from '@/lib/blackbox-sync';
 import { ObdReader, createPluginTransport } from '@/lib/obd/reader';
 import { ObdSimulator } from '@/lib/obd/simulator';
+import { startObdFeed } from '@/lib/obd/blackbox-feed';
 
 // drivespeak: thin wrapper — onEnd callback for sequential speech+action
 function drivespeak(text, onEnd) {
@@ -64,6 +65,7 @@ export default function DriveModePage() {
   const [obdSummaryText, setObdSummaryText] = useState('');
   const [obdReading, setObdReading] = useState(false);
   const obdReaderRef = useRef(null);
+  const obdFeedStopRef = useRef(null);
 
   const recognitionRef = useRef(null);
   const keepIdxRef = useRef(0);
@@ -109,6 +111,10 @@ export default function DriveModePage() {
       if ('speechSynthesis' in window) cancelSpeech();
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
       if (callTimerRef.current) clearInterval(callTimerRef.current);
+      if (obdFeedStopRef.current) {
+        try { obdFeedStopRef.current(); } catch {}
+        obdFeedStopRef.current = null;
+      }
       if (obdReaderRef.current) {
         try { obdReaderRef.current.destroy(); } catch {}
       }
@@ -153,6 +159,13 @@ export default function DriveModePage() {
       const reader = new ObdReader(transport);
       await reader.connect();
       obdReaderRef.current = reader;
+      if (obdFeedStopRef.current) {
+        try { obdFeedStopRef.current(); } catch {}
+        obdFeedStopRef.current = null;
+      }
+      obdFeedStopRef.current = startObdFeed(reader, {
+        source: obdSimulated ? 'simulated' : (targetDevice?.name || 'car_reader'),
+      });
       setObdConnected(true);
       setObdStatus(obdSimulated ? 'Connected (Simulated Car)' : `Connected: ${targetDevice?.name || 'Car reader'}`);
       setObdDevices([]);
@@ -165,6 +178,10 @@ export default function DriveModePage() {
   }
 
   async function disconnectCarReader() {
+    if (obdFeedStopRef.current) {
+      try { obdFeedStopRef.current(); } catch {}
+      obdFeedStopRef.current = null;
+    }
     if (obdReaderRef.current) {
       obdReaderRef.current.destroy();
       obdReaderRef.current = null;

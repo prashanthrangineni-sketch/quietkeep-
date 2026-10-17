@@ -95,6 +95,84 @@ public class QkBlackboxPlugin extends Plugin {
     }
 
     /**
+     * Push an OBD reading into the running black box service.
+     * Options: { at, speedKmh, rpm, loadPct, coolantC, voltage, mil, source }
+     * Resolves { accepted: boolean }
+     */
+    @PluginMethod
+    public void pushObd(PluginCall call) {
+        try {
+            if (!BlackboxService.isRunning()) {
+                JSObject res = new JSObject();
+                res.put("accepted", false);
+                call.resolve(res);
+                return;
+            }
+
+            String atStr = call.getString("at", null);
+            long timestampUs;
+            if (atStr != null) {
+                try {
+                    timestampUs = java.time.Instant.parse(atStr).toEpochMilli() * 1000L;
+                } catch (Exception e) {
+                    try {
+                        timestampUs = Long.parseLong(atStr);
+                        if (timestampUs < 10_000_000_000_000L) {
+                            timestampUs *= 1000L;
+                        }
+                    } catch (Exception ex) {
+                        timestampUs = System.currentTimeMillis() * 1000L;
+                    }
+                }
+            } else {
+                long atNum = call.getData().optLong("at", 0);
+                if (atNum > 0) {
+                    timestampUs = atNum < 10_000_000_000_000L ? atNum * 1000L : atNum;
+                } else {
+                    timestampUs = System.currentTimeMillis() * 1000L;
+                }
+            }
+
+            Double speedKmhObj = call.getData().isNull("speedKmh") ? null : call.getDouble("speedKmh");
+            Double rpmObj = call.getData().isNull("rpm") ? null : call.getDouble("rpm");
+            Double loadPctObj = call.getData().isNull("loadPct") ? null : call.getDouble("loadPct");
+            Double coolantCObj = call.getData().isNull("coolantC") ? null : call.getDouble("coolantC");
+            Double voltageObj = call.getData().isNull("voltage") ? null : call.getDouble("voltage");
+
+            float speedKmh = (speedKmhObj != null && !Double.isNaN(speedKmhObj)) ? speedKmhObj.floatValue() : Float.NaN;
+            float rpm = (rpmObj != null && !Double.isNaN(rpmObj)) ? rpmObj.floatValue() : Float.NaN;
+            float loadPct = (loadPctObj != null && !Double.isNaN(loadPctObj)) ? loadPctObj.floatValue() : Float.NaN;
+            float coolantC = (coolantCObj != null && !Double.isNaN(coolantCObj)) ? coolantCObj.floatValue() : Float.NaN;
+            float voltage = (voltageObj != null && !Double.isNaN(voltageObj)) ? voltageObj.floatValue() : Float.NaN;
+
+            boolean mil = call.getBoolean("mil", false);
+            String source = call.getString("source", null);
+
+            int flags = 0;
+            if (mil) {
+                flags |= BlackboxLogic.OBD_FLAG_MIL_ON;
+            }
+            if (Float.isNaN(speedKmh) || Float.isNaN(rpm) || Float.isNaN(loadPct)
+                    || Float.isNaN(coolantC) || Float.isNaN(voltage)) {
+                flags |= BlackboxLogic.OBD_FLAG_VALUE_MISSING;
+            }
+
+            boolean accepted = BlackboxService.pushObd(
+                timestampUs, speedKmh, rpm, loadPct, coolantC, voltage, flags, source
+            );
+
+            JSObject res = new JSObject();
+            res.put("accepted", accepted);
+            call.resolve(res);
+        } catch (Exception e) {
+            Log.e(TAG, "pushObd failed: " + e.getMessage(), e);
+            JSObject res = new JSObject();
+            res.put("accepted", false);
+            call.resolve(res);
+        }
+    }
+
+    /**
      * Manually trigger a freeze (SAVE_LAST_60S voice intent or crash detector).
      * Options: { trigger: string }
      */

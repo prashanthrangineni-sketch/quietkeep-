@@ -70,6 +70,7 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
     /** True while sensors are recording (between start and stop of Drive Mode). */
     private static volatile boolean running = false;
     public static boolean isRunning() { return running; }
+    private static volatile BlackboxService activeInstance = null;
 
     // ── Ring buffers ─────────────────────────────────────────────────────
     // IMU: 100 Hz × 60 s = 6000 samples. Each: timestamp_us + 6 floats
@@ -83,6 +84,14 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
     private final long[]   gpsTimestamps = new long[GPS_CAPACITY];
     private final double[][] gpsValues   = new double[GPS_CAPACITY][6]; // lat,lon,alt,speed,bearing,accuracy
     private int gpsHead = 0, gpsCount = 0;
+
+    // OBD: 2 Hz × 60 s = 120 samples
+    private static final int OBD_CAPACITY = BlackboxLogic.obdBufferCapacity();
+    private final long[]   obdTimestamps = new long[OBD_CAPACITY];
+    private final float[][] obdValues    = new float[OBD_CAPACITY][5]; // speedKmh, rpm, loadPct, coolantC, voltage
+    private final int[]    obdFlags      = new int[OBD_CAPACITY];
+    private int obdHead = 0, obdCount = 0;
+    private volatile String latestObdSource = null;
 
     // Speed tracking for GPS-based speed drop
     private double lastGpsSpeedKmh = 0;
@@ -111,9 +120,44 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
     /** The latest freeze result, for the plugin to pick up. */
     public static volatile JSONObject lastFreezeResult;
 
+    /**
+     * Push an OBD reading into the running service's ring buffer.
+     * Thread-safe: posts onto the sensor thread handler.
+     * Returns false if the service is not currently running.
+     */
+    public static boolean pushObd(long timestampUs, float speedKmh, float rpm,
+                                  float loadPct, float coolantC, float voltage,
+                                  int flags, String source) {
+        BlackboxService svc = activeInstance;
+        if (svc == null || !running) return false;
+        Handler h = svc.sensorHandler;
+        if (h == null) return false;
+        h.post(() -> svc.pushObdInternal(timestampUs, speedKmh, rpm, loadPct, coolantC, voltage, flags, source));
+        return true;
+    }
+
+    private void pushObdInternal(long timestampUs, float speedKmh, float rpm,
+                                 float loadPct, float coolantC, float voltage,
+                                 int flags, String source) {
+        if (source != null && !source.isEmpty()) {
+            latestObdSource = source;
+        }
+        int idx = obdHead % OBD_CAPACITY;
+        obdTimestamps[idx] = timestampUs;
+        obdValues[idx][0] = speedKmh;
+        obdValues[idx][1] = rpm;
+        obdValues[idx][2] = loadPct;
+        obdValues[idx][3] = coolantC;
+        obdValues[idx][4] = voltage;
+        obdFlags[idx] = flags;
+        obdHead++;
+        if (obdCount < OBD_CAPACITY) obdCount++;
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
+        activeInstance = this;
         mainHandler = new Handler(Looper.getMainLooper());
         sensorThread = new HandlerThread("BlackboxSensor");
         sensorThread.start();
@@ -154,6 +198,7 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
 
     @Override
     public void onDestroy() {
+        activeInstance = null;
         stopSensors();
         stopGps();
         running = false;
@@ -420,6 +465,7 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             // Build JSON header
             JSONObject header = new JSONObject();
             header.put("version", 1);
+            header.put("format_version", 2);
             header.put("device_id", Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID));
             header.put("vehicle_id", JSONObject.NULL);
             header.put("trigger", triggerType);
@@ -441,6 +487,9 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             header.put("audio_status", audioOptIn ? "opted_in_not_captured_v1" : "off");
             header.put("imu_samples", imuCount);
             header.put("gps_samples", gpsCount);
+            header.put("obd_samples", obdCount);
+            header.put("obd_record_bytes", BlackboxLogic.OBD_RECORD_BYTES);
+            header.put("obd_source", latestObdSource != null ? latestObdSource : JSONObject.NULL);
             header.put("audio_bytes", 0);
             if (gpsCount > 0) {
                 int last = ((gpsHead - 1) % GPS_CAPACITY + GPS_CAPACITY) % GPS_CAPACITY;
@@ -479,11 +528,29 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
                 gpsBuf.putFloat((float) gpsValues[idx][5]); // accuracy
             }
 
-            // Assemble packet
-            byte[] packet = new byte[headerBytes.length + imuBuf.position() + gpsBuf.position()];
+            // Binary OBD block (format_version 2)
+            ByteBuffer obdBuf = ByteBuffer.allocate(obdCount * BlackboxLogic.OBD_RECORD_BYTES);
+            obdBuf.order(ByteOrder.LITTLE_ENDIAN);
+            for (int i = 0; i < obdCount; i++) {
+                int idx = ((obdHead - obdCount + i) % OBD_CAPACITY + OBD_CAPACITY) % OBD_CAPACITY;
+                byte[] rec = BlackboxLogic.encodeObdRecord(
+                    obdTimestamps[idx],
+                    obdValues[idx][0],
+                    obdValues[idx][1],
+                    obdValues[idx][2],
+                    obdValues[idx][3],
+                    obdValues[idx][4],
+                    obdFlags[idx]
+                );
+                obdBuf.put(rec);
+            }
+
+            // Assemble packet: header + IMU + GPS + OBD
+            byte[] packet = new byte[headerBytes.length + imuBuf.position() + gpsBuf.position() + obdBuf.position()];
             System.arraycopy(headerBytes, 0, packet, 0, headerBytes.length);
             System.arraycopy(imuBuf.array(), 0, packet, headerBytes.length, imuBuf.position());
             System.arraycopy(gpsBuf.array(), 0, packet, headerBytes.length + imuBuf.position(), gpsBuf.position());
+            System.arraycopy(obdBuf.array(), 0, packet, headerBytes.length + imuBuf.position() + gpsBuf.position(), obdBuf.position());
 
             // Write to app-private storage
             File dir = new File(getFilesDir(), "blackbox");

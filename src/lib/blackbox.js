@@ -91,6 +91,23 @@ export async function verifyBlackboxRecord(id) {
 }
 
 /**
+ * Push an OBD reading into the running black box service.
+ * @param {{ at?: string|number, speedKmh?: number, rpm?: number, loadPct?: number, coolantC?: number, voltage?: number, mil?: boolean, source?: string }} sample
+ */
+export async function pushObd(sample) {
+  const p = plugin();
+  if (!p || typeof p.pushObd !== 'function') {
+    return { accepted: false, reason: 'not_native' };
+  }
+  try {
+    return await p.pushObd(sample);
+  } catch (e) {
+    console.warn('[blackbox] pushObd failed:', e);
+    return { accepted: false, reason: String(e) };
+  }
+}
+
+/**
  * Request microphone permission (needed for audio opt-in).
  * Returns { granted: boolean }.
  */
@@ -133,6 +150,12 @@ export const CONSTANTS = {
   TEST_TILT_HOLD_MS: 3000,
   IMU_RATE_HZ: 100,
   GPS_RATE_HZ: 1,
+  IMU_RECORD_BYTES: 32,
+  GPS_RECORD_BYTES: 40,
+  OBD_RATE_HZ: 2,
+  OBD_RECORD_BYTES: 32,
+  OBD_FLAG_MIL_ON: 0x01,
+  OBD_FLAG_VALUE_MISSING: 0x02,
 };
 
 export function computePacketWindow(triggerTimeMs, bufferStartMs) {
@@ -195,3 +218,106 @@ export function tiltFromVerticalDeg(gx, gy, gz) {
 export function isTiltPastThreshold(gx, gy, gz) {
   return tiltFromVerticalDeg(gx, gy, gz) >= CONSTANTS.TEST_TILT_DEGREES;
 }
+
+// ── OBD Record Encoding & Decoding (matching BlackboxLogic.java) ─────────────
+
+export function obdRecordBytes() {
+  return CONSTANTS.OBD_RECORD_BYTES;
+}
+
+export function obdSamplesForDuration(durationMs) {
+  return Math.floor((durationMs * CONSTANTS.OBD_RATE_HZ) / 1000);
+}
+
+export function obdBufferCapacity() {
+  return obdSamplesForDuration(CONSTANTS.TOTAL_DURATION_MS);
+}
+
+/**
+ * Encode an OBD record into a 32-byte Uint8Array (little-endian).
+ * Missing / non-finite values are stored as Float32 NaN and set OBD_FLAG_VALUE_MISSING bit.
+ */
+export function encodeObdRecord(sampleOrTimestampUs, speedKmhArg, rpmArg, loadPctArg, coolantCArg, voltageArg, flagsArg = 0) {
+  let timestampUs, speedKmh, rpm, loadPct, coolantC, voltage, flags, mil;
+  if (typeof sampleOrTimestampUs === 'object' && sampleOrTimestampUs !== null) {
+    const s = sampleOrTimestampUs;
+    timestampUs = s.timestampUs ?? (s.at ? (typeof s.at === 'number' ? (s.at > 1e14 ? s.at : s.at * 1000) : new Date(s.at).getTime() * 1000) : 0);
+    speedKmh = s.speedKmh;
+    rpm = s.rpm;
+    loadPct = s.loadPct;
+    coolantC = s.coolantC;
+    voltage = s.voltage;
+    flags = s.flags ?? 0;
+    mil = s.mil;
+  } else {
+    timestampUs = sampleOrTimestampUs ?? 0;
+    speedKmh = speedKmhArg;
+    rpm = rpmArg;
+    loadPct = loadPctArg;
+    coolantC = coolantCArg;
+    voltage = voltageArg;
+    flags = flagsArg ?? 0;
+  }
+
+  const buf = new Uint8Array(CONSTANTS.OBD_RECORD_BYTES);
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+
+  view.setBigInt64(0, BigInt(Math.round(Number(timestampUs))), true);
+
+  const fSpeed = (typeof speedKmh === 'number' && Number.isFinite(speedKmh)) ? speedKmh : NaN;
+  const fRpm = (typeof rpm === 'number' && Number.isFinite(rpm)) ? rpm : NaN;
+  const fLoad = (typeof loadPct === 'number' && Number.isFinite(loadPct)) ? loadPct : NaN;
+  const fCoolant = (typeof coolantC === 'number' && Number.isFinite(coolantC)) ? coolantC : NaN;
+  const fVoltage = (typeof voltage === 'number' && Number.isFinite(voltage)) ? voltage : NaN;
+
+  view.setFloat32(8, fSpeed, true);
+  view.setFloat32(12, fRpm, true);
+  view.setFloat32(16, fLoad, true);
+  view.setFloat32(20, fCoolant, true);
+  view.setFloat32(24, fVoltage, true);
+
+  let finalFlags = flags;
+  if (mil) {
+    finalFlags |= CONSTANTS.OBD_FLAG_MIL_ON;
+  }
+  if (Number.isNaN(fSpeed) || Number.isNaN(fRpm) || Number.isNaN(fLoad) || Number.isNaN(fCoolant) || Number.isNaN(fVoltage)) {
+    finalFlags |= CONSTANTS.OBD_FLAG_VALUE_MISSING;
+  }
+
+  view.setUint8(28, finalFlags & 0xff);
+  view.setUint8(29, 0);
+  view.setUint8(30, 0);
+  view.setUint8(31, 0);
+
+  return buf;
+}
+
+/**
+ * Decode a 32-byte little-endian OBD record.
+ */
+export function decodeObdRecord(buffer, offset = 0) {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  const view = new DataView(bytes.buffer, bytes.byteOffset + offset, CONSTANTS.OBD_RECORD_BYTES);
+
+  const timestampUs = Number(view.getBigInt64(0, true));
+  const speedKmh = view.getFloat32(8, true);
+  const rpm = view.getFloat32(12, true);
+  const loadPct = view.getFloat32(16, true);
+  const coolantC = view.getFloat32(20, true);
+  const voltage = view.getFloat32(24, true);
+  const flags = view.getUint8(28);
+
+  return {
+    timestampUs,
+    speedKmh,
+    rpm,
+    loadPct,
+    coolantC,
+    voltage,
+    flags,
+    mil: (flags & CONSTANTS.OBD_FLAG_MIL_ON) !== 0,
+    valueMissing: (flags & CONSTANTS.OBD_FLAG_VALUE_MISSING) !== 0,
+  };
+}
+
+export { compareSpeeds } from './obd/blackbox-feed.js';

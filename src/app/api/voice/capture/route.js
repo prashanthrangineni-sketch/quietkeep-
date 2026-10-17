@@ -56,6 +56,7 @@ import {
   planAttendance, attendanceRows, planStock, stockOp, stockWrites, payrollDraft, payPeriod,
   pendingBiz, readBizAnswer, bizDecision, bizLine, doneLine,
 } from '@/lib/business-voice' // attendance / stock / payroll: read back, write only on a spoken yes
+import { DRIVE_INTENTS, planDriveTurn } from '@/lib/drive-voice' // Drive Mode intents (DRV-03): no keep, phone acts
 
 export async function POST(request) {
   const authHeader = request.headers.get('Authorization') || ''
@@ -886,6 +887,41 @@ export async function POST(request) {
       safety,
       understanding,
       tts_response: tts,
+    }, { status: 200 })
+  }
+
+  // ── DRIVE MODE: SAVE THE RECORD, HAZARDS, STAY AWAKE, CAR HEALTH ─────────
+  // Hand-off DRV-03 (17 Oct 2026). src/lib/drive-voice.js has the plan and
+  // the lines; src/lib/action-levels.js the levels. No keep is ever saved.
+  // The server never acts on the phone: when the level says "do", it returns
+  // drive_action and the Aaria dock carries it out (sealing the black box,
+  // reading the hazard map, the stay-awake companion) and says the result.
+  if (llmAssist && llmAssist.confidence >= 0.55 && DRIVE_INTENTS.has(llmAssist.intent)) {
+    const replyLang = llmAssist.language || language
+    const plan = planDriveTurn({ intent: llmAssist.intent, entities: llmAssist.entities || {}, language: replyLang })
+    const safety = decide({ type: plan.type }, { spokenYes: false, unlocked: unlockedNow, pin: false, ownerVoice: null }, { doneThisHour: 0 })
+    const act = safety.decision === DECISION.DO && plan.deviceAction ? plan.deviceAction : null
+    logStep({
+      heardText: text,
+      decidedAction: plan.type,
+      level: safety.level,
+      decision: safety.decision,
+      askedConfirmation: ['ask_yes', 'ask_unlock', 'ask_pin'].includes(safety.decision),
+      result: safety.decision === DECISION.REFUSE ? 'refused' : (safety.decision === DECISION.ASK_YES ? 'pending_confirmation' : 'success'),
+    })
+    supabase.from('audit_log').insert({
+      user_id: user.id, action: 'voice.no_keep', service: 'voice_capture',
+      details: { kind: llmAssist.intent, heard: text.slice(0, 120), source, language, understanding, drive_action: act },
+    }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) })
+    return NextResponse.json({
+      ok: true,
+      not_saved: true,
+      reason: llmAssist.intent,
+      drive_type: plan.type,
+      drive_action: act ? { action: act, language: replyLang } : null,
+      safety,
+      understanding,
+      tts_response: plan.tts,
     }, { status: 200 })
   }
 

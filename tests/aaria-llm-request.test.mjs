@@ -25,6 +25,12 @@
 // "सुनीता की छुट्टी लगा दो") so absence and leave sentences are understood
 // as attendance. URL, headers, model, temperature, max_tokens and stream
 // checked unchanged before re-capturing.
+//
+// 17 Oct 2026: re-captured once more, on purpose, when the prompt gained the
+// six Drive Mode intents (hand-off DRV-03: save_last_60s, share_record,
+// read_health, read_faults, hazard_ahead, stay_awake). A script compared every
+// field of the old and new bodies except the prompt text, plus URL and
+// headers: 0 differences before re-capturing.
 
 import assert from 'node:assert/strict'
 import test from 'node:test'

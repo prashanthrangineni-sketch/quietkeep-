@@ -43,6 +43,12 @@ export const ROMAN_INDIC =
 export const BUSINESS_WORDS =
   /\b(attendance|absent|present|half[\s-]?day|stock|inventory|salary|salaries|payroll|wages|jeetham|jeetam|tankhwah|tankha|hazri|haaziri)\b|అటెండెన్స్|ఆబ్సెంట్|స్టాక్|జీతం|జీతాలు|हाज़िरी|हाजिरी|स्टॉक|तनख्वाह|सैलरी/i
 
+// Drive Mode (17 Oct 2026, hand-off DRV-03). "Keep me awake" or "save the
+// record" can look like a confident English task or note to the regex; only
+// the brain knows these are Drive actions that save nothing.
+export const DRIVE_WORDS =
+  /\b(black\s?box|last\s+60|last\s+sixty|save\s+(the\s+)?(record|recording|clip)|share\s+(the\s+)?(record|recording|clip)|engine|faults?|check\s+engine|obd|my\s+(car|bike|vehicle)|car\s+health|ahead|pothole|awake|sleepy|drowsy|neend|nidra)\b|రికార్డ్|నిద్ర|ఇంజన్|ఇంజిన్|రికార్డ|नींद|रिकॉर्ड|इंजन/i
+
 /**
  * Should the language model read this sentence, and why.
  *
@@ -65,6 +71,7 @@ export function whyBrainRun({ parsed, text, language, reminderAt }) {
   if (ROMAN_INDIC.test(text || '')) reasons.push('romanised_indic')
   if ((type === 'reminder' || type === 'task') && !reminderAt) reasons.push('no_time_found')
   if (BUSINESS_WORDS.test(text || '')) reasons.push('business_shaped')
+  if (DRIVE_WORDS.test(text || '')) reasons.push('drive_shaped')
 
   return { run: reasons.length > 0, reasons }
 }

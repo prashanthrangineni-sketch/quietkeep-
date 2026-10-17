@@ -226,6 +226,11 @@ const isGap = (c) => typeof c.expect?.intent === 'string' && c.expect.intent.sta
 // (src/lib/brain-turn.js NO_KEEP_INTENTS). Kept as a literal here so this
 // script stays free of the route's imports.
 const NO_KEEP = new Set(['none', 'confirm', 'pay', 'delete'])
+// Drive Mode intents (17 Oct 2026, src/lib/drive-voice.js) also save no keep:
+// the capture route answers them and the phone acts. Counted as "saved
+// nothing" in the no_keep check, and still action intents for intent_any.
+const DRIVE = ['save_last_60s', 'share_record', 'read_health', 'read_faults', 'hazard_ahead', 'stay_awake']
+const SAVES_NOTHING = new Set([...NO_KEEP, ...DRIVE])
 const ACTION_INTENTS = new Set(INTENTS.filter((i) => i !== 'note' && i !== 'query' && !NO_KEEP.has(i)))
 const normName = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '')
 
@@ -294,7 +299,7 @@ function score(expect, got) {
   // A sentence that must not save anything ("thank you", a stray "yes"):
   // did the brain give an answer the route turns into a keep? A failed call
   // counts as a keep - production then falls back to the regex parser.
-  if (expect.no_keep) mark('no_keep', !!got && NO_KEEP.has(got.intent), `would save a ${got?.intent ?? 'regex'} keep`)
+  if (expect.no_keep) mark('no_keep', !!got && SAVES_NOTHING.has(got.intent), `would save a ${got?.intent ?? 'regex'} keep`)
   return { checks, fails }
 }
 
@@ -365,6 +370,8 @@ function summarise(m) {
     person: pct(scored, 'person'), time: pct(scored, 'time'), amount: pct(scored, 'amount'), direction: pct(scored, 'direction'),
     intent_by_business: Object.fromEntries(BUSINESS.map((b) => [b, pct(scored.filter((r) => r.expected_intent === b), 'intent')])),
     business_details: { status: pct(scored, 'status'), stock_op: pct(scored, 'stock_op'), quantity: pct(scored, 'quantity') },
+    intent_by_drive: Object.fromEntries(DRIVE.map((d) => [d, pct(scored.filter((r) => r.expected_intent === d), 'intent')])),
+    drive_intent: pct(scored.filter((r) => DRIVE.includes(r.expected_intent)), 'intent'),
     no_keep: pct(scored, 'no_keep'),
     keeps_from_no_keep_cases: scored.filter((r) => r.checks.no_keep === false).map((r) => ({ id: r.id, intent: r.intent })),
     full_pass: { ok: scored.filter((r) => r.pass).length, n: scored.length, pct: scored.length ? Math.round((1000 * scored.filter((r) => r.pass).length) / scored.length) / 10 : null },
@@ -445,8 +452,18 @@ function markdown(report) {
     L.push(`| ${m.id} | ${BUSINESS.map((b) => fmtPct(s.intent_by_business[b])).join(' | ')} | ${fmtPct(s.business_details.status)} | ${fmtPct(s.business_details.stock_op)} | ${fmtPct(s.business_details.quantity)} |`)
   }
   L.push('')
+  L.push('## Drive Mode (save the record, share, car health, faults, hazards, stay awake)', '')
+  L.push('Drive sentences added 17 Oct 2026 (hand-off DRV-03). Done when all Drive sentences together score at least 90% and the rest does not drop.', '')
+  L.push(`| Model | All Drive | ${DRIVE.join(' | ')} |`)
+  L.push(`|---|---|${DRIVE.map(() => '---').join('|')}|`)
+  for (const m of report.models) {
+    const s = m.summary
+    if (!s) continue
+    L.push(`| ${m.id} | ${fmtPct(s.drive_intent)} | ${DRIVE.map((d) => fmtPct(s.intent_by_drive[d])).join(' | ')} |`)
+  }
+  L.push('')
   L.push('## Sentences that must not save anything', '')
-  L.push('Thanks, small talk and a bare yes / no with nothing pending ("no_keep" cases). Saved nothing = the brain answered none, confirm, pay or delete, which the capture route turns into a reply and no keep. (A bare yes / no never reaches the brain in production - the route answers it first - so this is the brain\'s own score.)', '')
+  L.push('Thanks, small talk and a bare yes / no with nothing pending ("no_keep" cases). Saved nothing = the brain answered none, confirm, pay, delete or a Drive intent, which the capture route turns into a reply and no keep. (A bare yes / no never reaches the brain in production - the route answers it first - so this is the brain\'s own score.)', '')
   for (const m of report.models) {
     const s = m.summary
     if (!s) continue

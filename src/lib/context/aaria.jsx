@@ -473,7 +473,44 @@ export function AariaProvider({ children }) {
         setStatus('idle');
         return;
       }
-      const spoken = json.tts_response || json.assistant?.reply || 'Saved.';
+      let spoken = json.tts_response || json.assistant?.reply || 'Saved.';
+
+      // DRIVE MODE ACTIONS (hand-off DRV-03, 17 Oct 2026). Present only when
+      // the server's level table said "do". Carried out here, on the phone:
+      // seal the black box's last 60 seconds, read the hazard map ahead, or
+      // the stay-awake companion. What is said is the RESULT, never a promise
+      // - "Saved the last 60 seconds" only once the phone says it sealed one.
+      if (json.drive_action?.action) {
+        try {
+          const [{ runDriveAction }, blackbox, hazards, rideGuard] = await Promise.all([
+            import('@/lib/drive-voice'), import('@/lib/blackbox'),
+            import('@/lib/hazard-alerts'), import('@/lib/ride-guard'),
+          ]);
+          const said = await runDriveAction(json.drive_action.action, {
+            language: json.drive_action.language || voiceLang,
+            deps: {
+              isBlackboxAvailable: blackbox.isBlackboxAvailable,
+              saveLast60s: blackbox.saveLast60s,
+              isRideGuardActive: rideGuard.isRideGuardActive,
+              phraseFor: hazards.phraseFor,
+              position: () => {
+                const p = lastKnownPosition(5 * 60 * 1000);
+                return p ? { lat: p.latitude, lng: p.longitude, headingDeg: typeof p.heading === 'number' ? p.heading : undefined } : null;
+              },
+              fetchSpots: async (pos) => {
+                const r = await fetch('/api/ride/hazards-near', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                  body: JSON.stringify({ lat: pos.lat, lng: pos.lng, radiusMetres: 1500 }),
+                });
+                const d = await r.json().catch(() => null);
+                return Array.isArray(d?.spots) ? d.spots : [];
+              },
+            },
+          });
+          if (said) spoken = said;
+        } catch (e) { console.warn('[Aaria] drive action failed:', e); }
+      }
       say(spoken);
       setTranscript('');
       setChoices(Array.isArray(json.choices) && json.choices.length ? json.choices : null);

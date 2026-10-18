@@ -101,7 +101,11 @@ export default function DriveModePage() {
     const optIn = typeof window !== 'undefined' && localStorage.getItem('qk_blackbox_audio_opt_in') === 'true';
     const testM = typeof window !== 'undefined' && localStorage.getItem('qk_blackbox_test_mode') === 'true';
     const obdSim = typeof window !== 'undefined' && localStorage.getItem('qk_obd_use_simulated') === 'true';
-    const indMode = (typeof window !== 'undefined' && localStorage.getItem('qk_indicator_mode')) || 'reminders';
+    let indMode = 'reminders';
+    try {
+      const m = typeof window !== 'undefined' ? localStorage.getItem('qk_indicator_mode') : null;
+      if (m === 'off' || m === 'reminders' || m === 'listen') indMode = m;
+    } catch { /* keep the default */ }
     setAudioOptIn(optIn);
     setTestMode(testM);
     setObdSimulated(obdSim);

@@ -175,7 +175,13 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   let armedAt = now();
   let currentSpeedKmh = null;
 
-  const indicatorMode = (typeof window !== 'undefined' && localStorage.getItem('qk_indicator_mode')) || 'reminders';
+  // DRV-11: 'off' | 'reminders' | 'listen'. Storage can throw in some
+  // WebViews / private modes; an unknown value falls back to the default.
+  let indicatorMode = 'reminders';
+  try {
+    const m = typeof window !== 'undefined' ? window.localStorage.getItem('qk_indicator_mode') : null;
+    if (m === 'off' || m === 'reminders' || m === 'listen') indicatorMode = m;
+  } catch { /* keep the default */ }
   const manoeuvreDetector = createManoeuvreDetector();
   const indicatorAssist = createIndicatorAssist({ mode: indicatorMode });
 

@@ -23,6 +23,7 @@ import { createHazardWarner, metresBetween } from '@/lib/hazard-alerts';
 import { createStayAwakeCompanion } from '@/lib/ride-care';
 import { createFatigueTracker } from '@/lib/fatigue-voice';
 import { setDriveSpeed } from '@/lib/drive-speed';
+import { yawRateFrom, createManoeuvreDetector, createIndicatorAssist } from '@/lib/indicator-assist';
 import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
 
@@ -172,6 +173,11 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   let lastFix = { lat: null, lng: null, accuracy: null, at: 0 };
   let lastCrash = null;
   let armedAt = now();
+  let currentSpeedKmh = null;
+
+  const indicatorMode = (typeof window !== 'undefined' && localStorage.getItem('qk_indicator_mode')) || 'reminders';
+  const manoeuvreDetector = createManoeuvreDetector();
+  const indicatorAssist = createIndicatorAssist({ mode: indicatorMode });
 
   const tracker = createFatigueTracker();
   let noReplyTimer = null;
@@ -453,6 +459,31 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     if (state === 'crash' && !overlayShown && now() - armedAt > 4000) {
       trigger(detector.lastCrashDetail?.() || { impactG: g, speedBeforeKmh: null });
     }
+
+    if (event.rotationRate && typeof currentSpeedKmh === 'number') {
+      const yawDps = yawRateFrom(event.rotationRate, a);
+      const atMs = now();
+      const events = manoeuvreDetector.feed({
+        at: atMs,
+        yawDps,
+        speedKmh: currentSpeedKmh,
+        headingDeg: lastHeadingDeg,
+      });
+
+      if (!overlayShown) {
+        const phrase = indicatorAssist.update(events, {
+          somethingElseSpokeAt: lastSpokeAt,
+          speedKmh: currentSpeedKmh,
+          at: atMs,
+        });
+        if (phrase) {
+          speak(phrase);
+          lastSpokeAt = atMs;
+          const primaryEvent = (events && events.length > 0) ? events[0] : null;
+          onState?.('indicator', { phrase, event: primaryEvent });
+        }
+      }
+    }
   }
 
   detector.onStateChange?.((state, detail) => {
@@ -564,6 +595,8 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
       listener.stop();
       panel.remove();
       if (typeof window !== 'undefined') window.removeEventListener('devicemotion', onMotion);
+      manoeuvreDetector.reset();
+      indicatorAssist.reset();
       reportRideDistance();
       onState?.('stopped', {});
     },
@@ -572,6 +605,7 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
       if (fix && typeof fix.headingDeg === 'number') lastHeadingDeg = fix.headingDeg;
       else if (fix && typeof fix.heading === 'number') lastHeadingDeg = fix.heading;
       if (typeof kmh === 'number') {
+        currentSpeedKmh = kmh;
         detector.feedSpeed({ kmh, at: now() });
         noteBraking(kmh);
         checkForHazardAhead(kmh);

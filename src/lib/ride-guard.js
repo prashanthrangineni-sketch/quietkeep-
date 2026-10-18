@@ -24,6 +24,8 @@ import { createStayAwakeCompanion } from '@/lib/ride-care';
 import { createFatigueTracker } from '@/lib/fatigue-voice';
 import { setDriveSpeed } from '@/lib/drive-speed';
 import { yawRateFrom, createManoeuvreDetector, createIndicatorAssist } from '@/lib/indicator-assist';
+import { detectIndicatorSound } from '@/lib/indicator-sound';
+import { listenEnergy, stopEnergy } from '@/lib/drive-energy';
 import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
 
@@ -184,6 +186,48 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
   } catch { /* keep the default */ }
   const manoeuvreDetector = createManoeuvreDetector();
   const indicatorAssist = createIndicatorAssist({ mode: indicatorMode });
+
+  // DRV-11c: listen for the indicator's tick/beep for a few seconds after a
+  // turn or lane change - ONLY when the driver turned "Also listen for the
+  // indicator sound" on (default OFF). The microphone half is the voice
+  // thread's IndicatorEar (DRV-11b): energy numbers only, never audio, and it
+  // pauses Aaria's wake word for just the listen. At most one listen a minute.
+  const INDICATOR_LISTEN_SECONDS = 5;
+  const INDICATOR_LISTEN_DELAY_MS = 1500;   // let the manoeuvre finish first
+  const INDICATOR_LISTEN_GAP_MS = 60_000;
+  let indicatorListening = false;
+  let lastIndicatorListenAt = -Infinity;
+  let indicatorListenTimer = null;
+  let guardStopped = false;
+
+  function maybeListenForIndicator(events) {
+    if (indicatorMode !== 'listen' || guardStopped) return;
+    if (!events || !events.some((e) => e.type === 'turn_done' || e.type === 'lane_change')) return;
+    const at = now();
+    if (indicatorListening || indicatorListenTimer || at - lastIndicatorListenAt < INDICATOR_LISTEN_GAP_MS) return;
+    // Never during a crash check-in, or while a fatigue question waits for
+    // the rider's spoken answer (the ride listener must hear it).
+    if (overlayShown || tracker.hasPendingQuestion()) return;
+    indicatorListenTimer = setTimeout(async () => {
+      indicatorListenTimer = null;
+      if (guardStopped || overlayShown || tracker.hasPendingQuestion()) return;
+      indicatorListening = true;
+      lastIndicatorListenAt = now();
+      listener.stop();   // the ride listener gives the mic up for these seconds
+      try {
+        const r = await listenEnergy({ seconds: INDICATOR_LISTEN_SECONDS });
+        if (r.ok && !guardStopped) {
+          const sound = detectIndicatorSound(r.energies, { frameRate: r.hz });
+          indicatorAssist.indicatorOn(sound.on, now());
+          onState?.('indicator_heard', { on: sound.on, rateHz: sound.rateHz, confidence: sound.confidence });
+        }
+      } catch { /* no reading: the assist falls back to the plain reminder */ }
+      finally {
+        indicatorListening = false;
+        if (!guardStopped) listener.start();
+      }
+    }, INDICATOR_LISTEN_DELAY_MS);
+  }
 
   const tracker = createFatigueTracker();
   let noReplyTimer = null;
@@ -475,6 +519,7 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
         speedKmh: currentSpeedKmh,
         headingDeg: lastHeadingDeg,
       });
+      maybeListenForIndicator(events);
 
       if (!overlayShown) {
         const phrase = indicatorAssist.update(events, {
@@ -601,6 +646,9 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
       listener.stop();
       panel.remove();
       if (typeof window !== 'undefined') window.removeEventListener('devicemotion', onMotion);
+      guardStopped = true;
+      if (indicatorListenTimer) { clearTimeout(indicatorListenTimer); indicatorListenTimer = null; }
+      if (indicatorListening) stopEnergy();
       manoeuvreDetector.reset();
       indicatorAssist.reset();
       reportRideDistance();

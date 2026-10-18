@@ -137,3 +137,14 @@ Phrases are concise, polite, and natural in English, Hindi, and Telugu:
 > - `"listen for indicator"` / `"indicator sound on"` $\rightarrow$ sets `localStorage.setItem('qk_indicator_mode', 'listen')`.
 > 
 > Per card boundaries, routing files (`src/lib/aaria-router.js`, `src/lib/intent-parser.js`, `src/lib/drive-voice.js`) were **not** modified in DRV-11.
+
+## DRV-11c — listening for the indicator (18 Oct 2026)
+
+The microphone half is the voice thread's `IndicatorEar` plugin and `src/lib/drive-energy.js` (DRV-11b, #190): energy numbers only (100 per second), never audio, at most 8 s per listen, Aaria's wake word paused only for the listen.
+
+How the ride guard uses it, only when the driver chose "Also listen for the indicator sound" (default OFF):
+- 1.5 s after a detected turn or lane change, listen for 5 s; at most one listen per minute; never during a crash check-in or while a fatigue question waits for an answer (the ride listener steps aside for the listen and always resumes).
+- `detectIndicatorSound(energies, { frameRate: 100 })` -> `indicatorOn(on)`.
+- "Your indicator is still on." only from a reading taken AFTER that manoeuvre (`soundCoverage: 'on_demand'`); an earlier reading never counts.
+- If the listen gives nothing (mic busy, refused, error) the plain "Check your indicator is off." reminder is used after a turn, under its 5-minute cooldown.
+- "Indicate before changing lanes" is NOT said with on-demand listening: nothing was listening before the lane change, so it cannot be known. It stays available for a future always-on source (`soundCoverage: 'continuous'`).

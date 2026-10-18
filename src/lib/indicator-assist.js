@@ -27,6 +27,7 @@ export const CONSTANTS = {
   // Assist reminder delays and cooldowns
   INDICATOR_STILL_ON_DELAY_S: 6,     // Check indicator ticking 6 s after turn_done / lane_change
   LANE_CHANGE_PRE_CHECK_S: 4,        // Check indicator ticking in 4 s before lane change
+  ON_DEMAND_GRACE_MS: 6000,          // DRV-11c: an on-demand listen result may land up to 6 s after the 6 s check point
   REMINDERS_COOLDOWN_MS: 5 * 60 * 1000,   // Reminders mode: at most once per 5 min after turn_done
   SPEECH_QUIET_AFTER_OTHER_MS: 2 * 60 * 1000, // Never within 2 min of other speech
   SPEECH_MIN_INTERVAL_MS: 2 * 60 * 1000,      // Never more than 1 indicator phrase per 2 min
@@ -351,8 +352,15 @@ export function createIndicatorAssist({
   clock = () => Date.now(),
   mode = 'reminders',
   lang = 'en',
+  // DRV-11c. 'on_demand' (the phone): the microphone listens for a few
+  // seconds AFTER a turn or lane change (DRV-11b IndicatorEar, at most 8 s,
+  // so Aaria's wake word is only paused briefly). Then only "still on" can be
+  // known; whether the driver indicated BEFORE a lane change cannot, so that
+  // nag is never said. 'continuous' is for a future always-on sound source.
+  soundCoverage = 'on_demand',
 } = {}) {
   let currentMode = mode;
+  let lastReadingAt = -Infinity;   // when the latest indicator reading was taken
   let currentLang = lang;
 
   // Spoken phrase tracking
@@ -385,6 +393,7 @@ export function createIndicatorAssist({
   function indicatorOn(on, at = clock()) {
     hasIndicatorSignal = true;
     isIndicatorOn = Boolean(on);
+    lastReadingAt = at;
     if (isIndicatorOn) {
       indicatorOnTimestamps.push(at);
       // Prune old entries (> 30s)
@@ -403,6 +412,7 @@ export function createIndicatorAssist({
     isIndicatorOn = false;
     indicatorOnTimestamps.length = 0;
     pendingStillOnCheck = null;
+    lastReadingAt = -Infinity;
   }
 
   /**
@@ -482,9 +492,23 @@ export function createIndicatorAssist({
 
     // ── Check A: Pending 6s check in 'listen' mode with sound known ──────────
     if (currentMode === 'listen' && hasIndicatorSignal && pendingStillOnCheck) {
-      if (at >= pendingStillOnCheck.checkAt) {
-        // If within 3 seconds of the target check time
-        if (at <= pendingStillOnCheck.checkAt + 3000) {
+      // On demand: only a reading taken AFTER this manoeuvre counts - never
+      // a stale "on" from an earlier listen. Wait for it within the grace.
+      const fresh = soundCoverage !== 'on_demand' || lastReadingAt >= pendingStillOnCheck.eventAt;
+      const graceMs = soundCoverage === 'on_demand' ? CONSTANTS.ON_DEMAND_GRACE_MS : 3000;
+      if (at >= pendingStillOnCheck.checkAt && !fresh && at > pendingStillOnCheck.checkAt + graceMs) {
+        // The listen never reported (mic busy, denied, error). After a turn,
+        // fall back to the plain reminder, under its own 5-minute cooldown.
+        const wasTurn = pendingStillOnCheck.reason === 'turn_done';
+        pendingStillOnCheck = null;
+        if (wasTurn && at - lastTurnReminderAt >= CONSTANTS.REMINDERS_COOLDOWN_MS
+            && canSpeak(at, somethingElseSpokeAt, speedKmh)) {
+          lastTurnReminderAt = at;
+          recordSpoke(at);
+          return phrases.check_indicator_off;
+        }
+      } else if (at >= pendingStillOnCheck.checkAt && fresh) {
+        if (at <= pendingStillOnCheck.checkAt + graceMs) {
           if (isIndicatorOn) {
             pendingStillOnCheck = null;
             if (canSpeak(at, somethingElseSpokeAt, speedKmh)) {
@@ -506,7 +530,7 @@ export function createIndicatorAssist({
       if (evt.type === 'lane_change') {
         // 'listen' mode with indicator sound known:
         // Lane change with NO ticking in the 4 s before it -> "Indicate before changing lanes."
-        if (currentMode === 'listen' && hasIndicatorSignal) {
+        if (currentMode === 'listen' && hasIndicatorSignal && soundCoverage === 'continuous') {
           const lcStartAt = evt.startAt || at;
           const preCheckWindowStart = lcStartAt - (CONSTANTS.LANE_CHANGE_PRE_CHECK_S * 1000);
 
@@ -526,7 +550,10 @@ export function createIndicatorAssist({
       } else if (evt.type === 'turn_done') {
         // 'reminders' mode (or 'listen' mode before sound is known):
         // after 'turn_done' -> "Check your indicator is off." at most once per 5 minutes
-        const actAsReminders = (currentMode === 'reminders') || (currentMode === 'listen' && !hasIndicatorSignal);
+        // On-demand listening decides at the check point instead (a listen is
+        // about to run; if it fails, Check A falls back to this reminder).
+        const actAsReminders = (currentMode === 'reminders')
+          || (currentMode === 'listen' && !hasIndicatorSignal && soundCoverage !== 'on_demand');
         if (actAsReminders) {
           const cooldownElapsed = at - lastTurnReminderAt >= CONSTANTS.REMINDERS_COOLDOWN_MS;
           if (cooldownElapsed && canSpeak(at, somethingElseSpokeAt, speedKmh)) {

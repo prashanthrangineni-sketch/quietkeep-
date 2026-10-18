@@ -54,6 +54,7 @@ export default function DriveModePage() {
   const [audioOptIn, setAudioOptIn] = useState(false);
   const [testMode, setTestMode] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
+  const [indicatorMode, setIndicatorMode] = useState('reminders');
   const [devTapCount, setDevTapCount] = useState(0);
   const [records, setRecords] = useState([]);
   const [shareToast, setShareToast] = useState(null);
@@ -100,9 +101,15 @@ export default function DriveModePage() {
     const optIn = typeof window !== 'undefined' && localStorage.getItem('qk_blackbox_audio_opt_in') === 'true';
     const testM = typeof window !== 'undefined' && localStorage.getItem('qk_blackbox_test_mode') === 'true';
     const obdSim = typeof window !== 'undefined' && localStorage.getItem('qk_obd_use_simulated') === 'true';
+    let indMode = 'reminders';
+    try {
+      const m = typeof window !== 'undefined' ? localStorage.getItem('qk_indicator_mode') : null;
+      if (m === 'off' || m === 'reminders' || m === 'listen') indMode = m;
+    } catch { /* keep the default */ }
     setAudioOptIn(optIn);
     setTestMode(testM);
     setObdSimulated(obdSim);
+    setIndicatorMode(indMode);
     startBlackbox({ audioOptIn: optIn, testMode: testM });
     listBlackboxRecords().then(r => setRecords(r.records || []));
     // Upload sealed records now and on every reconnect (DRV-01 step 7)
@@ -652,6 +659,66 @@ export default function DriveModePage() {
             </div>
             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
               Default: OFF · Records are sealed on the phone with the Android Keystore. Audio recording itself arrives in a later update — today only your choice is saved.
+            </div>
+          </div>
+
+          {/* Indicator reminders card (DRV-11) */}
+          <div style={{
+            background: 'var(--card-bg, #1e293b)', padding: 16, borderRadius: 14,
+            border: '1px solid var(--border, #334155)', marginBottom: 16
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 18 }}>💡</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Indicator reminders</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="qk_indicator_mode"
+                  value="off"
+                  checked={indicatorMode === 'off'}
+                  onChange={() => {
+                    setIndicatorMode('off');
+                    if (typeof window !== 'undefined') localStorage.setItem('qk_indicator_mode', 'off');
+                  }}
+                  style={{ width: 18, height: 18, accentColor: '#6366f1', cursor: 'pointer' }}
+                />
+                <span>Off</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="qk_indicator_mode"
+                  value="reminders"
+                  checked={indicatorMode === 'reminders'}
+                  onChange={() => {
+                    setIndicatorMode('reminders');
+                    if (typeof window !== 'undefined') localStorage.setItem('qk_indicator_mode', 'reminders');
+                  }}
+                  style={{ width: 18, height: 18, accentColor: '#6366f1', cursor: 'pointer' }}
+                />
+                <span>Reminders only</span>
+              </label>
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="qk_indicator_mode"
+                    value="listen"
+                    checked={indicatorMode === 'listen'}
+                    onChange={() => {
+                      setIndicatorMode('listen');
+                      if (typeof window !== 'undefined') localStorage.setItem('qk_indicator_mode', 'listen');
+                    }}
+                    style={{ width: 18, height: 18, accentColor: '#6366f1', cursor: 'pointer' }}
+                  />
+                  <span>Also listen for the indicator sound (mic)</span>
+                </label>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, marginLeft: 28, lineHeight: 1.4 }}>
+                  Listening for the indicator arrives in a later update. Sound would stay on your phone, never saved or uploaded.
+                </div>
+              </div>
             </div>
           </div>
 

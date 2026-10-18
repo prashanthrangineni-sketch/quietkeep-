@@ -89,6 +89,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SOSPlugin.class);
         registerPlugin(QkBlackboxPlugin.class);
         registerPlugin(com.pranix.quietkeep.plugins.QkObdPlugin.class);
+        registerPlugin(com.pranix.quietkeep.plugins.IndicatorEarPlugin.class); // DRV-11b: indicator sound, energy numbers only
 
         super.onCreate(savedInstanceState);
 

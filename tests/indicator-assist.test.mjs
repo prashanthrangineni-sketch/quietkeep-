@@ -264,7 +264,9 @@ eq('CONSTANTS.MAX_PHRASES_PER_HOUR is 6', CONSTANTS.MAX_PHRASES_PER_HOUR, 6);
 
 // ── 9. Indicator Assist: 'listen' mode with sound known ───────────────────────
 {
-  const assist = createIndicatorAssist({ mode: 'listen' });
+  // A CONTINUOUS sound source (future) can know whether the driver indicated
+  // before a lane change; the phone's on-demand listens cannot (DRV-11c).
+  const assist = createIndicatorAssist({ mode: 'listen', soundCoverage: 'continuous' });
 
   // Indicator sound known (signal fed)
   assist.indicatorOn(false, 1000);
@@ -277,7 +279,7 @@ eq('CONSTANTS.MAX_PHRASES_PER_HOUR is 6', CONSTANTS.MAX_PHRASES_PER_HOUR, 6);
 }
 
 {
-  const assist = createIndicatorAssist({ mode: 'listen' });
+  const assist = createIndicatorAssist({ mode: 'listen', soundCoverage: 'continuous' });
   // Indicator WAS ticking in the 4s before the lane change
   assist.indicatorOn(true, 7000); // 1s before startAt (8000)
   const lcEvt = [{ type: 'lane_change', at: 10000, startAt: 8000, direction: 'left', speedKmh: 40 }];
@@ -382,6 +384,39 @@ eq('CONSTANTS.MAX_PHRASES_PER_HOUR is 6', CONSTANTS.MAX_PHRASES_PER_HOUR, 6);
   const assistTe = createIndicatorAssist({ mode: 'reminders', lang: 'te' });
   const phraseTe = assistTe.update(turnDone, { at: 10000, speedKmh: 30 });
   eq('reminders in Telugu produces natural Telugu line', phraseTe, 'ఇండికేటర్ ఆఫ్ చేశారో లేదో చూడండి.');
+}
+
+// ── DRV-11c: on-demand listening (the phone's real mode) ─────────────────────
+{
+  // Default coverage is on-demand: a lane change NEVER produces the
+  // "indicate before" nag, because nothing was listening before it.
+  const a1 = createIndicatorAssist({ mode: 'listen' });
+  a1.indicatorOn(false, 1000);
+  const lc = a1.update([{ type: 'lane_change', at: 10000, startAt: 8000, direction: 'left', speedKmh: 40 }], { at: 10000, speedKmh: 40 });
+  eq('on-demand: lane change never nags "indicate before"', lc, null);
+
+  // A stale "on" from an EARLIER listen must not trigger "still on".
+  const a2 = createIndicatorAssist({ mode: 'listen' });
+  a2.indicatorOn(true, 1000);                       // old reading, before the turn
+  a2.update([{ type: 'turn_done', at: 200000, direction: 'left', speedKmh: 30 }], { at: 200000, speedKmh: 30 });
+  eq('on-demand: stale reading ignored at the check point', a2.update([], { at: 206500, speedKmh: 30 }), null);
+  eq('on-demand: no fresh reading within the grace -> falls back to the plain reminder',
+    a2.update([], { at: 213000, speedKmh: 30 }), 'Check your indicator is off.');
+  a2.indicatorOn(true, 213500);                     // too late for that turn
+  eq('on-demand: a late reading after the check was dropped says nothing', a2.update([], { at: 213600, speedKmh: 30 }), null);
+
+  // A fresh reading taken after the turn, landing ~7.7 s later (listen + settle) -> "still on".
+  const a3 = createIndicatorAssist({ mode: 'listen' });
+  a3.update([{ type: 'turn_done', at: 300000, direction: 'right', speedKmh: 30 }], { at: 300000, speedKmh: 30 });
+  a3.indicatorOn(true, 307700);
+  eq('on-demand: fresh "on" after the turn -> "Your indicator is still on."',
+    a3.update([], { at: 307700, speedKmh: 30 }), 'Your indicator is still on.');
+
+  // A fresh "off" -> nothing.
+  const a4 = createIndicatorAssist({ mode: 'listen' });
+  a4.update([{ type: 'turn_done', at: 400000, direction: 'right', speedKmh: 30 }], { at: 400000, speedKmh: 30 });
+  a4.indicatorOn(false, 407700);
+  eq('on-demand: fresh "off" after the turn -> silent', a4.update([], { at: 407700, speedKmh: 30 }), null);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -707,16 +707,20 @@ export default function DriveModePage() {
                     name="qk_indicator_mode"
                     value="listen"
                     checked={indicatorMode === 'listen'}
-                    onChange={() => {
-                      setIndicatorMode('listen');
-                      if (typeof window !== 'undefined') localStorage.setItem('qk_indicator_mode', 'listen');
+                    onChange={async () => {
+                      // The microphone is needed: ask once; if refused, stay on reminders.
+                      const res = await requestMicPermission();
+                      const mode = res?.granted ? 'listen' : 'reminders';
+                      setIndicatorMode(mode);
+                      try { localStorage.setItem('qk_indicator_mode', mode); } catch {}
+                      if (!res?.granted) drivespeak('Microphone permission is needed to listen for the indicator.');
                     }}
                     style={{ width: 18, height: 18, accentColor: '#6366f1', cursor: 'pointer' }}
                   />
                   <span>Also listen for the indicator sound (mic)</span>
                 </label>
                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, marginLeft: 28, lineHeight: 1.4 }}>
-                  Listening for the indicator arrives in a later update. Sound would stay on your phone, never saved or uploaded.
+                  After a turn or lane change, listens for about 5 seconds for the indicator's tick. Sound stays on your phone, never saved or uploaded. Hey Aaria pauses for those few seconds. Takes effect on your next ride.
                 </div>
               </div>
             </div>

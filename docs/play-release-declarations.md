@@ -76,7 +76,7 @@ Owned by the voice thread (SOS countdown, PR #161). Drive calls the existing SOS
   "QuietKeep uses the microphone in Drive Mode to listen for turn indicator clicker sounds so the app can remind drivers if their turn signal remains blinking after completing a turn. Listening is strictly opt-in (default OFF) and only runs for short 5-second intervals while Drive Mode is open on screen. Audio is never recorded, stored, or transmitted; it is immediately reduced on-device into acoustic energy levels and discarded."
 * **Operating Rules & Privacy Guarantees:**
   * **Strictly Opt-In (Default OFF):** Acoustic sensing is disabled by default. The driver must explicitly choose "Also listen for the indicator sound" in Drive Mode Setup (`src/lib/indicator-assist.js`).
-  * **Short, Bounded Listens:** The microphone is opened only for 5 to 8 seconds following a detected turn or lane change, rate-limited to at most one listen per minute. It never listens continuously.
+  * **Short, Bounded Listens:** The microphone is opened only for 5 seconds, starting about 1.5 seconds after a detected turn or lane change, rate-limited to at most one listen per minute. It never listens continuously.
   * **Foreground Screen-Only:** Runs only while QuietKeep is active on screen in Drive Mode. It does not start or require a foreground service.
   * **Local Reduction, Zero Audio Retained:** Audio samples are read into a single reused buffer, converted in real time on the phone to dimensionless loudness energy numbers (100 per second), and immediately overwritten and discarded. No audio recordings, WAV files, or voice samples are ever saved to storage, cached, or transmitted to any server.
   * **Data Safety Impact:** Because sound is reduced entirely on-device to energy numbers and discarded instantly, in Google Play Data Safety: **Audio is NOT collected**.
@@ -86,13 +86,14 @@ Owned by the voice thread (SOS countdown, PR #161). Drive calls the existing SOS
   * `<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" tools:targetApi="s" />`
   * `<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />`
   * `<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />`
-  * `<uses-permission android:name="android.hardware.bluetooth_le" android:required="false" />`
+  * `<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />`
+  * `<uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />`
 * **Used by:** `QkObdPlugin.java` via standard Android Bluetooth Low Energy (BLE) GATT.
 * **Play Console Justification Line (to paste into Play Console permission declarations):**
   "QuietKeep uses Bluetooth Low Energy to connect to standard OBD-II vehicle diagnostic adapters (such as Vgate iCar Pro 2S or vLinker MC+) to read engine status, speed, fuel type, and battery voltage when the driver chooses to connect their vehicle in Drive Mode. Bluetooth scanning is declared with `neverForLocation` because it is used exclusively to discover vehicle diagnostic adapters and is never used to derive device location. The connection is strictly read-only: no commands that modify vehicle state or clear trouble codes are permitted, and no data leaves the phone except the optional vehicle telemetry row saved to the user's private account."
 * **Operating Rules & Privacy Guarantees:**
   * **`neverForLocation` Guarantee:** Strong Android declaration that Bluetooth scanning is never used to track, derive, or approximate physical location.
-  * **Strictly Read-Only:** The app only queries standard Mode 01 (live data), Mode 03 (trouble codes), and Mode 09 (VIN). Mode 04 (Clear DTCs / reset check-engine light) and non-volatile memory AT commands (`ATPP`, `ATSD`, `ATCS`) are structurally blocked in code (`assertReadOnlyCommand()`).
+  * **Strictly Read-Only:** The app only queries standard Mode 01 (live data), Mode 03 (trouble codes), and Mode 09 (VIN). Every command must pass an allow-list in code (`assertReadOnlyCommand()` in `elm327.js`, mirrored by `QkObdPlugin.isAllowedReadOnly`); anything else, including Mode 04 (clear trouble codes) and settings-writing AT commands such as `ATPP`/`ATSD`, is refused.
   * **Data Minimization:** Raw diagnostic frames stay strictly on the phone. Only an optional vehicle summary snapshot row is stored in the user's private account.
 
 ---

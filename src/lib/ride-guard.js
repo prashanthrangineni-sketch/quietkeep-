@@ -28,6 +28,7 @@ import { detectIndicatorSound } from '@/lib/indicator-sound';
 import { listenEnergy, stopEnergy } from '@/lib/drive-energy';
 import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
+import { createAnomalyWatcher } from '@/lib/anomaly-watch';
 import { createOvertakeWatcher, createRoadAheadProvider } from '@/lib/overtake-advisor';
 
 const COUNTDOWN_SECONDS = 30;
@@ -165,10 +166,15 @@ function createListener({ onCancelWord, onHelpWord, onAnyReply }) {
  * @param {() => (string|null)} getAccessToken  the signed-in user's token
  * @param {(state: string, detail: object) => void} [onState]  for the screen's status line
  */
-export function startRideGuard({ getAccessToken, onState } = {}) {
+export function startRideGuard({ getAccessToken, onState, destination, knownStops } = {}) {
   stopRideGuard();
 
   let detector = createCrashDetector();
+  const anomalyWatcher = createAnomalyWatcher({
+    destination,
+    knownStops,
+    onAnomaly: (anomaly) => onState?.('anomaly', anomaly),
+  });
   const ui = makeOverlay();
   let overlayShown = false;
   let countdownTimer = null;
@@ -530,6 +536,7 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     const a = event.accelerationIncludingGravity;
     if (!a || a.x == null) return;
     const g = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) / 9.80665;
+    anomalyWatcher.feedMotion({ g, at: now() });
     const state = detector.feedMotion({ magnitudeG: g, at: now() });
     if (state === 'crash' && !overlayShown && now() - armedAt > 4000) {
       trigger(detector.lastCrashDetail?.() || { impactG: g, speedBeforeKmh: null });
@@ -668,6 +675,7 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
       hide();
       if (noReplyTimer) { clearTimeout(noReplyTimer); noReplyTimer = null; }
       tracker.reset();
+      anomalyWatcher.reset();
       listener.stop();
       panel.remove();
       if (typeof window !== 'undefined') window.removeEventListener('devicemotion', onMotion);
@@ -689,6 +697,9 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
         recentFixes.push(lastFix);
         const cutoff = now() - 20000;
         recentFixes = recentFixes.filter(f => f.at >= cutoff);
+        anomalyWatcher.feedFix({ ...lastFix, speedKmh: typeof kmh === 'number' ? kmh : currentSpeedKmh });
+      } else if (typeof kmh === 'number') {
+        anomalyWatcher.feedSpeed(kmh);
       }
       if (fix && typeof fix.headingDeg === 'number') lastHeadingDeg = fix.headingDeg;
       else if (fix && typeof fix.heading === 'number') lastHeadingDeg = fix.heading;
@@ -702,6 +713,12 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
       } else if (fix && (typeof fix.headingDeg === 'number' || typeof fix.heading === 'number') && typeof currentSpeedKmh === 'number') {
         checkForOvertake(currentSpeedKmh);
       }
+    },
+    getAnomalies() {
+      return anomalyWatcher.getAnomalies();
+    },
+    setDestination(dest) {
+      anomalyWatcher.setDestination(dest);
     },
     lastKnownFix() {
       return typeof lastFix.lat === 'number' ? { lat: lastFix.lat, lng: lastFix.lng } : null;

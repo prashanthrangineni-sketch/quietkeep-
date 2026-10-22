@@ -261,4 +261,86 @@ public class BlackboxLogicTest {
         assertTrue("v2 packet with 0 OBD samples must have byte-for-byte identical binary payload to v1",
                 Arrays.equals(v1Payload, v2Payload));
     }
+
+    // ── DRV-01c: crash confirmation (17–19 Oct drives: 51 false records) ──
+
+    private static double[] mags(double... g) {
+        double[] out = new double[g.length];
+        for (int i = 0; i < g.length; i++) out[i] = g[i] * G;
+        return out;
+    }
+
+    @Test
+    public void testSingleSpikeIsNotACandidate() {
+        // one 10 ms 5 g pothole spike between two 0.5 g samples -> 2 g average
+        assertFalse(BlackboxLogic.isImpactCandidate(BlackboxLogic.smoothedG(mags(0.5, 5.0, 0.5))));
+        // sustained 4 g over 30 ms is a candidate
+        assertTrue(BlackboxLogic.isImpactCandidate(BlackboxLogic.smoothedG(mags(4.0, 4.0, 4.0))));
+        assertFalse(BlackboxLogic.isImpactCandidate(BlackboxLogic.smoothedG(mags(3.9, 3.9, 3.9))));
+    }
+
+    @Test
+    public void testGpsDropNeedsAccurateFixesAtSpeed() {
+        assertTrue(BlackboxLogic.isSpeedDropGpsTrusted(60, 40, 5, 8));
+        assertFalse("poor fix", BlackboxLogic.isSpeedDropGpsTrusted(60, 40, 5, 35));
+        assertFalse("poor earlier fix", BlackboxLogic.isSpeedDropGpsTrusted(60, 40, 25, 5));
+        assertFalse("slow before", BlackboxLogic.isSpeedDropGpsTrusted(18, 2, 5, 5));
+        assertFalse("small drop", BlackboxLogic.isSpeedDropGpsTrusted(60, 50, 5, 5));
+    }
+
+    @Test
+    public void testExternalTriggersAlwaysConfirmed() {
+        assertEquals("1", BlackboxLogic.confirmCrash("crash_detector", 0, Double.NaN, null, null)[0]);
+        assertEquals("1", BlackboxLogic.confirmCrash("voice_save", 0, Double.NaN, null, null)[0]);
+        assertEquals("1", BlackboxLogic.confirmCrash("test_tilt", 0, Double.NaN, null, null)[0]);
+    }
+
+    @Test
+    public void testSevereImpactConfirmedWithoutGps() {
+        String[] v = BlackboxLogic.confirmCrash("impact_g", 9.0, Double.NaN, null, null);
+        assertEquals("1", v[0]);
+        assertEquals("severe_impact", v[1]);
+    }
+
+    @Test
+    public void testPotholeWhileDrivingOnIsAJolt() {
+        long[] t = {1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000};
+        double[] v = {41, 40, 40, 42, 43, 44, 44, 45, 45, 46};
+        String[] r = BlackboxLogic.confirmCrash("impact_g", 4.6, 42, t, v);
+        assertEquals("0", r[0]);
+        assertEquals("kept_moving", r[1]);
+    }
+
+    @Test
+    public void testImpactThenStopIsCrash() {
+        long[] t = {1000, 2000, 3000, 4000};
+        double[] v = {30, 12, 3, 0};
+        String[] r = BlackboxLogic.confirmCrash("impact_g", 5.0, 48, t, v);
+        assertEquals("1", r[0]);
+        assertEquals("stopped_after_impact", r[1]);
+    }
+
+    @Test
+    public void testSustainedSlowdownIsCrash() {
+        long[] t = {1000, 2000, 3000, 4000, 5000};
+        double[] v = {50, 30, 25, 22, 20};
+        String[] r = BlackboxLogic.confirmCrash("speed_drop_gps", 0, 60, t, v);
+        assertEquals("1", r[0]);
+        assertEquals("sustained_slowdown", r[1]);
+    }
+
+    @Test
+    public void testParkedOrSlowIsAJolt() {
+        assertEquals("0", BlackboxLogic.confirmCrash("impact_g", 5.0, 10, new long[]{1000}, new double[]{0})[0]);
+        assertEquals("not_moving_before", BlackboxLogic.confirmCrash("impact_g", 5.0, Double.NaN, null, null)[1]);
+        assertEquals("no_gps_after", BlackboxLogic.confirmCrash("impact_g", 5.0, 40, new long[0], new double[0])[1]);
+    }
+
+    @Test
+    public void testSpeedBreakerSlowdownIsAJolt() {
+        // 40 -> 22 km/h for a speed breaker, then back up: not sustained
+        long[] t = {1000, 2000, 3000, 4000, 5000, 6000};
+        double[] v = {30, 22, 24, 28, 33, 38};
+        assertEquals("0", BlackboxLogic.confirmCrash("speed_drop_gps", 0, 40, t, v)[0]);
+    }
 }

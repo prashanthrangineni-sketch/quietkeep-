@@ -29,6 +29,11 @@ import {
   obdSamplesForDuration,
   encodeObdRecord,
   decodeObdRecord,
+  smoothedG,
+  isImpactCandidate,
+  isSpeedDropGpsTrusted,
+  confirmCrash,
+  splitRecords,
 } from '../src/lib/blackbox.js';
 
 let pass = 0, fail = 0;
@@ -445,6 +450,59 @@ console.log('── Black Box v1 (.qkedr) Unit Tests ──');
   check('v2 packet with 0 OBD samples has byte-for-byte identical binary payload to v1',
     v1BinaryPayload.equals(v2ZeroObdBinaryPayload)
   );
+}
+
+// ── DRV-01c: crash confirmation (mirror of BlackboxLogicTest) ──
+{
+  console.log('\n── DRV-01c crash confirmation ──');
+  const G = 9.80665;
+  const m = (...g) => g.map(x => x * G);
+  check('single 10 ms 5 g spike is NOT a candidate', !isImpactCandidate(smoothedG(m(0.5, 5, 0.5))));
+  check('30 ms at 4 g is a candidate', isImpactCandidate(smoothedG(m(4, 4, 4))));
+  check('30 ms at 3.9 g is NOT a candidate', !isImpactCandidate(smoothedG(m(3.9, 3.9, 3.9))));
+  check('GPS drop with good fixes at speed triggers', isSpeedDropGpsTrusted(60, 40, 5, 8));
+  check('GPS drop with a 35 m fix does NOT trigger', !isSpeedDropGpsTrusted(60, 40, 5, 35));
+  check('GPS drop from 18 km/h does NOT trigger', !isSpeedDropGpsTrusted(18, 2, 5, 5));
+  for (const t of ['crash_detector', 'voice_save', 'test_tilt']) {
+    check(`${t} always confirmed`, confirmCrash(t, 0, NaN, []).confirmed);
+  }
+  const sev = confirmCrash('impact_g', 9, NaN, []);
+  check('severe 9 g impact confirmed without GPS', sev.confirmed && sev.reason === 'severe_impact');
+  const fixes = (arr) => arr.map((kmh, i) => ({ offsetMs: (i + 1) * 1000, kmh }));
+  const pothole = confirmCrash('impact_g', 4.6, 42, fixes([41, 40, 40, 42, 43, 44, 44, 45, 45, 46]));
+  check('pothole while driving on = jolt (kept_moving)', !pothole.confirmed && pothole.reason === 'kept_moving');
+  const stop1 = confirmCrash('impact_g', 5, 48, fixes([30, 12, 3, 0]));
+  check('impact then stop = crash', stop1.confirmed && stop1.reason === 'stopped_after_impact');
+  const slow = confirmCrash('speed_drop_gps', 0, 60, fixes([50, 30, 25, 22, 20]));
+  check('sustained slowdown = crash', slow.confirmed && slow.reason === 'sustained_slowdown');
+  check('speed breaker slowdown = jolt', !confirmCrash('speed_drop_gps', 0, 40, fixes([30, 22, 24, 28, 33, 38])).confirmed);
+  check('parked = jolt (not_moving_before)', confirmCrash('impact_g', 5, NaN, []).reason === 'not_moving_before');
+  check('moving but no GPS after = jolt (no_gps_after)', confirmCrash('impact_g', 5, 40, []).reason === 'no_gps_after');
+  const sp = splitRecords([{ id: 'a' }, { id: 'b', confirmed: false }, { id: 'c', confirmed: true }]);
+  check('splitRecords: legacy + confirmed are crashes, false is a jolt',
+    sp.crashes.length === 2 && sp.jolts.length === 1 && sp.jolts[0].id === 'b');
+  check('JS constants match the Java ones', CONSTANTS.CANDIDATE_IMPACT_G === 4 && CONSTANTS.SEVERE_IMPACT_G === 8 &&
+    CONSTANTS.MAX_GPS_ACCURACY_M === 20 && CONSTANTS.MAX_JOLTS_KEPT === 10);
+}
+
+// ── DRV-01c: sync never uploads a jolt ──
+{
+  const { syncPendingRecords } = await import('../src/lib/blackbox-sync.js');
+  const uploads = [];
+  const fakePlugin = {
+    list: async () => ({ records: [{ id: 'event_1', confirmed: false }, { id: 'event_2', confirmed: true }, { id: 'event_3' }] }),
+    readRecord: async ({ id }) => ({ id, data: Buffer.from('x').toString('base64'), trigger: 'impact_g', started_at: 'a', ended_at: 'b', hash: 'h' }),
+  };
+  const fakeSupabase = {
+    auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) },
+    storage: { from: () => ({ upload: async (path) => { uploads.push(path); return { error: null }; } }) },
+    from: () => ({ insert: async () => ({ error: null }) }),
+  };
+  const mem = new Map();
+  const storage = { getItem: k => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  const r = await syncPendingRecords(fakeSupabase, { plugin: fakePlugin, storage });
+  check('sync skips the jolt and uploads confirmed + legacy records',
+    r.uploaded.join(',') === 'event_2,event_3' && !uploads.some(p => p.includes('event_1')), JSON.stringify(r));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

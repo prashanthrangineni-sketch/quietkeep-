@@ -171,6 +171,92 @@ public final class BlackboxLogic {
         return tiltFromVerticalDeg(gx, gy, gz) >= TEST_TILT_DEGREES;
     }
 
+    // ── Crash confirmation (DRV-01c, 22 Oct 2026) ────────────────────────
+    //
+    // Real drives on 17–19 Oct produced 47 impact_g and 4 speed_drop_gps
+    // records and NO crash: a mounted phone on Indian roads (potholes, speed
+    // breakers, a phone knocked in its mount) passes a single-sample 3.5 g
+    // test every few minutes. A trigger now only opens a CANDIDATE; the
+    // packet is a confirmed crash record only when what happened around it
+    // looks like a crash. Unconfirmed packets stay on the phone as "jolts"
+    // (a few kept for calibration) and are never uploaded.
+
+    /** Smoothed impact (3-sample, 30 ms average) that opens a candidate. */
+    public static final double CANDIDATE_IMPACT_G = 4.0;
+    /** Samples averaged for the smoothed impact (100 Hz -> 30 ms). */
+    public static final int IMPACT_SMOOTH_SAMPLES = 3;
+    /** Smoothed peak that is a crash on its own, whatever the speed. */
+    public static final double SEVERE_IMPACT_G = 8.0;
+    /** Moving before the event: at least this GPS speed in the 5 s before. */
+    public static final double MOVING_BEFORE_KMH = 20.0;
+    /** "Stopped after": speed at or below this within 10 s after. */
+    public static final double STOPPED_AFTER_KMH = 5.0;
+    /** "Sharp slowdown": every fix 2–10 s after is this much below the speed before. */
+    public static final double SUSTAINED_DROP_KMH = 20.0;
+    /** GPS fixes worse than this (metres) are not trusted for confirmation or the GPS trigger. */
+    public static final double MAX_GPS_ACCURACY_M = 20.0;
+    /** Unconfirmed jolt packets kept on the phone (oldest deleted first). */
+    public static final int MAX_JOLTS_KEPT = 10;
+
+    /** Average of the last n resultant magnitudes, in g. */
+    public static double smoothedG(double[] magnitudesMs2) {
+        if (magnitudesMs2 == null || magnitudesMs2.length == 0) return 0;
+        double sum = 0;
+        for (double m : magnitudesMs2) sum += m;
+        return (sum / magnitudesMs2.length) / 9.80665;
+    }
+
+    /** A smoothed impact strong enough to open a candidate. */
+    public static boolean isImpactCandidate(double smoothedG) {
+        return smoothedG >= CANDIDATE_IMPACT_G - 1e-9;
+    }
+
+    /** GPS speed-drop trigger, only between two trustworthy fixes at speed. */
+    public static boolean isSpeedDropGpsTrusted(double prevKmh, double currKmh,
+                                                 double prevAccuracyM, double currAccuracyM) {
+        if (prevAccuracyM > MAX_GPS_ACCURACY_M || currAccuracyM > MAX_GPS_ACCURACY_M) return false;
+        if (prevKmh < MOVING_BEFORE_KMH) return false;
+        return isSpeedDropGps(prevKmh, currKmh);
+    }
+
+    /**
+     * Decide whether a closed packet is a crash record.
+     *
+     * @param trigger         trigger name
+     * @param peakSmoothedG   highest 30 ms-average impact around the trigger
+     * @param speedBeforeKmh  highest trusted GPS speed in the 5 s before (NaN if none)
+     * @param afterOffsetsMs  ms after the trigger of each trusted GPS fix (0..10 s)
+     * @param afterKmh        their speeds
+     * @return {confirmed ? "1" : "0", reason}
+     */
+    public static String[] confirmCrash(String trigger, double peakSmoothedG, double speedBeforeKmh,
+                                        long[] afterOffsetsMs, double[] afterKmh) {
+        if ("crash_detector".equals(trigger)) return new String[] {"1", "crash_detector"};
+        if ("voice_save".equals(trigger) || "manual".equals(trigger)) return new String[] {"1", "saved_by_driver"};
+        if ("test_tilt".equals(trigger)) return new String[] {"1", "test_mode"};
+        if (peakSmoothedG >= SEVERE_IMPACT_G - 1e-9) return new String[] {"1", "severe_impact"};
+
+        boolean movingBefore = !Double.isNaN(speedBeforeKmh) && speedBeforeKmh >= MOVING_BEFORE_KMH;
+        if (!movingBefore || afterOffsetsMs == null || afterKmh == null || afterKmh.length == 0) {
+            return new String[] {"0", movingBefore ? "no_gps_after" : "not_moving_before"};
+        }
+        double minAfter = Double.MAX_VALUE;
+        boolean allLowLater = true;
+        int laterFixes = 0;
+        for (int i = 0; i < afterKmh.length && i < afterOffsetsMs.length; i++) {
+            long dt = afterOffsetsMs[i];
+            if (dt < 0 || dt > 10_000) continue;
+            minAfter = Math.min(minAfter, afterKmh[i]);
+            if (dt >= 2_000) {
+                laterFixes++;
+                if (afterKmh[i] > speedBeforeKmh - SUSTAINED_DROP_KMH) allLowLater = false;
+            }
+        }
+        if (minAfter <= STOPPED_AFTER_KMH) return new String[] {"1", "stopped_after_impact"};
+        if (laterFixes >= 3 && allLowLater) return new String[] {"1", "sustained_slowdown"};
+        return new String[] {"0", "kept_moving"};
+    }
+
     // ── Buffer window maths ──────────────────────────────────────────────
 
     /**

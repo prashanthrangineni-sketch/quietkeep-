@@ -19,6 +19,7 @@ import {
   stopBlackbox,
   freezeBlackbox,
   listBlackboxRecords,
+  splitRecords,
   requestMicPermission,
 } from '@/lib/blackbox';
 import { startBlackboxSync, syncPendingRecords } from '@/lib/blackbox-sync';
@@ -892,7 +893,12 @@ export default function DriveModePage() {
               </button>
             </div>
 
-            {records.length === 0 ? (
+            {splitRecords(records).jolts.length > 0 && (
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>
+                {splitRecords(records).jolts.length} road jolt{splitRecords(records).jolts.length === 1 ? '' : 's'} kept on this phone only (not crashes, not uploaded).
+              </div>
+            )}
+            {splitRecords(records).crashes.length === 0 ? (
               <div style={{
                 padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13,
                 background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px dashed #334155'
@@ -901,7 +907,7 @@ export default function DriveModePage() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {records.map((r, i) => (
+                {splitRecords(records).crashes.map((r, i) => (
                   <div key={r.id || i} style={{
                     background: 'var(--card-bg, #1e293b)', padding: 12, borderRadius: 12,
                     border: '1px solid var(--border, #334155)', display: 'flex',

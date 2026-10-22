@@ -242,3 +242,20 @@ const { pairs, maxDiffKmh, meanDiffKmh } = compareSpeeds(obdSamples, gpsSamples)
 In unit tests and simulated driving, the agreement helper validates the algorithm against `ObdSimulator`.
 The full phase-2 ride proof ("car speed matches GPS within 1 km/h on a real road test") waits for
 the physical Bluetooth OBD-II reader hardware on a live vehicle drive.
+
+## Crash confirmation (DRV-01c, 22 Oct 2026)
+
+Real drives on 17–19 Oct made 47 `impact_g` and 4 `speed_drop_gps` records and no crash: one 10 ms sample of 3.5 g happens on potholes and speed breakers every few minutes. A trigger now opens a **candidate**; at close time the packet is marked confirmed or not.
+
+- Impact candidate: 30 ms (3-sample) average of at least 4 g. A single spike no longer counts.
+- GPS speed-drop trigger: both fixes accurate to 20 m or better, and at least 20 km/h before the drop.
+- Confirmed when any of these is true:
+  - the trigger was the crash detector, a "save" by the driver, or test mode;
+  - the strongest 30 ms impact was at least 8 g;
+  - the vehicle was doing at least 20 km/h in the 5 s before, and either
+    - came down to 5 km/h or less within 10 s, or
+    - stayed at least 20 km/h slower for every fix from 2 to 10 s after (at least 3 fixes).
+- Header fields: `confirmed`, `confirm_reason` (`crash_detector`, `saved_by_driver`, `test_mode`, `severe_impact`, `stopped_after_impact`, `sustained_slowdown`, `kept_moving`, `not_moving_before`, `no_gps_after`), `peak_g`, `speed_before_kmh`, `min_speed_after_kmh`. They are inside the sealed header.
+- An unconfirmed packet is a **jolt**: it stays on the phone (the newest 10 are kept for calibration), is never uploaded, and the Drive page shows only a count of them.
+- Packets written before DRV-01c have no `confirmed` field and are treated as confirmed. On the server, `blackbox_events.confirmed` (default true) lets the old false records be marked without deleting them.
+- Known limit: a moderate crash (under 8 g) where GPS is lost straight afterwards is kept as a jolt on the phone, not uploaded. SOS never depends on the black box.

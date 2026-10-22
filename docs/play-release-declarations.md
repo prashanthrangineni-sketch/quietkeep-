@@ -69,6 +69,32 @@ Added by Drive card DRV-09 on 17 Oct 2026. Each line is a service that is really
 ### G. `SEND_SMS` (SOS)
 Owned by the voice thread (SOS countdown, PR #161). Drive calls the existing SOS and adds no SMS of its own. Listed here only so the Drive release does not ship without it: the Play "SMS and Call Log" declaration must use the **emergency / SOS exception** before any release that includes `SosCountdownActivity`.
 
+### H. `RECORD_AUDIO` (Microphone — Indicator Assist Acoustic Sensing, DRV-11)
+* **Declared in:** `AndroidManifest.xml` (`<uses-permission android:name="android.permission.RECORD_AUDIO" />`)
+* **Used by:** `IndicatorEarPlugin.java` (`IndicatorEar`) for turn indicator clicker/beeper detection during Drive Mode. (Voice commands and wake-word listening are owned separately by `VoiceService.java`.)
+* **Play Console Justification Line (to paste into Play Console permission declarations):**
+  "QuietKeep uses the microphone in Drive Mode to listen for turn indicator clicker sounds so the app can remind drivers if their turn signal remains blinking after completing a turn. Listening is strictly opt-in (default OFF) and only runs for short 5-second intervals while Drive Mode is open on screen. Audio is never recorded, stored, or transmitted; it is immediately reduced on-device into acoustic energy levels and discarded."
+* **Operating Rules & Privacy Guarantees:**
+  * **Strictly Opt-In (Default OFF):** Acoustic sensing is disabled by default. The driver must explicitly choose "Also listen for the indicator sound" in Drive Mode Setup (`src/lib/indicator-assist.js`).
+  * **Short, Bounded Listens:** The microphone is opened only for 5 to 8 seconds following a detected turn or lane change, rate-limited to at most one listen per minute. It never listens continuously.
+  * **Foreground Screen-Only:** Runs only while QuietKeep is active on screen in Drive Mode. It does not start or require a foreground service.
+  * **Local Reduction, Zero Audio Retained:** Audio samples are read into a single reused buffer, converted in real time on the phone to dimensionless loudness energy numbers (100 per second), and immediately overwritten and discarded. No audio recordings, WAV files, or voice samples are ever saved to storage, cached, or transmitted to any server.
+  * **Data Safety Impact:** Because sound is reduced entirely on-device to energy numbers and discarded instantly, in Google Play Data Safety: **Audio is NOT collected**.
+
+### I. `BLUETOOTH_SCAN` & `BLUETOOTH_CONNECT` (Nearby Devices — OBD-II Car Reader, DRV-06)
+* **Declared in:** `AndroidManifest.xml`:
+  * `<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" tools:targetApi="s" />`
+  * `<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />`
+  * `<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />`
+  * `<uses-permission android:name="android.hardware.bluetooth_le" android:required="false" />`
+* **Used by:** `QkObdPlugin.java` via standard Android Bluetooth Low Energy (BLE) GATT.
+* **Play Console Justification Line (to paste into Play Console permission declarations):**
+  "QuietKeep uses Bluetooth Low Energy to connect to standard OBD-II vehicle diagnostic adapters (such as Vgate iCar Pro 2S or vLinker MC+) to read engine status, speed, fuel type, and battery voltage when the driver chooses to connect their vehicle in Drive Mode. Bluetooth scanning is declared with `neverForLocation` because it is used exclusively to discover vehicle diagnostic adapters and is never used to derive device location. The connection is strictly read-only: no commands that modify vehicle state or clear trouble codes are permitted, and no data leaves the phone except the optional vehicle telemetry row saved to the user's private account."
+* **Operating Rules & Privacy Guarantees:**
+  * **`neverForLocation` Guarantee:** Strong Android declaration that Bluetooth scanning is never used to track, derive, or approximate physical location.
+  * **Strictly Read-Only:** The app only queries standard Mode 01 (live data), Mode 03 (trouble codes), and Mode 09 (VIN). Mode 04 (Clear DTCs / reset check-engine light) and non-volatile memory AT commands (`ATPP`, `ATSD`, `ATCS`) are structurally blocked in code (`assertReadOnlyCommand()`).
+  * **Data Minimization:** Raw diagnostic frames stay strictly on the phone. Only an optional vehicle summary snapshot row is stored in the user's private account.
+
 ---
 
 ## 2. Data Safety & Privacy Declarations
@@ -107,11 +133,38 @@ Owned by the voice thread (SOS countdown, PR #161). Drive calls the existing SOS
 * **Subprocessors:** Sarvam AI (Indic speech recognition), OpenAI / OpenRouter / Groq (voice processing and LLM), ElevenLabs (text-to-speech voice generation)
 * **Ephemeral:** Yes (audio chunks are processed on-the-fly and are not persistently stored on servers)
 
+### D2. Indicator listening acoustic sensing (DRV-11, IndicatorEar)
+* **Data Type:** Audio / Sound recordings
+* **Collected:** **No — Audio is NOT collected.**
+* **Explanation for Data Safety form:** The indicator listening feature (`IndicatorEar`) is strictly opt-in (default OFF) and only performs short listens (at most 5 seconds, max once per minute) while Drive Mode is open on screen. The audio signal is reduced in memory on the phone into loudness/energy numbers (100 fps) and immediately discarded. Raw sound is never stored, written to disk, or sent to any server. In the Google Play Data Safety form: **Audio is NOT collected**.
+* **Shared:** No.
+* **Ephemeral:** Yes — raw audio samples are processed in memory and discarded immediately within native code.
+* **Optional:** Yes — opt-in, default OFF in Drive Mode settings.
+
 ### E. App Activity & Device Info
 * **Data Type:** Package names (`PACKAGE_USAGE_STATS`), Device ID, OS version
 * **Collected:** Yes
 * **Shared:** No
 * **Justification:** Used solely for passive perception analytics and debugging.
+
+### F. Car reader vehicle diagnostics (DRV-06 / AG-02, OBD-II over BLE)
+* **Data types:** Device or other IDs (Bluetooth adapter name/MAC, optional VIN), App activity → "Other actions" / Vehicle telemetry (engine RPM, vehicle speed, coolant temperature, fuel type, hybrid battery percentage, battery voltage, diagnostic trouble codes).
+* **Collected:** Yes — only when the user explicitly chooses to pair and connect an OBD-II Bluetooth adapter in Drive Mode.
+* **Shared:** No. Data is never shared with third parties or external services.
+* **Read-only over BLE:** Bluetooth scanning is declared with `neverForLocation`. Telemetry is processed locally on the phone. The app is strictly read-only and cannot alter vehicle state or clear diagnostic trouble codes.
+* **Storage:** No diagnostic data leaves the phone except the optional vehicle record (`public.vehicles` table in Supabase) holding `last_obd_snapshot`, `last_obd_at`, `fuel_type`, `vin`, and `supported_pids`.
+* **Encrypted in transit:** Yes (HTTPS to private Supabase backend).
+* **Optional:** Yes — Drive Mode functions fully without an OBD reader; connecting a reader is entirely optional.
+* **Users can delete:** Yes — the vehicle record is owned by the user (`user_id = auth.uid()`), editable/deletable by the user, and deleted automatically on account deletion (`on delete cascade`).
+
+### G. Field test proof runs (AG-04, Phase-2 Proof Kit)
+* **Data types:** App activity / Diagnostic logs (checklist step identifier, test result `'pass'|'fail'|'skipped'`, verification evidence JSON object, manual tester notes).
+* **Collected:** Yes — only when the user or tester conducts hardware verification tests at the unlisted route `/drive/proof`.
+* **Shared:** No.
+* **Storage & Transmission:** Saved directly to the user's private database table `public.drive_proof_runs` over HTTPS.
+* **Access & Security:** Secured by PostgreSQL Row-Level Security (RLS) policies (`drive_proof_runs_owner_select` and `drive_proof_runs_owner_insert` restricted to `auth.uid() = owner`). The table is append-only with no public update or delete policies.
+* **Optional:** Yes — unlisted diagnostic utility used for field verification of OBD reader and sensor accuracy.
+* **Users can delete:** Yes — proof run rows are linked via foreign key to `auth.users(id) on delete cascade` and are purged automatically when the user account is deleted.
 
 ---
 

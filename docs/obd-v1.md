@@ -11,9 +11,10 @@ QuietKeep Car Reader v1 adds read-only vehicle diagnostic and telemetry capabili
 
 The system is split into modular layers:
 - `src/lib/obd/pids.js`: Pure decoders for Mode 01 (live engine data), Mode 03 (trouble codes), and Mode 09 (VIN), with zero dependencies.
+- `src/lib/obd/profiles.js`: Vehicle profile detection and profile-specific voice summaries for petrol cars, diesel cars, hybrids (Honda, Toyota), and BS-6 two-wheelers.
 - `src/lib/obd/elm327.js`: Transport-agnostic ELM327 protocol engine with command serialization, prompt synchronization (`>`), adaptive timeouts, ISO-TP multi-frame reassembly, and multi-ECU header sorting (prioritizing 7E8 engine ECU).
-- `src/lib/obd/simulator.js`: In-memory ELM327 car simulator providing realistic varying telemetry (idle 750–850 RPM, speed 0–60 km/h, coolant warming 40 -> 90 °C, battery voltage ~14.1 V, fuel level, engine load, configurable faults, and 5 distinct failure modes).
-- `src/lib/obd/reader.js`: High-level application API (`readSnapshot()`, `readFaults()`, `readVin()`, `supportedPids()`, `formatObdSummary()`) and a Capacitor plugin transport adapter.
+- `src/lib/obd/simulator.js`: In-memory ELM327 car simulator providing realistic varying telemetry (idle 750–850 RPM, speed 0–60 km/h, coolant warming 40 -> 90 °C, battery voltage ~14.1 V, fuel level, engine load, configurable faults, 5 distinct failure modes, and profile options for petrol, diesel, Honda hybrid, Toyota hybrid, and BS-6 two-wheeler).
+- `src/lib/obd/reader.js`: High-level application API (`readSnapshot()`, `readFaults()`, `readVin()`, `supportedPids()`, `detectProfile()`, `summary()`) and a Capacitor plugin transport adapter.
 - `android/app/src/main/java/com/pranix/quietkeep/plugins/QkObdPlugin.java`: Native Android BLE GATT plugin supporting background/foreground scanning, service discovery (FFF0 / 18F0 / generic notify+write pairs), and characteristic read/write.
 - `supabase/migrations/20261018_vehicles_obd.sql`: Database schema extension adding nullable telemetry columns to `public.vehicles`.
 
@@ -21,17 +22,32 @@ The system is split into modular layers:
 
 ## 2. What Works Now (Simulator-Proven)
 
-All items below are proven by automated tests (`tests/obd.test.mjs`, 41 passing unit tests):
+All items below are proven by automated tests (`tests/obd.test.mjs`, 82 passing tests; `tests/obd-profiles.test.mjs`, 67 passing tests):
 
 1. **Mode 01 Live Data Decoding**:
    - `010C` RPM: `((A * 256 + B) / 4)` rpm (e.g. `41 0C 1A F8` -> 1726 rpm).
    - `010D` Speed: `A` km/h (e.g. `41 0D 3C` -> 60 km/h).
    - `0105` Coolant Temperature: `A - 40` °C (e.g. `41 05 7B` -> 83 °C).
    - `0104` Engine Load: `(A * 100) / 255` % (e.g. `41 04 7F` -> 49.8%).
+   - `0111` Throttle Position: `(A * 100) / 255` % (e.g. `41 11 4C` -> 29.8%).
    - `012F` Fuel Tank Level: `(A * 100) / 255` % (e.g. `41 2F A0` -> 62.7%).
    - `0142` Control Module Voltage: `((A * 256 + B) / 1000)` V (e.g. `41 42 37 14` -> 14.10 V).
+   - `0146` Ambient Air Temperature: `A - 40` °C (e.g. `41 46 41` -> 25 °C).
+   - `0151` Fuel Type: Standard SAE J1979 mapping (1 petrol, 4 diesel, 8 electric, 0x11 hybrid petrol, etc.).
+   - `015B` Hybrid Battery Pack Remaining Life: `(A * 100) / 255` % (e.g. `41 5B C8` -> 78.4%).
+   - `015C` Engine Oil Temperature: `A - 40` °C (e.g. `41 5C 82` -> 90 °C).
    - `0101` Monitor Status: MIL bit 7, DTC count bits 0–6 (e.g. `41 01 82 07 65 00` -> MIL ON, count 2).
    - `0100` / `0120` / `0140`: Supported PID bitmaps decoded into supported hex arrays.
+
+2. **Vehicle Profiles (`src/lib/obd/profiles.js`, DRV-07a / AG-02)**:
+   - `petrol_car`: Standard internal combustion petrol vehicle.
+   - `diesel_car`: Compression ignition engine, diesel fuel type, engine oil temperature telemetry.
+   - `honda_hybrid`: City e:HEV style hybrid. Engine off at low speed / EV mode is NORMAL (0 RPM while moving is never reported as an engine stall or fault). Voice summary includes `"Hybrid battery at N percent"`.
+   - `toyota_hybrid`: Hyryder / Hycross style hybrid, with the same EV mode normalcy rule and battery percentage voice summary.
+   - `bs6_two_wheeler`: Minimal supported PIDs (RPM, speed, status, head temp; no fuel level 2F or load 04). Small 12–13.5 V battery is normal. Spoken summary is kept short and concise for two-wheeler riders (e.g. `"Battery 12.8 volts, no warning lights."`).
+   - `detectProfile(supportedPids, fuelType, options)`: Pure detection from supported PIDs, fuel type code/name, and optional VIN/make.
+   - `summaryFor(profile, snapshot, faults, lang)`: Localized profile summary with multilingual support (English, Hindi, Telugu).
+
 
 2. **Mode 03 Trouble Code (DTC) Decoding**:
    - 2-byte DTC pairs decoded with correct prefix:

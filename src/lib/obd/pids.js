@@ -76,6 +76,35 @@ export function decodeSupportedPids(baseHex, bytes) {
 }
 
 /**
+ * Standard SAE J1979 Fuel Type descriptions for PID 0151.
+ */
+export const SAE_J1979_FUEL_TYPES = Object.freeze({
+  0x00: 'not_available',
+  0x01: 'petrol',
+  0x02: 'methanol',
+  0x03: 'ethanol',
+  0x04: 'diesel',
+  0x05: 'lpg',
+  0x06: 'cng',
+  0x07: 'propane',
+  0x08: 'electric',
+  0x09: 'bifuel_running_gasoline',
+  0x0A: 'bifuel_running_methanol',
+  0x0B: 'bifuel_running_ethanol',
+  0x0C: 'bifuel_running_lpg',
+  0x0D: 'bifuel_running_cng',
+  0x0E: 'bifuel_running_propane',
+  0x0F: 'bifuel_running_electricity',
+  0x10: 'bifuel_electric_and_combustion',
+  0x11: 'hybrid_petrol',
+  0x12: 'hybrid_ethanol',
+  0x13: 'hybrid_diesel',
+  0x14: 'hybrid_electric',
+  0x15: 'hybrid_mixed',
+  0x16: 'hybrid_regenerative',
+});
+
+/**
  * Individual Mode 01 PID decoders.
  * Input: data bytes (excluding mode 41 and PID echo if stripped).
  */
@@ -115,6 +144,12 @@ export const MODE_01_DECODERS = {
     return bytes[0];
   },
 
+  // 0111: Throttle position (%)
+  '11': (bytes) => {
+    if (!bytes || bytes.length < 1) return null;
+    return Number(((bytes[0] * 100) / 255).toFixed(1));
+  },
+
   // 012F: Fuel tank level input (%)
   '2F': (bytes) => {
     if (!bytes || bytes.length < 1) return null;
@@ -125,6 +160,32 @@ export const MODE_01_DECODERS = {
   '42': (bytes) => {
     if (!bytes || bytes.length < 2) return null;
     return Number(((bytes[0] * 256 + bytes[1]) / 1000).toFixed(2));
+  },
+
+  // 0146: Ambient air temperature (°C)
+  '46': (bytes) => {
+    if (!bytes || bytes.length < 1) return null;
+    return bytes[0] - 40;
+  },
+
+  // 0151: Fuel type (SAE J1979)
+  '51': (bytes) => {
+    if (!bytes || bytes.length < 1) return null;
+    const code = bytes[0];
+    const name = SAE_J1979_FUEL_TYPES[code] || 'unknown';
+    return { code, name, type: name };
+  },
+
+  // 015B: Hybrid battery pack remaining life (%)
+  '5B': (bytes) => {
+    if (!bytes || bytes.length < 1) return null;
+    return Number(((bytes[0] * 100) / 255).toFixed(1));
+  },
+
+  // 015C: Engine oil temperature (°C)
+  '5C': (bytes) => {
+    if (!bytes || bytes.length < 1) return null;
+    return bytes[0] - 40;
   },
 };
 

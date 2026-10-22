@@ -8,6 +8,14 @@ import {
   decodeMode03Response,
   decodeMode09VinResponse,
 } from './pids.js';
+import {
+  detectProfile,
+  summaryFor,
+  VEHICLE_PROFILES,
+} from './profiles.js';
+
+export { detectProfile, summaryFor, VEHICLE_PROFILES };
+
 
 /**
  * Common Diagnostic Trouble Code (DTC) human-readable voice descriptions.
@@ -119,9 +127,18 @@ export function formatObdSummary(snapshot, faults = []) {
  * High-level Car Reader Client.
  */
 export class ObdReader {
-  constructor(transport) {
+  constructor(transport, options = {}) {
     this.elm = new Elm327(transport);
     this._supportedPidsCache = null;
+    this._profile = options.profile || null;
+  }
+
+  setProfile(profile) {
+    this._profile = profile;
+  }
+
+  getProfile() {
+    return this._profile;
   }
 
   /**
@@ -175,8 +192,31 @@ export class ObdReader {
   }
 
   /**
+   * Detects the vehicle profile from supported PIDs, fuel type, and optional VIN.
+   */
+  async detectProfile() {
+    const pids = await this.supportedPids();
+    let fuelType = null;
+    if (pids.includes('51')) {
+      try {
+        const res51 = await this.elm.send('0151');
+        const dec51 = decodeMode01Response(res51.assembled || res51.raw);
+        if (dec51 && dec51.value) fuelType = dec51.value;
+      } catch {}
+    }
+    let vin = null;
+    try {
+      vin = await this.readVin();
+    } catch {}
+
+    this._profile = detectProfile(pids, fuelType, { vin });
+    return this._profile;
+  }
+
+  /**
    * Reads a complete live snapshot of vehicle state:
-   * rpm, speedKmh, coolantC, loadPct, fuelPct, voltage, mil, dtcCount, at
+   * rpm, speedKmh, coolantC, loadPct, fuelPct, voltage, mil, dtcCount, at,
+   * plus extended fields: throttlePct, ambientTempC, oilTempC, fuelType, hybridBatteryPct.
    */
   async readSnapshot() {
     const snapshot = {
@@ -189,6 +229,12 @@ export class ObdReader {
       mil: false,
       dtcCount: 0,
       at: new Date().toISOString(),
+      // Extended fields for DRV-07a / AG-02:
+      throttlePct: null,
+      ambientTempC: null,
+      oilTempC: null,
+      fuelType: null,
+      hybridBatteryPct: null,
     };
 
     // 1. Status / MIL (0101)
@@ -202,66 +248,139 @@ export class ObdReader {
     } catch {}
 
     // 2. RPM (010C)
-    try {
-      const res0c = await this.elm.send('010C');
-      const dec0c = decodeMode01Response(res0c.assembled || res0c.raw);
-      if (dec0c && dec0c.value !== undefined) {
-        snapshot.rpm = dec0c.value;
-      }
-    } catch {}
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('0C')) {
+      try {
+        const res0c = await this.elm.send('010C');
+        const dec0c = decodeMode01Response(res0c.assembled || res0c.raw);
+        if (dec0c && dec0c.value !== undefined) {
+          snapshot.rpm = dec0c.value;
+        }
+      } catch {}
+    }
 
     // 3. Speed (010D)
-    try {
-      const res0d = await this.elm.send('010D');
-      const dec0d = decodeMode01Response(res0d.assembled || res0d.raw);
-      if (dec0d && dec0d.value !== undefined) {
-        snapshot.speedKmh = dec0d.value;
-      }
-    } catch {}
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('0D')) {
+      try {
+        const res0d = await this.elm.send('010D');
+        const dec0d = decodeMode01Response(res0d.assembled || res0d.raw);
+        if (dec0d && dec0d.value !== undefined) {
+          snapshot.speedKmh = dec0d.value;
+        }
+      } catch {}
+    }
 
     // 4. Coolant (0105)
-    try {
-      const res05 = await this.elm.send('0105');
-      const dec05 = decodeMode01Response(res05.assembled || res05.raw);
-      if (dec05 && dec05.value !== undefined) {
-        snapshot.coolantC = dec05.value;
-      }
-    } catch {}
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('05')) {
+      try {
+        const res05 = await this.elm.send('0105');
+        const dec05 = decodeMode01Response(res05.assembled || res05.raw);
+        if (dec05 && dec05.value !== undefined) {
+          snapshot.coolantC = dec05.value;
+        }
+      } catch {}
+    }
 
     // 5. Engine load (0104)
-    try {
-      const res04 = await this.elm.send('0104');
-      const dec04 = decodeMode01Response(res04.assembled || res04.raw);
-      if (dec04 && dec04.value !== undefined) {
-        snapshot.loadPct = dec04.value;
-      }
-    } catch {}
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('04')) {
+      try {
+        const res04 = await this.elm.send('0104');
+        const dec04 = decodeMode01Response(res04.assembled || res04.raw);
+        if (dec04 && dec04.value !== undefined) {
+          snapshot.loadPct = dec04.value;
+        }
+      } catch {}
+    }
 
     // 6. Fuel level (012F)
-    try {
-      const res2f = await this.elm.send('012F');
-      const dec2f = decodeMode01Response(res2f.assembled || res2f.raw);
-      if (dec2f && dec2f.value !== undefined) {
-        snapshot.fuelPct = dec04 ? dec2f.value : null;
-      }
-    } catch {}
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('2F')) {
+      try {
+        const res2f = await this.elm.send('012F');
+        const dec2f = decodeMode01Response(res2f.assembled || res2f.raw);
+        if (dec2f && dec2f.value !== undefined) {
+          snapshot.fuelPct = dec2f.value;
+        }
+      } catch {}
+    }
 
     // 7. Control module voltage (0142), fallback to ATRV
-    try {
-      const res42 = await this.elm.send('0142');
-      const dec42 = decodeMode01Response(res42.assembled || res42.raw);
-      if (dec42 && dec42.value !== undefined) {
-        snapshot.voltage = dec42.value;
-      } else {
-        const resRv = await this.elm.send('ATRV');
-        const vMatch = resRv.raw.match(/([\d.]+)\s*V/i);
-        if (vMatch) snapshot.voltage = parseFloat(vMatch[1]);
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('42')) {
+      try {
+        const res42 = await this.elm.send('0142');
+        const dec42 = decodeMode01Response(res42.assembled || res42.raw);
+        if (dec42 && dec42.value !== undefined) {
+          snapshot.voltage = dec42.value;
+        } else {
+          const resRv = await this.elm.send('ATRV');
+          const vMatch = resRv.raw.match(/([\d.]+)\s*V/i);
+          if (vMatch) snapshot.voltage = parseFloat(vMatch[1]);
+        }
+      } catch {
+        try {
+          const resRv = await this.elm.send('ATRV');
+          const vMatch = resRv.raw.match(/([\d.]+)\s*V/i);
+          if (vMatch) snapshot.voltage = parseFloat(vMatch[1]);
+        } catch {}
       }
-    } catch {
+    } else {
       try {
         const resRv = await this.elm.send('ATRV');
         const vMatch = resRv.raw.match(/([\d.]+)\s*V/i);
         if (vMatch) snapshot.voltage = parseFloat(vMatch[1]);
+      } catch {}
+    }
+
+    // 8. Throttle position (0111)
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('11')) {
+      try {
+        const res11 = await this.elm.send('0111');
+        const dec11 = decodeMode01Response(res11.assembled || res11.raw);
+        if (dec11 && dec11.value !== undefined) {
+          snapshot.throttlePct = dec11.value;
+        }
+      } catch {}
+    }
+
+    // 9. Ambient air temperature (0146)
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('46')) {
+      try {
+        const res46 = await this.elm.send('0146');
+        const dec46 = decodeMode01Response(res46.assembled || res46.raw);
+        if (dec46 && dec46.value !== undefined) {
+          snapshot.ambientTempC = dec46.value;
+        }
+      } catch {}
+    }
+
+    // 10. Fuel type (0151)
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('51')) {
+      try {
+        const res51 = await this.elm.send('0151');
+        const dec51 = decodeMode01Response(res51.assembled || res51.raw);
+        if (dec51 && dec51.value !== undefined) {
+          snapshot.fuelType = dec51.value;
+        }
+      } catch {}
+    }
+
+    // 11. Hybrid battery pack remaining life (015B)
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('5B')) {
+      try {
+        const res5b = await this.elm.send('015B');
+        const dec5b = decodeMode01Response(res5b.assembled || res5b.raw);
+        if (dec5b && dec5b.value !== undefined) {
+          snapshot.hybridBatteryPct = dec5b.value;
+        }
+      } catch {}
+    }
+
+    // 12. Engine oil temperature (015C)
+    if (!this._supportedPidsCache || this._supportedPidsCache.includes('5C')) {
+      try {
+        const res5c = await this.elm.send('015C');
+        const dec5c = decodeMode01Response(res5c.assembled || res5c.raw);
+        if (dec5c && dec5c.value !== undefined) {
+          snapshot.oilTempC = dec5c.value;
+        }
       } catch {}
     }
 
@@ -301,8 +420,16 @@ export class ObdReader {
 
   /**
    * Formats a voice summary string for a snapshot and faults.
+   * Delegates to summaryFor when a profile is detected.
    */
-  summary(snapshot, faults) {
+  summary(snapshot, faults, lang = 'en') {
+    const profile = this._profile || (this._supportedPidsCache || snapshot?.fuelType
+      ? detectProfile(this._supportedPidsCache || [], snapshot?.fuelType)
+      : null);
+
+    if (profile) {
+      return summaryFor(profile, snapshot, faults, lang);
+    }
     return formatObdSummary(snapshot, faults);
   }
 

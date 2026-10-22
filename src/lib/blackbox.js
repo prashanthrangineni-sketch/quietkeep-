@@ -156,7 +156,77 @@ export const CONSTANTS = {
   OBD_RECORD_BYTES: 32,
   OBD_FLAG_MIL_ON: 0x01,
   OBD_FLAG_VALUE_MISSING: 0x02,
+  // DRV-01c crash confirmation (mirror of BlackboxLogic.java)
+  CANDIDATE_IMPACT_G: 4.0,
+  IMPACT_SMOOTH_SAMPLES: 3,
+  SEVERE_IMPACT_G: 8.0,
+  MOVING_BEFORE_KMH: 20.0,
+  STOPPED_AFTER_KMH: 5.0,
+  SUSTAINED_DROP_KMH: 20.0,
+  MAX_GPS_ACCURACY_M: 20.0,
+  MAX_JOLTS_KEPT: 10,
 };
+
+// ── Crash confirmation (DRV-01c) ─────────────────────────────────────────
+// A trigger opens a candidate; the packet is a crash record only when the
+// motion around it looks like a crash. Mirrors BlackboxLogic.java exactly.
+
+export function smoothedG(magnitudesMs2) {
+  if (!magnitudesMs2 || magnitudesMs2.length === 0) return 0;
+  let sum = 0;
+  for (const m of magnitudesMs2) sum += m;
+  return (sum / magnitudesMs2.length) / 9.80665;
+}
+
+export function isImpactCandidate(g) {
+  return g >= CONSTANTS.CANDIDATE_IMPACT_G - 1e-9;
+}
+
+export function isSpeedDropGpsTrusted(prevKmh, currKmh, prevAccuracyM, currAccuracyM) {
+  if (prevAccuracyM > CONSTANTS.MAX_GPS_ACCURACY_M || currAccuracyM > CONSTANTS.MAX_GPS_ACCURACY_M) return false;
+  if (prevKmh < CONSTANTS.MOVING_BEFORE_KMH) return false;
+  return isSpeedDropGps(prevKmh, currKmh);
+}
+
+/**
+ * @param {string} trigger
+ * @param {number} peakSmoothedG
+ * @param {number} speedBeforeKmh  NaN when no trusted fix in the 5 s before
+ * @param {{offsetMs:number, kmh:number}[]} after  trusted fixes 0..10 s after
+ * @returns {{ confirmed: boolean, reason: string }}
+ */
+export function confirmCrash(trigger, peakSmoothedG, speedBeforeKmh, after = []) {
+  if (trigger === 'crash_detector') return { confirmed: true, reason: 'crash_detector' };
+  if (trigger === 'voice_save' || trigger === 'manual') return { confirmed: true, reason: 'saved_by_driver' };
+  if (trigger === 'test_tilt') return { confirmed: true, reason: 'test_mode' };
+  if (peakSmoothedG >= CONSTANTS.SEVERE_IMPACT_G - 1e-9) return { confirmed: true, reason: 'severe_impact' };
+  const movingBefore = Number.isFinite(speedBeforeKmh) && speedBeforeKmh >= CONSTANTS.MOVING_BEFORE_KMH;
+  if (!movingBefore || !after || after.length === 0) {
+    return { confirmed: false, reason: movingBefore ? 'no_gps_after' : 'not_moving_before' };
+  }
+  let minAfter = Infinity;
+  let allLowLater = true;
+  let laterFixes = 0;
+  for (const f of after) {
+    if (f.offsetMs < 0 || f.offsetMs > 10000) continue;
+    minAfter = Math.min(minAfter, f.kmh);
+    if (f.offsetMs >= 2000) {
+      laterFixes++;
+      if (f.kmh > speedBeforeKmh - CONSTANTS.SUSTAINED_DROP_KMH) allLowLater = false;
+    }
+  }
+  if (minAfter <= CONSTANTS.STOPPED_AFTER_KMH) return { confirmed: true, reason: 'stopped_after_impact' };
+  if (laterFixes >= 3 && allLowLater) return { confirmed: true, reason: 'sustained_slowdown' };
+  return { confirmed: false, reason: 'kept_moving' };
+}
+
+/** Split a plugin list() into crash records and jolts (old records count as confirmed). */
+export function splitRecords(records = []) {
+  const crashes = [];
+  const jolts = [];
+  for (const r of records) (r && r.confirmed === false ? jolts : crashes).push(r);
+  return { crashes, jolts };
+}
 
 export function computePacketWindow(triggerTimeMs, bufferStartMs) {
   const packetStart = Math.max(bufferStartMs, triggerTimeMs - CONSTANTS.PRE_TRIGGER_MS);

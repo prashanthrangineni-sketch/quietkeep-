@@ -78,6 +78,8 @@ export async function syncPendingRecords(supabase, opts = {}) {
   const synced = readSynced(storage);
   for (const r of records) {
     if (!r?.id || synced.has(r.id)) continue;
+    // DRV-01c: an unconfirmed jolt stays on the phone and is never uploaded.
+    if (r.confirmed === false) continue;
     try {
       const rec = await p.readRecord({ id: r.id });
       const path = storagePathFor(userId, rec.id);

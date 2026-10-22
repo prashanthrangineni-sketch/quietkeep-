@@ -201,6 +201,8 @@ public class QkBlackboxPlugin extends Plugin {
                     res.put("trigger", result.optString("trigger", trigger));
                     res.put("hash", result.optString("hash", ""));
                     res.put("sealed", result.optBoolean("sealed", false));
+                    res.put("confirmed", result.optBoolean("confirmed", true));
+                    res.put("confirm_reason", result.optString("confirm_reason", ""));
                 } else {
                     res.put("saved", false);
                     res.put("reason", "no_result");
@@ -247,6 +249,10 @@ public class QkBlackboxPlugin extends Plugin {
                             JSObject record = new JSObject();
                             record.put("id", f.getName().replace(".qkedr", ""));
                             record.put("trigger", header.optString("trigger", "unknown"));
+                            // DRV-01c: false = a jolt kept for calibration, never uploaded.
+                            // Packets written before DRV-01c have no field and count as confirmed.
+                            record.put("confirmed", header.optBoolean("confirmed", true));
+                            record.put("confirm_reason", header.optString("confirm_reason", "legacy"));
                             record.put("started_at", header.optString("started_at", ""));
                             record.put("ended_at", header.optString("ended_at", ""));
                             record.put("audio_opt_in", header.optBoolean("audio_opt_in", false));

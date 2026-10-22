@@ -95,6 +95,11 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
 
     // Speed tracking for GPS-based speed drop
     private double lastGpsSpeedKmh = 0;
+    private double lastGpsAccuracyM = 999;
+
+    // DRV-01c: strongest 30 ms-average impact seen around the current candidate
+    // (from the trigger until the packet closes). Sensor thread only.
+    private double candidatePeakG = 0;
 
     // Tilt detection for test mode
     private boolean testMode = false;
@@ -328,6 +333,9 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             System.arraycopy(event.values, 0, lastAccel, 0, 3);
             lastAccelTime = event.timestamp;
             pushImuSample(event.timestamp / 1000, lastAccel, lastGyro);
+            if (frozen.get()) {
+                candidatePeakG = Math.max(candidatePeakG, recentSmoothedG());
+            }
             checkTriggers(lastAccel);
         } else if (type == Sensor.TYPE_GYROSCOPE) {
             System.arraycopy(event.values, 0, lastGyro, 0, 3);
@@ -353,11 +361,16 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             location.hasAccuracy() ? location.getAccuracy() : 999
         );
 
-        // GPS speed-drop check (not while a packet is already being recorded)
-        if (!frozen.get() && BlackboxLogic.isSpeedDropGps(lastGpsSpeedKmh, speedKmh)) {
+        // GPS speed-drop check (not while a packet is already being recorded).
+        // DRV-01c: only between two accurate fixes at speed — GPS jitter at
+        // low speed or in a poor fix was producing false records.
+        double accuracyM = location.hasAccuracy() ? location.getAccuracy() : 999;
+        if (!frozen.get() && BlackboxLogic.isSpeedDropGpsTrusted(
+                lastGpsSpeedKmh, speedKmh, lastGpsAccuracyM, accuracyM)) {
             triggerFreeze("speed_drop_gps");
         }
         lastGpsSpeedKmh = speedKmh;
+        lastGpsAccuracyM = accuracyM;
     }
 
     // ── Ring buffer writes ───────────────────────────────────────────────
@@ -394,9 +407,14 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
     private void checkTriggers(float[] accel) {
         if (frozen.get()) return;
 
-        // (a) Impact >= 3.5 g
-        if (BlackboxLogic.isImpact(accel[0], accel[1], accel[2])) {
+        // (a) Impact candidate: 30 ms average >= 4 g (DRV-01c). A single
+        // 10 ms spike (pothole, speed breaker, phone knocked in its mount) no
+        // longer opens a record; the packet is then confirmed or kept as a
+        // jolt at close time (see confirmAndFinish).
+        double smoothed = recentSmoothedG();
+        if (BlackboxLogic.isImpactCandidate(smoothed)) {
             triggerFreeze("impact_g");
+            candidatePeakG = Math.max(candidatePeakG, smoothed);
             return;
         }
 
@@ -415,6 +433,80 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             if (BlackboxLogic.isSpeedDropAccel(windowSamples, samplesNeeded)) {
                 triggerFreeze("speed_drop_accel");
             }
+        }
+    }
+
+    /** 30 ms-average resultant linear acceleration of the newest IMU samples, in g. */
+    private double recentSmoothedG() {
+        int n = BlackboxLogic.IMPACT_SMOOTH_SAMPLES;
+        if (imuCount < n) return 0;
+        double[] mags = new double[n];
+        for (int i = 0; i < n; i++) {
+            int idx = ((imuHead - n + i) % IMU_CAPACITY + IMU_CAPACITY) % IMU_CAPACITY;
+            float x = imuValues[idx][0], y = imuValues[idx][1], z = imuValues[idx][2];
+            mags[i] = Math.sqrt(x * x + y * y + z * z);
+        }
+        return BlackboxLogic.smoothedG(mags);
+    }
+
+    /**
+     * DRV-01c: decide from the ring (sensor thread, packet window still in it)
+     * whether the candidate looks like a crash. Returns {confirmed, reason,
+     * speedBeforeKmh, minSpeedAfterKmh}.
+     */
+    private Object[] confirmCandidate(String triggerType) {
+        long trigUs = freezeTriggerTimeMs * 1000L;
+        double speedBefore = Double.NaN;
+        java.util.ArrayList<Long> offs = new java.util.ArrayList<>();
+        java.util.ArrayList<Double> speeds = new java.util.ArrayList<>();
+        double minAfter = Double.NaN;
+        for (int i = 0; i < gpsCount; i++) {
+            int idx = ((gpsHead - gpsCount + i) % GPS_CAPACITY + GPS_CAPACITY) % GPS_CAPACITY;
+            if (gpsValues[idx][5] > BlackboxLogic.MAX_GPS_ACCURACY_M) continue;
+            long dtUs = gpsTimestamps[idx] - trigUs;
+            double kmh = gpsValues[idx][3] * 3.6;
+            if (dtUs >= -5_000_000L && dtUs <= 0) {
+                speedBefore = Double.isNaN(speedBefore) ? kmh : Math.max(speedBefore, kmh);
+            } else if (dtUs > 0 && dtUs <= 10_000_000L) {
+                offs.add(dtUs / 1000L);
+                speeds.add(kmh);
+                minAfter = Double.isNaN(minAfter) ? kmh : Math.min(minAfter, kmh);
+            }
+        }
+        long[] o = new long[offs.size()];
+        double[] v = new double[speeds.size()];
+        for (int i = 0; i < o.length; i++) { o[i] = offs.get(i); v[i] = speeds.get(i); }
+        String[] verdict = BlackboxLogic.confirmCrash(triggerType, candidatePeakG, speedBefore, o, v);
+        return new Object[] { "1".equals(verdict[0]), verdict[1], speedBefore, minAfter };
+    }
+
+    /** Keep only the newest MAX_JOLTS_KEPT unconfirmed packets (with their .sig/.pub). */
+    private void pruneJolts(File dir) {
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".qkedr"));
+        if (files == null) return;
+        java.util.ArrayList<File> jolts = new java.util.ArrayList<>();
+        for (File f : files) {
+            if (isUnconfirmedPacket(f)) jolts.add(f);
+        }
+        if (jolts.size() <= BlackboxLogic.MAX_JOLTS_KEPT) return;
+        java.util.Collections.sort(jolts, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+        for (int i = BlackboxLogic.MAX_JOLTS_KEPT; i < jolts.size(); i++) {
+            File f = jolts.get(i);
+            new File(dir, f.getName() + ".sig").delete();
+            new File(dir, f.getName() + ".pub").delete();
+            f.delete();
+        }
+    }
+
+    /** Reads only the header line; old packets without the field are confirmed. */
+    public static boolean isUnconfirmedPacket(File f) {
+        try (java.io.BufferedReader r = new java.io.BufferedReader(
+                new java.io.InputStreamReader(new java.io.FileInputStream(f), "UTF-8"))) {
+            String line = r.readLine();
+            if (line == null) return false;
+            return !new JSONObject(line).optBoolean("confirmed", true);
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -459,6 +551,7 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             }
             frozen.set(false);
             pendingTrigger.set(null);
+            candidatePeakG = 0;
         };
         // Posted on the sensor thread so the packet is read on the same thread
         // that writes the ring — no torn samples.
@@ -472,6 +565,10 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             long now = System.currentTimeMillis();
             long[] window = BlackboxLogic.computePacketWindow(freezeTriggerTimeMs, now - BlackboxLogic.TOTAL_DURATION_MS);
 
+            // DRV-01c: confirm the candidate before writing (header is sealed).
+            Object[] verdict = confirmCandidate(triggerType);
+            boolean confirmed = (Boolean) verdict[0];
+
             // Build JSON header
             JSONObject header = new JSONObject();
             header.put("version", 1);
@@ -479,6 +576,12 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             header.put("device_id", Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID));
             header.put("vehicle_id", JSONObject.NULL);
             header.put("trigger", triggerType);
+            header.put("confirmed", confirmed);
+            header.put("confirm_reason", (String) verdict[1]);
+            header.put("peak_g", Math.round(candidatePeakG * 100.0) / 100.0);
+            double sb = (Double) verdict[2], ma = (Double) verdict[3];
+            header.put("speed_before_kmh", Double.isNaN(sb) ? JSONObject.NULL : (Object) (Math.round(sb * 10.0) / 10.0));
+            header.put("min_speed_after_kmh", Double.isNaN(ma) ? JSONObject.NULL : (Object) (Math.round(ma * 10.0) / 10.0));
             header.put("started_at", isoUtc(window[0]));
             header.put("ended_at", isoUtc(now));
             header.put("trigger_at", isoUtc(freezeTriggerTimeMs));
@@ -631,6 +734,8 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             JSONObject result = new JSONObject();
             result.put("id", filename);
             result.put("trigger", triggerType);
+            result.put("confirmed", confirmed);
+            result.put("confirm_reason", (String) verdict[1]);
             result.put("started_at", header.getString("started_at"));
             result.put("ended_at", header.getString("ended_at"));
             result.put("hash", hashHex);
@@ -640,6 +745,7 @@ public class BlackboxService extends Service implements SensorEventListener, Loc
             if (sealError != null) result.put("seal_error", sealError);
             result.put("path", packetFile.getAbsolutePath());
             lastFreezeResult = result;
+            if (!confirmed) pruneJolts(dir);
 
             Runnable cb = onFreezeComplete;
             if (cb != null) mainHandler.post(cb);

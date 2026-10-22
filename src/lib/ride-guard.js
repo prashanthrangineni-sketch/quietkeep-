@@ -28,6 +28,7 @@ import { detectIndicatorSound } from '@/lib/indicator-sound';
 import { listenEnergy, stopEnergy } from '@/lib/drive-energy';
 import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
+import { createOvertakeWatcher, createRoadAheadProvider } from '@/lib/overtake-advisor';
 
 const COUNTDOWN_SECONDS = 30;
 const CANCEL_WORDS = [
@@ -432,6 +433,30 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
     onState?.('hazard_warning', warning);
   }
 
+  // ── Overtake advisor v1 ────────────────────────────────────────────────
+  const overtakeWatcher = createOvertakeWatcher();
+  let recentFixes = [];
+
+  function checkForOvertake(kmh) {
+    if (overlayShown) return;
+    const at = now();
+    if (typeof lastFix.lat !== 'number' || typeof lastHeadingDeg !== 'number') return;
+    const provider = createRoadAheadProvider({ spots });
+    const alert = overtakeWatcher.update({
+      position: { lat: lastFix.lat, lng: lastFix.lng, headingDeg: lastHeadingDeg },
+      speedKmh: kmh,
+      provider,
+      fixes: recentFixes,
+      now: at,
+      somethingElseSpokeAt: lastSpokeAt,
+    });
+    if (!alert) return;
+    const phrase = alert.phrase || alert;
+    speak(phrase);
+    lastSpokeAt = at;
+    onState?.('overtake', typeof alert === 'object' ? alert : { phrase });
+  }
+
   // ── Staying awake on a long or late ride ───────────────────────────────
   // A hazard warning is about the road ahead; this is about the rider. It
   // speaks rarely, and every line points at stopping rather than at talking.
@@ -651,11 +676,20 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
       if (indicatorListening) stopEnergy();
       manoeuvreDetector.reset();
       indicatorAssist.reset();
+      overtakeWatcher.reset();
+      recentFixes = [];
       reportRideDistance();
       onState?.('stopped', {});
     },
     feedSpeed(kmh, fix) {
-      if (fix && typeof fix.lat === 'number') { addDistance(fix); lastFix = { ...fix, at: now() }; }
+      if (fix && typeof fix.lat === 'number') {
+        addDistance(fix);
+        const heading = typeof fix.headingDeg === 'number' ? fix.headingDeg : (typeof fix.heading === 'number' ? fix.heading : lastHeadingDeg);
+        lastFix = { ...fix, at: now(), headingDeg: heading };
+        recentFixes.push(lastFix);
+        const cutoff = now() - 20000;
+        recentFixes = recentFixes.filter(f => f.at >= cutoff);
+      }
       if (fix && typeof fix.headingDeg === 'number') lastHeadingDeg = fix.headingDeg;
       else if (fix && typeof fix.heading === 'number') lastHeadingDeg = fix.heading;
       if (typeof kmh === 'number') {
@@ -664,6 +698,9 @@ export function startRideGuard({ getAccessToken, onState } = {}) {
         noteBraking(kmh);
         checkForHazardAhead(kmh);
         checkStayAwake(kmh);
+        checkForOvertake(kmh);
+      } else if (fix && (typeof fix.headingDeg === 'number' || typeof fix.heading === 'number') && typeof currentSpeedKmh === 'number') {
+        checkForOvertake(currentSpeedKmh);
       }
     },
     lastKnownFix() {

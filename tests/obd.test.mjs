@@ -100,6 +100,39 @@ console.log('1. Pure Mode 01 Decoders');
     rSupp.supportedPids.includes('0D') &&
     rSupp.supportedPids.includes('20')
   );
+
+  // 0111 Throttle position: (A*100)/255 %
+  // "41 11 4C" -> (76 * 100) / 255 = 29.8%
+  const rThrottle = decodeMode01Response('41 11 4C');
+  check('0111 Throttle position: 41 11 4C -> 29.8%', rThrottle && rThrottle.value === 29.8, JSON.stringify(rThrottle));
+
+  // 0146 Ambient air temperature: A - 40 °C
+  // "41 46 41" -> 65 - 40 = 25 °C
+  const rAmbient = decodeMode01Response('41 46 41');
+  check('0146 Ambient air temp: 41 46 41 -> 25 °C', rAmbient && rAmbient.value === 25, JSON.stringify(rAmbient));
+
+  // 0151 Fuel type per SAE J1979
+  // "41 51 01" -> petrol (code 1)
+  const rFuelTypePetrol = decodeMode01Response('41 51 01');
+  check('0151 Fuel type petrol: 41 51 01 -> petrol', rFuelTypePetrol && rFuelTypePetrol.value.name === 'petrol' && rFuelTypePetrol.value.code === 1);
+
+  // "41 51 04" -> diesel (code 4)
+  const rFuelTypeDiesel = decodeMode01Response('41 51 04');
+  check('0151 Fuel type diesel: 41 51 04 -> diesel', rFuelTypeDiesel && rFuelTypeDiesel.value.name === 'diesel' && rFuelTypeDiesel.value.code === 4);
+
+  // "41 51 11" -> hybrid_petrol (code 0x11 = 17)
+  const rFuelTypeHybrid = decodeMode01Response('41 51 11');
+  check('0151 Fuel type hybrid: 41 51 11 -> hybrid_petrol', rFuelTypeHybrid && rFuelTypeHybrid.value.name === 'hybrid_petrol' && rFuelTypeHybrid.value.code === 17);
+
+  // 015B Hybrid battery pack remaining life: (A*100)/255 %
+  // "41 5B C8" -> (200 * 100) / 255 = 78.4%
+  const rHybridBatt = decodeMode01Response('41 5B C8');
+  check('015B Hybrid battery pack life: 41 5B C8 -> 78.4%', rHybridBatt && rHybridBatt.value === 78.4, JSON.stringify(rHybridBatt));
+
+  // 015C Engine oil temperature: A - 40 °C
+  // "41 5C 82" -> 130 - 40 = 90 °C
+  const rOil = decodeMode01Response('41 5C 82');
+  check('015C Engine oil temp: 41 5C 82 -> 90 °C', rOil && rOil.value === 90, JSON.stringify(rOil));
 }
 
 // ── 2. Pure Mode 03 DTC Decoder ───────────────────────────────────────────────

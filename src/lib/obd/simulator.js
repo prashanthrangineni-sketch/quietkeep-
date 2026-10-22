@@ -4,13 +4,23 @@
 
 export class ObdSimulator {
   constructor(options = {}) {
+    const profile = options.profile || 'petrol_car';
+    let defaultVin = 'WVWZZZ3CZWE123456';
+    if (profile === 'honda_hybrid') defaultVin = 'MAKGM467000123456';
+    else if (profile === 'toyota_hybrid') defaultVin = 'MBJE1234567890123';
+    else if (profile === 'diesel_car') defaultVin = 'WVWZZZ3CZWE654321';
+    else if (profile === 'bs6_two_wheeler') defaultVin = 'MD2A1234567890123';
+
     this.options = {
-      vin: options.vin || 'WVWZZZ3CZWE123456',
+      profile,
+      vin: options.vin || defaultVin,
       faults: options.faults !== undefined ? [...options.faults] : ['P0301', 'P0420'],
       mil: options.mil !== undefined ? options.mil : true,
       failureMode: options.failureMode || null, // 'no_data' | 'unable_to_connect' | 'slow_replies' | 'dropped_prompt' | 'garbage_bytes'
       responseDelayMs: options.responseDelayMs || 20,
       headers: true,
+      hybridBatteryPct: options.hybridBatteryPct !== undefined ? options.hybridBatteryPct : (profile === 'toyota_hybrid' ? 82 : 78),
+      engineOffWhileMoving: options.engineOffWhileMoving,
       ...options,
     };
 
@@ -131,6 +141,9 @@ export class ObdSimulator {
       return this._emitWithPrompt('AUTO, ISO 15765-4 (CAN 11/500)');
     }
     if (at === 'RV') {
+      if (this.options.profile === 'bs6_two_wheeler') {
+        return this._emitWithPrompt('12.8V');
+      }
       return this._emitWithPrompt('14.1V');
     }
     if (at === 'I') {
@@ -153,9 +166,16 @@ export class ObdSimulator {
 
   _handleMode01(cmd) {
     const pid = cmd.slice(2, 4);
+    const profile = this.options.profile || 'petrol_car';
+    const isHybrid = profile === 'honda_hybrid' || profile === 'toyota_hybrid';
+    const isTwoWheeler = profile === 'bs6_two_wheeler';
 
     // Supported PIDs 01-20
     if (pid === '00') {
+      if (isTwoWheeler) {
+        // BS-6 two-wheeler supports only 01, 05, 0C, 0D, 11 (bitmaps: 88 18 80 00)
+        return this._emitWithPrompt('7E8 06 41 00 88 18 80 00');
+      }
       // 7E8 06 41 00 BE 3F B8 13
       // Also emit transmission 7E9 to test multi-ECU filtering
       const p1 = '7E8 06 41 00 BE 3F B8 13';
@@ -165,12 +185,24 @@ export class ObdSimulator {
 
     // Supported PIDs 21-40
     if (pid === '20') {
-      return this._emitWithPrompt('7E8 06 41 20 80 00 00 01');
+      if (isTwoWheeler) {
+        return this._emitWithPrompt('NO DATA');
+      }
+      // Supports 21, 2F, and 40 (leading to 0140)
+      return this._emitWithPrompt('7E8 06 41 20 80 02 00 01');
     }
 
     // Supported PIDs 41-60
     if (pid === '40') {
-      return this._emitWithPrompt('7E8 06 41 40 40 00 00 00');
+      if (isTwoWheeler) {
+        return this._emitWithPrompt('NO DATA');
+      }
+      if (isHybrid) {
+        // Supports 42 (voltage), 46 (ambient), 51 (fuel type), 5B (hybrid battery), 5C (oil temp)
+        return this._emitWithPrompt('7E8 06 41 40 44 00 80 30');
+      }
+      // Petrol/Diesel cars: supports 42, 46, 51, 5C
+      return this._emitWithPrompt('7E8 06 41 40 44 00 80 10');
     }
 
     // 0101: Monitor Status (MIL + DTC count)
@@ -178,11 +210,15 @@ export class ObdSimulator {
       const milBit = this.options.mil ? 0x80 : 0x00;
       const count = (this.options.faults || []).length & 0x7F;
       const a = (milBit | count).toString(16).toUpperCase().padStart(2, '0');
-      return this._emitWithPrompt(`7E8 06 41 01 ${a} 07 65 00`);
+      const ignitionByte = profile === 'diesel_car' ? '0F' : '07';
+      return this._emitWithPrompt(`7E8 06 41 01 ${a} ${ignitionByte} 65 00`);
     }
 
     // 0104: Engine load (~24-32%)
     if (pid === '04') {
+      if (isTwoWheeler) {
+        return this._emitWithPrompt('NO DATA');
+      }
       const loadPct = 25 + (this.tick % 8);
       const byteVal = Math.round((loadPct * 255) / 100).toString(16).toUpperCase().padStart(2, '0');
       return this._emitWithPrompt(`7E8 03 41 04 ${byteVal}`);
@@ -194,9 +230,20 @@ export class ObdSimulator {
       return this._emitWithPrompt(`7E8 03 41 05 ${byteVal}`);
     }
 
-    // 010C: Engine RPM (idle 750–850 rpm)
+    // 010C: Engine RPM (idle 750–850 rpm, or 0 in hybrid EV mode)
     if (pid === '0C') {
-      const rpm = 750 + ((this.tick * 17) % 100); // 750 to 850 rpm
+      const speed = (this.tick * 5) % 65; // 0 to 60 km/h
+      let rpm = 750 + ((this.tick * 17) % 100); // 750 to 850 rpm
+      if (isHybrid) {
+        const engineOff = this.options.engineOffWhileMoving !== undefined
+          ? this.options.engineOffWhileMoving
+          : (speed <= 40);
+        if (engineOff) {
+          rpm = 0;
+        } else {
+          rpm = 1500 + ((this.tick * 23) % 400);
+        }
+      }
       const raw = rpm * 4;
       const a = Math.floor(raw / 256).toString(16).toUpperCase().padStart(2, '0');
       const b = (raw % 256).toString(16).toUpperCase().padStart(2, '0');
@@ -210,19 +257,74 @@ export class ObdSimulator {
       return this._emitWithPrompt(`7E8 03 41 0D ${byteVal}`);
     }
 
+    // 0111: Throttle position (~18-26%)
+    if (pid === '11') {
+      const throttlePct = 18 + (this.tick % 8);
+      const byteVal = Math.round((throttlePct * 255) / 100).toString(16).toUpperCase().padStart(2, '0');
+      return this._emitWithPrompt(`7E8 03 41 11 ${byteVal}`);
+    }
+
     // 012F: Fuel level (~65%)
     if (pid === '2F') {
+      if (isTwoWheeler) {
+        return this._emitWithPrompt('NO DATA');
+      }
       const fuelPct = 65;
       const byteVal = Math.round((fuelPct * 255) / 100).toString(16).toUpperCase().padStart(2, '0');
       return this._emitWithPrompt(`7E8 03 41 2F ${byteVal}`);
     }
 
-    // 0142: Control module voltage (~14.1 V = 14100 mV)
+    // 0142: Control module voltage (~14.1 V for car, ~12.8 V for two-wheeler)
     if (pid === '42') {
-      const mv = 14100 + ((this.tick % 5) * 10);
+      const baseMv = isTwoWheeler ? 12800 : 14100;
+      const mv = baseMv + ((this.tick % 5) * 10);
       const a = Math.floor(mv / 256).toString(16).toUpperCase().padStart(2, '0');
       const b = (mv % 256).toString(16).toUpperCase().padStart(2, '0');
       return this._emitWithPrompt(`7E8 04 41 42 ${a} ${b}`);
+    }
+
+    // 0146: Ambient air temperature (~28 °C)
+    if (pid === '46') {
+      if (isTwoWheeler) {
+        return this._emitWithPrompt('NO DATA');
+      }
+      const ambientC = 28;
+      const byteVal = (ambientC + 40).toString(16).toUpperCase().padStart(2, '0');
+      return this._emitWithPrompt(`7E8 03 41 46 ${byteVal}`);
+    }
+
+    // 0151: Fuel type (SAE J1979: 1 petrol, 4 diesel, 0x11 hybrid petrol)
+    if (pid === '51') {
+      let code = 0x01; // Petrol
+      if (profile === 'diesel_car') {
+        code = 0x04; // Diesel
+      } else if (isHybrid) {
+        code = 0x11; // Hybrid Petrol
+      }
+      const byteVal = code.toString(16).toUpperCase().padStart(2, '0');
+      return this._emitWithPrompt(`7E8 03 41 51 ${byteVal}`);
+    }
+
+    // 015B: Hybrid battery pack remaining life (%)
+    if (pid === '5B') {
+      if (!isHybrid) {
+        return this._emitWithPrompt('NO DATA');
+      }
+      const battPct = this.options.hybridBatteryPct !== undefined
+        ? this.options.hybridBatteryPct
+        : (profile === 'toyota_hybrid' ? 82 : 78);
+      const byteVal = Math.round((battPct * 255) / 100).toString(16).toUpperCase().padStart(2, '0');
+      return this._emitWithPrompt(`7E8 03 41 5B ${byteVal}`);
+    }
+
+    // 015C: Engine oil temperature (~92 °C)
+    if (pid === '5C') {
+      if (isTwoWheeler) {
+        return this._emitWithPrompt('NO DATA');
+      }
+      const oilC = 92;
+      const byteVal = (oilC + 40).toString(16).toUpperCase().padStart(2, '0');
+      return this._emitWithPrompt(`7E8 03 41 5C ${byteVal}`);
     }
 
     // Default PID response

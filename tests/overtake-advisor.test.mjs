@@ -225,7 +225,9 @@ eq('clear condition produces no_known_hazard', advClear.advice, 'no_known_hazard
 eq('no_known_hazard phrase formatted', advClear.phrase, 'Nothing is reported for the next 500 metres. Check your mirrors and oncoming traffic before you overtake.');
 
 console.log('\n--- 6. Rate limits in createOvertakeWatcher ---');
-let fakeClockMs = 1000000;
+// Fixed local midday so the night rule never applies in any time zone (CI runs in UTC).
+const DAY_BASE_MS = new Date(2026, 9, 20, 12, 0, 0).getTime();
+let fakeClockMs = DAY_BASE_MS + 1000000;
 const watcher = createOvertakeWatcher({ clock: () => fakeClockMs });
 
 // 6a: Speed < 40 km/h does NOT fire
@@ -288,7 +290,7 @@ eq('allowed when other speech occurred > 2 min ago', rSpeechAllowed != null, tru
 
 // 6e: Max 6 per hour limit
 watcher.reset();
-fakeClockMs = 2000000;
+fakeClockMs = DAY_BASE_MS + 2000000;
 let firedCount = 0;
 for (let i = 0; i < 10; i++) {
   const res = watcher.update({
@@ -304,7 +306,7 @@ eq('capped at exactly 6 warnings within the hour', firedCount, 6);
 
 // 6f: Does NOT fire unprompted for caution or traffic_slow
 watcher.reset();
-fakeClockMs = 3000000;
+fakeClockMs = DAY_BASE_MS + 3000000;
 const rCautionUnprompted = watcher.update({
   position: originPos,
   speedKmh: 45,

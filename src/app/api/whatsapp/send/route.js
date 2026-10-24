@@ -1,10 +1,16 @@
-// src/app/api/whatsapp/send/route.js
+﻿// src/app/api/whatsapp/send/route.js
 // Send outbound WhatsApp message via Twilio
-// Used by: keeps action layer, nudge delivery, manual send
+// Used by: keeps action layer, nudge delivery, manual send, business messaging
 // Requires: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM in env
 
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import {
+  evaluatePromotionSend,
+  isCustomerOptedOutInDb,
+  logBusinessLimitEvent,
+  sanitizeSnippet,
+} from '@/lib/business-limits';
 
 export async function POST(request) {
   const supabase = await createSupabaseServerClient();
@@ -44,6 +50,100 @@ export async function POST(request) {
 
   if (!message) return NextResponse.json({ error: 'message required' }, { status: 400 });
 
+  // ── BUSINESS PROMOTION LIMITS ENFORCEMENT (CARD AG-AARIA-25) ───────────────
+  const isBusiness = Boolean(body.workspace_id);
+  const isPromotional = body.is_promotional === true || body.message_type === 'promotional';
+  const isTransactional = body.is_transactional === true || body.message_type === 'transactional';
+
+  if (isBusiness) {
+    const wsId = body.workspace_id;
+
+    // 1. Opt-out check: never messaged again (unless purely transactional update)
+    const isOptedOut = await isCustomerOptedOutInDb(supabase, wsId, to);
+    if (isOptedOut && !isTransactional) {
+      await logBusinessLimitEvent(supabase, wsId, {
+        who: to,
+        what: 'promotion_blocked',
+        why: 'customer_opted_out',
+        rawMessage: message,
+      });
+      return NextResponse.json({
+        error: 'Customer has opted out (STOP / వద్దు / बंद करो). Never messaged again.',
+        code: 'customer_opted_out',
+      }, { status: 403 });
+    }
+
+    // 2. Promotional limits check (daily/weekly caps, 250/day new-biz cap, 10:00-21:00 IST window)
+    if (isPromotional) {
+      const { data: ws } = await supabase
+        .from('business_workspaces')
+        .select('created_at, daily_promo_limit')
+        .eq('id', wsId)
+        .maybeSingle();
+
+      const todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
+      const weekStart = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+
+      const [{ count: bizTodayCount }, { count: custTodayCount }, { count: custWeekCount }] = await Promise.all([
+        supabase.from('business_promo_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', wsId)
+          .eq('status', 'sent')
+          .gte('sent_at', todayStart.toISOString()),
+        supabase.from('business_promo_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', wsId)
+          .eq('phone', to)
+          .eq('status', 'sent')
+          .gte('sent_at', todayStart.toISOString()),
+        supabase.from('business_promo_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', wsId)
+          .eq('phone', to)
+          .eq('status', 'sent')
+          .gte('sent_at', weekStart.toISOString()),
+      ]);
+
+      const promoEval = evaluatePromotionSend({
+        businessCreatedAt: ws?.created_at,
+        ownerDailyLimit: ws?.daily_promo_limit,
+        businessSentToday: bizTodayCount || 0,
+        customerSentToday: custTodayCount || 0,
+        customerSentThisWeek: custWeekCount || 0,
+        isCustomerOptedOut: false,
+        isTransactional: false,
+        now: new Date(),
+      });
+
+      if (!promoEval.allowed) {
+        await logBusinessLimitEvent(supabase, wsId, {
+          who: to,
+          what: 'promotion_blocked',
+          why: promoEval.reason,
+          rawMessage: message,
+          metadata: { limit: promoEval.limit },
+        });
+
+        await supabase.from('business_promo_log').insert({
+          workspace_id: wsId,
+          phone: to,
+          message_type: 'promotional',
+          status: 'blocked',
+          blocked_reason: promoEval.reason,
+          snippet: sanitizeSnippet(message),
+          sent_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        }).catch(() => {});
+
+        return NextResponse.json({
+          error: promoEval.ownerMessage || promoEval.reason,
+          code: promoEval.reason,
+        }, { status: 429 });
+      }
+    }
+  }
+
   // Send via Twilio
   const params = new URLSearchParams({
     From: `whatsapp:${from}`,
@@ -71,6 +171,20 @@ export async function POST(request) {
       keep_id, status: 'failed',
       error_message: json.message || json.error_message,
     }).catch(() => {});
+
+    if (isBusiness) {
+      await supabase.from('business_promo_log').insert({
+        workspace_id: body.workspace_id,
+        phone: to,
+        message_type: isPromotional ? 'promotional' : 'transactional',
+        status: 'failed',
+        blocked_reason: json.message || json.error_message,
+        snippet: sanitizeSnippet(message),
+        sent_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      }).catch(() => {});
+    }
+
     return NextResponse.json({ error: json.message || json.error_message }, { status: 500 });
   }
 
@@ -79,6 +193,18 @@ export async function POST(request) {
     user_id: user.id, phone_number: to, message_body: message,
     keep_id, status: 'sent', twilio_sid: json.sid, sent_at: new Date().toISOString(),
   }).catch(() => {});
+
+  if (isBusiness) {
+    await supabase.from('business_promo_log').insert({
+      workspace_id: body.workspace_id,
+      phone: to,
+      message_type: isPromotional ? 'promotional' : 'transactional',
+      status: 'sent',
+      snippet: sanitizeSnippet(message),
+      sent_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true, sid: json.sid, to, status: json.status });
 }

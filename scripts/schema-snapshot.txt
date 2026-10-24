@@ -19,14 +19,16 @@ business_activity_log|action,created_at,description,entity_id,entity_type,id,mem
 business_approvals|action_label,action_type,approved_at,created_at,executed_at,expires_at,id,keep_id,payload,status,user_id,workspace_id
 business_chat_messages|content,created_at,duration_sec,id,message_type,metadata,reactions,read_by,reply_to,room_id,sender_id,sender_name,thread_id,workspace_id
 business_chat_rooms|created_at,created_by,id,name,room_type,updated_at,workspace_id
+business_customer_opt_outs|created_at,customer_id,id,keyword,opted_out_at,phone,workspace_id
 business_customers|address,created_at,credit_limit,email,gstin,id,last_transaction_date,name,notes,outstanding_balance,phone,tags,total_business,whatsapp_opted_in,workspace_id
 business_dunning_log|amount,channel,created_at,created_by,customer_id,error_message,id,ledger_id,message,payment_id,phone,stage,status,workspace_id
 business_invoices|amount_due,amount_paid,cgst,created_at,customer_address,customer_email,customer_gstin,customer_name,customer_phone,due_date,id,igst,invoice_date,invoice_number,invoice_type,line_items,notes,payment_terms,pdf_path,pdf_url,sent_email,sent_whatsapp,sgst,status,subtotal,total_amount,total_gst,workspace_id
 business_ledger|amount,amount_pending,category,created_at,created_by,description,due_date,entry_type,gst_amount,gst_rate,id,invoice_number,keep_id,party_name,party_phone,payment_method,payment_status,source,total_with_gst,transaction_date,voice_transcript,workspace_id
 business_members|access_role,basic_salary,created_at,daily_wage,date_of_joining,department,designation,email,emergency_contact,employee_code,geo_tracking_enabled,id,invite_token,invited_at,name,permissions,phone,role,salary_type,status,updated_at,user_id,workspace_id
 business_payments|amount,created_at,created_by,currency,customer_id,customer_name,id,note,paid_at,provider,provider_payment_id,provider_qr_id,qr_image_url,status,upi_ref,workspace_id
+business_promo_log|blocked_reason,created_at,customer_id,id,message_type,phone,sent_at,snippet,status,workspace_id
 business_tasks|assigned_to_member_id,completed_at,created_at,created_by,description,due_date,id,priority,status,tags,title,updated_at,workspace_id
-business_workspaces|address,business_type,created_at,employee_count,financial_year_start,geo_tracking_enabled,gstin,id,logo_url,name,owner_user_id,pan,phone,plan,timezone,updated_at
+business_workspaces|address,business_type,created_at,daily_promo_limit,employee_count,financial_year_start,geo_tracking_enabled,gstin,id,logo_url,name,owner_user_id,pan,phone,plan,timezone,updated_at
 calendar_events|calendar_type,category,color,created_at,description,event_date,event_name,event_type,hijri_day,hijri_month,id,is_annual,is_personal_event,is_public_holiday,keep_id,nakshatra,paksha,region,religion,reminder_time,source,state,tags,timezone,tithi,traditional_month,user_id
 compliance_reminders|amount_estimate,assigned_to,auto_generated,created_at,description,due_date,frequency,id,next_due,notes,priority,status,title,type,workspace_id
 connector_logs|connector_name,created_at,direction,duration_ms,id,request_summary,response_summary,status,user_id

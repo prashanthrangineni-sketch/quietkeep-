@@ -17,6 +17,15 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import {
+  isOptOutMessage,
+  recordCustomerOptOutInDb,
+  classifyInboundTopic,
+  evaluateAutoReply,
+  evaluateOrderBooking,
+  queueForOwnerReview,
+  ALLOWED_AUTOREPLY_TOPICS,
+} from '@/lib/business-limits'
 
 // ── Signature verification ─────────────────────────────────────────────────
 // Meta includes X-Hub-Signature-256: sha256=<hex> on every POST.
@@ -201,6 +210,66 @@ export async function POST(request) {
         if (msg.type === 'text') {
           const text = (msg.text?.body || '').trim()
           if (!text) continue
+
+          // ── CARD AG-AARIA-25: Customer Opt-Out (STOP / "వద్దు" / "बंद करो") ──
+          if (isOptOutMessage(text)) {
+            const { data: bws } = await supabase
+              .from('business_workspaces')
+              .select('id')
+              .eq('owner_user_id', userId)
+              .maybeSingle()
+            if (bws?.id) {
+              await recordCustomerOptOutInDb(supabase, bws.id, phone, null, text)
+            }
+            continue
+          }
+
+          // ── CARD AG-AARIA-25: Business Auto-reply & Order Limits ──
+          const { data: ws } = await supabase
+            .from('business_workspaces')
+            .select('id, name, address')
+            .eq('owner_user_id', userId)
+            .maybeSingle()
+
+          if (ws) {
+            const topic = classifyInboundTopic(text)
+            if (topic === 'order' || topic === 'booking') {
+              const orderEval = evaluateOrderBooking({
+                type: topic,
+                isOwnerConfirmed: false,
+                customerName: phone,
+                details: { text },
+              })
+              await queueForOwnerReview(supabase, {
+                workspaceId: ws.id,
+                userId,
+                who: phone,
+                what: topic,
+                why: orderEval.reason,
+                rawMessage: text,
+                actions: orderEval.actions,
+              })
+              continue
+            }
+
+            if (!ALLOWED_AUTOREPLY_TOPICS.has(topic)) {
+              const autoEval = evaluateAutoReply({
+                topic,
+                text,
+                workspaceInfo: { address: ws.address, timings: null },
+              })
+              await queueForOwnerReview(supabase, {
+                workspaceId: ws.id,
+                userId,
+                who: phone,
+                what: topic,
+                why: autoEval.reason,
+                rawMessage: text,
+                actions: autoEval.actions,
+              })
+              continue
+            }
+          }
 
           const lowerText = text.toLowerCase()
           let intentType = 'note'

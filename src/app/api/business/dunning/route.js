@@ -45,7 +45,7 @@ function money(n) {
 
 // Load every overdue receivable for the workspace, joined to its customer.
 async function loadCandidates(db, workspaceId) {
-  const [{ data: ledger }, { data: customers }, { data: sent }] = await Promise.all([
+  const [{ data: ledger }, { data: customers }, { data: sent }, { data: optOuts }] = await Promise.all([
     db.from('business_ledger')
       .select('id,party_name,amount,amount_pending,due_date,transaction_date,payment_status')
       .eq('workspace_id', workspaceId)
@@ -57,7 +57,14 @@ async function loadCandidates(db, workspaceId) {
       .select('ledger_id,customer_id,stage')
       .eq('workspace_id', workspaceId)
       .eq('status', 'sent'),
+    db.from('business_customer_opt_outs')
+      .select('phone')
+      .eq('workspace_id', workspaceId),
   ]);
+
+  const optedOutPhones = new Set(
+    (optOuts || []).map((o) => o.phone).filter(Boolean)
+  );
 
   const byName = new Map(
     (customers || []).map((c) => [String(c.name || '').trim().toLowerCase(), c])
@@ -88,6 +95,7 @@ async function loadCandidates(db, workspaceId) {
     else if (!cust) skip = 'no_customer_record';
     else if (!cust.phone) skip = 'no_phone_number';
     else if (!cust.whatsapp_opted_in) skip = 'not_opted_in_to_whatsapp';
+    else if (optedOutPhones.has(cust.phone) || optedOutPhones.has(cust.phone.replace(/^\+/, '')) || optedOutPhones.has('+' + cust.phone.replace(/^\+/, ''))) skip = 'customer_opted_out';
 
     out.push({
       ledger_id: l.id,

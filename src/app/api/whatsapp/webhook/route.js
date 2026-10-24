@@ -5,6 +5,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { askModel, isConfigured } from '@/lib/llm';
 import crypto from 'crypto';
+import {
+  isOptOutMessage,
+  recordCustomerOptOutInDb,
+  classifyInboundTopic,
+  evaluateAutoReply,
+  evaluateOrderBooking,
+  queueForOwnerReview,
+  ALLOWED_AUTOREPLY_TOPICS,
+} from '@/lib/business-limits';
 
 // ── Twilio request signature validation (X-Twilio-Signature) ─────────────────
 // Twilio signs: the exact configured webhook URL, then each POST param appended
@@ -104,6 +113,21 @@ export async function POST(req) {
     const messageSid = params.MessageSid;
 
     if (!phone) return twimlResponse('❌ Could not identify sender.');
+
+    // ── CARD AG-AARIA-25: Check Customer Opt-Out (STOP / "వద్దు" / "बंद करो") ──
+    if (isOptOutMessage(body)) {
+      const { data: custs } = await supabase
+        .from('business_customers')
+        .select('workspace_id, id')
+        .or('phone.eq.' + phone + ',phone.eq.+' + phone);
+
+      if (custs && custs.length > 0) {
+        for (const c of custs) {
+          await recordCustomerOptOutInDb(supabase, c.workspace_id, phone, c.id, body);
+        }
+      }
+      return twimlResponse('You have been unsubscribed from promotional messages (STOP / వద్దు / बंद करो). You will not be messaged again.');
+    }
 
     // Find linked user
     const { data: session } = await supabase
@@ -249,6 +273,53 @@ export async function POST(req) {
         `🛡️ ${productsRes.count || 0} products in Warranty Wallet\n\n` +
         `quietkeep.com/dashboard`
       );
+    }
+
+    // ── CARD AG-AARIA-25: Business Auto-reply & Order Limits ──────────────
+    const { data: ws } = await supabase
+      .from('business_workspaces')
+      .select('id, name, address')
+      .eq('owner_user_id', userId)
+      .maybeSingle();
+
+    if (ws) {
+      const topic = classifyInboundTopic(body);
+      if (topic === 'order' || topic === 'booking') {
+        const orderEval = evaluateOrderBooking({
+          type: topic,
+          isOwnerConfirmed: false,
+          customerName: phone,
+          details: { text: body },
+        });
+        await queueForOwnerReview(supabase, {
+          workspaceId: ws.id,
+          userId,
+          who: phone,
+          what: topic,
+          why: orderEval.reason,
+          rawMessage: body,
+          actions: orderEval.actions,
+        });
+        return twimlResponse('We have received your ' + topic + ' request and are confirming it shortly with the store owner.');
+      }
+
+      if (!ALLOWED_AUTOREPLY_TOPICS.has(topic)) {
+        const autoEval = evaluateAutoReply({
+          topic,
+          text: body,
+          workspaceInfo: { address: ws.address, timings: null },
+        });
+        await queueForOwnerReview(supabase, {
+          workspaceId: ws.id,
+          userId,
+          who: phone,
+          what: topic,
+          why: autoEval.reason,
+          rawMessage: body,
+          actions: autoEval.actions,
+        });
+        return twimlResponse('Thanks for reaching out! Your message has been received and the owner will respond shortly.');
+      }
     }
 
     // Regular text → Keep

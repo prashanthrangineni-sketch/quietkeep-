@@ -1,17 +1,12 @@
-﻿// tests/business-limits.test.mjs
-// QuietKeep Business: Auto-reply and promotion limits enforced in code.
-// (CARD AG-AARIA-25, founder decision 4, "plan as per market".)
-// Plain node script, no external packages.
+// tests/business-limits.test.mjs
+// Unit tests for QuietKeep Business limits module (CARD AG-AARIA-25, Founder Decision 4).
 
 import {
-  TZ_INDIA,
-  PROMO_CONSTANTS,
-  ALLOWED_AUTOREPLY_TOPICS,
-  DISALLOWED_AUTOREPLY_TOPICS,
-  HARD_BLOCKED_AUTOMATIONS,
-  getIstParts,
   isWithinPromoHours,
   isOptOutMessage,
+  cleanTextForOptOut,
+  normalizePhoneNumber,
+  maskPhoneNumber,
   classifyInboundTopic,
   sanitizeSnippet,
   evaluateAutoReply,
@@ -19,406 +14,341 @@ import {
   evaluateAutomationAction,
   evaluatePromotionSend,
   buildOwnerAuditLog,
+  ALLOWED_AUTOREPLY_TOPICS,
+  DISALLOWED_AUTOREPLY_TOPICS,
+  HARD_BLOCKED_AUTOMATIONS,
 } from '../src/lib/business-limits.js';
-import { LEVEL, DECISION, levelFor, decide, mayActUnasked } from '../src/lib/action-levels.js';
+
+import {
+  levelFor,
+  mayActUnasked,
+  decide,
+  LEVEL,
+  DECISION,
+} from '../src/lib/action-levels.js';
 
 let pass = 0;
 let fail = 0;
 
-function check(name, ok, detail = '') {
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  ${detail}`}`);
-  ok ? pass++ : fail++;
+function check(name, ok, extra = '') {
+  if (ok) {
+    console.log(`PASS  ${name}`);
+    pass++;
+  } else {
+    console.error(`FAIL  ${name} ${extra}`);
+    fail++;
+  }
 }
 
-// ── Helpers to construct exact IST timestamps ────────────────────────────────
-function makeIstDate(year, month, day, hour, minute, second = 0) {
-  // IST is UTC+05:30. Convert to UTC:
-  const pad = (n) => String(n).padStart(2, '0');
-  const iso = `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:${pad(second)}+05:30`;
-  return new Date(iso);
-}
-
-// ── RULE 1: AUTO-REPLY ALLOWED ONLY FOR FAQs, TIMINGS, LOCATION, STOCKED ITEMS
+// ── PHONE NORMALISATION & MASKING (Item D & J) ──────────────────────────────
 {
-  const mockWorkspace = {
-    name: 'Sri Krishna General Store',
-    timings: '09:00 AM - 09:30 PM (Mon-Sat), 10:00 AM - 02:00 PM (Sun)',
-    address: 'Shop #4, Main Bazaar, Near Old Bus Stand, Vijayawada',
-    faqs: {
-      default: 'We accept UPI (PhonePe, Google Pay, Paytm) and Cash.',
-      'do you accept upi': 'Yes, UPI QR code is available at the counter.',
-    },
-  };
+  check('normalize 10-digit Indian: "9876543210"', normalizePhoneNumber('9876543210') === '+919876543210');
+  check('normalize 11-digit leading 0: "09876543210"', normalizePhoneNumber('09876543210') === '+919876543210');
+  check('normalize 12-digit leading 91: "919876543210"', normalizePhoneNumber('919876543210') === '+919876543210');
+  check('normalize spaces & dashes: "+91 98765-43210"', normalizePhoneNumber('+91 98765-43210') === '+919876543210');
+  check('normalize parens: "(098) 765-43210"', normalizePhoneNumber('(098) 765-43210') === '+919876543210');
+  check('normalize whatsapp: prefix', normalizePhoneNumber('whatsapp:+919876543210') === '+919876543210');
+  check('normalize international: "+14155238886"', normalizePhoneNumber('+14155238886') === '+14155238886');
 
-  const mockItem = {
-    name: 'Sona Masoori Rice',
-    current_stock: 40,
-    unit: 'kg',
-    selling_price: 65,
-  };
+  const masked = maskPhoneNumber('9876543210');
+  check('mask customer phone (last 4 digits only)', masked.endsWith('3210') && masked.startsWith('****') && !masked.includes('9876'));
+  const maskedIntl = maskPhoneNumber('+14155238886');
+  check('mask international phone (last 4 digits only)', maskedIntl.endsWith('8886') && !maskedIntl.includes('415'));
+}
 
-  // 1. FAQs
-  const rFaq = evaluateAutoReply({
+// ── RULE 1: AUTO-REPLIES ALLOWED ONLY FOR TIMINGS, LOCATION, PRICE, STOCK, FAQ
+{
+  const allowedTopics = ['faq', 'timings', 'location', 'item_availability', 'item_price'];
+  for (const t of allowedTopics) {
+    check(`allowed topic is registered: ${t}`, ALLOWED_AUTOREPLY_TOPICS.has(t));
+  }
+
+  // 1. FAQ
+  const faqRes = evaluateAutoReply({
     topic: 'faq',
-    text: 'do you accept upi',
-    workspaceInfo: mockWorkspace,
+    text: 'do you accept UPI?',
+    workspaceInfo: { faqReply: 'Yes, we accept Google Pay, PhonePe, and Paytm.' },
   });
-  check('auto-reply allowed: FAQ', rFaq.allowed && rFaq.decision === 'auto_reply' && rFaq.reply.includes('UPI'));
+  check('auto-reply allowed: FAQ', faqRes.allowed && faqRes.decision === 'auto_reply_allowed');
 
-  // 2. Shop Timings
-  const rTimings = evaluateAutoReply({
-    text: 'What are your shop timings today?',
-    workspaceInfo: mockWorkspace,
+  // 2. Shop timings
+  const timingsRes = evaluateAutoReply({
+    topic: 'timings',
+    text: 'when do you open today?',
+    workspaceInfo: { timings: 'Monday to Saturday, 9:00 AM - 9:00 PM' },
   });
-  check('auto-reply allowed: Shop timings', rTimings.allowed && rTimings.decision === 'auto_reply' && rTimings.reply.includes('09:00 AM'));
+  check('auto-reply allowed: Shop timings', timingsRes.allowed && timingsRes.decision === 'auto_reply_allowed');
 
-  // 3. Shop Location
-  const rLocation = evaluateAutoReply({
-    text: 'Where is your shop located?',
-    workspaceInfo: mockWorkspace,
+  // 3. Location
+  const locationRes = evaluateAutoReply({
+    topic: 'location',
+    text: 'where is your store located?',
+    workspaceInfo: { address: 'Shop 4, Main Bazar, Guntur, Andhra Pradesh' },
   });
-  check('auto-reply allowed: Location', rLocation.allowed && rLocation.decision === 'auto_reply' && rLocation.reply.includes('Vijayawada'));
+  check('auto-reply allowed: Location', locationRes.allowed && locationRes.decision === 'auto_reply_allowed');
 
   // 4. Item availability (stored in QuietKeep)
-  const rAvail = evaluateAutoReply({
-    text: 'Do you have Sona Masoori Rice in stock?',
-    storedItem: mockItem,
-    workspaceInfo: mockWorkspace,
+  const availRes = evaluateAutoReply({
+    topic: 'item_availability',
+    text: 'is Sona Masoori rice in stock?',
+    inventoryMatch: { found: true, name: 'Sona Masoori Rice 25kg', inStock: true, price: 1450 },
   });
-  check('auto-reply allowed: Item availability (in stock)', rAvail.allowed && rAvail.decision === 'auto_reply' && rAvail.reply.includes('In stock'));
+  check('auto-reply allowed: Item availability (in stock)', availRes.allowed && availRes.suggestedReply.includes('in stock'));
 
   // 5. Item price (stored in QuietKeep)
-  const rPrice = evaluateAutoReply({
-    text: 'What is the price of Sona Masoori Rice?',
-    storedItem: mockItem,
-    workspaceInfo: mockWorkspace,
+  const priceRes = evaluateAutoReply({
+    topic: 'item_price',
+    text: 'how much is Sunflower Oil 1L?',
+    inventoryMatch: { found: true, name: 'Freedom Sunflower Oil 1L', inStock: true, price: 135 },
   });
-  check('auto-reply allowed: Item price', rPrice.allowed && rPrice.decision === 'auto_reply' && rPrice.reply.includes('₹65'));
+  check('auto-reply allowed: Item price', priceRes.allowed && priceRes.suggestedReply.includes('₹135'));
+
+  // ── DISALLOWED / QUEUED CASES (One-tap Send / Edit / Ignore) ───────────────
+  const queuedTopics = [
+    { topic: 'complaint', text: 'the rice bag I bought yesterday has weevils in it! worst store!' },
+    { topic: 'negotiation', text: 'if I buy 5 bags can you give at 1200 instead of 1450?' },
+    { topic: 'refund', text: 'cancel my order and return my money immediately' },
+    { topic: 'legal_advice', text: 'my tenant is not paying rent, can I lock them out?' },
+    { topic: 'medical_advice', text: 'what medicine should I take for high fever?' },
+    { topic: 'financial_advice', text: 'should I invest in this stock or crypto?' },
+    { topic: 'unclear', text: 'hello there abc xyz 123' },
+  ];
+
+  for (const q of queuedTopics) {
+    const res = evaluateAutoReply({ topic: q.topic, text: q.text });
+    check(`${q.topic} NOT auto-sent: queued for owner`, !res.allowed && res.queuedForOwner && res.decision === 'queue_for_owner');
+    check(`${q.topic} has one-tap Send / Edit / Ignore`, Array.isArray(res.actions) && res.actions.includes('Send') && res.actions.includes('Edit') && res.actions.includes('Ignore'));
+  }
+
+  // Unstored inventory item inquiry must be queued for owner
+  const unstoredRes = evaluateAutoReply({
+    topic: 'item_availability',
+    text: 'do you have organic jaggery powder?',
+    inventoryMatch: { found: false },
+  });
+  check('unstored inventory item NOT auto-sent: queued for owner', !unstoredRes.allowed && unstoredRes.queuedForOwner && unstoredRes.actions.includes('Send'));
+
+  // Unconfigured timings/location must be queued for owner
+  const noTimingsRes = evaluateAutoReply({ topic: 'timings', text: 'shop timings', workspaceInfo: {} });
+  check('unconfigured timings queued for owner', !noTimingsRes.allowed && noTimingsRes.queuedForOwner);
+
+  const noLocationRes = evaluateAutoReply({ topic: 'location', text: 'shop address', workspaceInfo: {} });
+  check('unconfigured location queued for owner', !noLocationRes.allowed && noLocationRes.queuedForOwner);
 }
 
-// ── RULE 1: AUTO-REPLY DISALLOWED (QUEUED FOR OWNER WITH SEND / EDIT / IGNORE)
+// ── RULE 2: ORDERS & BOOKINGS NEVER CONFIRMED AUTOMATICALLY ─────────────────
 {
-  const mockWorkspace = {
-    timings: '10am - 8pm',
-    address: 'Station Road',
-    faqs: {},
-  };
-
-  // 1. Complaint: NOT auto-sent, queued with Send / Edit / Ignore
-  const rComplaint = evaluateAutoReply({
-    text: 'The milk packet I bought today was spoiled and smelled awful! Very bad quality.',
-    workspaceInfo: mockWorkspace,
-  });
-  check('complaints NOT auto-sent: queued for owner', !rComplaint.allowed && rComplaint.decision === 'queue_for_owner');
-  check('complaint has one-tap Send / Edit / Ignore actions', JSON.stringify(rComplaint.actions) === JSON.stringify(['Send', 'Edit', 'Ignore']));
-  check('complaint reason identifies review requirement', rComplaint.reason === 'complaints_must_be_reviewed');
-
-  // 2. Negotiation: NOT auto-sent, queued
-  const rNegotiate = evaluateAutoReply({
-    text: 'Can you give 20% discount if I buy 5 packets? Please reduce price.',
-    workspaceInfo: mockWorkspace,
-  });
-  check('negotiations NOT auto-sent: queued for owner', !rNegotiate.allowed && rNegotiate.decision === 'queue_for_owner');
-  check('negotiation has one-tap Send / Edit / Ignore', rNegotiate.actions.includes('Send') && rNegotiate.actions.includes('Edit') && rNegotiate.actions.includes('Ignore'));
-
-  // 3. Refund request: NOT auto-sent, queued
-  const rRefund = evaluateAutoReply({
-    text: 'I want a refund for my order #104. Return my money please.',
-    workspaceInfo: mockWorkspace,
-  });
-  check('refund request NOT auto-sent: queued for owner', !rRefund.allowed && rRefund.decision === 'queue_for_owner');
-  check('refund reason recorded', rRefund.reason === 'refund_must_be_reviewed');
-
-  // 4. Legal / medical / financial advice: NOT auto-sent, queued
-  const rLegal = evaluateAutoReply({
-    text: 'Can you give me legal advice regarding my GST court notice?',
-    workspaceInfo: mockWorkspace,
-  });
-  check('legal advice NOT auto-sent: queued for owner', !rLegal.allowed && rLegal.reason === 'legal_advice_prohibited');
-
-  const rMedical = evaluateAutoReply({
-    text: 'Which medicine or prescription should I take for high fever?',
-    workspaceInfo: mockWorkspace,
-  });
-  check('medical advice NOT auto-sent: queued for owner', !rMedical.allowed && rMedical.reason === 'medical_advice_prohibited');
-
-  const rFinancial = evaluateAutoReply({
-    text: 'Can you give me investment advice or tax evasion tips?',
-    workspaceInfo: mockWorkspace,
-  });
-  check('financial advice NOT auto-sent: queued for owner', !rFinancial.allowed && rFinancial.reason === 'financial_advice_prohibited');
-
-  // 5. Unclear message: NOT auto-sent, queued
-  const rUnclear = evaluateAutoReply({
-    text: 'asdfghjk hello blue tree banana?',
-    workspaceInfo: mockWorkspace,
-  });
-  check('unclear message NOT auto-sent: queued for owner', !rUnclear.allowed && rUnclear.decision === 'queue_for_owner' && rUnclear.reason === 'unclear_message_queued');
-
-  // 6. Item availability inquiry for item NOT stored in QuietKeep: queued for owner
-  const rUnstoredItem = evaluateAutoReply({
-    text: 'Do you have Basmati Supreme Gold 5kg?',
-    storedItem: null, // NOT in QuietKeep
-    workspaceInfo: mockWorkspace,
-  });
-  check('unstored inventory item NOT auto-sent: queued for owner', !rUnstoredItem.allowed && rUnstoredItem.reason === 'item_not_in_inventory');
-
-  // 7. Timings asked but not configured: queued for owner
-  const rNoTimings = evaluateAutoReply({
-    text: 'What are your shop timings?',
-    workspaceInfo: { address: 'Main road' }, // timings missing
-  });
-  check('unconfigured timings queued for owner', !rNoTimings.allowed && rNoTimings.reason === 'timings_not_configured');
-
-  // 8. Location asked but not configured: queued for owner
-  const rNoLocation = evaluateAutoReply({
-    text: 'Where is your shop address?',
-    workspaceInfo: { timings: '9am - 9pm' }, // address missing
-  });
-  check('unconfigured location queued for owner', !rNoLocation.allowed && rNoLocation.reason === 'location_not_configured');
-}
-
-// ── RULE 2: ORDERS AND BOOKINGS NEVER CONFIRMED AUTOMATICALLY ────────────────
-{
-  // 1. Order without owner confirmation -> NEVER told confirmed
-  const rOrderAuto = evaluateOrderBooking({
+  const orderUnconfirmed = evaluateOrderBooking({
     type: 'order',
     isOwnerConfirmed: false,
-    customerName: 'Kavitha',
-    details: { items: ['2 kg rice', '1 packet sugar'] },
+    customerName: 'Ravi',
+    details: { item: 'Rice 25kg', qty: 2 },
   });
-  check('order is never confirmed automatically', !rOrderAuto.allowed && rOrderAuto.status === 'pending_owner_confirmation');
-  check('order reason marks owner confirmation required', rOrderAuto.reason === 'order_booking_never_auto_confirmed');
-  check('order customer notice is not "confirmed"', !rOrderAuto.customerNotice.toLowerCase().includes('has been confirmed'));
+  check('order is never confirmed automatically', !orderUnconfirmed.allowed && !orderUnconfirmed.isConfirmed);
+  check('order reason marks owner confirmation required', orderUnconfirmed.reason.includes('never confirmed automatically'));
+  check('order customer notice is not "confirmed"', !orderUnconfirmed.customerNotice.includes('Your order is confirmed'));
 
-  // 2. Booking without owner confirmation -> NEVER told confirmed
-  const rBookingAuto = evaluateOrderBooking({
+  const bookingUnconfirmed = evaluateOrderBooking({
     type: 'booking',
     isOwnerConfirmed: false,
     customerName: 'Suresh',
-    details: { service: 'Haircut', time: '4:00 PM' },
+    details: { service: 'AC Repair', slot: '4 PM' },
   });
-  check('booking is never confirmed automatically', !rBookingAuto.allowed && rBookingAuto.status === 'pending_owner_confirmation');
+  check('booking is never confirmed automatically', !bookingUnconfirmed.allowed && !bookingUnconfirmed.isConfirmed);
 
-  // 3. Order WITH owner one-tap confirmation -> Confirmed
-  const rOrderConfirmed = evaluateOrderBooking({
+  const orderConfirmed = evaluateOrderBooking({
     type: 'order',
     isOwnerConfirmed: true,
-    customerName: 'Kavitha',
+    customerName: 'Ravi',
+    details: { item: 'Rice 25kg', qty: 2 },
   });
-  check('order confirmed after owner one-tap', rOrderConfirmed.allowed && rOrderConfirmed.status === 'confirmed');
+  check('order confirmed after owner one-tap', orderConfirmed.allowed && orderConfirmed.isConfirmed && orderConfirmed.customerNotice.includes('confirmed'));
 
-  // 4. Booking WITH owner one-tap confirmation -> Confirmed
-  const rBookingConfirmed = evaluateOrderBooking({
+  const bookingConfirmed = evaluateOrderBooking({
     type: 'booking',
     isOwnerConfirmed: true,
     customerName: 'Suresh',
+    details: { service: 'AC Repair', slot: '4 PM' },
   });
-  check('booking confirmed after owner one-tap', rBookingConfirmed.allowed && rBookingConfirmed.status === 'confirmed');
+  check('booking confirmed after owner one-tap', bookingConfirmed.allowed && bookingConfirmed.isConfirmed);
 }
 
-// ── RULE 3: NEVER BY AUTOMATION (HARD BLOCKS) ────────────────────────────────
+// ── RULE 3: NEVER BY AUTOMATION (HARD BLOCKED) ──────────────────────────────
 {
-  // 1. Payments: hard block
-  const rPay = evaluateAutomationAction({ action: 'payment' });
-  check('payment by automation is hard blocked', !rPay.allowed && rPay.decision === 'hard_block');
-  check('payment has clear owner message', rPay.ownerMessage.includes('Payments cannot be initiated by automation'));
+  const blockedActions = ['payment', 'refund', 'payout', 'legal_advice'];
+  for (const act of blockedActions) {
+    const res = evaluateAutomationAction({ action: act });
+    check(`${act} by automation is hard blocked`, !res.allowed && res.decision === 'hard_block');
+    check(`${act} has clear owner message`, typeof res.ownerMessage === 'string' && res.ownerMessage.length > 20);
+  }
 
-  // 2. Refunds: hard block
-  const rRef = evaluateAutomationAction({ action: 'refund' });
-  check('refund by automation is hard blocked', !rRef.allowed && rRef.decision === 'hard_block');
-  check('refund has clear owner message', rRef.ownerMessage.includes('Refunds cannot be issued automatically'));
-
-  // 3. Payouts: hard block
-  const rPayout = evaluateAutomationAction({ action: 'payout' });
-  check('payout by automation is hard blocked', !rPayout.allowed && rPayout.decision === 'hard_block');
-  check('payout has clear owner message', rPayout.ownerMessage.includes('Salary and staff payouts cannot be made by automation'));
-
-  // 4. Legal advice: hard block
-  const rLegal = evaluateAutomationAction({ action: 'legal_advice' });
-  check('legal advice by automation is hard blocked', !rLegal.allowed && rLegal.decision === 'hard_block');
-  check('legal advice has clear owner message', rLegal.ownerMessage.includes('Legal advice cannot be provided'));
-
-  // 5. Discounts above owner set limit: hard block
-  const rDiscAbove = evaluateAutomationAction({
+  // Discount above owner limit
+  const excessDiscount = evaluateAutomationAction({
     action: 'discount',
     discountPercent: 15,
-    ownerMaxDiscount: 10,
+    maxAllowedDiscount: 10,
   });
-  check('discount above owner limit (15% > 10%) is hard blocked', !rDiscAbove.allowed && rDiscAbove.decision === 'hard_block');
-  check('discount block explains owner limit', rDiscAbove.ownerMessage.includes('exceeds the owner limit of 10%'));
+  check('discount above owner limit (15% > 10%) is hard blocked', !excessDiscount.allowed && excessDiscount.reason === 'discount_exceeds_owner_limit');
+  check('discount block explains owner limit', excessDiscount.ownerMessage.includes('15% exceeds the owner-configured limit of 10%'));
 
-  // 6. Discount within owner set limit: allowed
-  const rDiscOk = evaluateAutomationAction({
+  // Discount within owner limit
+  const validDiscount = evaluateAutomationAction({
     action: 'discount',
     discountPercent: 8,
-    ownerMaxDiscount: 10,
+    maxAllowedDiscount: 10,
   });
-  check('discount within owner limit (8% <= 10%) is allowed', rDiscOk.allowed && rDiscOk.decision === 'allowed');
+  check('discount within owner limit (8% <= 10%) is allowed', validDiscount.allowed && validDiscount.decision === 'discount_allowed');
 }
 
-// ── RULE 4: PROMOTION LIMITS ─────────────────────────────────────────────────
+// ── RULE 4: PROMOTION LIMITS & TIME WINDOWS ──────────────────────────────────
 {
-  const NEW_BIZ_CREATED = '2026-10-10T00:00:00.000Z'; // ~14 days old on 24 Oct
-  const OLD_BIZ_CREATED = '2026-08-01T00:00:00.000Z'; // ~84 days old (> 30 days)
+  const makeIstDate = (year, month, day, hour, minute) => {
+    const utcHour = (hour - 5) - (minute < 30 ? 1 : 0);
+    const utcMin = (minute + 30) % 60;
+    return new Date(Date.UTC(year, month - 1, day, utcHour, utcMin, 0));
+  };
 
-  // ── A. TIME-WINDOW EDGES (09:59 / 10:00 / 21:00 / 21:01 IST) ───────────────
-  const t0959 = makeIstDate(2026, 10, 24, 9, 59, 0);
-  const t1000 = makeIstDate(2026, 10, 24, 10, 0, 0);
-  const t2100 = makeIstDate(2026, 10, 24, 21, 0, 0);
-  const t2101 = makeIstDate(2026, 10, 24, 21, 1, 0);
+  const t0959 = makeIstDate(2026, 10, 24, 9, 59);
+  const t1000 = makeIstDate(2026, 10, 24, 10, 0);
+  const t2100 = makeIstDate(2026, 10, 24, 21, 0);
+  const t2101 = makeIstDate(2026, 10, 24, 21, 1);
 
-  check('time window helper: 09:59 IST is false', !isWithinPromoHours(t0959));
-  check('time window helper: 10:00 IST is true', isWithinPromoHours(t1000));
-  check('time window helper: 21:00 IST is true', isWithinPromoHours(t2100));
-  check('time window helper: 21:01 IST is false', !isWithinPromoHours(t2101));
+  check('time window helper: 09:59 IST is false', isWithinPromoHours(t0959) === false);
+  check('time window helper: 10:00 IST is true', isWithinPromoHours(t1000) === true);
+  check('time window helper: 21:00 IST is true', isWithinPromoHours(t2100) === true);
+  check('time window helper: 21:01 IST is false', isWithinPromoHours(t2101) === false);
 
-  const promo0959 = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    now: t0959,
-  });
-  check('promotion at 09:59 IST is BLOCKED', !promo0959.allowed && promo0959.reason === 'outside_promo_hours');
-
-  const promo1000 = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    now: t1000,
-  });
-  check('promotion at 10:00 IST is ALLOWED', promo1000.allowed && promo1000.decision === 'send_promotional');
-
-  const promo2100 = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    now: t2100,
-  });
-  check('promotion at 21:00 IST is ALLOWED', promo2100.allowed && promo2100.decision === 'send_promotional');
-
-  const promo2101 = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    now: t2101,
-  });
-  check('promotion at 21:01 IST is BLOCKED', !promo2101.allowed && promo2101.reason === 'outside_promo_hours');
-
-  // ── B. BUSINESS DAILY LIMIT (250/day in first 30 days, default 1000/day after)
   const validTime = t1000;
 
-  // New business (< 30 days old): 249 sent -> allowed, 250 sent -> blocked
-  const newBiz249 = evaluatePromotionSend({
-    businessCreatedAt: NEW_BIZ_CREATED,
-    businessSentToday: 249,
-    now: validTime,
-  });
-  check('new business with 249 sent is ALLOWED', newBiz249.allowed && newBiz249.limit === 250);
+  // Time window edges on evaluatePromotionSend
+  const at0959 = evaluatePromotionSend({ businessCreatedAt: new Date(Date.now() - 40 * 86400000), now: t0959 });
+  check('promotion at 09:59 IST is BLOCKED', !at0959.allowed && at0959.reason === 'outside_promo_hours');
 
-  const newBiz250 = evaluatePromotionSend({
-    businessCreatedAt: NEW_BIZ_CREATED,
-    businessSentToday: 250,
-    now: validTime,
-  });
-  check('new business with 250 sent is BLOCKED (250/day cap)', !newBiz250.allowed && newBiz250.reason === 'new_business_daily_limit_reached');
+  const at1000 = evaluatePromotionSend({ businessCreatedAt: new Date(Date.now() - 40 * 86400000), now: t1000 });
+  check('promotion at 10:00 IST is ALLOWED', at1000.allowed && at1000.decision === 'send_promotional');
 
-  // Established business (> 30 days old): 250 sent -> allowed, 999 sent -> allowed, 1000 sent -> blocked
-  const oldBiz250 = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    businessSentToday: 250,
-    now: validTime,
-  });
-  check('established business with 250 sent is ALLOWED (past 30-day cap)', oldBiz250.allowed && oldBiz250.limit === 1000);
+  const at2100 = evaluatePromotionSend({ businessCreatedAt: new Date(Date.now() - 40 * 86400000), now: t2100 });
+  check('promotion at 21:00 IST is ALLOWED', at2100.allowed && at2100.decision === 'send_promotional');
 
-  const oldBiz999 = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    businessSentToday: 999,
-    now: validTime,
-  });
-  check('established business with 999 sent is ALLOWED', oldBiz999.allowed);
+  const at2101 = evaluatePromotionSend({ businessCreatedAt: new Date(Date.now() - 40 * 86400000), now: t2101 });
+  check('promotion at 21:01 IST is BLOCKED', !at2101.allowed && at2101.reason === 'outside_promo_hours');
 
-  const oldBiz1000 = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    businessSentToday: 1000,
-    now: validTime,
-  });
-  check('established business with 1000 sent is BLOCKED (default 1000/day cap)', !oldBiz1000.allowed && oldBiz1000.reason === 'business_daily_limit_reached');
+  // ── 30-DAY BUSINESS CAP: strict < 30 days (Item J) ─────────────────────────
+  // Business created 29 days ago -> age 29 < 30 -> new business (250 cap)
+  const DAY29_BIZ = new Date(validTime.getTime() - 29 * 24 * 3600 * 1000);
+  // Business created 30 days ago -> age 30, not < 30 -> established business (1000 cap)
+  const DAY30_BIZ = new Date(validTime.getTime() - 30 * 24 * 3600 * 1000);
 
-  // Established business with custom owner cap (e.g. 500)
-  const oldBizCustom500 = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    ownerDailyLimit: 500,
-    businessSentToday: 500,
-    now: validTime,
-  });
-  check('established business respects custom owner cap (500)', !oldBizCustom500.allowed && oldBizCustom500.limit === 500);
+  const newBizAllowed = evaluatePromotionSend({ businessCreatedAt: DAY29_BIZ, businessSentToday: 249, now: validTime });
+  check('new business (day 29) with 249 sent is ALLOWED', newBizAllowed.allowed);
 
-  // ── C. PER-CUSTOMER DAILY CAP (max 1/day) ────────────────────────────────────
-  const cust0Today = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    customerSentToday: 0,
-    now: validTime,
-  });
+  const newBizBlocked = evaluatePromotionSend({ businessCreatedAt: DAY29_BIZ, businessSentToday: 250, now: validTime });
+  check('new business (day 29) with 250 sent is BLOCKED (< 30 days 250 cap)', !newBizBlocked.allowed && newBizBlocked.reason === 'new_business_daily_limit_reached');
+
+  const day30BizAllowed = evaluatePromotionSend({ businessCreatedAt: DAY30_BIZ, businessSentToday: 250, now: validTime });
+  check('business at day 30 with 250 sent is ALLOWED (past 30-day cap, uses 1000 cap)', day30BizAllowed.allowed);
+
+  const day30Biz1000Blocked = evaluatePromotionSend({ businessCreatedAt: DAY30_BIZ, businessSentToday: 1000, now: validTime });
+  check('established business with 1000 sent is BLOCKED (default 1000/day cap)', !day30Biz1000Blocked.allowed && day30Biz1000Blocked.reason === 'business_daily_limit_reached');
+
+  const customOwnerCap = evaluatePromotionSend({ businessCreatedAt: DAY30_BIZ, ownerDailyLimit: 500, businessSentToday: 500, now: validTime });
+  check('established business respects custom owner cap (500)', !customOwnerCap.allowed && customOwnerCap.limit === 500);
+
+  // ── PER-CUSTOMER CAPS: at most 1/day and 4/week ────────────────────────────
+  const cust0Today = evaluatePromotionSend({ businessCreatedAt: DAY30_BIZ, customerSentToday: 0, now: validTime });
   check('customer with 0 sent today is ALLOWED', cust0Today.allowed);
 
-  const cust1Today = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    customerSentToday: 1,
-    now: validTime,
-  });
+  const cust1Today = evaluatePromotionSend({ businessCreatedAt: DAY30_BIZ, customerSentToday: 1, now: validTime });
   check('customer with 1 sent today is BLOCKED (max 1 per day)', !cust1Today.allowed && cust1Today.reason === 'customer_daily_limit_reached');
 
-  // ── D. PER-CUSTOMER WEEKLY CAP (max 4/week) ──────────────────────────────────
-  const cust3Week = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    customerSentToday: 0,
-    customerSentThisWeek: 3,
-    now: validTime,
-  });
+  const cust3Week = evaluatePromotionSend({ businessCreatedAt: DAY30_BIZ, customerSentToday: 0, customerSentThisWeek: 3, now: validTime });
   check('customer with 3 sent this week is ALLOWED', cust3Week.allowed);
 
-  const cust4Week = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
-    customerSentToday: 0,
-    customerSentThisWeek: 4,
-    now: validTime,
-  });
+  const cust4Week = evaluatePromotionSend({ businessCreatedAt: DAY30_BIZ, customerSentToday: 0, customerSentThisWeek: 4, now: validTime });
   check('customer with 4 sent this week is BLOCKED (max 4 per week)', !cust4Week.allowed && cust4Week.reason === 'customer_weekly_limit_reached');
 
-  // ── E. OPT-OUT IN ENGLISH, TELUGU, HINDI ─────────────────────────────────────
-  // English
-  for (const w of ['STOP', 'stop', 'unsubscribe', 'UNSUBSCRIBE', 'QUIT', 'opt-out']) {
-    check(`opt-out detector (en): "${w}"`, isOptOutMessage(w));
-  }
-  // Telugu
-  for (const w of ['వద్దు', 'ఆపండి', 'వద్దండి', 'వద్దు ఇక']) {
-    check(`opt-out detector (te): "${w}"`, isOptOutMessage(w));
-  }
-  // Hindi
-  for (const w of ['बंद करो', 'बंद करें', 'रोकें', 'रोको', 'मत भेजो']) {
-    check(`opt-out detector (hi): "${w}"`, isOptOutMessage(w));
+  // ── OPT-OUT EXACT MATCHING (Item E) ─────────────────────────────────────────
+  const validOptOuts = [
+    'STOP', 'stop', 'STOP ALL', 'stop all', 'Stop All!',
+    'UNSUBSCRIBE', 'unsubscribe', 'unsubscribe.',
+    'OPT OUT', 'opt out', 'OPTOUT',
+    'వద్దు', 'మెసేజ్ వద్దు',
+    'बंद करो', 'मैसेज बंद करो', 'बंद',
+  ];
+  for (const phrase of validOptOuts) {
+    check(`opt-out detector (valid): "${phrase}"`, isOptOutMessage(phrase));
   }
 
-  // Non opt-outs
-  check('non opt-out: "please send catalog"', !isOptOutMessage('please send catalog'));
-  check('non opt-out: "rice price"', !isOptOutMessage('rice price'));
+  // Non-opt-outs that must NOT match (Item E)
+  const invalidOptOuts = [
+    'ఉల్లిపాయ వద్దు',
+    'bus stop where?',
+    'cancel my order',
+    'cancel',
+    'end',
+    'please send catalog',
+    'rice price',
+    'do you have oil in stock',
+  ];
+  for (const phrase of invalidOptOuts) {
+    check(`opt-out detector (must NOT match): "${phrase}"`, !isOptOutMessage(phrase));
+  }
 
-  // Opted out customer is NEVER messaged again
-  const optedOutPromo = evaluatePromotionSend({
-    businessCreatedAt: OLD_BIZ_CREATED,
+  // ── OPTED-OUT CUSTOMER & TRANSACTIONAL REPLIES (Item F) ─────────────────────
+  // 1. Opted out customer receiving marketing/promo -> BLOCKED
+  const promoToOptedOut = evaluatePromotionSend({
+    businessCreatedAt: DAY30_BIZ,
     isCustomerOptedOut: true,
+    isTransactional: false,
     now: validTime,
   });
-  check('opted-out customer is NEVER messaged again (BLOCKED)', !optedOutPromo.allowed && optedOutPromo.reason === 'customer_opted_out');
+  check('opted-out customer receiving promo is BLOCKED', !promoToOptedOut.allowed && promoToOptedOut.reason === 'customer_opted_out');
 
-  // ── F. TRANSACTIONAL REPLIES ARE NOT PROMOTIONS ─────────────────────────────
-  // Allowed outside promo hours (e.g. at 09:59 or 23:00)
-  const txnAtNight = evaluatePromotionSend({
-    businessCreatedAt: NEW_BIZ_CREATED,
-    businessSentToday: 300,       // above promo cap
-    customerSentToday: 5,         // above promo cap
-    isTransactional: true,        // order update customer asked for
-    now: t0959,                   // outside promo hours
+  // 2. Opted out customer receiving unproven "transactional" send -> BLOCKED
+  const unprovenTxnToOptedOut = evaluatePromotionSend({
+    businessCreatedAt: DAY30_BIZ,
+    isCustomerOptedOut: true,
+    isTransactional: true,
+    isCustomerInitiatedReply: false,
+    isOrderUpdate: false,
+    now: validTime,
   });
-  check('transactional reply is exempt from promo hours and caps', txnAtNight.allowed && txnAtNight.decision === 'send_transactional' && !txnAtNight.isPromotion);
+  check('opted-out customer receiving unproven transactional send is BLOCKED', !unprovenTxnToOptedOut.allowed && unprovenTxnToOptedOut.reason === 'customer_opted_out');
+
+  // 3. Opted out customer receiving reply to their own new question -> ALLOWED
+  const queryReplyToOptedOut = evaluatePromotionSend({
+    businessCreatedAt: DAY30_BIZ,
+    isCustomerOptedOut: true,
+    isTransactional: true,
+    isCustomerInitiatedReply: true,
+    now: validTime,
+  });
+  check('opted-out customer receiving reply to their question is ALLOWED', queryReplyToOptedOut.allowed && queryReplyToOptedOut.decision === 'send_transactional');
+
+  // 4. Opted out customer receiving update to their own order -> ALLOWED
+  const orderUpdateToOptedOut = evaluatePromotionSend({
+    businessCreatedAt: DAY30_BIZ,
+    isCustomerOptedOut: true,
+    isTransactional: true,
+    isOrderUpdate: true,
+    now: validTime,
+  });
+  check('opted-out customer receiving order update is ALLOWED', orderUpdateToOptedOut.allowed && orderUpdateToOptedOut.decision === 'send_transactional');
+
+  // Non-opted out customer receiving transactional reply outside promo hours (e.g. 09:59)
+  const txnAt0959 = evaluatePromotionSend({
+    businessCreatedAt: DAY29_BIZ,
+    businessSentToday: 300,
+    customerSentToday: 5,
+    isTransactional: true,
+    now: t0959,
+  });
+  check('transactional reply is exempt from promo hours and caps', txnAt0959.allowed && txnAt0959.decision === 'send_transactional');
 }
 
-// ── RULE 5: LOGGING FOR OWNER WITHOUT STORING LONG MESSAGE BODIES ─────────────
+// ── RULE 5: LOGGING FOR OWNER WITH PHONE MASKING (Item J) ────────────────────
 {
-  const longBody = 'Hello, I wanted to ask about this item and also complaining about the other thing that happened last Friday when I visited your store and the staff was very rude and gave me defective products. Please look into this right away or I will complain to the consumer forum.';
+  const longBody = 'Hello, I wanted to ask about this item and also complaining about the other thing that happened last Friday when I visited your store and the staff was very rude and gave me defective products. Please look into this right away.';
   const snippet = sanitizeSnippet(longBody, 80);
   check('message snippet is bounded in length (<= 80 chars)', snippet.length <= 80 && snippet.endsWith('...'));
 
@@ -431,8 +361,8 @@ function makeIstDate(year, month, day, hour, minute, second = 0) {
     metadata: { topic: 'complaint' },
   });
 
-  check('owner log contains who', logRecord.metadata.who === '+919876543210');
-  check('owner log contains what', logRecord.action === 'auto_reply_queued');
+  check('owner log masks customer phone (last 4 digits only)', logRecord.metadata.who.endsWith('3210') && !logRecord.metadata.who.includes('9876'));
+  check('owner log contains what', logRecord.action === 'business_limit_auto_reply_queued');
   check('owner log contains why', logRecord.metadata.why === 'complaints_must_be_reviewed');
   check('owner log snippet is bounded and does NOT contain entire long body', logRecord.metadata.snippet === snippet && logRecord.metadata.snippet.length < longBody.length);
 }

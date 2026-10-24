@@ -38,6 +38,7 @@ export default function BizDashboardPage() {
   const [savingVoice, setSavingVoice] = useState(false);
   const [voiceMsg, setVoiceMsg]       = useState('');
   const [openLoopCount, setOpenLoopCount] = useState(0);
+  const [approvals, setApprovals]         = useState([]);
 
   useEffect(() => {
     if (authLoading) return; // wait for auth context to resolve
@@ -89,11 +90,24 @@ export default function BizDashboardPage() {
       lowStockCount:     (inventory.data || []).filter(i => parseFloat(i.current_stock) <= parseFloat(i.min_stock_alert)).length,
       complianceUrgent:  compliance.count || (compliance.data || []).length,
     });
+    const { data: apprs } = await supabase.from('business_approvals').select('*').eq('workspace_id', wsId).eq('status', 'pending').order('created_at', { ascending: false });
+    setApprovals(apprs || []);
+
     const { data: recent } = await supabase.from('business_ledger')
       .select('entry_type,party_name,amount,description,transaction_date,payment_method')
       .eq('workspace_id', wsId)
       .order('created_at', { ascending: false }).limit(5);
     setRecentLedger(recent || []);
+  }
+
+  async function handleApprovalAction(approvalId, action, editedMsg) {
+    const token = accessToken || (await supabase.auth.getSession())?.data?.session?.access_token;
+    await fetch('/api/business/approvals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ approval_id: approvalId, action, edited_message: editedMsg }),
+    });
+    setApprovals(prev => prev.filter(a => a.id !== approvalId));
   }
 
   function startVoice() {
@@ -325,6 +339,56 @@ export default function BizDashboardPage() {
               placeholder="Or type here..." className="qk-input" style={{ fontSize: 13 }} />
           </div>
         </div>
+
+        {/* Pending Inbound Approvals (One-tap Send / Edit / Ignore, Rule 1 & 2) */}
+        {approvals.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>🔔 Pending Inquiries & Orders</span>
+              <span style={{ background: '#ef4444', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>
+                {approvals.length}
+              </span>
+            </div>
+            {approvals.map(a => (
+              <div key={a.id} className="qk-card" style={{ padding: '12px 14px', marginBottom: 8, border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: G }}>
+                    {a.action_type === 'business_order_confirm' || a.payload?.what === 'order_request' ? '📦 Order Request' : '💬 Customer Inquiry'}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>
+                    {a.payload?.who || a.payload?.customerPhone || 'Customer'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>
+                  {a.payload?.snippet || a.payload?.rawMessage || 'Inbound message'}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => handleApprovalAction(a.id, a.action_type === 'business_order_confirm' ? 'confirm' : 'send')}
+                    className="qk-btn qk-btn-sm"
+                    style={{ background: G, color: '#fff', border: 'none', padding: '4px 10px', fontSize: 12 }}>
+                    ✓ {a.action_type === 'business_order_confirm' ? 'Confirm Order' : 'Send Reply'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const edit = prompt('Edit reply to customer:', a.payload?.suggested_reply || '');
+                      if (edit !== null) handleApprovalAction(a.id, 'edit', edit);
+                    }}
+                    className="qk-btn qk-btn-sm"
+                    style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '4px 10px', fontSize: 12 }}>
+                    ✏️ Edit
+                  </button>
+                  <button
+                    onClick={() => handleApprovalAction(a.id, 'ignore')}
+                    className="qk-btn qk-btn-sm"
+                    style={{ background: 'transparent', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', padding: '4px 10px', fontSize: 12 }}>
+                    ✕ Ignore
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Recent ledger */}
         {recentLedger.length > 0 && (

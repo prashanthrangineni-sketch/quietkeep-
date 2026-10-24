@@ -1,6 +1,6 @@
 // src/app/api/whatsapp/webhook/route.js
-// Twilio WhatsApp inbound — handles BOTH text keeps AND image/invoice OCR
-// Setup: Twilio Console → WhatsApp Sandbox → Webhook URL: https://quietkeep.com/api/whatsapp/webhook
+// Twilio WhatsApp inbound — handles BOTH business customer auto-reply/opt-out AND personal keeps OCR
+// Setup: Twilio Console -> WhatsApp Sandbox -> Webhook URL: https://quietkeep.com/api/whatsapp/webhook
 
 import { createClient } from '@supabase/supabase-js';
 import { askModel, isConfigured } from '@/lib/llm';
@@ -13,12 +13,9 @@ import {
   evaluateOrderBooking,
   queueForOwnerReview,
   ALLOWED_AUTOREPLY_TOPICS,
+  normalizePhoneNumber,
 } from '@/lib/business-limits';
 
-// ── Twilio request signature validation (X-Twilio-Signature) ─────────────────
-// Twilio signs: the exact configured webhook URL, then each POST param appended
-// as key+value in alphabetical key order, HMAC-SHA1 with the account auth token,
-// base64-encoded. We reject anything that doesn't match (fail closed).
 function validateTwilioSignature(url, params, signature, authToken) {
   if (!authToken || !signature) return false;
   const data = Object.keys(params).sort().reduce((acc, k) => acc + k + params[k], url);
@@ -49,17 +46,12 @@ function twimlResponse(msg) {
 async function extractInvoiceData(mediaUrl, mediaContentType) {
   if (!isConfigured() || !mediaUrl) return null;
   try {
-    // Fetch the image and convert to base64
     const imgRes = await fetch(mediaUrl);
     if (!imgRes.ok) return null;
     const arrayBuffer = await imgRes.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString('base64');
     const mimeType = mediaContentType || 'image/jpeg';
 
-    // Carries an image, so askModel routes this down the VISION chain rather
-    // than the free-text one. Free text models cannot see, and the dangerous
-    // failure is not an error -- it is a model confidently describing an
-    // invoice it never received.
     const prompt = `Extract product information from this invoice/receipt image. Return ONLY a JSON object with these exact keys (use null if not found):
 {
   "name": "product name",
@@ -105,47 +97,148 @@ export async function POST(req) {
     }
 
     const from = params.From || '';
+    const to = params.To || '';
     const body = (params.Body || '').trim();
-    const phone = from.replace('whatsapp:', '');
     const numMedia = parseInt(params.NumMedia || '0');
     const mediaUrl = params.MediaUrl0;
     const mediaContentType = params.MediaContentType0 || 'image/jpeg';
     const messageSid = params.MessageSid;
 
-    if (!phone) return twimlResponse('❌ Could not identify sender.');
+    const customerPhone = normalizePhoneNumber(from);
+    const receivingPhone = normalizePhoneNumber(to);
+
+    if (!customerPhone) return twimlResponse('❌ Could not identify sender.');
+
+    // ── RESOLVE RECEIVING BUSINESS WORKSPACE (Item C & D) ──────────────────────
+    let workspace = null;
+    if (receivingPhone) {
+      const { data: wsByPhone } = await supabase
+        .from('business_workspaces')
+        .select('id, owner_user_id, name, address, timings, phone')
+        .eq('phone', receivingPhone)
+        .maybeSingle();
+
+      workspace = wsByPhone;
+
+      if (!workspace) {
+        const { data: sess } = await supabase
+          .from('whatsapp_sessions')
+          .select('user_id')
+          .eq('phone_number', receivingPhone)
+          .maybeSingle();
+
+        if (sess?.user_id) {
+          const { data: wsByUser } = await supabase
+            .from('business_workspaces')
+            .select('id, owner_user_id, name, address, timings, phone')
+            .eq('owner_user_id', sess.user_id)
+            .maybeSingle();
+          workspace = wsByUser;
+        }
+      }
+    }
 
     // ── CARD AG-AARIA-25: Check Customer Opt-Out (STOP / "వద్దు" / "बंद करो") ──
     if (isOptOutMessage(body)) {
+      if (workspace) {
+        await recordCustomerOptOutInDb(supabase, workspace.id, customerPhone, null, body);
+      }
+      // Record opt-out for any workspace that has this customer on record
       const { data: custs } = await supabase
         .from('business_customers')
         .select('workspace_id, id')
-        .or('phone.eq.' + phone + ',phone.eq.+' + phone);
+        .eq('phone', customerPhone);
 
-      if (custs && custs.length > 0) {
-        for (const c of custs) {
-          await recordCustomerOptOutInDb(supabase, c.workspace_id, phone, c.id, body);
-        }
+      for (const c of (custs || [])) {
+        await recordCustomerOptOutInDb(supabase, c.workspace_id, customerPhone, c.id, body);
       }
       return twimlResponse('You have been unsubscribed from promotional messages (STOP / వద్దు / बंद करो). You will not be messaged again.');
     }
 
-    // Find linked user
+    // ── CARD AG-AARIA-25: Business Inbound Auto-reply & Order Review ──────────
+    if (workspace && numMedia === 0) {
+      const topic = classifyInboundTopic(body);
+
+      if (topic === 'order_request' || topic === 'booking_request') {
+        const orderEval = evaluateOrderBooking({
+          type: topic,
+          isOwnerConfirmed: false,
+          customerName: customerPhone,
+          details: { text: body },
+        });
+        await queueForOwnerReview(supabase, {
+          workspaceId: workspace.id,
+          userId: workspace.owner_user_id,
+          who: customerPhone,
+          what: topic,
+          why: orderEval.reason,
+          rawMessage: body,
+          actions: orderEval.actions,
+        });
+        return twimlResponse(orderEval.customerNotice);
+      }
+
+      if (ALLOWED_AUTOREPLY_TOPICS.has(topic)) {
+        const autoEval = evaluateAutoReply({
+          topic,
+          text: body,
+          workspaceInfo: { address: workspace.address, timings: workspace.timings },
+        });
+
+        if (autoEval.allowed && autoEval.suggestedReply) {
+          return twimlResponse(autoEval.suggestedReply);
+        }
+
+        // Unconfigured information -> queue for owner
+        await queueForOwnerReview(supabase, {
+          workspaceId: workspace.id,
+          userId: workspace.owner_user_id,
+          who: customerPhone,
+          what: topic,
+          why: autoEval.reason,
+          rawMessage: body,
+          actions: autoEval.actions,
+        });
+        return twimlResponse('Thanks for reaching out! Your question has been forwarded to the shop owner who will respond shortly.');
+      }
+
+      // Complaints, negotiations, refunds, legal/medical/financial advice, unclear
+      const autoEval = evaluateAutoReply({
+        topic,
+        text: body,
+        workspaceInfo: { address: workspace.address, timings: workspace.timings },
+      });
+      await queueForOwnerReview(supabase, {
+        workspaceId: workspace.id,
+        userId: workspace.owner_user_id,
+        who: customerPhone,
+        what: topic,
+        why: autoEval.reason,
+        rawMessage: body,
+        actions: autoEval.actions,
+      });
+      return twimlResponse('Thanks for reaching out! Your message has been received and the owner will respond shortly.');
+    }
+
+    // ── PERSONAL KEEPS & LINKED SESSIONS FLOW ─────────────────────────────────
     const { data: session } = await supabase
       .from('whatsapp_sessions')
       .select('user_id, session_state')
-      .eq('phone_number', phone)
+      .eq('phone_number', customerPhone)
       .maybeSingle();
 
     if (!session?.user_id) {
-      await supabase.from('whatsapp_sessions').upsert({
-        phone_number: phone,
+      const { error: upsertErr } = await supabase.from('whatsapp_sessions').upsert({
+        phone_number: customerPhone,
         session_state: 'unlinked',
         last_message: body || '[image]',
         last_message_at: new Date().toISOString(),
       }, { onConflict: 'phone_number' });
+      if (upsertErr) console.error('[whatsapp-webhook] session upsert error:', upsertErr.message);
+
       return twimlResponse(
         '👋 Hi! To use QuietKeep via WhatsApp, link your number first:\n' +
-        '1. Go to quietkeep.com → Settings\n' +
+        '1. Go to quietkeep.com -> Settings\n' +
         '2. Under "WhatsApp", enter your number\n' +
         '3. Then send any message here!\n\n' +
         'Send your invoice photos here after linking to auto-add to Warranty Wallet 📸'
@@ -153,36 +246,33 @@ export async function POST(req) {
     }
 
     // Update session
-    await supabase.from('whatsapp_sessions').update({
+    const { error: sessUpdErr } = await supabase.from('whatsapp_sessions').update({
       last_message: body || '[image]',
       last_message_at: new Date().toISOString(),
       session_state: 'active',
-    }).eq('phone_number', phone);
+    }).eq('phone_number', customerPhone);
+    if (sessUpdErr) console.error('[whatsapp-webhook] session update error:', sessUpdErr.message);
 
     const userId = session.user_id;
 
-    // ── IMAGE: Invoice OCR flow ────────────────────────────────
+    // ── IMAGE: Invoice OCR flow ───────────────────────────────────────────────
     if (numMedia > 0 && mediaUrl) {
-      // Queue the OCR job
       await supabase.from('whatsapp_ocr_queue').insert({
         user_id: userId,
-        phone_number: phone,
+        phone_number: customerPhone,
         twilio_message_sid: messageSid,
         media_url: mediaUrl,
         media_content_type: mediaContentType,
         status: 'processing',
       });
 
-      // Process immediately (Edge runtime allows this)
       const extracted = await extractInvoiceData(mediaUrl, mediaContentType);
 
       if (extracted && extracted.name) {
-        // Calculate cost per day
         const costPerDay = extracted.purchase_price && extracted.purchase_date
           ? parseFloat((extracted.purchase_price / Math.max(1, Math.floor((Date.now() - new Date(extracted.purchase_date)) / 86400000))).toFixed(4))
           : null;
 
-        // Calculate warranty expiry
         let warrantyExpiry = null;
         if (extracted.purchase_date && extracted.warranty_years) {
           const exp = new Date(extracted.purchase_date);
@@ -207,7 +297,6 @@ export async function POST(req) {
           invoice_text: JSON.stringify(extracted),
         }).select().single();
 
-        // Update OCR queue record
         if (product) {
           await supabase.from('whatsapp_ocr_queue').update({
             status: 'done',
@@ -230,7 +319,6 @@ export async function POST(req) {
           `View at: quietkeep.com/warranty`
         );
       } else {
-        // OCR failed — update queue
         await supabase.from('whatsapp_ocr_queue').update({
           status: 'failed',
           error_message: 'Could not extract product data from image',
@@ -245,23 +333,21 @@ export async function POST(req) {
       }
     }
 
-    // ── TEXT: Handle commands + regular keep ──────────────────
+    // ── TEXT: Personal Keep commands ──────────────────────────────────────────
     const lowerBody = body.toLowerCase();
 
-    // Help command
     if (lowerBody === 'help' || lowerBody === '?') {
       return twimlResponse(
         '🤖 QuietKeep Commands:\n\n' +
-        '📝 Just type anything → saved as Keep\n' +
-        '📸 Send invoice photo → added to Warranty Wallet\n' +
-        '• "status" → your stats\n' +
-        '• "brief" → get today\'s brief link\n' +
-        '• "help" → this message\n\n' +
+        '📝 Just type anything -> saved as Keep\n' +
+        '📸 Send invoice photo -> added to Warranty Wallet\n' +
+        '• "status" -> your stats\n' +
+        '• "brief" -> get today\'s brief link\n' +
+        '• "help" -> this message\n\n' +
         'Visit: quietkeep.com'
       );
     }
 
-    // Status command
     if (lowerBody === 'status') {
       const [keepsRes, productsRes] = await Promise.all([
         supabase.from('keeps').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'open'),
@@ -275,56 +361,9 @@ export async function POST(req) {
       );
     }
 
-    // ── CARD AG-AARIA-25: Business Auto-reply & Order Limits ──────────────
-    const { data: ws } = await supabase
-      .from('business_workspaces')
-      .select('id, name, address')
-      .eq('owner_user_id', userId)
-      .maybeSingle();
-
-    if (ws) {
-      const topic = classifyInboundTopic(body);
-      if (topic === 'order' || topic === 'booking') {
-        const orderEval = evaluateOrderBooking({
-          type: topic,
-          isOwnerConfirmed: false,
-          customerName: phone,
-          details: { text: body },
-        });
-        await queueForOwnerReview(supabase, {
-          workspaceId: ws.id,
-          userId,
-          who: phone,
-          what: topic,
-          why: orderEval.reason,
-          rawMessage: body,
-          actions: orderEval.actions,
-        });
-        return twimlResponse('We have received your ' + topic + ' request and are confirming it shortly with the store owner.');
-      }
-
-      if (!ALLOWED_AUTOREPLY_TOPICS.has(topic)) {
-        const autoEval = evaluateAutoReply({
-          topic,
-          text: body,
-          workspaceInfo: { address: ws.address, timings: null },
-        });
-        await queueForOwnerReview(supabase, {
-          workspaceId: ws.id,
-          userId,
-          who: phone,
-          what: topic,
-          why: autoEval.reason,
-          rawMessage: body,
-          actions: autoEval.actions,
-        });
-        return twimlResponse('Thanks for reaching out! Your message has been received and the owner will respond shortly.');
-      }
-    }
-
-    // Regular text → Keep
+    // Regular text -> Keep
     const intentType = detectIntentType(body);
-    const { error } = await supabase.from('keeps').insert({
+    const { error: keepErr } = await supabase.from('keeps').insert({
       user_id: userId,
       content: body,
       status: 'open',
@@ -334,7 +373,7 @@ export async function POST(req) {
       is_pinned: false,
     });
 
-    if (error) return twimlResponse('❌ Could not save. Try again.');
+    if (keepErr) return twimlResponse('❌ Could not save. Try again.');
 
     const replies = {
       reminder: '⏰ Saved as reminder! Set the time at quietkeep.com/reminders',
@@ -348,11 +387,7 @@ export async function POST(req) {
     return twimlResponse(replies[intentType] || `✅ Saved as ${intentType}!`);
 
   } catch (err) {
-    console.error('[whatsapp webhook]', err);
-    return twimlResponse('❌ Error. Please try again.');
+    console.error('[whatsapp-webhook] Error:', err);
+    return twimlResponse('❌ Something went wrong. Try again.');
   }
-}
-
-export async function GET() {
-  return new Response('QuietKeep WhatsApp Webhook Active — with Invoice OCR', { status: 200 });
 }

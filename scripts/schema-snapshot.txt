@@ -28,7 +28,7 @@ business_members|access_role,basic_salary,created_at,daily_wage,date_of_joining,
 business_payments|amount,created_at,created_by,currency,customer_id,customer_name,id,note,paid_at,provider,provider_payment_id,provider_qr_id,qr_image_url,status,upi_ref,workspace_id
 business_promo_log|blocked_reason,created_at,customer_id,id,message_type,phone,sent_at,snippet,status,workspace_id
 business_tasks|assigned_to_member_id,completed_at,created_at,created_by,description,due_date,id,priority,status,tags,title,updated_at,workspace_id
-business_workspaces|address,business_type,created_at,daily_promo_limit,employee_count,financial_year_start,geo_tracking_enabled,gstin,id,logo_url,name,owner_user_id,pan,phone,plan,timezone,updated_at
+business_workspaces|address,business_type,created_at,daily_promo_limit,employee_count,financial_year_start,geo_tracking_enabled,gstin,id,logo_url,name,owner_user_id,pan,phone,plan,timings,timezone,updated_at
 calendar_events|calendar_type,category,color,created_at,description,event_date,event_name,event_type,hijri_day,hijri_month,id,is_annual,is_personal_event,is_public_holiday,keep_id,nakshatra,paksha,region,religion,reminder_time,source,state,tags,timezone,tithi,traditional_month,user_id
 compliance_reminders|amount_estimate,assigned_to,auto_generated,created_at,description,due_date,frequency,id,next_due,notes,priority,status,title,type,workspace_id
 connector_logs|connector_name,created_at,direction,duration_ms,id,request_summary,response_summary,status,user_id

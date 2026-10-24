@@ -8,6 +8,13 @@ import { hasAllClonedVoiceConsents } from '@/lib/cloned-voice-safeguards';
 const ELEVENLABS_API = 'https://api.elevenlabs.io/v1';
 const ALLOWED_TIERS  = ['pro', 'business', 'growth', 'enterprise'];
 
+function getServiceClient() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) return null;
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey);
+}
+
+
 function createBearerClient(req) {
   const auth  = (req.headers.get('Authorization') || '').trim();
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : auth;
@@ -40,9 +47,9 @@ export async function POST(request) {
   const voiceName = formData.get('voice_name') || `qk-${user.id.slice(0, 8)}`;
 
   // CARD AG-AARIA-24: Validate all 3 explicit consent permissions
-  const consentA = formData.get('consent_own_or_permitted') === 'true' || formData.get('consent_a') === 'true';
-  const consentB = formData.get('consent_no_deception') === 'true' || formData.get('consent_b') === 'true';
-  const consentC = formData.get('consent_in_app_labeled') === 'true' || formData.get('consent_c') === 'true';
+  const consentA = formData.get('consent_own_or_permitted') === 'true';
+  const consentB = formData.get('consent_no_deception') === 'true';
+  const consentC = formData.get('consent_in_app_labeled') === 'true';
 
   if (!hasAllClonedVoiceConsents({
     consent_own_or_permitted: consentA,
@@ -80,8 +87,9 @@ export async function POST(request) {
 
   if (!voiceId) return NextResponse.json({ error: 'ElevenLabs did not return a voice_id' }, { status: 502 });
 
+  const db = getServiceClient() || supabase;
   const now = new Date().toISOString();
-  const { error: settingsErr } = await supabase.from('user_settings').upsert({
+  const { error: settingsErr } = await db.from('user_settings').upsert({
     user_id: user.id,
     elevenlabs_voice_id: voiceId,
     voice_clone_consent: true,
@@ -97,7 +105,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to save consent settings: ' + settingsErr.message }, { status: 500 });
   }
 
-  const { error: consentErr } = await supabase.from('voice_profile_consents').upsert({
+  const { error: consentErr } = await db.from('voice_profile_consents').upsert({
     user_id: user.id,
     voice_id: voiceId,
     voice_name: voiceName,
@@ -112,7 +120,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to save consent record: ' + consentErr.message }, { status: 500 });
   }
 
-  await supabase.from('audit_log').insert({
+  await db.from('audit_log').insert({
     user_id: user.id,
     action: 'voice_clone_created',
     service: 'voice_clone',

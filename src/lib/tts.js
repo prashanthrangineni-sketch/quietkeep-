@@ -85,18 +85,23 @@ export async function speakAaria(text, { lang = 'hi-IN', authToken = null, quali
     window.__qkVisualCompanion = json.visual_companion;
   }
 
-  if (json?.audio) { await playAudioBuffer(base64ToArrayBuffer(json.audio)); return; }
-  if (json?.audio_url) { await playAudioUrl(json.audio_url); return; }
+  const meta = {
+    clonedVoice: Boolean(json?.cloned_voice),
+    voiceName: json?.voice_name || '',
+    lang,
+  };
+  if (json?.audio) { await playAudioBuffer(base64ToArrayBuffer(json.audio), meta); return; }
+  if (json?.audio_url) { await playAudioUrl(json.audio_url, false, meta); return; }
   throw new Error(`Aaria unavailable: ${json?.reason || 'no_audio'}`);
 }
 
 // ── Playback with interrupt support ─────────────────────────────────────────
-export function playAudioBuffer(buffer) {
+export function playAudioBuffer(buffer, meta = {}) {
   const blob = new Blob([buffer], { type: 'audio/mpeg' });
-  return playAudioUrl(URL.createObjectURL(blob), true);
+  return playAudioUrl(URL.createObjectURL(blob), true, meta);
 }
 
-export function playAudioUrl(url, revoke = false) {
+export function playAudioUrl(url, revoke = false, { clonedVoice = false, voiceName = '', lang = 'en' } = {}) {
   return new Promise((resolve, reject) => {
     interruptTTS();
     if (typeof window === 'undefined' || typeof Audio === 'undefined') {
@@ -109,13 +114,36 @@ export function playAudioUrl(url, revoke = false) {
     const audio = new Audio(url);
     window.__qkActiveAudio = audio;
     const cleanup = () => {
-      if (revoke) URL.revokeObjectURL(url);
+      if (revoke && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+        try { URL.revokeObjectURL(url); } catch {}
+      }
       window.__qkActiveAudio = null;
       setCustomVoiceSpeaking(false);
     };
     audio.onended = () => { cleanup(); resolve(); };
     audio.onerror = () => { cleanup(); reject(new Error('Playback failed')); };
-    audio.play().catch(err => { cleanup(); reject(err); });
+    try {
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise
+          .then(() => {
+            if (window.__qkActiveAudio === audio && clonedVoice) {
+              setCustomVoiceSpeaking(true, voiceName, lang);
+            }
+          })
+          .catch(err => {
+            cleanup();
+            reject(err);
+          });
+      } else {
+        if (clonedVoice) {
+          setCustomVoiceSpeaking(true, voiceName, lang);
+        }
+      }
+    } catch (err) {
+      cleanup();
+      reject(err);
+    }
   });
 }
 
@@ -161,15 +189,9 @@ export async function speak(
   // 1. Cloned-voice synthesis & Indic speech are routed safely through /api/voice/tts
   if (authToken) {
     try {
-      if (isCustomVoice) {
-        setCustomVoiceSpeaking(true, voiceName, lang);
-      }
       await speakAaria(text, { lang, authToken, qualityTier, purpose });
       return;
     } catch {
-      if (isCustomVoice) {
-        setCustomVoiceSpeaking(false);
-      }
       /* fall through to native / browser voices */
     }
   }

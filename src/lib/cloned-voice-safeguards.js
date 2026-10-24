@@ -12,32 +12,23 @@
 export const CLONED_VOICE_CONSENT_TEXTS = {
   en: {
     title: 'Consent for Custom AI Voice',
-    item_a: 'This is my own voice, or I have the clear permission of the person whose voice it is.',
-    item_b: 'I will not use this voice to deceive anyone or impersonate them outside QuietKeep.',
-    item_c: 'I understand QuietKeep plays this voice only inside this app, labelled as an AI voice, and that I can delete it any time.',
-    ownership: 'This is my own voice, or I have the clear permission of the person whose voice it is.',
-    no_deception: 'I will not use this voice to deceive anyone or impersonate them outside QuietKeep.',
-    in_app_ai_label: 'I understand QuietKeep plays this voice only inside this app, labelled as an AI voice, and that I can delete it any time.',
+    consent_own_or_permitted: 'This is my own voice, or I have the clear permission of the person whose voice it is.',
+    consent_no_deception: 'I will not use this voice to deceive anyone or impersonate them outside QuietKeep.',
+    consent_in_app_labeled: 'I understand QuietKeep plays this voice only inside this app, labelled as an AI voice, and that I can delete it any time.',
     all_required: 'All three permissions are required to use a custom voice.',
   },
   te: {
     title: 'కస్టమ్ AI వాయిస్ సమ్మతి',
-    item_a: 'ఇది నా స్వంత వాయిస్, లేదా దీని వాయిస్ ఉన్న వ్యక్తి నుండి నాకు స్పష్టమైన అనుమతి ఉంది.',
-    item_b: 'నేను ఈ వాయిస్‌ని ఎవరినీ మోసగించడానికి లేదా QuietKeep వెలుపల వేరే వ్యక్తిగా నటించడానికి ఉపయోగించను.',
-    item_c: 'QuietKeep ఈ వాయిస్‌ని కేవలం ఈ యాప్ లోపల మాత్రమే, AI వాయిస్‌గా లేబుల్ చేసి ప్లే చేస్తుందని మరియు నేను ఎప్పుడైనా దీన్ని తొలగించవచ్చని నేను అర్థం చేసుకున్నాను.',
-    ownership: 'ఇది నా స్వంత వాయిస్, లేదా దీని వాయిస్ ఉన్న వ్యక్తి నుండి నాకు స్పష్టమైన అనుమతి ఉంది.',
-    no_deception: 'నేను ఈ వాయిస్‌ని ఎవరినీ మోసగించడానికి లేదా QuietKeep వెలుపల వేరే వ్యక్తిగా నటించడానికి ఉపయోగించను.',
-    in_app_ai_label: 'QuietKeep ఈ వాయిస్‌ని కేవలం ఈ యాప్ లోపల మాత్రమే, AI వాయిస్‌గా లేబుల్ చేసి ప్లే చేస్తుందని మరియు నేను ఎప్పుడైనా దీన్ని తొలగించవచ్చని నేను అర్థం చేసుకున్నాను.',
+    consent_own_or_permitted: 'ఇది నా స్వంత వాయిస్, లేదా దీని వాయిస్ ఉన్న వ్యక్తి నుండి నాకు స్పష్టమైన అనుమతి ఉంది.',
+    consent_no_deception: 'నేను ఈ వాయిస్‌ని ఎవరినీ మోసగించడానికి లేదా QuietKeep వెలుపల వేరే వ్యక్తిగా నటించడానికి ఉపయోగించను.',
+    consent_in_app_labeled: 'QuietKeep ఈ వాయిస్‌ని కేవలం ఈ యాప్ లోపల మాత్రమే, AI వాయిస్‌గా లేబుల్ చేసి ప్లే చేస్తుందని మరియు నేను ఎప్పుడైనా దీన్ని తొలగించవచ్చని నేను అర్థం చేసుకున్నాను.',
     all_required: 'కస్టమ్ వాయిస్‌ని ఉపయోగించడానికి మూడు అనుమతులు తప్పనిసరి.',
   },
   hi: {
     title: 'कस्टम AI आवाज सहमति',
-    item_a: 'यह मेरी अपनी आवाज़ है, या मेरे पास उस व्यक्ति की स्पष्ट अनुमति है जिसकी यह आवाज़ है।',
-    item_b: 'मैं इस आवाज़ का उपयोग किसी को धोखा देने या QuietKeep के बाहर किसी अन्य व्यक्ति का रूप धारण करने के लिए नहीं करूँगा/करूँगी।',
-    item_c: 'मैं समझता/समझती हूँ कि QuietKeep इस आवाज़ को केवल इस ऐप के अंदर, AI आवाज़ के रूप में लेबल करके बजाता है, और मैं इसे कभी भी हटा सकता/सकती हूँ।',
-    ownership: 'यह मेरी अपनी आवाज़ है, या मेरे पास उस व्यक्ति की स्पष्ट अनुमति है जिसकी यह आवाज़ है।',
-    no_deception: 'मैं इस आवाज़ का उपयोग किसी को धोखा देने या QuietKeep के बाहर किसी अन्य व्यक्ति का रूप धारण करने के लिए नहीं करूँगा/करूँगी।',
-    in_app_ai_label: 'मैं समझता/समझती हूँ कि QuietKeep इस आवाज़ को केवल इस ऐप के अंदर, AI आवाज़ के रूप में लेबल करके बजाता है, और मैं इसे कभी भी हटा सकता/सकती हूँ।',
+    consent_own_or_permitted: 'यह मेरी अपनी आवाज़ है, या मेरे पास उस व्यक्ति की स्पष्ट अनुमति है जिसकी यह आवाज़ है।',
+    consent_no_deception: 'मैं इस आवाज़ का उपयोग किसी को धोखा देने या QuietKeep के बाहर किसी अन्य व्यक्ति का रूप धारण करने के लिए नहीं करूँगा/करूँगी।',
+    consent_in_app_labeled: 'मैं समझता/समझती हूँ कि QuietKeep इस आवाज़ को केवल इस ऐप के अंदर, AI आवाज़ के रूप में लेबल करके बजाता है, और मैं इसे कभी भी हटा सकता/सकती हूँ।',
     all_required: 'कस्टम आवाज का उपयोग करने के लिए तीनों अनुमतियाँ अनिवार्य हैं।',
   },
 };
@@ -48,10 +39,9 @@ export const CLONED_VOICE_CONSENT_TEXTS = {
 export function hasAllClonedVoiceConsents(consents) {
   if (!consents || typeof consents !== 'object') return false;
 
-  // Canonical route spelling: consent_own_or_permitted, consent_no_deception, consent_in_app_labeled
-  const a = consents.consent_own_or_permitted ?? consents.consent_ownership ?? consents.consent_a ?? consents.item_a;
-  const b = consents.consent_no_deception ?? consents.consent_b ?? consents.item_b;
-  const c = consents.consent_in_app_labeled ?? consents.consent_in_app_ai_label ?? consents.consent_c ?? consents.item_c;
+  const a = consents.consent_own_or_permitted;
+  const b = consents.consent_no_deception;
+  const c = consents.consent_in_app_labeled;
 
   const isTrue = (val) => val === true || val === 'true' || val === 1 || val === '1';
 

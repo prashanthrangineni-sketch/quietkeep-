@@ -46,19 +46,34 @@ export async function POST(req) {
   const rawPurpose = String(body.purpose || 'general').trim().toLowerCase();
   const purpose = rawPurpose || 'general';
 
-  // Ignore client body.voice_id. Securely load session user's settings and decide voice.
+  // Ignore client body.voice_id. Securely load session user's settings and consent record.
   const { data: userSettings } = await sb.from('user_settings')
     .select('elevenlabs_voice_id, consent_own_or_permitted, consent_no_deception, consent_in_app_labeled, voice_clone_consent, settings')
     .eq('user_id', user.id)
     .maybeSingle();
 
-  const { voiceId } = decideTtsVoice({
+  const { data: consentRecord } = await sb.from('voice_profile_consents')
+    .select('voice_id, voice_name, consent_own_or_permitted, consent_no_deception, consent_in_app_labeled')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  // Item 2: only use the cloned voice if user_settings.elevenlabs_voice_id equals voice_profile_consents.voice_id for that user
+  const voiceIdMatchesConsent = Boolean(
+    userSettings?.elevenlabs_voice_id &&
+    consentRecord?.voice_id &&
+    userSettings.elevenlabs_voice_id === consentRecord.voice_id
+  );
+
+  const { voiceId: candidateVoiceId } = decideTtsVoice({
     userSettings,
     purpose,
     isOutbound: body.is_outbound,
     isCall: body.is_call,
     isExport: body.is_export,
   });
+
+  const voiceId = voiceIdMatchesConsent ? candidateVoiceId : null;
+  const choseClonedVoice = Boolean(voiceId);
 
   try {
     const payload = {
@@ -93,6 +108,8 @@ export async function POST(req) {
         audio: null,
         reason: 'aaria_no_audio',
         visual_companion: data?.visual_companion ?? null,
+        cloned_voice: false,
+        voice_name: null,
       });
     }
 
@@ -103,6 +120,8 @@ export async function POST(req) {
       provider: data?.engine_used || data?.provider || 'aaria',
       lang,
       visual_companion: data?.visual_companion ?? null,
+      cloned_voice: choseClonedVoice,
+      voice_name: choseClonedVoice ? (consentRecord?.voice_name || 'My Voice') : null,
     });
   } catch (e) {
     return NextResponse.json({

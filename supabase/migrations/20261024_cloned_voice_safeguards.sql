@@ -68,3 +68,10 @@ comment on column public.user_settings.consent_in_app_labeled is
   'Consent checkbox 3: in-app only, AI labelled, deletable anytime (AG-AARIA-24)';
 comment on column public.user_settings.voice_clone_consent_at is
   'Timestamp when all 3 cloned voice consents were granted (AG-AARIA-24)';
+
+-- ── Privilege Hardening (Item 2) ───────────────────────────────────────────
+-- Revoke direct client update on sensitive voice and consent columns.
+revoke update (elevenlabs_voice_id, consent_own_or_permitted, consent_no_deception, consent_in_app_labeled, voice_clone_consent_at) on public.user_settings from authenticated;
+
+-- Revoke direct insert and update on voice_profile_consents from authenticated users.
+revoke insert, update on public.voice_profile_consents from authenticated;

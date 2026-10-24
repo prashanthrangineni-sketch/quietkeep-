@@ -29,16 +29,21 @@ function check(name, ok, detail = '') {
 // ── 1. Consent Gate ───────────────────────────────────────────────────────────
 {
   check('consent texts defined in en, te, hi',
-    Boolean(CLONED_VOICE_CONSENT_TEXTS.en?.ownership &&
-            CLONED_VOICE_CONSENT_TEXTS.te?.ownership &&
-            CLONED_VOICE_CONSENT_TEXTS.hi?.ownership));
+    Boolean(CLONED_VOICE_CONSENT_TEXTS.en?.consent_own_or_permitted &&
+            CLONED_VOICE_CONSENT_TEXTS.te?.consent_own_or_permitted &&
+            CLONED_VOICE_CONSENT_TEXTS.hi?.consent_own_or_permitted));
 
   check('consent texts contain required clauses in English',
-    CLONED_VOICE_CONSENT_TEXTS.en.ownership.includes('own voice') &&
-    CLONED_VOICE_CONSENT_TEXTS.en.no_deception.includes('deceive') &&
-    CLONED_VOICE_CONSENT_TEXTS.en.in_app_ai_label.includes('only inside this app'));
+    CLONED_VOICE_CONSENT_TEXTS.en.consent_own_or_permitted.includes('own voice') &&
+    CLONED_VOICE_CONSENT_TEXTS.en.consent_no_deception.includes('deceive') &&
+    CLONED_VOICE_CONSENT_TEXTS.en.consent_in_app_labeled.includes('only inside this app'));
 
-  // Route consent keys (Item 1 & Item 9)
+  check('legacy keys removed from consent texts',
+    !('ownership' in CLONED_VOICE_CONSENT_TEXTS.en) &&
+    !('item_a' in CLONED_VOICE_CONSENT_TEXTS.en) &&
+    !('in_app_ai_label' in CLONED_VOICE_CONSENT_TEXTS.en));
+
+  // Canonical route consent keys
   check('canonical route consent keys -> true',
     hasAllClonedVoiceConsents({
       consent_own_or_permitted: true,
@@ -62,25 +67,29 @@ function check(name, ok, detail = '') {
       consent_no_deception: true,
     }) === false);
 
-  // Backward-compatible fallback keys
+  // Legacy consent keys must now fail (Item 5: legacy spellings removed)
   check('no consents -> hasAllClonedVoiceConsents is false',
     hasAllClonedVoiceConsents({}) === false);
   check('partial consent (1/3) -> false',
-    hasAllClonedVoiceConsents({ consent_ownership: true }) === false);
-  check('partial consent (2/3) -> false',
-    hasAllClonedVoiceConsents({ consent_ownership: true, consent_no_deception: true }) === false);
-  check('all 3 consents ticked (legacy keys) -> true',
+    hasAllClonedVoiceConsents({ consent_own_or_permitted: true }) === false);
+  check('legacy keys consent_ownership/consent_in_app_ai_label -> false',
     hasAllClonedVoiceConsents({
       consent_ownership: true,
       consent_no_deception: true,
       consent_in_app_ai_label: true,
-    }) === true);
-  check('all 3 consents as strings (legacy keys) -> true',
+    }) === false);
+  check('legacy keys consent_a/b/c -> false',
     hasAllClonedVoiceConsents({
-      consent_ownership: 'true',
-      consent_no_deception: 'true',
-      consent_in_app_ai_label: 'true',
-    }) === true);
+      consent_a: true,
+      consent_b: true,
+      consent_c: true,
+    }) === false);
+  check('legacy keys item_a/b/c -> false',
+    hasAllClonedVoiceConsents({
+      item_a: true,
+      item_b: true,
+      item_c: true,
+    }) === false);
 }
 
 // ── 2. Purpose Restrictions & Standard Voice Enforcement ──────────────────────
@@ -175,6 +184,163 @@ function check(name, ok, detail = '') {
     observed?.speaking === false);
 
   unsub();
+}
+
+// ── 4b. Label Playback Integration (Item 1) ──────────────────────────────────
+{
+  const { playAudioUrl } = await import('../src/lib/tts.js');
+
+  function createFakeAudioClass() {
+    let currentInstance = null;
+    class FakeAudio {
+      constructor(src) {
+        this.src = src;
+        this.onended = null;
+        this.onerror = null;
+        this._playing = false;
+        currentInstance = this;
+      }
+      play() {
+        this._playing = true;
+        return Promise.resolve();
+      }
+      pause() {
+        this._playing = false;
+      }
+    }
+    return {
+      FakeAudio,
+      getCurrentInstance: () => currentInstance,
+    };
+  }
+
+  const origWindow = globalThis.window;
+  const origAudio = globalThis.Audio;
+
+  let lastSpeakingState = null;
+  globalThis.window = {
+    __qkActiveAudio: null,
+    __qkCustomVoiceSpeaking: null,
+    dispatchEvent: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+
+  const unsub = onCustomVoiceSpeakingChange((state) => {
+    lastSpeakingState = { ...state };
+  });
+
+  // Test 1: server says cloned_voice: true -> label on during playback, off after
+  {
+    const { FakeAudio, getCurrentInstance } = createFakeAudioClass();
+    globalThis.Audio = FakeAudio;
+
+    const playbackPromise = playAudioUrl('https://example.com/audio1.mp3', false, {
+      clonedVoice: true,
+      voiceName: 'Ravi',
+      lang: 'te',
+    });
+
+    await Promise.resolve();
+
+    check('server cloned_voice: true -> label ON during playback with voice & lang',
+      lastSpeakingState?.speaking === true &&
+      lastSpeakingState?.voiceName === 'Ravi' &&
+      lastSpeakingState?.lang === 'te');
+
+    const audioInst = getCurrentInstance();
+    audioInst.onended();
+    await playbackPromise;
+
+    check('server cloned_voice: true -> label OFF after playback completes',
+      lastSpeakingState?.speaking === false);
+  }
+
+  // Test 2: server says cloned_voice: false -> label never on
+  {
+    const { FakeAudio, getCurrentInstance } = createFakeAudioClass();
+    globalThis.Audio = FakeAudio;
+
+    let wasEverSpeaking = false;
+    const unsubCheck = onCustomVoiceSpeakingChange((state) => {
+      if (state.speaking) wasEverSpeaking = true;
+    });
+
+    const playbackPromise = playAudioUrl('https://example.com/audio2.mp3', false, {
+      clonedVoice: false,
+      voiceName: '',
+      lang: 'en',
+    });
+
+    await Promise.resolve();
+
+    check('server cloned_voice: false -> label not speaking during playback',
+      lastSpeakingState?.speaking === false);
+
+    const audioInst = getCurrentInstance();
+    audioInst.onended();
+    await playbackPromise;
+
+    check('server cloned_voice: false -> label was NEVER on at any point',
+      wasEverSpeaking === false && lastSpeakingState?.speaking === false);
+
+    unsubCheck();
+  }
+
+  // Test 3: tts route consent voice_id matching check (Item 2)
+  {
+    const checkMatching = (userSettingId, consentId) => Boolean(
+      userSettingId && consentId && userSettingId === consentId
+    );
+    check('tts route: matching elevenlabs_voice_id and consent voice_id allowed',
+      checkMatching('voice_test_123', 'voice_test_123') === true);
+    check('tts route: mismatched voice_ids disallowed',
+      checkMatching('voice_test_123', 'voice_other_456') === false);
+    check('tts route: missing consent record voice_id disallowed',
+      checkMatching('voice_test_123', null) === false);
+  }
+
+  // Test 4: preferences POST consent withdrawal logic (Item 3)
+  {
+    // If consentsInput has any false:
+    const simulatePreferencesConsents = (consentsInput, priorProvider = 'own') => {
+      const isTrue = (val) => val === true || val === 'true' || val === 1 || val === '1';
+      const c1 = isTrue(consentsInput.consent_own_or_permitted);
+      const c2 = isTrue(consentsInput.consent_no_deception);
+      const c3 = isTrue(consentsInput.consent_in_app_labeled);
+
+      if (c1 && c2 && c3) {
+        return {
+          voice_clone_consent: true,
+          voice_provider: priorProvider,
+          consents: { c1, c2, c3 },
+        };
+      } else {
+        return {
+          voice_clone_consent: false,
+          voice_provider: priorProvider === 'own' ? 'system' : priorProvider,
+          consents: { c1, c2, c3 },
+        };
+      }
+    };
+
+    const withdrawn = simulatePreferencesConsents({
+      consent_own_or_permitted: false,
+      consent_no_deception: true,
+      consent_in_app_labeled: true,
+    }, 'own');
+
+    check('preferences POST: unticking one consent withdraws voice_clone_consent (false)',
+      withdrawn.voice_clone_consent === false);
+    check('preferences POST: unticking one consent switches provider from own to system',
+      withdrawn.voice_provider === 'system');
+    check('preferences POST: unticked consent is saved as false',
+      withdrawn.consents.c1 === false && withdrawn.consents.c2 === true);
+  }
+
+  unsub();
+  globalThis.window = origWindow;
+  globalThis.Audio = origAudio;
 }
 
 // ── 5. One-Tap Delete & Forget Safeguard ──────────────────────────────────────

@@ -166,10 +166,11 @@ export default function VoiceSettings() {
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
         setMsg(d.error || 'Could not save');
-        return;
+        return false;
       }
       setMsg('Saved ✓'); setTimeout(() => setMsg(''), 1500);
-    } catch { setMsg('Could not save'); } finally { setSaving(false); }
+      return true;
+    } catch { setMsg('Could not save'); return false; } finally { setSaving(false); }
   }
 
   // The plugin replaces the whole set of choices, so send every choice back with only this one changed.
@@ -246,7 +247,7 @@ export default function VoiceSettings() {
           consented_at: new Date().toISOString(),
         },
       }));
-      await save({
+      const saved = await save({
         provider: 'own',
         consents: {
           consent_own_or_permitted: consentOwnership,
@@ -254,6 +255,7 @@ export default function VoiceSettings() {
           consent_in_app_labeled: consentInAppAiLabel,
         },
       });
+      if (!saved) return;
       setRec('idle'); setAudioUrl(''); blobRef.current = null; setMsg('Your voice is ready 🎉');
     } catch { setMsg('Could not reach the voice service.'); setRec('recorded'); }
   }
@@ -432,7 +434,7 @@ export default function VoiceSettings() {
                             onChange={e => setConsentOwnership(e.target.checked)}
                             style={{ marginTop: 2 }}
                           />
-                          <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.ownership || CLONED_VOICE_CONSENT_TEXTS.en.ownership}</span>
+                          <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.consent_own_or_permitted || CLONED_VOICE_CONSENT_TEXTS.en.consent_own_or_permitted}</span>
                         </label>
                         <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: '#334155' }}>
                           <input
@@ -441,7 +443,7 @@ export default function VoiceSettings() {
                             onChange={e => setConsentNoDeception(e.target.checked)}
                             style={{ marginTop: 2 }}
                           />
-                          <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.no_deception || CLONED_VOICE_CONSENT_TEXTS.en.no_deception}</span>
+                          <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.consent_no_deception || CLONED_VOICE_CONSENT_TEXTS.en.consent_no_deception}</span>
                         </label>
                         <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: '#334155' }}>
                           <input
@@ -450,7 +452,7 @@ export default function VoiceSettings() {
                             onChange={e => setConsentInAppAiLabel(e.target.checked)}
                             style={{ marginTop: 2 }}
                           />
-                          <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.in_app_ai_label || CLONED_VOICE_CONSENT_TEXTS.en.in_app_ai_label}</span>
+                          <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.consent_in_app_labeled || CLONED_VOICE_CONSENT_TEXTS.en.consent_in_app_labeled}</span>
                         </label>
                       </div>
 
@@ -524,7 +526,7 @@ export default function VoiceSettings() {
                         onChange={e => setConsentOwnership(e.target.checked)}
                         style={{ marginTop: 2 }}
                       />
-                      <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.ownership || CLONED_VOICE_CONSENT_TEXTS.en.ownership}</span>
+                      <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.consent_own_or_permitted || CLONED_VOICE_CONSENT_TEXTS.en.consent_own_or_permitted}</span>
                     </label>
 
                     <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#334155' }}>
@@ -534,7 +536,7 @@ export default function VoiceSettings() {
                         onChange={e => setConsentNoDeception(e.target.checked)}
                         style={{ marginTop: 2 }}
                       />
-                      <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.no_deception || CLONED_VOICE_CONSENT_TEXTS.en.no_deception}</span>
+                      <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.consent_no_deception || CLONED_VOICE_CONSENT_TEXTS.en.consent_no_deception}</span>
                     </label>
 
                     <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#334155' }}>
@@ -544,7 +546,7 @@ export default function VoiceSettings() {
                         onChange={e => setConsentInAppAiLabel(e.target.checked)}
                         style={{ marginTop: 2 }}
                       />
-                      <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.in_app_ai_label || CLONED_VOICE_CONSENT_TEXTS.en.in_app_ai_label}</span>
+                      <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.consent_in_app_labeled || CLONED_VOICE_CONSENT_TEXTS.en.consent_in_app_labeled}</span>
                     </label>
                   </div>
 

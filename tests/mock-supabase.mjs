@@ -17,10 +17,12 @@ export const mockDb = {
   },
   mockUser: { id: 'u1', email: 'owner@example.com' },
   failInserts: new Set(),
+  failQueries: new Set(),
   reset() {
     for (const k of Object.keys(this.tables)) this.tables[k] = [];
     this.mockUser = { id: 'u1', email: 'owner@example.com' };
     this.failInserts.clear();
+    this.failQueries.clear();
   }
 };
 
@@ -37,6 +39,7 @@ function createQueryBuilder(table) {
   let isDelete = false;
   let orderCol = null;
   let orderAsc = true;
+  let limitVal = null;
 
   const builder = {
     select(cols, opts = {}) {
@@ -71,7 +74,7 @@ function createQueryBuilder(table) {
     lt(col, val) { filters.push(r => r[col] !== undefined && r[col] < val); return builder; },
     in(col, vals) { filters.push(r => vals.includes(r[col])); return builder; },
     order(col, opts = {}) { orderCol = col; orderAsc = opts.ascending !== false; return builder; },
-    limit(n) { return builder; },
+    limit(n) { limitVal = n; return builder; },
     range() { return builder; },
     single() { isSingle = true; return builder; },
     maybeSingle() { isMaybeSingle = true; return builder; },
@@ -79,6 +82,9 @@ function createQueryBuilder(table) {
       return this.execute().then(resolve, reject);
     },
     async execute() {
+      if (mockDb.failQueries.has(table)) {
+        return { data: null, error: { message: `Query error on table ${table}`, code: 'PGRST_MOCK_ERR' } };
+      }
       if (!mockDb.tables[table]) mockDb.tables[table] = [];
       const tbl = mockDb.tables[table];
 
@@ -138,6 +144,9 @@ function createQueryBuilder(table) {
           return 0;
         });
       }
+      if (limitVal !== null) {
+        rows = rows.slice(0, limitVal);
+      }
       const count = rows.length;
       if (headMode) {
         return { data: null, error: null, count };
@@ -147,6 +156,9 @@ function createQueryBuilder(table) {
         return { data: rows[0], error: null, count };
       }
       if (isMaybeSingle) {
+        if (rows.length > 1) {
+          return { data: null, error: { code: 'PGRST116', message: 'Results contain 2 rows' }, count };
+        }
         return { data: rows[0] || null, error: null, count };
       }
       return { data: rows, error: null, count };

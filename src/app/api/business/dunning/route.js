@@ -27,7 +27,7 @@ function money(n) {
 
 // Load every overdue receivable for the workspace, joined to its customer.
 async function loadCandidates(db, workspaceId) {
-  const [{ data: ledger }, { data: customers }, { data: sent }, { data: optOuts }] = await Promise.all([
+  const [{ data: ledger, error: errLedger }, { data: customers, error: errCust }, { data: sent, error: errSent }, { data: optOuts, error: errOptOuts }] = await Promise.all([
     db.from('business_ledger')
       .select('id,party_name,amount,amount_pending,due_date,transaction_date,payment_status')
       .eq('workspace_id', workspaceId)
@@ -43,6 +43,12 @@ async function loadCandidates(db, workspaceId) {
       .select('phone')
       .eq('workspace_id', workspaceId),
   ]);
+
+  if (errLedger || errCust || errSent || errOptOuts) {
+    const msg = errLedger?.message || errCust?.message || errSent?.message || errOptOuts?.message;
+    console.error('[dunning] loadCandidates query error:', msg);
+    throw new Error(`Database error while loading dunning candidates: ${msg}`);
+  }
 
   const optedOutPhones = new Set(
     (optOuts || []).map((o) => normalizePhoneNumber(o.phone)).filter(Boolean)
@@ -163,7 +169,28 @@ export async function POST(req) {
     for (const t of targets) {
       const normPhone = normalizePhoneNumber(t.phone);
 
-      // Check per-customer caps (1/day, 4/week) (Item 6 & 7)
+      // Check customer opt-out status with fail-closed error handling (Round 4 Item 1)
+      const { optedOut, error: optOutErr } = await isCustomerOptedOutInDb(db, ctx.workspace.id, normPhone);
+      if (optOutErr) {
+        console.error('[dunning] opt-out check error:', optOutErr.message || optOutErr);
+        return NextResponse.json({
+          error: 'Failed to verify customer opt-out status',
+          code: 'opt_out_check_failed',
+        }, { status: 500 });
+      }
+      if (optedOut) {
+        results.push({
+          ledger_id: t.ledger_id,
+          party_name: t.party_name,
+          stage: t.stage,
+          amount: t.due_amount,
+          status: 'skipped',
+          error: 'Customer opted out (STOP / వద్దు / बंद करो)',
+        });
+        continue;
+      }
+
+      // Check per-customer caps (1/day, 4/week) (Item 6 & 7, Round 4 Item 1 fail closed)
       const [{ count: custTodayCount, error: errToday }, { count: custWeekCount, error: errWeek }] = await Promise.all([
         db.from('business_promo_log')
           .select('id', { count: 'exact', head: true })
@@ -183,15 +210,10 @@ export async function POST(req) {
 
       if (errToday || errWeek) {
         console.error('[dunning] promo count error:', errToday?.message || errWeek?.message);
-        results.push({
-          ledger_id: t.ledger_id,
-          party_name: t.party_name,
-          stage: t.stage,
-          amount: t.due_amount,
-          status: 'skipped',
+        return NextResponse.json({
           error: 'Failed to verify customer promotional limits',
-        });
-        continue;
+          code: 'promo_count_failed',
+        }, { status: 500 });
       }
 
       if ((custTodayCount || 0) >= 1) {

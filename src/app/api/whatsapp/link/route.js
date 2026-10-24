@@ -2,6 +2,7 @@
 // Links a WhatsApp phone number to a QuietKeep user account
 
 import { createClient } from '@supabase/supabase-js';
+import { normalizePhoneNumber } from '@/lib/business-limits';
 
 export async function POST(req) {
   try {
@@ -21,7 +22,7 @@ export async function POST(req) {
     const { phone_number } = await req.json();
     if (!phone_number) return Response.json({ error: 'phone_number required' }, { status: 400 });
 
-    const cleaned = phone_number.replace(/\s+/g, '').replace(/^0/, '+91');
+    const cleaned = normalizePhoneNumber(phone_number);
 
     const serviceSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,

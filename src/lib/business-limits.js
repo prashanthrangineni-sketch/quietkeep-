@@ -631,7 +631,9 @@ export function buildOwnerAuditLog({
  * Check if a customer is opted out in database.
  */
 export async function isCustomerOptedOutInDb(supabase, workspaceId, phone) {
-  if (!supabase || !workspaceId || !phone) return false;
+  if (!supabase || !workspaceId || !phone) {
+    return { optedOut: false, error: new Error('Missing required arguments: supabase, workspaceId, or phone') };
+  }
   const normPhone = normalizePhoneNumber(phone);
 
   const candidatePhones = [normPhone];
@@ -643,34 +645,38 @@ export async function isCustomerOptedOutInDb(supabase, workspaceId, phone) {
     if (!candidatePhones.includes(rawStr)) candidatePhones.push(rawStr);
   }
 
-  const { data: optOut, error: err1 } = await supabase
+  const { data: optOutList, error: err1 } = await supabase
     .from('business_customer_opt_outs')
     .select('id')
     .eq('workspace_id', workspaceId)
     .in('phone', candidatePhones)
-    .maybeSingle();
+    .limit(1);
 
   if (err1) {
-    console.error('[business-limits] isCustomerOptedOutInDb query error:', err1.message);
+    console.error('[business-limits] isCustomerOptedOutInDb query error:', err1.message || err1);
+    return { optedOut: false, error: err1 };
   }
-  if (optOut) return true;
+  if (optOutList && optOutList.length > 0) {
+    return { optedOut: true, error: null };
+  }
 
   // Also check business_customers.whatsapp_opted_in flag
-  const { data: cust, error: err2 } = await supabase
+  const { data: custList, error: err2 } = await supabase
     .from('business_customers')
     .select('whatsapp_opted_in')
     .eq('workspace_id', workspaceId)
     .in('phone', candidatePhones)
-    .maybeSingle();
+    .limit(10);
 
   if (err2) {
-    console.error('[business-limits] isCustomerOptedOutInDb cust query error:', err2.message);
+    console.error('[business-limits] isCustomerOptedOutInDb cust query error:', err2.message || err2);
+    return { optedOut: false, error: err2 };
   }
-  if (cust && cust.whatsapp_opted_in === false) {
-    return true;
+  if (custList && custList.some((c) => c.whatsapp_opted_in === false)) {
+    return { optedOut: true, error: null };
   }
 
-  return false;
+  return { optedOut: false, error: null };
 }
 
 /**

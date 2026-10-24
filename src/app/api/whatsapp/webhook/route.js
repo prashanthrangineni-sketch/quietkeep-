@@ -122,35 +122,39 @@ export async function POST(req) {
         .from('business_workspaces')
         .select('id, owner_user_id, name, address, timings, phone')
         .in('phone', candidateReceiving)
-        .maybeSingle();
+        .order('created_at', { ascending: true })
+        .limit(1);
 
       if (wsPhoneErr) {
         console.error('[whatsapp-webhook] wsByPhone query error:', wsPhoneErr.message);
       }
-      workspace = wsByPhone;
+      workspace = (Array.isArray(wsByPhone) ? wsByPhone[0] : wsByPhone) || null;
 
       if (!workspace) {
         const { data: sess, error: sessErr } = await supabase
           .from('whatsapp_sessions')
           .select('user_id')
           .in('phone_number', candidateReceiving)
-          .maybeSingle();
+          .order('created_at', { ascending: false })
+          .limit(1);
 
         if (sessErr) {
           console.error('[whatsapp-webhook] session query error:', sessErr.message);
         }
 
-        if (sess?.user_id) {
+        const sessRow = Array.isArray(sess) ? sess[0] : sess;
+        if (sessRow?.user_id) {
           const { data: wsByUser, error: wsUserErr } = await supabase
             .from('business_workspaces')
             .select('id, owner_user_id, name, address, timings, phone')
-            .eq('owner_user_id', sess.user_id)
-            .maybeSingle();
+            .eq('owner_user_id', sessRow.user_id)
+            .order('created_at', { ascending: true })
+            .limit(1);
 
           if (wsUserErr) {
             console.error('[whatsapp-webhook] wsByUser query error:', wsUserErr.message);
           }
-          workspace = wsByUser;
+          workspace = (Array.isArray(wsByUser) ? wsByUser[0] : wsByUser) || null;
         }
       }
     }

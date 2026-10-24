@@ -52,43 +52,50 @@ export async function POST(req) {
       .select('*')
       .eq('id', approval_id)
       .eq('workspace_id', ctx.workspace.id)
-      .eq('status', 'pending')
-      .maybeSingle();
+      .limit(1);
 
     if (fetchErr) {
       console.error('[approvals:POST] fetch error:', fetchErr.message);
       return NextResponse.json({ error: fetchErr.message }, { status: 500 });
     }
 
-    if (!approval) {
-      return NextResponse.json({ error: 'Pending approval not found' }, { status: 404 });
+    const apprRow = Array.isArray(approval) ? approval[0] : approval;
+    if (!apprRow) {
+      return NextResponse.json({ error: 'Approval not found' }, { status: 404 });
+    }
+
+    if (apprRow.status !== 'pending') {
+      return NextResponse.json({
+        error: 'Approval already processed or currently being sent',
+        code: 'already_processed',
+      }, { status: 409 });
     }
 
     const targetCustomerPhone = normalizePhoneNumber(
-      approval.payload?.customerPhone ||
-      approval.payload?.customer_phone ||
-      approval.payload?.who ||
-      approval.payload?.phone ||
+      apprRow.payload?.customerPhone ||
+      apprRow.payload?.customer_phone ||
+      apprRow.payload?.who ||
+      apprRow.payload?.phone ||
       ''
     );
     const maskedCustomerPhone = maskPhoneNumber(targetCustomerPhone);
 
     const isOrderOrBooking =
-      approval.action_type === 'business_order_confirm' ||
-      approval.action_type === 'business_booking_confirm' ||
-      approval.payload?.what === 'order_request' ||
-      approval.payload?.what === 'booking_request' ||
-      approval.payload?.what === 'order' ||
-      approval.payload?.what === 'booking';
+      apprRow.action_type === 'business_order_confirm' ||
+      apprRow.action_type === 'business_booking_confirm' ||
+      apprRow.payload?.what === 'order_request' ||
+      apprRow.payload?.what === 'booking_request' ||
+      apprRow.payload?.what === 'order' ||
+      apprRow.payload?.what === 'booking';
 
     // ── 1. APPROVE / SEND / CONFIRM / EDIT (Item K & 4) ───────────────────────
     if (['send', 'edit', 'confirm', 'approve'].includes(normAction)) {
       let replyMessage = (normAction === 'edit' && edited_message)
         ? String(edited_message).trim()
-        : (approval.payload?.suggested_reply || null);
+        : (apprRow.payload?.suggested_reply || null);
 
       if (!replyMessage && isOrderOrBooking) {
-        if (approval.action_type === 'business_booking_confirm' || approval.payload?.what === 'booking_request' || approval.payload?.what === 'booking') {
+        if (apprRow.action_type === 'business_booking_confirm' || apprRow.payload?.what === 'booking_request' || apprRow.payload?.what === 'booking') {
           replyMessage = `Your booking with ${ctx.workspace.name || 'our shop'} has been confirmed!`;
         } else {
           replyMessage = `Your order with ${ctx.workspace.name || 'our shop'} has been confirmed! Thank you for ordering with us.`;
@@ -101,6 +108,28 @@ export async function POST(req) {
           error: 'Cannot send without reply text. Please use Edit to provide a reply.',
           code: 'missing_reply_text',
         }, { status: 400 });
+      }
+
+      // Atomically claim the approval: pending -> 'sending' (Round 4 Item 3)
+      const { data: claimedRows, error: claimErr } = await db
+        .from('business_approvals')
+        .update({
+          status: 'sending',
+        })
+        .eq('id', approval_id)
+        .eq('status', 'pending')
+        .select();
+
+      if (claimErr) {
+        console.error('[approvals:POST] claim error:', claimErr.message);
+        return NextResponse.json({ error: claimErr.message }, { status: 500 });
+      }
+
+      if (!claimedRows || claimedRows.length === 0) {
+        return NextResponse.json({
+          error: 'Approval already processed or currently being sent',
+          code: 'already_processed',
+        }, { status: 409 });
       }
 
       // Actually send to the customer via Twilio
@@ -140,8 +169,16 @@ export async function POST(req) {
         sendErrorMsg = 'Twilio credentials not configured';
       }
 
-      // On send failure, keep status pending and return error (Item 4)
+      // On send failure, revert status to pending and return error (Round 4 Item 3)
       if (!sentSuccess) {
+        await db
+          .from('business_approvals')
+          .update({
+            status: 'pending',
+          })
+          .eq('id', approval_id)
+          .eq('status', 'sending');
+
         return NextResponse.json({
           error: 'Failed to send WhatsApp message to customer. Approval kept pending.',
           code: 'send_failed',
@@ -156,7 +193,7 @@ export async function POST(req) {
           approved_at: new Date().toISOString(),
         })
         .eq('id', approval_id)
-        .eq('status', 'pending');
+        .eq('status', 'sending');
 
       if (updErr) {
         console.error('[approvals:POST] approval update error:', updErr.message);

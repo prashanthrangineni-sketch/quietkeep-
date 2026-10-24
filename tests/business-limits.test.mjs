@@ -2,6 +2,7 @@
 // Unit tests for QuietKeep Business limits module (CARD AG-AARIA-25, Founder Decision 4).
 
 import {
+  isCustomerOptedOutInDb,
   isWithinPromoHours,
   isOptOutMessage,
   cleanTextForOptOut,
@@ -365,6 +366,73 @@ function check(name, ok, extra = '') {
   check('owner log contains what', logRecord.action === 'business_limit_auto_reply_queued');
   check('owner log contains why', logRecord.metadata.why === 'complaints_must_be_reviewed');
   check('owner log snippet is bounded and does NOT contain entire long body', logRecord.metadata.snippet === snippet && logRecord.metadata.snippet.length < longBody.length);
+}
+
+// ── isCustomerOptedOutInDb UNIT TESTS (Round 4 Item 1) ───────────────────────
+{
+  // 1. Missing arguments -> returns error
+  const resMissing = await isCustomerOptedOutInDb(null, 'ws1', '+919876543210');
+  check('isCustomerOptedOutInDb missing supabase returns error', !resMissing.optedOut && !!resMissing.error);
+
+  // 2. Normal opt-out detection
+  const mockSupa1 = {
+    from: (tbl) => ({
+      select: () => ({
+        eq: () => ({
+          in: () => ({
+            limit: () => Promise.resolve({ data: [{ id: 'opt1' }], error: null }),
+          }),
+        }),
+      }),
+    }),
+  };
+  const res1 = await isCustomerOptedOutInDb(mockSupa1, 'ws1', '9876543210');
+  check('isCustomerOptedOutInDb detects single opt-out row', res1.optedOut === true && res1.error === null);
+
+  // 3. Two matching rows -> still detected without error (Round 4 Item 1)
+  const mockSupa2 = {
+    from: (tbl) => ({
+      select: () => ({
+        eq: () => ({
+          in: () => ({
+            limit: (n) => Promise.resolve({ data: [{ id: 'opt1' }, { id: 'opt2' }].slice(0, n), error: null }),
+          }),
+        }),
+      }),
+    }),
+  };
+  const res2 = await isCustomerOptedOutInDb(mockSupa2, 'ws1', '9876543210');
+  check('isCustomerOptedOutInDb 2 matching rows -> still detected without error', res2.optedOut === true && res2.error === null);
+
+  // 4. DB query error -> returns { optedOut: false, error }
+  const mockSupaErr = {
+    from: (tbl) => ({
+      select: () => ({
+        eq: () => ({
+          in: () => ({
+            limit: () => Promise.resolve({ data: null, error: { message: 'connection timeout', code: 'ETIMEDOUT' } }),
+          }),
+        }),
+      }),
+    }),
+  };
+  const resErr = await isCustomerOptedOutInDb(mockSupaErr, 'ws1', '9876543210');
+  check('isCustomerOptedOutInDb DB error returns { optedOut: false, error }', resErr.optedOut === false && !!resErr.error);
+
+  // 5. Opted in customer -> returns { optedOut: false, error: null }
+  const mockSupaIn = {
+    from: (tbl) => ({
+      select: () => ({
+        eq: () => ({
+          in: () => ({
+            limit: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }),
+      }),
+    }),
+  };
+  const resIn = await isCustomerOptedOutInDb(mockSupaIn, 'ws1', '9876543210');
+  check('isCustomerOptedOutInDb customer not opted out returns { optedOut: false, error: null }', resIn.optedOut === false && resIn.error === null);
 }
 
 // ── ACTION-LEVELS INTEGRATION ────────────────────────────────────────────────

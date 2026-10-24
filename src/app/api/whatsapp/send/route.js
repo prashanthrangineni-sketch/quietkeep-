@@ -74,14 +74,19 @@ export async function POST(request) {
       .select('id, created_at, daily_promo_limit, name')
       .eq('id', body.workspace_id)
       .eq('owner_user_id', user.id)
-      .maybeSingle();
+      .limit(1);
 
     if (ownedErr) {
       console.error('[whatsapp/send] workspace owner check error:', ownedErr.message);
+      return NextResponse.json({
+        error: 'Failed to verify workspace ownership',
+        code: 'workspace_check_failed',
+      }, { status: 500 });
     }
 
-    if (ownedWs) {
-      workspace = ownedWs;
+    const ownedRow = Array.isArray(ownedWs) ? ownedWs[0] : ownedWs;
+    if (ownedRow) {
+      workspace = ownedRow;
       isBusiness = true;
     } else {
       const { data: member, error: memberErr } = await adminDb
@@ -90,23 +95,32 @@ export async function POST(request) {
         .eq('workspace_id', body.workspace_id)
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .maybeSingle();
+        .limit(1);
 
       if (memberErr) {
         console.error('[whatsapp/send] member check error:', memberErr.message);
+        return NextResponse.json({
+          error: 'Failed to verify workspace membership',
+          code: 'membership_check_failed',
+        }, { status: 500 });
       }
 
-      if (member) {
+      const memRow = Array.isArray(member) ? member[0] : member;
+      if (memRow) {
         const { data: ws, error: wsErr } = await adminDb
           .from('business_workspaces')
           .select('id, created_at, daily_promo_limit, name')
           .eq('id', body.workspace_id)
-          .maybeSingle();
+          .limit(1);
 
         if (wsErr) {
           console.error('[whatsapp/send] ws query error:', wsErr.message);
+          return NextResponse.json({
+            error: 'Failed to load workspace',
+            code: 'workspace_check_failed',
+          }, { status: 500 });
         }
-        workspace = ws;
+        workspace = Array.isArray(ws) ? ws[0] : ws;
         isBusiness = true;
       }
     }
@@ -130,8 +144,13 @@ export async function POST(request) {
         .eq('status', 'active'),
     ]);
 
-    if (ownedErr) console.error('[whatsapp/send] owned workspaces error:', ownedErr.message);
-    if (memErr) console.error('[whatsapp/send] member workspaces error:', memErr.message);
+    if (ownedErr || memErr) {
+      console.error('[whatsapp/send] owned/member workspaces error:', ownedErr?.message || memErr?.message);
+      return NextResponse.json({
+        error: 'Failed to query user workspaces',
+        code: 'workspace_lookup_failed',
+      }, { status: 500 });
+    }
 
     const wsMap = new Map();
     (ownedList || []).forEach(w => wsMap.set(w.id, w));
@@ -142,7 +161,13 @@ export async function POST(request) {
         .from('business_workspaces')
         .select('id, created_at, daily_promo_limit, name')
         .in('id', memberWsIds);
-      if (mWsErr) console.error('[whatsapp/send] member ws fetch error:', mWsErr.message);
+      if (mWsErr) {
+        console.error('[whatsapp/send] member ws fetch error:', mWsErr.message);
+        return NextResponse.json({
+          error: 'Failed to query member workspaces',
+          code: 'workspace_lookup_failed',
+        }, { status: 500 });
+      }
       (mWsList || []).forEach(w => wsMap.set(w.id, w));
     }
 
@@ -162,12 +187,20 @@ export async function POST(request) {
     // Proof 1: Inbound customer message in last 24h across candidate workspaces
     let isCustomerInitiatedReply = false;
     for (const ws of workspacesToCheck) {
-      const { data: recentApprovals } = await adminDb
+      const { data: recentApprovals, error: rApprErr } = await adminDb
         .from('business_approvals')
         .select('id, payload')
         .eq('workspace_id', ws.id)
         .gte('created_at', twentyFourHoursAgo)
         .limit(20);
+
+      if (rApprErr) {
+        console.error('[whatsapp/send] recent approvals query error:', rApprErr.message);
+        return NextResponse.json({
+          error: 'Failed to check recent customer communications',
+          code: 'approvals_query_failed',
+        }, { status: 500 });
+      }
 
       if ((recentApprovals || []).some(a => {
         const p = normalizePhoneNumber(
@@ -184,20 +217,29 @@ export async function POST(request) {
       }
     }
 
-    // Proof 2: Order / booking status update tied to a real order/invoice (Item 3)
+    // Proof 2: Order / booking status update tied to a real order/invoice (Item 3 & Round 4 Item 2)
     let isOrderUpdate = false;
     if (body.order_id) {
       for (const ws of workspacesToCheck) {
         // 1. Check business_invoices
-        const { data: invoice } = await adminDb
+        const { data: invoice, error: invErr } = await adminDb
           .from('business_invoices')
           .select('id, customer_phone')
           .eq('id', body.order_id)
           .eq('workspace_id', ws.id)
-          .maybeSingle();
+          .limit(1);
 
-        if (invoice) {
-          const invPhone = normalizePhoneNumber(invoice.customer_phone);
+        if (invErr) {
+          console.error('[whatsapp/send] invoice query error:', invErr.message);
+          return NextResponse.json({
+            error: 'Failed to verify invoice record',
+            code: 'invoice_lookup_failed',
+          }, { status: 500 });
+        }
+
+        const invRow = Array.isArray(invoice) ? invoice[0] : invoice;
+        if (invRow) {
+          const invPhone = normalizePhoneNumber(invRow.customer_phone);
           if (invPhone && invPhone === normTo) {
             isOrderUpdate = true;
             break;
@@ -205,31 +247,63 @@ export async function POST(request) {
         }
 
         // 2. Check business_approvals
-        const { data: orderAppr } = await adminDb
+        // Drop customer_phone from select (does not exist in live business_approvals table)
+        const { data: orderAppr, error: apprErr } = await adminDb
           .from('business_approvals')
-          .select('id, action_type, payload, customer_phone, status')
+          .select('id, action_type, payload, status')
           .eq('id', body.order_id)
           .eq('workspace_id', ws.id)
-          .maybeSingle();
+          .limit(1);
 
-        if (orderAppr) {
-          const apprPhone = normalizePhoneNumber(
-            orderAppr.customer_phone ||
-            orderAppr.payload?.customerPhone ||
-            orderAppr.payload?.customer_phone ||
-            orderAppr.payload?.who ||
-            orderAppr.payload?.phone ||
+        if (apprErr) {
+          console.error('[whatsapp/send] approval query error:', apprErr.message);
+          return NextResponse.json({
+            error: 'Failed to verify approval record',
+            code: 'approval_lookup_failed',
+          }, { status: 500 });
+        }
+
+        const apprRow = Array.isArray(orderAppr) ? orderAppr[0] : orderAppr;
+        if (apprRow) {
+          let apprPhone = normalizePhoneNumber(
+            apprRow.payload?.customerPhone ||
+            apprRow.payload?.customer_phone ||
+            apprRow.payload?.who ||
+            apprRow.payload?.phone ||
             ''
           );
-          const what = String(orderAppr.payload?.what || orderAppr.payload?.type || '').toLowerCase();
-          const actionType = String(orderAppr.action_type || '').toLowerCase();
-          const status = String(orderAppr.status || '').toLowerCase();
+
+          if (!apprPhone && (apprRow.payload?.order_id || apprRow.payload?.invoice_id)) {
+            const linkedId = apprRow.payload?.order_id || apprRow.payload?.invoice_id;
+            const { data: linkedInv, error: linkedErr } = await adminDb
+              .from('business_invoices')
+              .select('customer_phone')
+              .eq('id', linkedId)
+              .eq('workspace_id', ws.id)
+              .limit(1);
+
+            if (linkedErr) {
+              console.error('[whatsapp/send] linked invoice query error:', linkedErr.message);
+              return NextResponse.json({
+                error: 'Failed to verify linked invoice record',
+                code: 'linked_invoice_lookup_failed',
+              }, { status: 500 });
+            }
+
+            const linkedRow = Array.isArray(linkedInv) ? linkedInv[0] : linkedInv;
+            if (linkedRow?.customer_phone) {
+              apprPhone = normalizePhoneNumber(linkedRow.customer_phone);
+            }
+          }
+
+          const what = String(apprRow.payload?.what || apprRow.payload?.type || '').toLowerCase();
+          const actionType = String(apprRow.action_type || '').toLowerCase();
+          // Remove status === 'out_for_delivery' from isOrderType (Round 4 Item 2)
           const isOrderType =
             actionType.includes('order') ||
             actionType.includes('booking') ||
             what.includes('order') ||
-            what.includes('booking') ||
-            status === 'out_for_delivery';
+            what.includes('booking');
 
           if (isOrderType && apprPhone && apprPhone === normTo) {
             isOrderUpdate = true;
@@ -242,11 +316,18 @@ export async function POST(request) {
     const isTransactional = isCustomerInitiatedReply || isOrderUpdate;
     const isPromotional = !isTransactional;
 
-    // 1. Opt-out check: block if ANY workspace has customer opt-out (Item 2)
+    // 1. Opt-out check: block if ANY workspace has customer opt-out (Item 2 & Round 4 Item 1)
     let isOptedOut = false;
     let optedOutWsId = null;
     for (const ws of workspacesToCheck) {
-      const optedOut = await isCustomerOptedOutInDb(adminDb, ws.id, normTo);
+      const { optedOut, error: optOutErr } = await isCustomerOptedOutInDb(adminDb, ws.id, normTo);
+      if (optOutErr) {
+        console.error('[whatsapp/send] opt-out check error:', optOutErr.message || optOutErr);
+        return NextResponse.json({
+          error: 'Failed to verify customer opt-out status',
+          code: 'opt_out_check_failed',
+        }, { status: 500 });
+      }
       if (optedOut) {
         isOptedOut = true;
         optedOutWsId = ws.id;

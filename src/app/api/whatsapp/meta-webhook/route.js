@@ -12,6 +12,7 @@ import {
   queueForOwnerReview,
   ALLOWED_AUTOREPLY_TOPICS,
   normalizePhoneNumber,
+  sanitizeSnippet,
 } from '@/lib/business-limits';
 
 async function verifyMetaSignature(rawBody, signatureHeader, appSecret) {
@@ -148,35 +149,39 @@ export async function POST(request) {
           .from('business_workspaces')
           .select('id, owner_user_id, name, address, timings, phone')
           .in('phone', candidateReceiving)
-          .maybeSingle();
+          .order('created_at', { ascending: true })
+          .limit(1);
 
         if (wsPhoneErr) {
           console.error('[meta-webhook] wsByPhone query error:', wsPhoneErr.message);
         }
-        workspace = wsByPhone;
+        workspace = (Array.isArray(wsByPhone) ? wsByPhone[0] : wsByPhone) || null;
 
         if (!workspace) {
           const { data: sess, error: sessErr } = await supabase
             .from('whatsapp_sessions')
             .select('user_id')
             .in('phone_number', candidateReceiving)
-            .maybeSingle();
+            .order('created_at', { ascending: false })
+            .limit(1);
 
           if (sessErr) {
             console.error('[meta-webhook] session query error:', sessErr.message);
           }
 
-          if (sess?.user_id) {
+          const sessRow = Array.isArray(sess) ? sess[0] : sess;
+          if (sessRow?.user_id) {
             const { data: wsByUser, error: wsUserErr } = await supabase
               .from('business_workspaces')
               .select('id, owner_user_id, name, address, timings, phone')
-              .eq('owner_user_id', sess.user_id)
-              .maybeSingle();
+              .eq('owner_user_id', sessRow.user_id)
+              .order('created_at', { ascending: true })
+              .limit(1);
 
             if (wsUserErr) {
               console.error('[meta-webhook] wsByUser query error:', wsUserErr.message);
             }
-            workspace = wsByUser;
+            workspace = (Array.isArray(wsByUser) ? wsByUser[0] : wsByUser) || null;
           }
         }
       }
@@ -194,17 +199,32 @@ export async function POST(request) {
             continue;
           }
 
-          // Verify msg.from is the owner's phone (Item 8)
-          let ownerPhone = normalizePhoneNumber(workspace.phone || '');
-          if (!ownerPhone && workspace.owner_user_id) {
+          // Verify msg.from is the owner's personal phone (Round 4 Item 5)
+          let ownerPhone = null;
+          if (workspace.owner_user_id) {
             const { data: ownerSess, error: oSessErr } = await supabase
               .from('whatsapp_sessions')
               .select('phone_number')
               .eq('user_id', workspace.owner_user_id)
-              .maybeSingle();
+              .order('created_at', { ascending: false })
+              .limit(1);
             if (oSessErr) console.error('[meta-webhook] owner session query error:', oSessErr.message);
-            if (ownerSess?.phone_number) {
-              ownerPhone = normalizePhoneNumber(ownerSess.phone_number);
+            const sessRow = Array.isArray(ownerSess) ? ownerSess[0] : ownerSess;
+            if (sessRow?.phone_number) {
+              ownerPhone = normalizePhoneNumber(sessRow.phone_number);
+            }
+
+            if (!ownerPhone) {
+              const { data: userSett, error: uSettErr } = await supabase
+                .from('user_settings')
+                .select('phone, phone_number')
+                .eq('user_id', workspace.owner_user_id)
+                .limit(1);
+              if (uSettErr) console.error('[meta-webhook] user settings query error:', uSettErr.message);
+              const settRow = Array.isArray(userSett) ? userSett[0] : userSett;
+              if (settRow?.phone || settRow?.phone_number) {
+                ownerPhone = normalizePhoneNumber(settRow.phone || settRow.phone_number);
+              }
             }
           }
 
@@ -217,62 +237,125 @@ export async function POST(request) {
           if (buttonId.startsWith('approve_')) {
             const approvalId = buttonId.replace('approve_', '');
 
-            // Scope approval lookup to workspace (Item 8)
+            // Scope approval lookup to workspace (Item 8 & Round 4 Item 3)
             const { data: approval, error: apprFetchErr } = await supabase
               .from('business_approvals')
               .select('*')
               .eq('id', approvalId)
               .eq('workspace_id', workspace.id)
               .eq('status', 'pending')
-              .maybeSingle();
+              .limit(1);
 
             if (apprFetchErr) {
               console.error('[meta-webhook] approval query error:', apprFetchErr.message);
+              continue;
             }
 
-            if (approval) {
-              const { error: updErr } = await supabase
+            const apprRow = Array.isArray(approval) ? approval[0] : approval;
+            if (!apprRow) {
+              console.warn('[meta-webhook] Approval not found or already processed:', approvalId);
+              continue;
+            }
+
+            let replyText = apprRow.payload?.suggested_reply || null;
+            if (apprRow.action_type === 'business_order_confirm' || apprRow.payload?.what === 'order_request') {
+              replyText = `Your order with ${workspace?.name || 'our shop'} is confirmed! Thank you for ordering with us.`;
+            }
+
+            // Round 4 Item 4: refuse if no reply text and notify owner
+            if (!replyText) {
+              console.warn('[meta-webhook] Cannot approve without reply text:', approvalId);
+              await sendCustomerWhatsAppMessage(
+                senderPhone,
+                'This item has no reply text. Please open QuietKeep to edit and send a reply.'
+              );
+              continue;
+            }
+
+            // Round 4 Item 3: Claim-then-send pattern: atomically claim pending -> 'sending'
+            const { data: claimedRows, error: claimErr } = await supabase
+              .from('business_approvals')
+              .update({
+                status: 'sending',
+              })
+              .eq('id', approvalId)
+              .eq('workspace_id', workspace.id)
+              .eq('status', 'pending')
+              .select();
+
+            if (claimErr) {
+              console.error('[meta-webhook] claim error:', claimErr.message);
+              continue;
+            }
+
+            if (!claimedRows || claimedRows.length === 0) {
+              console.warn('[meta-webhook] Approval already claimed or processed:', approvalId);
+              continue;
+            }
+
+            const targetCustomer = normalizePhoneNumber(
+              apprRow.payload?.customerPhone ||
+              apprRow.payload?.customer_phone ||
+              apprRow.payload?.who ||
+              apprRow.payload?.phone ||
+              ''
+            );
+
+            let sendOk = false;
+            if (targetCustomer) {
+              sendOk = await sendCustomerWhatsAppMessage(targetCustomer, replyText);
+            }
+
+            if (!sendOk) {
+              console.error('[meta-webhook] Outbound send failed, reverting to pending');
+              await supabase
                 .from('business_approvals')
                 .update({
-                  status: 'approved',
-                  approved_at: new Date().toISOString(),
+                  status: 'pending',
                 })
                 .eq('id', approvalId)
                 .eq('workspace_id', workspace.id)
-                .eq('status', 'pending');
-
-              if (!updErr) {
-                // Actually send the message to the customer (Item K)
-                const targetCustomer = normalizePhoneNumber(
-                  approval.payload?.customerPhone ||
-                  approval.payload?.customer_phone ||
-                  approval.payload?.who ||
-                  approval.payload?.phone
-                );
-                if (targetCustomer) {
-                  let replyText = approval.payload?.suggested_reply;
-                  if (approval.action_type === 'business_order_confirm' || approval.payload?.what === 'order_request') {
-                    replyText = `Your order with ${workspace?.name || 'our shop'} is confirmed! Thank you for ordering with us.`;
-                  } else if (!replyText) {
-                    replyText = `Your request has been approved by the store owner.`;
-                  }
-                  await sendCustomerWhatsAppMessage(targetCustomer, replyText);
-                }
-
-                await supabase.from('behaviour_signals').insert({
-                  user_id:      approval.user_id || workspace?.owner_user_id,
-                  signal_type:  'business_approval_granted',
-                  source_table: 'business_approvals',
-                  source_id:    approvalId,
-                  signal_data:  { method: 'whatsapp_button', msg_id: msgId },
-                  weight:       1.0,
-                  domain_type:  'business',
-                  trigger_type: 'event',
-                  processed:    false,
-                });
-              }
+                .eq('status', 'sending');
+              continue;
             }
 
+            // On send success, set approved
+            const { error: updErr } = await supabase
+              .from('business_approvals')
+              .update({
+                status: 'approved',
+                approved_at: new Date().toISOString(),
+              })
+              .eq('id', approvalId)
+              .eq('workspace_id', workspace.id)
+              .eq('status', 'sending');
+
+            if (!updErr) {
+              // Log promo/transactional send in business_promo_log
+              if (targetCustomer) {
+                await supabase.from('business_promo_log').insert({
+                  workspace_id: workspace.id,
+                  phone: targetCustomer,
+                  message_type: 'transactional',
+                  status: 'sent',
+                  snippet: sanitizeSnippet(replyText),
+                  sent_at: new Date().toISOString(),
+                  created_at: new Date().toISOString(),
+                });
+              }
+
+              await supabase.from('behaviour_signals').insert({
+                user_id:      apprRow.user_id || workspace?.owner_user_id,
+                signal_type:  'business_approval_granted',
+                source_table: 'business_approvals',
+                source_id:    approvalId,
+                signal_data:  { method: 'whatsapp_button', msg_id: msgId },
+                weight:       1.0,
+                domain_type:  'business',
+                trigger_type: 'event',
+                processed:    false,
+              });
+            }
           } else if (buttonId.startsWith('dismiss_')) {
             const approvalId = buttonId.replace('dismiss_', '');
 

@@ -187,7 +187,7 @@ export function speak(text, options = {}) {
     import('@/lib/tts')
       .then(({ speakAaria }) => {
         if (!isCurrent(token)) throw new Error('interrupted');
-        return speakAaria(text, { lang: activeLangForAaria, authToken: _authToken });
+        return speakAaria(text, { lang: activeLangForAaria, authToken: _authToken, purpose: options.purpose || "general" });
       })
       .then(() => endSpeech(token))
       .catch(() => {
@@ -505,7 +505,7 @@ export function speakConfirmation(action, detail) {
     error_retry:    detail || "I couldn't do that. Please try again.",
     bills_summary:  detail || 'No pending bills.',
   };
-  speak(msgs[action] || detail || 'Done.', { priority: 'high' });
+  speak(msgs[action] || detail || 'Done.', { priority: 'high', purpose: 'action_confirmation' });
 }
 
 /**
@@ -521,14 +521,14 @@ export function speakFollowUp(prompt) {
 export const VoiceResponses = {
   keepSaved: (content) => {
     const preview = content ? content.slice(0, 60).trim() : '';
-    speak(preview ? `Got it. Noting: ${preview}` : 'Keep saved.');
+    speak(preview ? `Got it. Noting: ${preview}` : 'Keep saved.', { purpose: 'action_confirmation' });
   },
   keepDone: (content) => {
     const preview = content ? content.slice(0, 40).trim() : '';
-    speak(preview ? `Marked done: ${preview}` : 'Keep marked as done.');
+    speak(preview ? `Marked done: ${preview}` : 'Keep marked as done.', { purpose: 'action_confirmation' });
   },
-  keepDeleted: () => speak('Keep deleted.'),
-  keepUpdated: () => speak('Keep updated.'),
+  keepDeleted: () => speak('Keep deleted.', { purpose: 'action_confirmation' }),
+  keepUpdated: () => speak('Keep updated.', { purpose: 'action_confirmation' }),
   /**
    * reminderSet — Jarvis: confirms reminder with time, then optionally prompts
    * for additional context.
@@ -537,15 +537,15 @@ export const VoiceResponses = {
     if (text && time) {
       const d = new Date(time);
       const when = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      speak(`Reminder set: ${text.slice(0, 50)} — ${when}`);
+      speak(`Reminder set: ${text.slice(0, 50)} — ${when}`, { purpose: "reminder_alarm" });
     } else {
-      speak('Reminder set.');
+      speak('Reminder set.', { purpose: 'reminder_alarm' });
     }
   },
-  reminderUpdated: () => speak('Reminder updated.'),
-  reminderDeleted: () => speak('Reminder deleted.'),
+  reminderUpdated: () => speak('Reminder updated.', { purpose: 'reminder_alarm' }),
+  reminderDeleted: () => speak('Reminder deleted.', { purpose: 'reminder_alarm' }),
   expenseAdded: (amount, category) => {
-    speak(amount ? `Expense of \u20b9${amount} added under ${category || 'miscellaneous'}.` : 'Expense added.');
+    speak(amount ? `Expense of \u20b9${amount} added under ${category || 'miscellaneous'}.` : 'Expense added.', { purpose: 'money' });
   },
   listening: () => speak('Listening.'),
   error: (msg) => speak(msg || 'Something went wrong.'),
@@ -588,9 +588,9 @@ export function celebrateFirstKeep() {
 export function alertBudgetExceeded(category, percent) {
   const pct = Math.round(percent || 100);
   if (pct >= 100) {
-    speak(`Heads up — you've crossed your ${category || 'budget'} budget this month.`);
+    speak(`Heads up — you've crossed your ${category || 'budget'} budget this month.`, { purpose: 'money' });
   } else {
-    speak(`You're at ${pct}% of your ${category || 'budget'} budget for this month.`);
+    speak(`You're at ${pct}% of your ${category || 'budget'} budget for this month.`, { purpose: 'money' });
   }
 }
 
@@ -603,7 +603,7 @@ export function remindersOverdue(count) {
   const msg = count === 1
     ? 'You have 1 overdue reminder. Tap Reminders to review it.'
     : `You have ${count} overdue reminders. Tap Reminders to review them.`;
-  speak(msg, { rate: 0.95 });
+  speak(msg, { rate: 0.95, purpose: 'alarm' });
 }
 
 /**
@@ -612,7 +612,7 @@ export function remindersOverdue(count) {
  */
 export function confirmSOSSent(contactCount) {
   const n = contactCount || 1;
-  speak(`SOS sent to ${n === 1 ? 'your emergency contact' : `all ${n} emergency contacts`}. Help is on the way.`);
+  speak(`SOS sent to ${n === 1 ? 'your emergency contact' : `all ${n} emergency contacts`}. Help is on the way.`, { purpose: 'sos' });
 }
 
 /**
@@ -621,7 +621,7 @@ export function confirmSOSSent(contactCount) {
  */
 export function confirmPayslipSent(memberCount) {
   const n = memberCount || 1;
-  speak(`Payslip${n > 1 ? 's' : ''} sent to ${n === 1 ? '1 team member' : `${n} team members`} via WhatsApp.`);
+  speak(`Payslip${n > 1 ? 's' : ''} sent to ${n === 1 ? '1 team member' : `${n} team members`} via WhatsApp.`, { purpose: 'payment' });
 }
 
 /**

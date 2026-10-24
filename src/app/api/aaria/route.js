@@ -1,12 +1,7 @@
 // src/app/api/aaria/route.js
 //
-// Server-side proxy to Aaria (pranix-aaria), Pranix's shared voice/intent
-// understanding service. This is a DISTINCT, additive integration — it does
-// NOT touch or replace the existing /api/parse-intent pipeline or any
-// existing voice capture/session routes. Those keep working exactly as
-// before. This route exists purely so QuietKeep can also route free-text
-// queries through Aaria's understanding contract (product: "QuietKeep"),
-// which already allow-lists save_note / get_notes intents for this product.
+// Server-side proxy to Aaria (pranix-aaria), Pranix''s shared voice/intent
+// understanding service.
 export const dynamic = 'force-dynamic';
 
 import { createClient } from '@supabase/supabase-js';
@@ -59,7 +54,7 @@ export async function POST(req) {
     const data = await res.json();
     // Expected shape: { intent, entities, confidence, engine_used }
 
-    // Best-effort visual-companion slice: ask Aaria's /api/voice/speak for a
+    // Best-effort visual-companion slice: ask Aaria''s /api/voice/speak for a
     // short spoken confirmation and surface its visual_companion metadata
     // (expression + caption timing) if present. Never blocks or fails the
     // primary /understand response above.
@@ -73,6 +68,8 @@ export async function POST(req) {
           lang: lang_hint || 'en',
           product: 'QuietKeep',
           quality_tier: 'standard',
+          purpose: 'action_confirmation',
+          user_id: user.id,
         }),
       });
       if (speakRes.ok) {
@@ -94,7 +91,7 @@ export async function POST(req) {
 }
 
 // Health passthrough — useful for quick ops checks without needing to know
-// Aaria's base URL from the client.
+// Aaria''s base URL from the client.
 export async function GET() {
   try {
     const res = await fetch(`${AARIA_BASE_URL}/api/health`);

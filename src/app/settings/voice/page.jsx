@@ -11,6 +11,7 @@ import { availableWakeModes, getWakeMode, setWakeMode, getWakeWord } from '@/lib
 import { isWebHotwordEnabled, setWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 import { listenStreamWanted, setListenStreamWanted, readLastListen, nemotronWanted, setNemotronWanted } from '@/lib/listen-stream';
 import { getActiveRun, startRun, stopRun, getSteps, clearSteps, exportSteps } from '@/lib/step-log';
+import { CLONED_VOICE_CONSENT_TEXTS } from '@/lib/cloned-voice-safeguards';
 
 const P = '#6366f1';
 const LANGS = [
@@ -113,8 +114,12 @@ export default function VoiceSettings() {
   }
 
 
-  // recording state
-  const [consent, setConsent] = useState(false);
+  // recording & 3-part consent state
+  const [consentOwnership, setConsentOwnership] = useState(false);
+  const [consentNoDeception, setConsentNoDeception] = useState(false);
+  const [consentInAppAiLabel, setConsentInAppAiLabel] = useState(false);
+  const [consentLang, setConsentLang] = useState('en');
+  const allConsentsTicked = consentOwnership && consentNoDeception && consentInAppAiLabel;
   const [rec, setRec] = useState('idle'); // idle | recording | recorded | creating
   const [audioUrl, setAudioUrl] = useState('');
   const mrRef = useRef(null); const chunksRef = useRef([]); const blobRef = useRef(null); const stopTimer = useRef(null);
@@ -210,30 +215,75 @@ export default function VoiceSettings() {
   function stopRec() { clearTimeout(stopTimer.current); try { mrRef.current?.stop(); } catch {} }
 
   async function createVoice() {
-    if (!consent) { setMsg('Please tick the consent box first.'); return; }
+    if (!allConsentsTicked) { setMsg('Please review and tick all three consent boxes first.'); return; }
     if (!blobRef.current) { setMsg('Record a sample first.'); return; }
     setRec('creating'); setMsg('');
     try {
       const fd = new FormData();
+      fd.append('consent_own_or_permitted', consentOwnership ? 'true' : 'false');
+      fd.append('consent_no_deception', consentNoDeception ? 'true' : 'false');
+      fd.append('consent_in_app_labeled', consentInAppAiLabel ? 'true' : 'false');
       fd.append('consent', 'true');
       fd.append('voice_name', 'My QuietKeep voice');
       fd.append('audio_0', blobRef.current, 'sample.webm');
       const r = await fetch('/api/voice/clone', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: fd });
       const d = await r.json();
       if (!r.ok) { setMsg(d.error || 'Could not create voice.'); setRec('recorded'); return; }
-      setPrefs(p => ({ ...p, has_own_voice: true, consent: true, provider: 'own' }));
-      await save({ provider: 'own' });
+      setPrefs(p => ({
+        ...p,
+        has_own_voice: true,
+        consent: true,
+        provider: 'own',
+        consents: {
+          consent_own_or_permitted: true,
+          consent_no_deception: true,
+          consent_in_app_labeled: true,
+          consented_at: new Date().toISOString(),
+        },
+      }));
+      await save({
+        provider: 'own',
+        consent_own_or_permitted: true,
+        consent_no_deception: true,
+        consent_in_app_labeled: true,
+      });
       setRec('idle'); setAudioUrl(''); blobRef.current = null; setMsg('Your voice is ready 🎉');
     } catch { setMsg('Could not reach the voice service.'); setRec('recorded'); }
   }
 
   async function deleteVoice() {
-    if (!confirm('Delete your recorded voice? This removes it from QuietKeep and the voice provider.')) return;
+    if (!confirm('Delete this voice? This removes it from QuietKeep and the voice provider.')) return;
+    setMsg('Deleting voice...');
     try {
-      await fetch('/api/voice/preferences', { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } });
-      setPrefs(p => ({ ...p, has_own_voice: false, consent: false, provider: 'system' }));
+      // Server-side preferences DELETE calls engine forget and deletes provider voices
+      const r = await fetch('/api/voice/preferences', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) {
+        setMsg(d.error || 'Could not delete voice.');
+        return;
+      }
+      setPrefs(p => ({
+        ...p,
+        has_own_voice: false,
+        consent: false,
+        provider: 'system',
+        consents: {
+          consent_own_or_permitted: false,
+          consent_no_deception: false,
+          consent_in_app_labeled: false,
+          consented_at: null,
+        },
+      }));
+      setConsentOwnership(false);
+      setConsentNoDeception(false);
+      setConsentInAppAiLabel(false);
       setMsg('Your voice was deleted.');
-    } catch { setMsg('Could not delete.'); }
+    } catch {
+      setMsg('Could not delete voice.');
+    }
   }
 
   if (!prefs) return <div style={wrap}><p style={{ color: '#64748b' }}>Loading…</p></div>;
@@ -300,7 +350,26 @@ export default function VoiceSettings() {
             ['own', 'My own voice', 'Aaria speaks back in your voice — recorded with your consent.'],
           ].map(([v, t, d]) => (
             <label key={v} style={{ ...opt, borderColor: prefs.provider === v ? P : 'rgba(0,0,0,.1)' }}>
-              <input type="radio" name="prov" checked={prefs.provider === v} onChange={() => save({ provider: v })} />
+              <input
+    type="radio"
+    name="prov"
+    checked={prefs.provider === v}
+    onChange={() => {
+      if (v === 'own' && !prefs.consent && !allConsentsTicked) {
+        setPrefs(p => ({ ...p, provider: 'own' }));
+        setMsg('Please review and tick all three consent boxes below to enable your voice.');
+        return;
+      }
+      save({
+        provider: v,
+        ...(v === 'own' ? {
+          consent_own_or_permitted: consentOwnership,
+          consent_no_deception: consentNoDeception,
+          consent_in_app_labeled: consentInAppAiLabel,
+        } : {}),
+      });
+    }}
+  />
               <span><b style={{ fontSize: 14 }}>{t}</b><small style={{ display: 'block', color: '#64748b', fontSize: 12 }}>{d}</small></span>
             </label>
           ))}
@@ -315,34 +384,195 @@ export default function VoiceSettings() {
             <div style={{ marginTop: 12, background: '#faf8ff', border: '1px solid #ece9ff', borderRadius: 14, padding: 14 }}>
               {prefs.has_own_voice ? (
                 <div>
-                  <b style={{ fontSize: 14 }}>✅ Your voice is set up</b>
-                  <p style={hint}>Aaria talks back in your voice. You’re in control — you can remove it anytime.</p>
-                  <button onClick={deleteVoice} style={{ ...btn, background: '#ef4444' }}>Delete my voice</button>
+                  <b style={{ fontSize: 14 }}>✓ Your voice is set up</b>
+                  <p style={hint}>Aaria talks back in your voice inside QuietKeep. You can remove it anytime.</p>
+                  
+                  {!prefs.consent && (
+                    <div style={{ margin: '12px 0', padding: 12, background: '#fff', border: '1px solid #e0e7ff', borderRadius: 10 }}>
+                      <b style={{ fontSize: 13, color: '#1e293b' }}>Confirm permissions to enable this voice:</b>
+                      <div style={{ display: 'flex', gap: 6, margin: '8px 0' }}>
+                        {[
+                          ['en', 'English'],
+                          ['te', 'తెలుగు'],
+                          ['hi', 'हिन्दी'],
+                        ].map(([code, label]) => (
+                          <button
+                            key={code}
+                            type="button"
+                            onClick={() => setConsentLang(code)}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: 11,
+                              borderRadius: 6,
+                              border: '1px solid #cbd5e1',
+                              background: consentLang === code ? P : '#fff',
+                              color: consentLang === code ? '#fff' : '#475569',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div style={{ display: 'grid', gap: 8, margin: '10px 0' }}>
+                        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: '#334155' }}>
+                          <input
+                            type="checkbox"
+                            checked={consentOwnership}
+                            onChange={e => setConsentOwnership(e.target.checked)}
+                            style={{ marginTop: 2 }}
+                          />
+                          <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.ownership || CLONED_VOICE_CONSENT_TEXTS.en.ownership}</span>
+                        </label>
+                        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: '#334155' }}>
+                          <input
+                            type="checkbox"
+                            checked={consentNoDeception}
+                            onChange={e => setConsentNoDeception(e.target.checked)}
+                            style={{ marginTop: 2 }}
+                          />
+                          <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.no_deception || CLONED_VOICE_CONSENT_TEXTS.en.no_deception}</span>
+                        </label>
+                        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: '#334155' }}>
+                          <input
+                            type="checkbox"
+                            checked={consentInAppAiLabel}
+                            onChange={e => setConsentInAppAiLabel(e.target.checked)}
+                            style={{ marginTop: 2 }}
+                          />
+                          <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.in_app_ai_label || CLONED_VOICE_CONSENT_TEXTS.en.in_app_ai_label}</span>
+                        </label>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => save({
+                          provider: 'own',
+                          consent_own_or_permitted: consentOwnership,
+                          consent_no_deception: consentNoDeception,
+                          consent_in_app_labeled: consentInAppAiLabel,
+                        })}
+                        disabled={!allConsentsTicked}
+                        style={{ ...btn, width: '100%', opacity: allConsentsTicked ? 1 : 0.5 }}
+                      >
+                        Confirm &amp; Enable Voice
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 12 }}>
+                    <button
+                      type="button"
+                      onClick={deleteVoice}
+                      style={{ ...btn, background: '#ef4444' }}
+                    >
+                      Delete this voice
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div>
                   <b style={{ fontSize: 14 }}>Record your voice</b>
                   <p style={hint}>Read this line aloud once (~15 seconds):</p>
-                  <div style={{ background: '#fff', border: '1px dashed #c7c2f0', borderRadius: 10, padding: 10, fontSize: 13, color: '#334155', margin: '8px 0' }}>“{SAMPLE_LINE}”</div>
+                  <div style={{ background: '#fff', border: '1px dashed #c7c2f0', borderRadius: 10, padding: 10, fontSize: 13, color: '#334155', margin: '8px 0' }}>"{SAMPLE_LINE}"</div>
 
-                  <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#475569', margin: '8px 0' }}>
-                    <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} style={{ marginTop: 2 }} />
-                    <span>I consent to QuietKeep creating a voice model from my recording. It’s used only for my account, and I can delete it anytime.</span>
-                  </label>
+                  {/* Consent language selector */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '12px 0 6px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Consent language:</span>
+                    {[
+                      ['en', 'English'],
+                      ['te', 'తెలుగు'],
+                      ['hi', 'हिन्दी'],
+                    ].map(([code, label]) => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setConsentLang(code)}
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: 11,
+                          borderRadius: 6,
+                          border: '1px solid #cbd5e1',
+                          background: consentLang === code ? P : '#fff',
+                          color: consentLang === code ? '#fff' : '#475569',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
 
-                  {rec === 'idle' && <button onClick={startRec} disabled={!consent} style={{ ...btn, opacity: consent ? 1 : .5 }}>🎙️ Start recording</button>}
-                  {rec === 'recording' && <button onClick={stopRec} style={{ ...btn, background: '#ef4444' }}>⏹ Stop</button>}
+                  {/* 3 separate unticked consent checkboxes */}
+                  <div style={{ display: 'grid', gap: 8, margin: '8px 0 14px', background: '#fff', padding: 10, borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#334155' }}>
+                      <input
+                        type="checkbox"
+                        checked={consentOwnership}
+                        onChange={e => setConsentOwnership(e.target.checked)}
+                        style={{ marginTop: 2 }}
+                      />
+                      <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.ownership || CLONED_VOICE_CONSENT_TEXTS.en.ownership}</span>
+                    </label>
+
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#334155' }}>
+                      <input
+                        type="checkbox"
+                        checked={consentNoDeception}
+                        onChange={e => setConsentNoDeception(e.target.checked)}
+                        style={{ marginTop: 2 }}
+                      />
+                      <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.no_deception || CLONED_VOICE_CONSENT_TEXTS.en.no_deception}</span>
+                    </label>
+
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#334155' }}>
+                      <input
+                        type="checkbox"
+                        checked={consentInAppAiLabel}
+                        onChange={e => setConsentInAppAiLabel(e.target.checked)}
+                        style={{ marginTop: 2 }}
+                      />
+                      <span>{CLONED_VOICE_CONSENT_TEXTS[consentLang]?.in_app_ai_label || CLONED_VOICE_CONSENT_TEXTS.en.in_app_ai_label}</span>
+                    </label>
+                  </div>
+
+                  {rec === 'idle' && (
+                    <button
+                      type="button"
+                      onClick={startRec}
+                      disabled={!allConsentsTicked}
+                      style={{ ...btn, opacity: allConsentsTicked ? 1 : 0.5 }}
+                    >
+                      🎙️ Start recording
+                    </button>
+                  )}
+                  {rec === 'recording' && <button type="button" onClick={stopRec} style={{ ...btn, background: '#ef4444' }}>⏹ Stop</button>}
                   {rec === 'recorded' && (
                     <div style={{ display: 'grid', gap: 8 }}>
-                      {audioUrl && <audio controls src={audioUrl} style={{ width: '100%' }} />}
+                      {audioUrl && (
+                        <audio
+                          controls
+                          controlsList="nodownload"
+                          src={audioUrl}
+                          style={{ width: '100%' }}
+                        />
+                      )}
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={startRec} style={{ ...btn, flex: 1, background: '#64748b' }}>Re-record</button>
-                        <button onClick={createVoice} style={{ ...btn, flex: 1 }}>Use this voice</button>
+                        <button type="button" onClick={startRec} style={{ ...btn, flex: 1, background: '#64748b' }}>Re-record</button>
+                        <button
+                          type="button"
+                          onClick={createVoice}
+                          disabled={!allConsentsTicked}
+                          style={{ ...btn, flex: 1, opacity: allConsentsTicked ? 1 : 0.5 }}
+                        >
+                          Use this voice
+                        </button>
                       </div>
                     </div>
                   )}
-                  {rec === 'creating' && <button disabled style={{ ...btn, opacity: .6 }}>Creating your voice…</button>}
-                  <p style={{ ...hint, marginTop: 10 }}>🔒 Your recording is used only to build your voice. Requires a Pro plan.</p>
+                  {rec === 'creating' && <button disabled style={{ ...btn, opacity: .6 }}>Creating your voice...</button>}
+                  <p style={{ ...hint, marginTop: 10 }}>🔒 Your recording is used only to build your voice inside QuietKeep. You can delete it anytime.</p>
                 </div>
               )}
             </div>

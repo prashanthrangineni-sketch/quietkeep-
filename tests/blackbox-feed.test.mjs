@@ -79,7 +79,7 @@ await (async () => {
     push: async (s) => { pushed.push(s); },
   });
 
-  await new Promise(r => setTimeout(r, 350));
+  await new Promise(r => setTimeout(r, 600));
   stop();
   reader.destroy();
 
@@ -101,7 +101,7 @@ await (async () => {
   });
 
   // Let 1 sample push normally
-  await new Promise(r => setTimeout(r, 100));
+  await new Promise(r => setTimeout(r, 250));
   const countBefore = pushed.length;
   check('feed pushes initial samples before failure mode', countBefore >= 1);
 

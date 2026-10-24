@@ -5,6 +5,7 @@
 export const dynamic = 'force-dynamic';
 import { requireBizPermission } from '@/lib/biz-rbac';
 import { createWriteClient } from '@/lib/supabase-bearer';
+import { normalizePhoneNumber } from '@/lib/business-limits';
 
 export async function GET(req) {
   try {
@@ -39,6 +40,9 @@ export async function POST(req) {
 
     const { workspace_id: _ignore, ...safe } = body;
     const payload = { ...safe, workspace_id: ctx.workspace.id };
+    if (payload.phone) {
+      payload.phone = normalizePhoneNumber(payload.phone);
+    }
 
     const { data, error } = await db.from('business_customers').upsert(payload).select().single();
     if (error) return Response.json({ error: error.message }, { status: 500 });

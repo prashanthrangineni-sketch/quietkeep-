@@ -181,6 +181,13 @@ const TABLE = Object.freeze({
   delete_all:     LEVEL.NEVER,
   account_change: LEVEL.NEVER,
   unknown:        LEVEL.NEVER,
+  // Business automation limits (founder decision 4, CARD AG-AARIA-25)
+  business_order_confirm:   LEVEL.PIN,          // orders/bookings never confirmed automatically
+  business_booking_confirm: LEVEL.PIN,
+  business_payment:         LEVEL.NEVER,        // payments never by automation
+  business_refund:          LEVEL.NEVER,        // refunds never by automation
+  business_payout:          LEVEL.NEVER,        // payouts never by automation
+  business_legal_advice:    LEVEL.NEVER,        // legal advice never by automation
   // nothing to do - the reply is the whole turn
   none:           LEVEL.NO_ACTION,
   confirm:        LEVEL.NO_ACTION,    // a yes with no question pending creates nothing

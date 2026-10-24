@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 // src/components/ClonedVoiceLabel.jsx - Visible badge when a custom AI voice is speaking.
 // Safeguard requirement: whenever a custom voice is speaking, show a small visible tag "AI voice of <name>" (en/te/hi).
 import { useState, useEffect } from 'react';

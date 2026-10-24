@@ -1,4 +1,4 @@
-﻿// tests/cloned-voice-safeguards.test.mjs - Cloned-voice safeguards (AG-AARIA-24)
+// tests/cloned-voice-safeguards.test.mjs - Cloned-voice safeguards (AG-AARIA-24)
 //
 // 1. Consent gate: 3 unticked checkboxes (en/te/hi). No ticks = no voice.
 // 2. Purpose on every speak call: SOS/alarm/money/confirmation always standard voice.
@@ -17,8 +17,8 @@ import {
   setCustomVoiceSpeaking,
   onCustomVoiceSpeakingChange,
   decideTtsVoice,
-  executeVoicePreferencesDelete,
 } from '../src/lib/cloned-voice-safeguards.js';
+import { executeVoicePreferencesDelete } from '../src/lib/cloned-voice-delete.server.js';
 
 let pass = 0, fail = 0;
 function check(name, ok, detail = '') {

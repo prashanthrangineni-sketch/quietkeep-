@@ -4,7 +4,8 @@
 // and ensures deletion purges profile, consent records, and contacts Aaria engine forget.
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { hasAllClonedVoiceConsents, executeVoicePreferencesDelete } from '@/lib/cloned-voice-safeguards';
+import { hasAllClonedVoiceConsents } from '@/lib/cloned-voice-safeguards';
+import { executeVoicePreferencesDelete } from '@/lib/cloned-voice-delete.server';
 
 export const dynamic = 'force-dynamic';
 

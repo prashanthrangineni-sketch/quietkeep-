@@ -81,7 +81,7 @@ export async function POST(request) {
   if (!voiceId) return NextResponse.json({ error: 'ElevenLabs did not return a voice_id' }, { status: 502 });
 
   const now = new Date().toISOString();
-  await supabase.from('user_settings').upsert({
+  const { error: settingsErr } = await supabase.from('user_settings').upsert({
     user_id: user.id,
     elevenlabs_voice_id: voiceId,
     voice_clone_consent: true,
@@ -93,18 +93,24 @@ export async function POST(request) {
     updated_at: now,
   }, { onConflict: 'user_id' });
 
-  try {
-    await supabase.from('voice_profile_consents').upsert({
-      user_id: user.id,
-      voice_id: voiceId,
-      voice_name: voiceName,
-      consent_own_or_permitted: true,
-      consent_no_deception: true,
-      consent_in_app_labeled: true,
-      consented_at: now,
-      updated_at: now,
-    }, { onConflict: 'user_id' });
-  } catch (_) {}
+  if (settingsErr) {
+    return NextResponse.json({ error: 'Failed to save consent settings: ' + settingsErr.message }, { status: 500 });
+  }
+
+  const { error: consentErr } = await supabase.from('voice_profile_consents').upsert({
+    user_id: user.id,
+    voice_id: voiceId,
+    voice_name: voiceName,
+    consent_own_or_permitted: true,
+    consent_no_deception: true,
+    consent_in_app_labeled: true,
+    consented_at: now,
+    updated_at: now,
+  }, { onConflict: 'user_id' });
+
+  if (consentErr) {
+    return NextResponse.json({ error: 'Failed to save consent record: ' + consentErr.message }, { status: 500 });
+  }
 
   await supabase.from('audit_log').insert({
     user_id: user.id,

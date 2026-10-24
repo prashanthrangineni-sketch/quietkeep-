@@ -48,9 +48,10 @@ export const CLONED_VOICE_CONSENT_TEXTS = {
 export function hasAllClonedVoiceConsents(consents) {
   if (!consents || typeof consents !== 'object') return false;
 
-  const a = consents.consent_ownership ?? consents.consent_a ?? consents.item_a;
+  // Canonical route spelling: consent_own_or_permitted, consent_no_deception, consent_in_app_labeled
+  const a = consents.consent_own_or_permitted ?? consents.consent_ownership ?? consents.consent_a ?? consents.item_a;
   const b = consents.consent_no_deception ?? consents.consent_b ?? consents.item_b;
-  const c = consents.consent_in_app_ai_label ?? consents.consent_c ?? consents.item_c;
+  const c = consents.consent_in_app_labeled ?? consents.consent_in_app_ai_label ?? consents.consent_c ?? consents.item_c;
 
   const isTrue = (val) => val === true || val === 'true' || val === 1 || val === '1';
 

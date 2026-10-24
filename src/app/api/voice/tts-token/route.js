@@ -43,5 +43,6 @@ export async function GET(request) {
     return NextResponse.json({ key: null });
   }
 
-  return NextResponse.json({ key: apiKey, voice_id: data.elevenlabs_voice_id || null });
+  // Never return raw ElevenLabs API key to the browser. Return { key: null } always.
+  return NextResponse.json({ key: null, voice_id: null });
 }

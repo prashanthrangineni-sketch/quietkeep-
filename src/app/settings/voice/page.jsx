@@ -215,19 +215,38 @@ export default function VoiceSettings() {
   function stopRec() { clearTimeout(stopTimer.current); try { mrRef.current?.stop(); } catch {} }
 
   async function createVoice() {
-    if (!consent) { setMsg('Please tick the consent box first.'); return; }
+    if (!allConsentsTicked) { setMsg('Please review and tick all three consent boxes first.'); return; }
     if (!blobRef.current) { setMsg('Record a sample first.'); return; }
     setRec('creating'); setMsg('');
     try {
       const fd = new FormData();
+      fd.append('consent_own_or_permitted', consentOwnership ? 'true' : 'false');
+      fd.append('consent_no_deception', consentNoDeception ? 'true' : 'false');
+      fd.append('consent_in_app_labeled', consentInAppAiLabel ? 'true' : 'false');
       fd.append('consent', 'true');
       fd.append('voice_name', 'My QuietKeep voice');
       fd.append('audio_0', blobRef.current, 'sample.webm');
       const r = await fetch('/api/voice/clone', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: fd });
       const d = await r.json();
       if (!r.ok) { setMsg(d.error || 'Could not create voice.'); setRec('recorded'); return; }
-      setPrefs(p => ({ ...p, has_own_voice: true, consent: true, provider: 'own' }));
-      await save({ provider: 'own' });
+      setPrefs(p => ({
+        ...p,
+        has_own_voice: true,
+        consent: true,
+        provider: 'own',
+        consents: {
+          consent_own_or_permitted: true,
+          consent_no_deception: true,
+          consent_in_app_labeled: true,
+          consented_at: new Date().toISOString(),
+        },
+      }));
+      await save({
+        provider: 'own',
+        consent_own_or_permitted: true,
+        consent_no_deception: true,
+        consent_in_app_labeled: true,
+      });
       setRec('idle'); setAudioUrl(''); blobRef.current = null; setMsg('Your voice is ready 🎉');
     } catch { setMsg('Could not reach the voice service.'); setRec('recorded'); }
   }
@@ -236,20 +255,7 @@ export default function VoiceSettings() {
     if (!confirm('Delete this voice? This removes it from QuietKeep and the voice provider.')) return;
     setMsg('Deleting voice...');
     try {
-      // Call engine forget endpoint first
-      const forgetRes = await fetch('/api/voice/forget-me', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!forgetRes.ok && forgetRes.status !== 404 && forgetRes.status !== 501) {
-        const forgetData = await forgetRes.json().catch(() => ({}));
-        if (forgetData.reason && forgetData.reason !== 'no_engine_key') {
-          setMsg(`Could not delete: ${forgetData.reason || 'Voice engine refused deletion'}`);
-          return;
-        }
-      }
-
-      // Delete from preferences & database
+      // Server-side preferences DELETE calls engine forget and deletes provider voices
       const r = await fetch('/api/voice/preferences', {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -259,7 +265,18 @@ export default function VoiceSettings() {
         setMsg(d.error || 'Could not delete voice.');
         return;
       }
-      setPrefs(p => ({ ...p, has_own_voice: false, consent: false, provider: 'system', consents: null }));
+      setPrefs(p => ({
+        ...p,
+        has_own_voice: false,
+        consent: false,
+        provider: 'system',
+        consents: {
+          consent_own_or_permitted: false,
+          consent_no_deception: false,
+          consent_in_app_labeled: false,
+          consented_at: null,
+        },
+      }));
       setConsentOwnership(false);
       setConsentNoDeception(false);
       setConsentInAppAiLabel(false);
@@ -338,7 +355,7 @@ export default function VoiceSettings() {
     name="prov"
     checked={prefs.provider === v}
     onChange={() => {
-      if (v === 'own' && !prefs.consents?.all_consents_valid && !allConsentsTicked) {
+      if (v === 'own' && !prefs.consent && !allConsentsTicked) {
         setPrefs(p => ({ ...p, provider: 'own' }));
         setMsg('Please review and tick all three consent boxes below to enable your voice.');
         return;
@@ -346,9 +363,9 @@ export default function VoiceSettings() {
       save({
         provider: v,
         ...(v === 'own' ? {
-          consent_ownership: true,
-          consent_no_deception: true,
-          consent_in_app_ai_label: true,
+          consent_own_or_permitted: consentOwnership,
+          consent_no_deception: consentNoDeception,
+          consent_in_app_labeled: consentInAppAiLabel,
         } : {}),
       });
     }}
@@ -370,7 +387,7 @@ export default function VoiceSettings() {
                   <b style={{ fontSize: 14 }}>✓ Your voice is set up</b>
                   <p style={hint}>Aaria talks back in your voice inside QuietKeep. You can remove it anytime.</p>
                   
-                  {!prefs.consents?.all_consents_valid && (
+                  {!prefs.consent && (
                     <div style={{ margin: '12px 0', padding: 12, background: '#fff', border: '1px solid #e0e7ff', borderRadius: 10 }}>
                       <b style={{ fontSize: 13, color: '#1e293b' }}>Confirm permissions to enable this voice:</b>
                       <div style={{ display: 'flex', gap: 6, margin: '8px 0' }}>
@@ -432,9 +449,9 @@ export default function VoiceSettings() {
                         type="button"
                         onClick={() => save({
                           provider: 'own',
-                          consent_ownership: true,
-                          consent_no_deception: true,
-                          consent_in_app_ai_label: true,
+                          consent_own_or_permitted: consentOwnership,
+                          consent_no_deception: consentNoDeception,
+                          consent_in_app_labeled: consentInAppAiLabel,
                         })}
                         disabled={!allConsentsTicked}
                         style={{ ...btn, width: '100%', opacity: allConsentsTicked ? 1 : 0.5 }}

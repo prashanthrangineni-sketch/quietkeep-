@@ -34,15 +34,21 @@ comment on table public.voice_profile_consents is
 
 alter table public.voice_profile_consents enable row level security;
 
+revoke all on public.voice_profile_consents from anon;
+
+drop policy if exists "voice_profile_consents_owner_select" on public.voice_profile_consents;
 create policy "voice_profile_consents_owner_select" on public.voice_profile_consents
   for select using (auth.uid() = user_id);
 
+drop policy if exists "voice_profile_consents_owner_insert" on public.voice_profile_consents;
 create policy "voice_profile_consents_owner_insert" on public.voice_profile_consents
   for insert with check (auth.uid() = user_id);
 
+drop policy if exists "voice_profile_consents_owner_update" on public.voice_profile_consents;
 create policy "voice_profile_consents_owner_update" on public.voice_profile_consents
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "voice_profile_consents_owner_delete" on public.voice_profile_consents;
 create policy "voice_profile_consents_owner_delete" on public.voice_profile_consents
   for delete using (auth.uid() = user_id);
 

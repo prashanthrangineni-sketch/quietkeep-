@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { extractAudio } from '@/lib/aaria-audio';
 import { engineHeaders } from '@/lib/aaria-pass';
-import { isRestrictedPurpose } from '@/lib/cloned-voice-safeguards';
+import { hasAllClonedVoiceConsents, isRestrictedPurpose } from '@/lib/cloned-voice-safeguards';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,10 +46,29 @@ export async function POST(req) {
   const rawPurpose = String(body.purpose || 'general').trim().toLowerCase();
   const purpose = rawPurpose || 'general';
 
-  // If purpose is restricted (money/payment/sos/emergency/alarm/confirmation),
-  // QuietKeep always forces standard voice and engine also refuses custom voice.
-  const isRestricted = isRestrictedPurpose(purpose);
-  const voiceId = isRestricted ? null : (body.voice_id || null);
+  // Server allow-list: only in-app playback purposes may use the cloned voice.
+  // Every other purpose (sos, calls, whatsapp, messages to others, export, action_confirmation)
+  // falls back to the standard voice.
+  const IN_APP_ALLOWED_PURPOSES = new Set(['conversational', 'general', 'brief', 'greeting']);
+  const isAllowedPurpose = IN_APP_ALLOWED_PURPOSES.has(purpose);
+
+  // Ignore client body.voice_id. Securely load session user's elevenlabs_voice_id and consent flags.
+  const { data: userSettings } = await sb.from('user_settings')
+    .select('elevenlabs_voice_id, consent_own_or_permitted, consent_no_deception, consent_in_app_labeled, voice_clone_consent, settings')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const hasFullConsent = hasAllClonedVoiceConsents({
+    consent_own_or_permitted: userSettings?.consent_own_or_permitted,
+    consent_no_deception: userSettings?.consent_no_deception,
+    consent_in_app_labeled: userSettings?.consent_in_app_labeled,
+  });
+
+  const isRestricted = isRestrictedPurpose(purpose) || !isAllowedPurpose || body.is_outbound || body.is_call || body.is_export;
+  const isOwnProvider = userSettings?.settings?.voice_provider === 'own' || (!userSettings?.settings?.voice_provider && userSettings?.elevenlabs_voice_id);
+
+  const canUseClonedVoice = hasFullConsent && !isRestricted && isOwnProvider && Boolean(userSettings?.elevenlabs_voice_id);
+  const voiceId = canUseClonedVoice ? userSettings.elevenlabs_voice_id : null;
 
   try {
     const payload = {

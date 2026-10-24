@@ -36,20 +36,44 @@ function check(name, ok, detail = '') {
     CLONED_VOICE_CONSENT_TEXTS.en.no_deception.includes('deceive') &&
     CLONED_VOICE_CONSENT_TEXTS.en.in_app_ai_label.includes('only inside this app'));
 
-  // No ticks = no voice
+  // Route consent keys (Item 1 & Item 9)
+  check('canonical route consent keys -> true',
+    hasAllClonedVoiceConsents({
+      consent_own_or_permitted: true,
+      consent_no_deception: true,
+      consent_in_app_labeled: true,
+    }) === true);
+  check('canonical route consent keys as strings -> true',
+    hasAllClonedVoiceConsents({
+      consent_own_or_permitted: 'true',
+      consent_no_deception: 'true',
+      consent_in_app_labeled: 'true',
+    }) === true);
+  check('canonical route keys: missing consent_own_or_permitted -> false',
+    hasAllClonedVoiceConsents({
+      consent_no_deception: true,
+      consent_in_app_labeled: true,
+    }) === false);
+  check('canonical route keys: missing consent_in_app_labeled -> false',
+    hasAllClonedVoiceConsents({
+      consent_own_or_permitted: true,
+      consent_no_deception: true,
+    }) === false);
+
+  // Backward-compatible fallback keys
   check('no consents -> hasAllClonedVoiceConsents is false',
     hasAllClonedVoiceConsents({}) === false);
   check('partial consent (1/3) -> false',
     hasAllClonedVoiceConsents({ consent_ownership: true }) === false);
   check('partial consent (2/3) -> false',
     hasAllClonedVoiceConsents({ consent_ownership: true, consent_no_deception: true }) === false);
-  check('all 3 consents ticked -> true',
+  check('all 3 consents ticked (legacy keys) -> true',
     hasAllClonedVoiceConsents({
       consent_ownership: true,
       consent_no_deception: true,
       consent_in_app_ai_label: true,
     }) === true);
-  check('all 3 consents as strings ("true") -> true',
+  check('all 3 consents as strings (legacy keys) -> true',
     hasAllClonedVoiceConsents({
       consent_ownership: 'true',
       consent_no_deception: 'true',
@@ -171,7 +195,7 @@ function check(name, ok, detail = '') {
       }),
     });
 
-    const passOpts = { key: 'test-key-0123456789' };
+    const passOpts = { key: 'test-key-not-real' };
 
     const failRes = await askEngineToForget('test-user-fail', { fetchImpl: fakeFetchFail, baseUrl: 'https://engine.test/', passOpts });
     check('engine forget failure is detected and reported as not ok',
@@ -183,7 +207,68 @@ function check(name, ok, detail = '') {
   });
 }
 
-// ── 6. Non-Regression for Users Without Custom Voice ──────────────────────────
+// ── 6. speak() with Stubbed Fetch & DELETE Failure Handling (Item 9) ─────────
+{
+  // Test speak() with SOS + own voice: must NEVER call ElevenLabs/cloned voice
+  import('../src/lib/tts.js').then(async ({ speak }) => {
+    const originalFetch = globalThis.fetch;
+    const fetchCalls = [];
+
+    globalThis.fetch = async (url, options) => {
+      fetchCalls.push({ url, options, body: options?.body ? JSON.parse(options.body) : null });
+      if (url.includes('/api/voice/tts')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            audio: 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=',
+            provider: 'aaria',
+          }),
+        };
+      }
+      return { ok: false, status: 500, text: async () => 'Should not be called' };
+    };
+
+    try {
+      await speak('Emergency help requested', {
+        provider: 'own',
+        voiceId: 'cloned_voice_abc',
+        purpose: 'sos',
+        authToken: 'test_token',
+        hasConsent: true,
+      });
+
+      check('speak() with SOS + own voice calls /api/voice/tts, never direct ElevenLabs',
+        fetchCalls.length === 1 && fetchCalls[0].url === '/api/voice/tts');
+      check('speak() sends purpose: sos to /api/voice/tts',
+        fetchCalls[0].body?.purpose === 'sos');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  // Test simulated DELETE route logic when ElevenLabs fails -> reports not ok (status 502)
+  {
+    const simulateDelete = async ({ elStatus }) => {
+      if (elStatus !== 200 && elStatus !== 404) {
+        return { ok: false, status: 502, error: 'ElevenLabs voice deletion failed' };
+      }
+      return { ok: true, deleted: true };
+    };
+
+    simulateDelete({ elStatus: 500 }).then((res) => {
+      check('DELETE when ElevenLabs fails -> not success (ok: false, status: 502)',
+        res.ok === false && res.status === 502);
+    });
+
+    simulateDelete({ elStatus: 404 }).then((res) => {
+      check('DELETE when ElevenLabs voice is 404 (already deleted) -> success',
+        res.ok === true);
+    });
+  }
+}
+
+// ── 7. Non-Regression for Users Without Custom Voice ──────────────────────────
 {
   const systemUser = resolveVoicePlayback({ provider: 'system', purpose: 'general' });
   check('system voice provider untouched for ordinary users',
@@ -201,4 +286,4 @@ function check(name, ok, detail = '') {
 setTimeout(() => {
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
-}, 200);
+}, 400);

@@ -27,7 +27,7 @@ export function isIndicLang(lang) {
 // Stop any ongoing TTS immediately (called when user starts speaking)
 export function interruptTTS() {
   if (typeof window === 'undefined') return;
-  setCustomVoiceSpeaking({ isSpeaking: false });
+  setCustomVoiceSpeaking(false);
   if (window.speechSynthesis && window.speechSynthesis.speaking) {
     window.speechSynthesis.cancel();
   }
@@ -112,12 +112,19 @@ export function playAudioBuffer(buffer) {
 export function playAudioUrl(url, revoke = false) {
   return new Promise((resolve, reject) => {
     interruptTTS();
+    if (typeof window === 'undefined' || typeof Audio === 'undefined') {
+      if (revoke && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+        try { URL.revokeObjectURL(url); } catch {}
+      }
+      resolve();
+      return;
+    }
     const audio = new Audio(url);
     window.__qkActiveAudio = audio;
     const cleanup = () => {
       if (revoke) URL.revokeObjectURL(url);
       window.__qkActiveAudio = null;
-      setCustomVoiceSpeaking({ isSpeaking: false });
+      setCustomVoiceSpeaking(false);
     };
     audio.onended = () => { cleanup(); resolve(); };
     audio.onerror = () => { cleanup(); reject(new Error('Playback failed')); };
@@ -159,40 +166,28 @@ export async function speak(
     isOutbound,
     isCall,
     isExport,
-    hasConsent: hasConsent || Boolean(elevenlabsKey),
+    hasConsent,
   });
 
-  // 1. User chose their own voice AND safeguards permit it
-  if (resolved.isCustom && elevenlabsKey) {
+  const isCustomVoice = resolved.provider === 'own' && Boolean(resolved.customVoiceId);
+
+  // 1. Cloned-voice synthesis & Indic speech are routed safely through /api/voice/tts
+  if (authToken) {
     try {
-      setCustomVoiceSpeaking({ isSpeaking: true, voiceName, lang });
-      const buf = await speakElevenLabs(text, elevenlabsKey, resolved.voiceId || DEFAULT_VOICES.neutral_female);
-      await playAudioBuffer(buf);
+      if (isCustomVoice) {
+        setCustomVoiceSpeaking(true, voiceName, lang);
+      }
+      await speakAaria(text, { lang, authToken, qualityTier, purpose });
       return;
     } catch {
-      setCustomVoiceSpeaking({ isSpeaking: false });
-      /* fall through to standard voices */
+      if (isCustomVoice) {
+        setCustomVoiceSpeaking(false);
+      }
+      /* fall through to native / browser voices */
     }
   }
 
-  // 2. Aaria — required for Indic, also used when no custom key or when safeguards force standard voice
-  if (authToken && (isIndicLang(lang) || !elevenlabsKey || !resolved.isCustom)) {
-    try {
-      await speakAaria(text, { lang, authToken, qualityTier, purpose });
-      return;
-    } catch { /* fall through */ }
-  }
-
-  // 3. Legacy: any ElevenLabs key (English preset, if not restricted)
-  if (elevenlabsKey && !isOutbound && !isCall && !isExport && resolved.provider !== 'system') {
-    try {
-      const buf = await speakElevenLabs(text, elevenlabsKey, voiceId || DEFAULT_VOICES.neutral_female);
-      await playAudioBuffer(buf);
-      return;
-    } catch { /* fall through */ }
-  }
-
-  // 4. Native Android TTS bridge
+  // 2. Native Android TTS bridge
   if (typeof window !== 'undefined' && typeof window.__QK_TTS__ === 'function') {
     try {
       if (typeof window.__QK_SET_LANG__ === 'function') {

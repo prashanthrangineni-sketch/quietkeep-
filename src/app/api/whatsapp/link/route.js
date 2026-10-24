@@ -29,15 +29,64 @@ export async function POST(req) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    await serviceSupabase.from('whatsapp_sessions').upsert({
-      user_id: user.id,
-      phone_number: cleaned,
-      session_state: 'linked',
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'phone_number' });
+    // Select existing session by user or phone (check errors on each step)
+    const { data: userSessions, error: selectUserErr } = await serviceSupabase
+      .from('whatsapp_sessions')
+      .select('id, user_id, phone_number')
+      .eq('user_id', user.id)
+      .limit(1);
+
+    if (selectUserErr) {
+      return Response.json({ error: selectUserErr.message }, { status: 500 });
+    }
+
+    let existingRow = (Array.isArray(userSessions) ? userSessions[0] : userSessions) || null;
+
+    if (!existingRow) {
+      const { data: phoneSessions, error: selectPhoneErr } = await serviceSupabase
+        .from('whatsapp_sessions')
+        .select('id, user_id, phone_number')
+        .eq('phone_number', cleaned)
+        .limit(1);
+
+      if (selectPhoneErr) {
+        return Response.json({ error: selectPhoneErr.message }, { status: 500 });
+      }
+
+      existingRow = (Array.isArray(phoneSessions) ? phoneSessions[0] : phoneSessions) || null;
+    }
+
+    if (existingRow?.id) {
+      const { error: updateErr } = await serviceSupabase
+        .from('whatsapp_sessions')
+        .update({
+          user_id: user.id,
+          phone_number: cleaned,
+          session_state: 'linked',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingRow.id);
+
+      if (updateErr) {
+        return Response.json({ error: updateErr.message }, { status: 500 });
+      }
+    } else {
+      const { error: insertErr } = await serviceSupabase
+        .from('whatsapp_sessions')
+        .insert({
+          user_id: user.id,
+          phone_number: cleaned,
+          session_state: 'linked',
+          updated_at: new Date().toISOString(),
+        });
+
+      if (insertErr) {
+        return Response.json({ error: insertErr.message }, { status: 500 });
+      }
+    }
 
     return Response.json({ linked: true, phone: cleaned });
   } catch (err) {
-    return Response.json({ error: String(err) }, { status: 500 });
+    return Response.json({ error: err?.message || String(err) }, { status: 500 });
   }
 }

@@ -1,4 +1,6 @@
 // tests/mock-supabase.mjs
+export const ALLOWED_APPROVAL_STATUSES = ['pending', 'sending', 'approved', 'rejected', 'expired', 'executed'];
+
 export const mockDb = {
   tables: {
     business_workspaces: [],
@@ -89,6 +91,19 @@ function createQueryBuilder(table) {
       const tbl = mockDb.tables[table];
 
       if (insertData) {
+        if (table === 'business_approvals') {
+          for (const row of insertData) {
+            if (row.status !== undefined && !ALLOWED_APPROVAL_STATUSES.includes(row.status)) {
+              return {
+                data: null,
+                error: {
+                  message: 'new row for relation "business_approvals" violates check constraint "business_approvals_status_check"',
+                  code: '23514'
+                }
+              };
+            }
+          }
+        }
         if (mockDb.failInserts.has(table)) {
           return { data: null, error: { message: `RLS error: no INSERT policy on ${table}` } };
         }
@@ -124,6 +139,17 @@ function createQueryBuilder(table) {
       }
 
       if (updateData) {
+        if (table === 'business_approvals' && updateData.status !== undefined) {
+          if (!ALLOWED_APPROVAL_STATUSES.includes(updateData.status)) {
+            return {
+              data: null,
+              error: {
+                message: 'new row for relation "business_approvals" violates check constraint "business_approvals_status_check"',
+                code: '23514'
+              }
+            };
+          }
+        }
         let matched = tbl.filter(r => filters.every(f => f(r)));
         matched.forEach(r => Object.assign(r, updateData));
         return { data: matched, error: null };

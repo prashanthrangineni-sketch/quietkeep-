@@ -47,6 +47,7 @@ const { POST: twilioWebhookRoute } = await import('../src/app/api/whatsapp/webho
 const { POST: metaWebhookRoute } = await import('../src/app/api/whatsapp/meta-webhook/route.js');
 const { GET: approvalsGet, POST: approvalsPost } = await import('../src/app/api/business/approvals/route.js');
 const { POST: dunningRoute } = await import('../src/app/api/business/dunning/route.js');
+const { POST: linkRoute } = await import('../src/app/api/whatsapp/link/route.js');
 
 let pass = 0, fail = 0;
 function check(name, ok, detail = '') {
@@ -1020,17 +1021,13 @@ console.log('\n--- 3. Testing POST /api/whatsapp/meta-webhook (Meta) ---');
   const ownerNoticeSent = mockFetchCalls.some(c => c.options?.body?.includes('no+reply+text') || c.options?.body?.includes('no reply text'));
   check('3.6 Refusal sends notice to owner that reply text is needed', ownerNoticeSent);
 
-  // 3.7 Owner verification succeeds via user_settings when whatsapp_sessions is missing (Round 4 Item 5)
+  // 3.7 Owner verification without whatsapp_sessions is rejected (user_settings phantom fallback removed)
   mockDb.reset();
   mockDb.tables.business_workspaces.push({
     id: 'ws_meta',
     owner_user_id: 'owner_user_settings_only',
     name: 'Meta Shop',
     phone: '+919911223344'
-  });
-  mockDb.tables.user_settings.push({
-    user_id: 'owner_user_settings_only',
-    phone: '+919870003333'
   });
   mockDb.tables.business_approvals.push({
     id: 'app_meta_settings',
@@ -1039,7 +1036,7 @@ console.log('\n--- 3. Testing POST /api/whatsapp/meta-webhook (Meta) ---');
     status: 'pending',
     payload: {
       customer_phone: '+919876543210',
-      suggested_reply: 'Hello from user_settings owner!'
+      suggested_reply: 'Hello from owner without whatsapp session!'
     }
   });
   mockFetchCalls.length = 0;
@@ -1069,7 +1066,8 @@ console.log('\n--- 3. Testing POST /api/whatsapp/meta-webhook (Meta) ---');
   });
   await metaWebhookRoute(settReq);
   const settApp = mockDb.tables.business_approvals.find(r => r.id === 'app_meta_settings');
-  check('3.7 Owner verified via user_settings.phone succeeds and approves', settApp && settApp.status === 'approved');
+  check('3.7 Owner without whatsapp_sessions rejected and remains pending', settApp && settApp.status === 'pending');
+  check('3.7 No customer message sent without owner whatsapp session', mockFetchCalls.length === 0);
 }
 
 // ── 4. ROUTE /api/business/approvals (Item K) ─────────────────────────────────
@@ -1488,6 +1486,87 @@ console.log('\n--- 5. Testing POST /api/business/dunning (Shared caps & window) 
   check('5.5 Dunning opt-out DB error fails closed with 500', dunErrRes.status === 500);
 }
 
+
+// ── 6. BUSINESS APPROVALS STATUS CONSTRAINT & WHATSAPP LINK ──────────────────
+console.log('\n--- 6. Testing business_approvals constraint & /api/whatsapp/link ---');
+{
+  // 6.1 Mock DB rejects unallowed status on business_approvals insert
+  mockDb.reset();
+  const { createClient } = await import('./mock-supabase.mjs');
+  const client = createClient('http://localhost', 'anon');
+  
+  const { data: badIns, error: badInsErr } = await client.from('business_approvals').insert({
+    workspace_id: 'ws_test',
+    status: 'in_progress',
+  });
+  check('6.1 Mock DB rejects unallowed status on insert', badInsErr && badInsErr.code === '23514');
+
+  // 6.2 Mock DB rejects unallowed status on business_approvals update
+  mockDb.tables.business_approvals.push({
+    id: 'app_test_1',
+    workspace_id: 'ws_test',
+    status: 'pending',
+  });
+  const { data: badUpd, error: badUpdErr } = await client.from('business_approvals').update({
+    status: 'not_a_valid_status',
+  }).eq('id', 'app_test_1');
+  check('6.2 Mock DB rejects unallowed status on update', badUpdErr && badUpdErr.code === '23514');
+
+  // 6.3 Mock DB accepts sending status on update
+  const { data: goodUpd, error: goodUpdErr } = await client.from('business_approvals').update({
+    status: 'sending',
+  }).eq('id', 'app_test_1');
+  check('6.3 Mock DB allows sending status on update', !goodUpdErr);
+  const appSending = mockDb.tables.business_approvals.find(r => r.id === 'app_test_1');
+  check('6.3 Status updated to sending', appSending && appSending.status === 'sending');
+
+  // 6.4 /api/whatsapp/link inserts new session for user
+  mockDb.reset();
+  const linkReq = new Request('http://localhost/api/whatsapp/link', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer test_jwt_token',
+    },
+    body: JSON.stringify({ phone_number: '+919876543210' }),
+  });
+  const linkRes = await linkRoute(linkReq);
+  const linkData = await linkRes.json();
+  check('6.4 /api/whatsapp/link returns 200 with linked:true', linkRes.status === 200 && linkData.linked === true);
+  check('6.4 Cleaned phone returned', linkData.phone === '+919876543210');
+  const savedSession = mockDb.tables.whatsapp_sessions.find(r => r.phone_number === '+919876543210');
+  check('6.4 Session stored in whatsapp_sessions table', savedSession && savedSession.session_state === 'linked' && savedSession.user_id === 'u1');
+
+  // 6.5 /api/whatsapp/link updates existing session
+  const relinkReq = new Request('http://localhost/api/whatsapp/link', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer test_jwt_token',
+    },
+    body: JSON.stringify({ phone_number: '9988776655' }),
+  });
+  const relinkRes = await linkRoute(relinkReq);
+  const relinkData = await relinkRes.json();
+  check('6.5 Re-linking updates existing session', relinkRes.status === 200 && relinkData.linked === true);
+  const updatedSess = mockDb.tables.whatsapp_sessions.find(r => r.user_id === 'u1');
+  check('6.5 Session phone updated to new normalized number', updatedSess && updatedSess.phone_number === '+919988776655');
+
+  // 6.6 /api/whatsapp/link returns error on database query failure
+  mockDb.failQueries.add('whatsapp_sessions');
+  const failReq = new Request('http://localhost/api/whatsapp/link', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer test_jwt_token',
+    },
+    body: JSON.stringify({ phone_number: '9123456780' }),
+  });
+  const failRes = await linkRoute(failReq);
+  const failData = await failRes.json();
+  mockDb.failQueries.clear();
+  check('6.6 /api/whatsapp/link returns 500 on DB failure instead of linked:true', failRes.status === 500 && !failData.linked);
+}
 console.log(`\n========================================`);
 console.log(`ROUTE TESTS COMPLETED: ${pass} passed, ${fail} failed.`);
 console.log(`========================================\n`);

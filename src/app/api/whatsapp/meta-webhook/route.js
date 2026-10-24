@@ -214,18 +214,6 @@ export async function POST(request) {
               ownerPhone = normalizePhoneNumber(sessRow.phone_number);
             }
 
-            if (!ownerPhone) {
-              const { data: userSett, error: uSettErr } = await supabase
-                .from('user_settings')
-                .select('phone, phone_number')
-                .eq('user_id', workspace.owner_user_id)
-                .limit(1);
-              if (uSettErr) console.error('[meta-webhook] user settings query error:', uSettErr.message);
-              const settRow = Array.isArray(userSett) ? userSett[0] : userSett;
-              if (settRow?.phone || settRow?.phone_number) {
-                ownerPhone = normalizePhoneNumber(settRow.phone || settRow.phone_number);
-              }
-            }
           }
 
           const senderPhone = normalizePhoneNumber(msg.from || '');

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { requireBizPermission } from '@/lib/biz-rbac';
 import { createWriteClient } from '@/lib/supabase-bearer';
 import { NextResponse } from 'next/server';
-import { normalizePhoneNumber, sanitizeSnippet } from '@/lib/business-limits';
+import { normalizePhoneNumber, maskPhoneNumber, sanitizeSnippet } from '@/lib/business-limits';
 
 export async function GET(req) {
   try {
@@ -71,25 +71,41 @@ export async function POST(req) {
       approval.payload?.phone ||
       ''
     );
+    const maskedCustomerPhone = maskPhoneNumber(targetCustomerPhone);
 
-    // ── 1. APPROVE / SEND / CONFIRM / EDIT (Item K) ───────────────────────────
+    const isOrderOrBooking =
+      approval.action_type === 'business_order_confirm' ||
+      approval.action_type === 'business_booking_confirm' ||
+      approval.payload?.what === 'order_request' ||
+      approval.payload?.what === 'booking_request' ||
+      approval.payload?.what === 'order' ||
+      approval.payload?.what === 'booking';
+
+    // ── 1. APPROVE / SEND / CONFIRM / EDIT (Item K & 4) ───────────────────────
     if (['send', 'edit', 'confirm', 'approve'].includes(normAction)) {
       let replyMessage = (normAction === 'edit' && edited_message)
         ? String(edited_message).trim()
         : (approval.payload?.suggested_reply || null);
 
-      if (!replyMessage) {
-        if (approval.action_type === 'business_order_confirm' || approval.payload?.what === 'order_request') {
-          replyMessage = `Your order with ${ctx.workspace.name || 'our shop'} has been confirmed! Thank you for ordering with us.`;
-        } else if (approval.action_type === 'business_booking_confirm' || approval.payload?.what === 'booking_request') {
+      if (!replyMessage && isOrderOrBooking) {
+        if (approval.action_type === 'business_booking_confirm' || approval.payload?.what === 'booking_request' || approval.payload?.what === 'booking') {
           replyMessage = `Your booking with ${ctx.workspace.name || 'our shop'} has been confirmed!`;
         } else {
-          replyMessage = `Thank you for reaching out to ${ctx.workspace.name || 'our shop'}. Your request has been approved.`;
+          replyMessage = `Your order with ${ctx.workspace.name || 'our shop'} has been confirmed! Thank you for ordering with us.`;
         }
+      }
+
+      // Refuse send without reply text (Item 4)
+      if (!replyMessage) {
+        return NextResponse.json({
+          error: 'Cannot send without reply text. Please use Edit to provide a reply.',
+          code: 'missing_reply_text',
+        }, { status: 400 });
       }
 
       // Actually send to the customer via Twilio
       let sentSuccess = false;
+      let sendErrorMsg = null;
       const sid = process.env.TWILIO_ACCOUNT_SID;
       const authToken = process.env.TWILIO_AUTH_TOKEN;
       const from = process.env.TWILIO_WHATSAPP_FROM || '+14155238886';
@@ -110,10 +126,27 @@ export async function POST(req) {
             },
             body: form,
           });
-          sentSuccess = twRes.ok;
+          if (twRes.ok) {
+            sentSuccess = true;
+          } else {
+            sendErrorMsg = `Twilio returned HTTP ${twRes.status}`;
+            console.error('[approvals:POST] Twilio error:', sendErrorMsg);
+          }
         } catch (e) {
-          console.error('[approvals:POST] twilio send failed:', e?.message || e);
+          sendErrorMsg = e?.message || 'Twilio send exception';
+          console.error('[approvals:POST] twilio send failed:', sendErrorMsg);
         }
+      } else {
+        sendErrorMsg = 'Twilio credentials not configured';
+      }
+
+      // On send failure, keep status pending and return error (Item 4)
+      if (!sentSuccess) {
+        return NextResponse.json({
+          error: 'Failed to send WhatsApp message to customer. Approval kept pending.',
+          code: 'send_failed',
+          detail: sendErrorMsg,
+        }, { status: 502 });
       }
 
       const { error: updErr } = await db
@@ -122,33 +155,45 @@ export async function POST(req) {
           status: 'approved',
           approved_at: new Date().toISOString(),
         })
-        .eq('id', approval_id);
+        .eq('id', approval_id)
+        .eq('status', 'pending');
 
-      if (updErr) console.error('[approvals:POST] approval update error:', updErr.message);
+      if (updErr) {
+        console.error('[approvals:POST] approval update error:', updErr.message);
+        return NextResponse.json({ error: updErr.message }, { status: 500 });
+      }
 
-      // Log promo/transactional send in business_promo_log
+      // Log promo/transactional send in business_promo_log (Item 7: check error)
       if (targetCustomerPhone) {
-        await db.from('business_promo_log').insert({
+        const { error: promoLogErr } = await db.from('business_promo_log').insert({
           workspace_id: ctx.workspace.id,
           phone: targetCustomerPhone,
           message_type: 'transactional',
-          status: sentSuccess ? 'sent' : 'failed',
+          status: 'sent',
           snippet: sanitizeSnippet(replyMessage),
           sent_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
         });
+        if (promoLogErr) {
+          console.error('[approvals:POST] promo log insert error:', promoLogErr.message);
+        }
       }
 
-      await db.from('business_activity_log').insert({
+      // Item 5: Use maskedCustomerPhone in description and metadata
+      // Item 7: Check error on insert
+      const { error: actErr } = await db.from('business_activity_log').insert({
         workspace_id: ctx.workspace.id,
         action: 'approval_executed',
-        description: `Owner ${normAction}ed queued reply to customer ${targetCustomerPhone}.`,
+        description: `Owner ${normAction}ed queued reply to customer ${maskedCustomerPhone}.`,
         entity_type: 'customer_message',
-        metadata: { approval_id, action: normAction, reply_message: replyMessage, sent: sentSuccess },
+        metadata: { approval_id, action: normAction, reply_message: replyMessage, sent: sentSuccess, phone: maskedCustomerPhone },
         created_at: new Date().toISOString(),
       });
+      if (actErr) {
+        console.error('[approvals:POST] activity log insert error:', actErr.message);
+      }
 
-      return NextResponse.json({ ok: true, status: 'approved', sent: sentSuccess, message: replyMessage });
+      return NextResponse.json({ ok: true, status: 'approved', sent: true, message: replyMessage });
     }
 
     // ── 2. IGNORE / DISMISS ──────────────────────────────────────────────────
@@ -159,18 +204,27 @@ export async function POST(req) {
           status: 'rejected',
           approved_at: new Date().toISOString(),
         })
-        .eq('id', approval_id);
+        .eq('id', approval_id)
+        .eq('status', 'pending');
 
-      if (updErr) console.error('[approvals:POST] reject update error:', updErr.message);
+      if (updErr) {
+        console.error('[approvals:POST] reject update error:', updErr.message);
+        return NextResponse.json({ error: updErr.message }, { status: 500 });
+      }
 
-      await db.from('business_activity_log').insert({
+      // Item 5: Use maskedCustomerPhone in description and metadata
+      // Item 7: Check error on insert
+      const { error: actErr } = await db.from('business_activity_log').insert({
         workspace_id: ctx.workspace.id,
         action: 'approval_dismissed',
-        description: `Owner ignored/dismissed queued inquiry from customer ${targetCustomerPhone}.`,
+        description: `Owner ignored/dismissed queued inquiry from customer ${maskedCustomerPhone}.`,
         entity_type: 'customer_message',
-        metadata: { approval_id, action: normAction, sent: false },
+        metadata: { approval_id, action: normAction, sent: false, phone: maskedCustomerPhone },
         created_at: new Date().toISOString(),
       });
+      if (actErr) {
+        console.error('[approvals:POST] reject activity log insert error:', actErr.message);
+      }
 
       return NextResponse.json({ ok: true, status: 'rejected', sent: false });
     }

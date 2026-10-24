@@ -10,6 +10,7 @@ import {
   normalizePhoneNumber,
   isWithinPromoHours,
   sanitizeSnippet,
+  getIstStartOfDay,
 } from '@/lib/business-limits';
 
 const STAGES = [15, 7, 3];          // checked high->low; first match wins
@@ -156,28 +157,42 @@ export async function POST(req) {
     const origin = new URL(req.url).origin;
     const results = [];
 
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    const todayStart = getIstStartOfDay();
     const weekStart = new Date(Date.now() - 7 * 24 * 3600 * 1000);
 
     for (const t of targets) {
       const normPhone = normalizePhoneNumber(t.phone);
 
-      // Check per-customer caps (1/day, 4/week)
-      const [{ count: custTodayCount }, { count: custWeekCount }] = await Promise.all([
+      // Check per-customer caps (1/day, 4/week) (Item 6 & 7)
+      const [{ count: custTodayCount, error: errToday }, { count: custWeekCount, error: errWeek }] = await Promise.all([
         db.from('business_promo_log')
           .select('id', { count: 'exact', head: true })
           .eq('workspace_id', ctx.workspace.id)
           .eq('phone', normPhone)
+          .eq('message_type', 'promotional')
           .eq('status', 'sent')
           .gte('sent_at', todayStart.toISOString()),
         db.from('business_promo_log')
           .select('id', { count: 'exact', head: true })
           .eq('workspace_id', ctx.workspace.id)
           .eq('phone', normPhone)
+          .eq('message_type', 'promotional')
           .eq('status', 'sent')
           .gte('sent_at', weekStart.toISOString()),
       ]);
+
+      if (errToday || errWeek) {
+        console.error('[dunning] promo count error:', errToday?.message || errWeek?.message);
+        results.push({
+          ledger_id: t.ledger_id,
+          party_name: t.party_name,
+          stage: t.stage,
+          amount: t.due_amount,
+          status: 'skipped',
+          error: 'Failed to verify customer promotional limits',
+        });
+        continue;
+      }
 
       if ((custTodayCount || 0) >= 1) {
         results.push({

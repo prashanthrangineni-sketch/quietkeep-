@@ -109,30 +109,47 @@ export async function POST(req) {
 
     if (!customerPhone) return twimlResponse('❌ Could not identify sender.');
 
-    // ── RESOLVE RECEIVING BUSINESS WORKSPACE (Item C & D) ──────────────────────
+    // ── RESOLVE RECEIVING BUSINESS WORKSPACE (Item C, D & 7) ───────────────────
     let workspace = null;
     if (receivingPhone) {
-      const { data: wsByPhone } = await supabase
+      const candidateReceiving = [receivingPhone];
+      if (receivingPhone.startsWith('+91') && receivingPhone.length === 13) {
+        const d10 = receivingPhone.slice(3);
+        candidateReceiving.push(d10, '0' + d10, '91' + d10);
+      }
+
+      const { data: wsByPhone, error: wsPhoneErr } = await supabase
         .from('business_workspaces')
         .select('id, owner_user_id, name, address, timings, phone')
-        .eq('phone', receivingPhone)
+        .in('phone', candidateReceiving)
         .maybeSingle();
 
+      if (wsPhoneErr) {
+        console.error('[whatsapp-webhook] wsByPhone query error:', wsPhoneErr.message);
+      }
       workspace = wsByPhone;
 
       if (!workspace) {
-        const { data: sess } = await supabase
+        const { data: sess, error: sessErr } = await supabase
           .from('whatsapp_sessions')
           .select('user_id')
-          .eq('phone_number', receivingPhone)
+          .in('phone_number', candidateReceiving)
           .maybeSingle();
 
+        if (sessErr) {
+          console.error('[whatsapp-webhook] session query error:', sessErr.message);
+        }
+
         if (sess?.user_id) {
-          const { data: wsByUser } = await supabase
+          const { data: wsByUser, error: wsUserErr } = await supabase
             .from('business_workspaces')
             .select('id, owner_user_id, name, address, timings, phone')
             .eq('owner_user_id', sess.user_id)
             .maybeSingle();
+
+          if (wsUserErr) {
+            console.error('[whatsapp-webhook] wsByUser query error:', wsUserErr.message);
+          }
           workspace = wsByUser;
         }
       }
@@ -143,11 +160,21 @@ export async function POST(req) {
       if (workspace) {
         await recordCustomerOptOutInDb(supabase, workspace.id, customerPhone, null, body);
       }
-      // Record opt-out for any workspace that has this customer on record
-      const { data: custs } = await supabase
+      // Record opt-out for any workspace that has this customer on record (supporting unnormalised stored numbers)
+      const candidateCustPhones = [customerPhone];
+      if (customerPhone.startsWith('+91') && customerPhone.length === 13) {
+        const d10 = customerPhone.slice(3);
+        candidateCustPhones.push(d10, '0' + d10, '91' + d10);
+      }
+
+      const { data: custs, error: custsErr } = await supabase
         .from('business_customers')
         .select('workspace_id, id')
-        .eq('phone', customerPhone);
+        .in('phone', candidateCustPhones);
+
+      if (custsErr) {
+        console.error('[whatsapp-webhook] custs fan-out query error:', custsErr.message);
+      }
 
       for (const c of (custs || [])) {
         await recordCustomerOptOutInDb(supabase, c.workspace_id, customerPhone, c.id, body);

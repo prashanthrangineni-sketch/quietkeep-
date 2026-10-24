@@ -132,6 +132,16 @@ export function isWithinPromoHours(date = new Date()) {
   return true;
 }
 
+/**
+ * Returns a Date object representing the start of the day (00:00:00) in Asia/Kolkata timezone.
+ */
+export function getIstStartOfDay(date = new Date()) {
+  const { year, month, day } = getIstParts(date);
+  const m = String(month).padStart(2, '0');
+  const d = String(day).padStart(2, '0');
+  return new Date(`${year}-${m}-${d}T00:00:00+05:30`);
+}
+
 // ── OPT-OUT DETECTION (EXACT WHOLE-MESSAGE MATCHING) ──────────────────────────
 
 const EXACT_OPT_OUT_SET = Object.freeze(new Set([
@@ -624,11 +634,20 @@ export async function isCustomerOptedOutInDb(supabase, workspaceId, phone) {
   if (!supabase || !workspaceId || !phone) return false;
   const normPhone = normalizePhoneNumber(phone);
 
+  const candidatePhones = [normPhone];
+  if (normPhone.startsWith('+91') && normPhone.length === 13) {
+    const d10 = normPhone.slice(3);
+    candidatePhones.push(d10, '0' + d10, '91' + d10);
+  } else {
+    const rawStr = String(phone).trim();
+    if (!candidatePhones.includes(rawStr)) candidatePhones.push(rawStr);
+  }
+
   const { data: optOut, error: err1 } = await supabase
     .from('business_customer_opt_outs')
     .select('id')
     .eq('workspace_id', workspaceId)
-    .eq('phone', normPhone)
+    .in('phone', candidatePhones)
     .maybeSingle();
 
   if (err1) {
@@ -641,7 +660,7 @@ export async function isCustomerOptedOutInDb(supabase, workspaceId, phone) {
     .from('business_customers')
     .select('whatsapp_opted_in')
     .eq('workspace_id', workspaceId)
-    .eq('phone', normPhone)
+    .in('phone', candidatePhones)
     .maybeSingle();
 
   if (err2) {

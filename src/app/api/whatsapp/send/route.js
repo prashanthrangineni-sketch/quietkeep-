@@ -12,6 +12,7 @@ import {
   logBusinessLimitEvent,
   sanitizeSnippet,
   normalizePhoneNumber,
+  getIstStartOfDay,
 } from '@/lib/business-limits';
 
 export async function POST(request) {
@@ -64,12 +65,13 @@ export async function POST(request) {
   // ── WORKSPACE RESOLUTION & MEMBERSHIP VERIFICATION (Item B) ─────────────────
   let workspace = null;
   let isBusiness = false;
+  let workspacesToCheck = [];
 
   if (body.workspace_id) {
     // Caller specified a workspace: MUST verify caller is owner or active member
     const { data: ownedWs, error: ownedErr } = await adminDb
       .from('business_workspaces')
-      .select('id, created_at, daily_promo_limit')
+      .select('id, created_at, daily_promo_limit, name')
       .eq('id', body.workspace_id)
       .eq('owner_user_id', user.id)
       .maybeSingle();
@@ -97,7 +99,7 @@ export async function POST(request) {
       if (member) {
         const { data: ws, error: wsErr } = await adminDb
           .from('business_workspaces')
-          .select('id, created_at, daily_promo_limit')
+          .select('id, created_at, daily_promo_limit, name')
           .eq('id', body.workspace_id)
           .maybeSingle();
 
@@ -115,88 +117,146 @@ export async function POST(request) {
         code: 'forbidden_workspace',
       }, { status: 403 });
     }
+    workspacesToCheck = [workspace];
   } else {
-    // Check if user owns a business workspace and target phone is a customer
-    const { data: ownedWs } = await adminDb
-      .from('business_workspaces')
-      .select('id, created_at, daily_promo_limit')
-      .eq('owner_user_id', user.id)
-      .maybeSingle();
+    // Item 2: when workspace_id is omitted, check all workspaces the caller owns or is a member of
+    const [{ data: ownedList, error: ownedErr }, { data: memberList, error: memErr }] = await Promise.all([
+      adminDb.from('business_workspaces')
+        .select('id, created_at, daily_promo_limit, name')
+        .eq('owner_user_id', user.id),
+      adminDb.from('business_members')
+        .select('workspace_id')
+        .eq('user_id', user.id)
+        .eq('status', 'active'),
+    ]);
 
-    if (ownedWs) {
-      const { data: cust } = await adminDb
-        .from('business_customers')
-        .select('id')
-        .eq('workspace_id', ownedWs.id)
-        .eq('phone', normTo)
-        .maybeSingle();
+    if (ownedErr) console.error('[whatsapp/send] owned workspaces error:', ownedErr.message);
+    if (memErr) console.error('[whatsapp/send] member workspaces error:', memErr.message);
 
-      if (cust) {
-        workspace = ownedWs;
-        isBusiness = true;
-      }
+    const wsMap = new Map();
+    (ownedList || []).forEach(w => wsMap.set(w.id, w));
+
+    const memberWsIds = (memberList || []).map(m => m.workspace_id).filter(id => !wsMap.has(id));
+    if (memberWsIds.length > 0) {
+      const { data: mWsList, error: mWsErr } = await adminDb
+        .from('business_workspaces')
+        .select('id, created_at, daily_promo_limit, name')
+        .in('id', memberWsIds);
+      if (mWsErr) console.error('[whatsapp/send] member ws fetch error:', mWsErr.message);
+      (mWsList || []).forEach(w => wsMap.set(w.id, w));
+    }
+
+    workspacesToCheck = Array.from(wsMap.values());
+    if (workspacesToCheck.length > 0) {
+      isBusiness = true;
+      workspace = workspacesToCheck[0];
     }
   }
 
-  // ── SERVER DECIDES: PROMOTIONAL VS TRANSACTIONAL (Item B & F) ───────────────
+  // ── SERVER DECIDES: PROMOTIONAL VS TRANSACTIONAL (Item B, F & 3) ───────────
   let promoLogId = null;
 
-  if (isBusiness && workspace) {
-    const wsId = workspace.id;
-
-    // Proof 1: Inbound customer message in last 24h
+  if (isBusiness && workspacesToCheck.length > 0) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-    const { data: recentApprovals } = await adminDb
-      .from('business_approvals')
-      .select('id, payload')
-      .eq('workspace_id', wsId)
-      .gte('created_at', twentyFourHoursAgo)
-      .limit(20);
 
-    const isCustomerInitiatedReply = (recentApprovals || []).some(a => {
-      const p = normalizePhoneNumber(
-        a.payload?.customerPhone ||
-        a.payload?.customer_phone ||
-        a.payload?.who ||
-        a.payload?.phone ||
-        ''
-      );
-      return p === normTo;
-    });
+    // Proof 1: Inbound customer message in last 24h across candidate workspaces
+    let isCustomerInitiatedReply = false;
+    for (const ws of workspacesToCheck) {
+      const { data: recentApprovals } = await adminDb
+        .from('business_approvals')
+        .select('id, payload')
+        .eq('workspace_id', ws.id)
+        .gte('created_at', twentyFourHoursAgo)
+        .limit(20);
 
-    // Proof 2: Order / booking status update tied to a real order id
+      if ((recentApprovals || []).some(a => {
+        const p = normalizePhoneNumber(
+          a.payload?.customerPhone ||
+          a.payload?.customer_phone ||
+          a.payload?.who ||
+          a.payload?.phone ||
+          ''
+        );
+        return p === normTo;
+      })) {
+        isCustomerInitiatedReply = true;
+        break;
+      }
+    }
+
+    // Proof 2: Order / booking status update tied to a real order/invoice (Item 3)
     let isOrderUpdate = false;
     if (body.order_id) {
-      const [{ data: orderAppr }, { data: invoice }, { data: orderRow }] = await Promise.all([
-        adminDb.from('business_approvals')
-          .select('id')
+      for (const ws of workspacesToCheck) {
+        // 1. Check business_invoices
+        const { data: invoice } = await adminDb
+          .from('business_invoices')
+          .select('id, customer_phone')
           .eq('id', body.order_id)
-          .eq('workspace_id', wsId)
-          .maybeSingle(),
-        adminDb.from('business_invoices')
-          .select('id')
+          .eq('workspace_id', ws.id)
+          .maybeSingle();
+
+        if (invoice) {
+          const invPhone = normalizePhoneNumber(invoice.customer_phone);
+          if (invPhone && invPhone === normTo) {
+            isOrderUpdate = true;
+            break;
+          }
+        }
+
+        // 2. Check business_approvals
+        const { data: orderAppr } = await adminDb
+          .from('business_approvals')
+          .select('id, action_type, payload, customer_phone, status')
           .eq('id', body.order_id)
-          .eq('workspace_id', wsId)
-          .maybeSingle(),
-        adminDb.from('business_orders')
-          .select('id')
-          .eq('id', body.order_id)
-          .eq('workspace_id', wsId)
-          .maybeSingle(),
-      ]);
-      if (orderAppr || invoice || orderRow) {
-        isOrderUpdate = true;
+          .eq('workspace_id', ws.id)
+          .maybeSingle();
+
+        if (orderAppr) {
+          const apprPhone = normalizePhoneNumber(
+            orderAppr.customer_phone ||
+            orderAppr.payload?.customerPhone ||
+            orderAppr.payload?.customer_phone ||
+            orderAppr.payload?.who ||
+            orderAppr.payload?.phone ||
+            ''
+          );
+          const what = String(orderAppr.payload?.what || orderAppr.payload?.type || '').toLowerCase();
+          const actionType = String(orderAppr.action_type || '').toLowerCase();
+          const status = String(orderAppr.status || '').toLowerCase();
+          const isOrderType =
+            actionType.includes('order') ||
+            actionType.includes('booking') ||
+            what.includes('order') ||
+            what.includes('booking') ||
+            status === 'out_for_delivery';
+
+          if (isOrderType && apprPhone && apprPhone === normTo) {
+            isOrderUpdate = true;
+            break;
+          }
+        }
       }
     }
 
     const isTransactional = isCustomerInitiatedReply || isOrderUpdate;
     const isPromotional = !isTransactional;
 
-    // 1. Opt-out check (Item F: transactional replies to questions/orders allowed, promos blocked)
-    const isOptedOut = await isCustomerOptedOutInDb(adminDb, wsId, normTo);
+    // 1. Opt-out check: block if ANY workspace has customer opt-out (Item 2)
+    let isOptedOut = false;
+    let optedOutWsId = null;
+    for (const ws of workspacesToCheck) {
+      const optedOut = await isCustomerOptedOutInDb(adminDb, ws.id, normTo);
+      if (optedOut) {
+        isOptedOut = true;
+        optedOutWsId = ws.id;
+        break;
+      }
+    }
+
     if (isOptedOut) {
       if (!isTransactional) {
-        await logBusinessLimitEvent(adminDb, wsId, {
+        await logBusinessLimitEvent(adminDb, optedOutWsId || workspace.id, {
           who: normTo,
           what: 'promotion_blocked',
           why: 'customer_opted_out',
@@ -209,84 +269,88 @@ export async function POST(request) {
       }
     }
 
-    // 2. Promotional limits check (daily/weekly caps, 250/day new-biz cap, 10:00-21:00 IST window)
+    // 2. Promotional limits check across workspaces (Item 6: message_type='promotional' and Asia/Kolkata start of day)
     if (isPromotional) {
-      const todayStart = new Date();
-      todayStart.setUTCHours(0, 0, 0, 0);
+      const todayStart = getIstStartOfDay();
       const weekStart = new Date(Date.now() - 7 * 24 * 3600 * 1000);
 
-      const [{ count: bizTodayCount, error: err1 }, { count: custTodayCount, error: err2 }, { count: custWeekCount, error: err3 }] = await Promise.all([
-        adminDb.from('business_promo_log')
-          .select('id', { count: 'exact', head: true })
-          .eq('workspace_id', wsId)
-          .eq('status', 'sent')
-          .gte('sent_at', todayStart.toISOString()),
-        adminDb.from('business_promo_log')
-          .select('id', { count: 'exact', head: true })
-          .eq('workspace_id', wsId)
-          .eq('phone', normTo)
-          .eq('status', 'sent')
-          .gte('sent_at', todayStart.toISOString()),
-        adminDb.from('business_promo_log')
-          .select('id', { count: 'exact', head: true })
-          .eq('workspace_id', wsId)
-          .eq('phone', normTo)
-          .eq('status', 'sent')
-          .gte('sent_at', weekStart.toISOString()),
-      ]);
+      for (const ws of workspacesToCheck) {
+        const [{ count: bizTodayCount, error: err1 }, { count: custTodayCount, error: err2 }, { count: custWeekCount, error: err3 }] = await Promise.all([
+          adminDb.from('business_promo_log')
+            .select('id', { count: 'exact', head: true })
+            .eq('workspace_id', ws.id)
+            .eq('message_type', 'promotional')
+            .eq('status', 'sent')
+            .gte('sent_at', todayStart.toISOString()),
+          adminDb.from('business_promo_log')
+            .select('id', { count: 'exact', head: true })
+            .eq('workspace_id', ws.id)
+            .eq('phone', normTo)
+            .eq('message_type', 'promotional')
+            .eq('status', 'sent')
+            .gte('sent_at', todayStart.toISOString()),
+          adminDb.from('business_promo_log')
+            .select('id', { count: 'exact', head: true })
+            .eq('workspace_id', ws.id)
+            .eq('phone', normTo)
+            .eq('message_type', 'promotional')
+            .eq('status', 'sent')
+            .gte('sent_at', weekStart.toISOString()),
+        ]);
 
-      if (err1 || err2 || err3) {
-        console.error('[whatsapp/send] promo log count error:', err1?.message || err2?.message || err3?.message);
-        return NextResponse.json({ error: 'Failed to verify promotional limits', code: 'count_failed' }, { status: 500 });
-      }
-
-      const promoEval = evaluatePromotionSend({
-        businessCreatedAt: workspace.created_at,
-        ownerDailyLimit: workspace.daily_promo_limit,
-        businessSentToday: bizTodayCount || 0,
-        customerSentToday: custTodayCount || 0,
-        customerSentThisWeek: custWeekCount || 0,
-        isCustomerOptedOut: false,
-        isTransactional: false,
-        isCustomerInitiatedReply: false,
-        isOrderUpdate: false,
-        now: new Date(),
-      });
-
-      if (!promoEval.allowed) {
-        await logBusinessLimitEvent(adminDb, wsId, {
-          who: normTo,
-          what: 'promotion_blocked',
-          why: promoEval.reason,
-          rawMessage: message,
-          metadata: { limit: promoEval.limit },
-        });
-
-        const { error: blockedLogErr } = await adminDb.from('business_promo_log').insert({
-          workspace_id: wsId,
-          phone: normTo,
-          message_type: 'promotional',
-          status: 'blocked',
-          blocked_reason: promoEval.reason,
-          snippet: sanitizeSnippet(message),
-          sent_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        });
-
-        if (blockedLogErr) {
-          console.error('[whatsapp/send] recording blocked promo failed:', blockedLogErr.message);
+        if (err1 || err2 || err3) {
+          console.error('[whatsapp/send] promo log count error:', err1?.message || err2?.message || err3?.message);
+          return NextResponse.json({ error: 'Failed to verify promotional limits', code: 'count_failed' }, { status: 500 });
         }
 
-        return NextResponse.json({
-          error: promoEval.ownerMessage || promoEval.reason,
-          code: promoEval.reason,
-        }, { status: 429 });
+        const promoEval = evaluatePromotionSend({
+          businessCreatedAt: ws.created_at,
+          ownerDailyLimit: ws.daily_promo_limit,
+          businessSentToday: bizTodayCount || 0,
+          customerSentToday: custTodayCount || 0,
+          customerSentThisWeek: custWeekCount || 0,
+          isCustomerOptedOut: false,
+          isTransactional: false,
+          isCustomerInitiatedReply: false,
+          isOrderUpdate: false,
+          now: new Date(),
+        });
+
+        if (!promoEval.allowed) {
+          await logBusinessLimitEvent(adminDb, ws.id, {
+            who: normTo,
+            what: 'promotion_blocked',
+            why: promoEval.reason,
+            rawMessage: message,
+            metadata: { limit: promoEval.limit },
+          });
+
+          const { error: blockedLogErr } = await adminDb.from('business_promo_log').insert({
+            workspace_id: ws.id,
+            phone: normTo,
+            message_type: 'promotional',
+            status: 'blocked',
+            blocked_reason: promoEval.reason,
+            snippet: sanitizeSnippet(message),
+            sent_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          });
+
+          if (blockedLogErr) {
+            console.error('[whatsapp/send] recording blocked promo failed:', blockedLogErr.message);
+          }
+
+          return NextResponse.json({
+            error: promoEval.ownerMessage || promoEval.reason,
+            code: promoEval.reason,
+          }, { status: 429 });
+        }
       }
     }
 
     // Fail-closed promo log insert (Item A): if log write fails, do NOT send promotion!
     const { data: promoRow, error: logErr } = await adminDb.from('business_promo_log').insert({
-      workspace_id: wsId,
+      workspace_id: workspace.id,
       phone: normTo,
       message_type: isPromotional ? 'promotional' : 'transactional',
       status: 'sent',
@@ -305,7 +369,7 @@ export async function POST(request) {
     promoLogId = promoRow?.id;
 
     if (isPromotional) {
-      await logBusinessLimitEvent(adminDb, wsId, {
+      await logBusinessLimitEvent(adminDb, workspace.id, {
         who: normTo,
         what: 'promotion_sent',
         why: 'within_limits',

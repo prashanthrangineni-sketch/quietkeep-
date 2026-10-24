@@ -8,6 +8,23 @@ import crypto from 'node:crypto';
 // Register loader for path aliases (@/) and module mocking
 register('./loader.mjs', import.meta.url);
 
+// Pinned deterministic daytime (14:00 IST / 08:30 UTC) for promo hours window testing
+const RealDate = globalThis.Date;
+const FIXED_NOW = new RealDate('2026-10-24T08:30:00.000Z').getTime();
+class MockDate extends RealDate {
+  constructor(...args) {
+    if (args.length === 0) {
+      super(FIXED_NOW);
+    } else {
+      super(...args);
+    }
+  }
+  static now() {
+    return FIXED_NOW;
+  }
+}
+globalThis.Date = MockDate;
+
 // Configure test environment variables
 process.env.TWILIO_ACCOUNT_SID = 'AC_TEST_ACCOUNT_12345';
 process.env.TWILIO_AUTH_TOKEN = 'test_twilio_secret_token_abc';
@@ -15,6 +32,12 @@ process.env.TWILIO_WHATSAPP_FROM = '+14155238886';
 process.env.WHATSAPP_WEBHOOK_URL = 'https://quietkeep.com/api/whatsapp/webhook';
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'service_role_test_secret';
+process.env.META_WHATSAPP_APP_SECRET = 'test_meta_app_secret_xyz123';
+
+function makeMetaSignature(body, secret = process.env.META_WHATSAPP_APP_SECRET) {
+  const hex = crypto.createHmac('sha256', secret).update(body).digest('hex');
+  return `sha256=${hex}`;
+}
 
 const { mockDb } = await import('./mock-supabase.mjs');
 
@@ -33,9 +56,18 @@ function check(name, ok, detail = '') {
 
 // Track mocked outbound HTTP calls (Twilio / Meta)
 const mockFetchCalls = [];
+let mockTwilioFail = false;
 globalThis.fetch = async (url, options = {}) => {
   mockFetchCalls.push({ url, options });
   if (url.includes('api.twilio.com')) {
+    if (mockTwilioFail) {
+      return {
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'twilio_error' }),
+        text: async () => JSON.stringify({ error: 'twilio_error' })
+      };
+    }
     return {
       ok: true,
       status: 201,
@@ -215,12 +247,12 @@ console.log('\n--- 1. Testing POST /api/whatsapp/send ---');
     phone: '+919876543210',
     opted_out_at: '2026-10-01T00:00:00Z'
   });
-  // Real order in workspace
-  mockDb.tables.business_orders.push({
+  // Real invoice in workspace
+  mockDb.tables.business_invoices.push({
     id: 'ord_99',
     workspace_id: 'ws_1',
     customer_phone: '+919876543210',
-    status: 'out_for_delivery'
+    status: 'pending'
   });
 
   const req7 = new Request('http://localhost/api/whatsapp/send', {
@@ -288,6 +320,95 @@ console.log('\n--- 1. Testing POST /api/whatsapp/send ---');
   check('1.9 Promo log stores normalized phone', promoLog && promoLog.phone === '+919876543210');
   const actLog = mockDb.tables.business_activity_log.find(r => r.workspace_id === 'ws_1');
   check('1.9 Activity log masks phone to last 4 digits', actLog && actLog.metadata && actLog.metadata.who.endsWith('3210') && !actLog.metadata.who.includes('98765'));
+
+  // 1.10 Unnormalised stored phone still blocked after backfill logic (Item 1)
+  mockDb.reset();
+  mockDb.tables.business_workspaces.push({
+    id: 'ws_1',
+    owner_user_id: 'u1',
+    name: 'My Shop',
+    created_at: '2026-01-01T00:00:00Z',
+    daily_promo_limit: 50
+  });
+  mockDb.tables.business_customer_opt_outs.push({
+    workspace_id: 'ws_1',
+    phone: '9876543210',
+    opted_out_at: '2026-10-01T00:00:00Z'
+  });
+  const req10 = new Request('http://localhost/api/whatsapp/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      workspace_id: 'ws_1',
+      to: '+919876543210',
+      message: 'Unsolicited promotional offer'
+    })
+  });
+  const res10 = await sendRoute(req10);
+  const data10 = await res10.json();
+  check('1.10 Unnormalised stored phone still blocked after backfill logic', res10.status === 403 && data10.code === 'customer_opted_out');
+
+  // 1.11 No workspace_id: checks all workspaces caller belongs to, blocks if opted out in ANY (Item 2)
+  mockDb.reset();
+  mockDb.tables.business_workspaces.push(
+    { id: 'ws_owned', owner_user_id: 'u1', name: 'Owned Shop', created_at: '2026-01-01T00:00:00Z', daily_promo_limit: 50 },
+    { id: 'ws_member', owner_user_id: 'u_boss', name: 'Branch Shop', created_at: '2026-01-01T00:00:00Z', daily_promo_limit: 50 }
+  );
+  mockDb.tables.business_members.push({
+    id: 'mem_u1',
+    workspace_id: 'ws_member',
+    user_id: 'u1',
+    status: 'active',
+    role: 'member'
+  });
+  mockDb.tables.business_customer_opt_outs.push({
+    workspace_id: 'ws_member',
+    phone: '+919876543210',
+    opted_out_at: '2026-10-01T00:00:00Z'
+  });
+  const req11 = new Request('http://localhost/api/whatsapp/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to: '9876543210',
+      message: 'Multi-workspace promo broadcast'
+    })
+  });
+  const res11 = await sendRoute(req11);
+  const data11 = await res11.json();
+  check('1.11 No workspace_id + opted-out number -> blocked across all member workspaces', res11.status === 403 && data11.code === 'customer_opted_out');
+
+  // 1.12 Unrelated order id -> not transactional, blocked for opted-out recipient (Item 3)
+  mockDb.reset();
+  mockDb.tables.business_workspaces.push({
+    id: 'ws_1',
+    owner_user_id: 'u1',
+    name: 'My Shop',
+    created_at: '2026-01-01T00:00:00Z',
+    daily_promo_limit: 50
+  });
+  mockDb.tables.business_customer_opt_outs.push({
+    workspace_id: 'ws_1',
+    phone: '+919876543210'
+  });
+  mockDb.tables.business_invoices.push({
+    id: 'inv_other_customer',
+    workspace_id: 'ws_1',
+    customer_phone: '+918888888888'
+  });
+  const req12 = new Request('http://localhost/api/whatsapp/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      workspace_id: 'ws_1',
+      to: '+919876543210',
+      order_id: 'inv_other_customer',
+      message: 'Sneaky promo using another customer invoice id'
+    })
+  });
+  const res12 = await sendRoute(req12);
+  const data12 = await res12.json();
+  check('1.12 Unrelated order id -> not transactional, blocked for opted-out recipient', res12.status === 403 && data12.code === 'customer_opted_out');
 }
 
 // ── 2. ROUTE /api/whatsapp/webhook (Twilio) (Items C, D, E) ───────────────────
@@ -508,10 +629,14 @@ console.log('\n--- 3. Testing POST /api/whatsapp/meta-webhook (Meta) ---');
     }]
   };
 
+  const metaRaw1 = JSON.stringify(metaPayload);
   const metaReq = new Request('http://localhost/api/whatsapp/meta-webhook', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(metaPayload)
+    headers: {
+      'Content-Type': 'application/json',
+      'x-hub-signature-256': makeMetaSignature(metaRaw1)
+    },
+    body: metaRaw1
   });
   const metaRes = await metaWebhookRoute(metaReq);
   check('3.1 Meta webhook returns 200 OK', metaRes.status === 200);
@@ -557,16 +682,78 @@ console.log('\n--- 3. Testing POST /api/whatsapp/meta-webhook (Meta) ---');
     }]
   };
 
+  const btnRaw2 = JSON.stringify(btnPayload);
   const btnReq = new Request('http://localhost/api/whatsapp/meta-webhook', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(btnPayload)
+    headers: {
+      'Content-Type': 'application/json',
+      'x-hub-signature-256': makeMetaSignature(btnRaw2)
+    },
+    body: btnRaw2
   });
   const btnRes = await metaWebhookRoute(btnReq);
   check('3.2 Interactive approve button returns 200', btnRes.status === 200);
   const updatedMetaApp = mockDb.tables.business_approvals.find(r => r.id === 'app_meta_1');
   check('3.2 Interactive approve sets status to approved', updatedMetaApp && updatedMetaApp.status === 'approved');
   check('3.2 Outbound customer message was sent via API', mockFetchCalls.length > 0);
+
+  // 3.3 Rejects request when META_WHATSAPP_APP_SECRET is unset (Item 8)
+  const savedSecret = process.env.META_WHATSAPP_APP_SECRET;
+  delete process.env.META_WHATSAPP_APP_SECRET;
+  const unsetReq = new Request('http://localhost/api/whatsapp/meta-webhook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: metaRaw1
+  });
+  const unsetRes = await metaWebhookRoute(unsetReq);
+  check('3.3 Unset META_WHATSAPP_APP_SECRET returns 403', unsetRes.status === 403);
+  process.env.META_WHATSAPP_APP_SECRET = savedSecret;
+
+  // 3.4 Interactive button click from non-owner phone is rejected (Item 8)
+  mockDb.reset();
+  mockDb.tables.business_workspaces.push({
+    id: 'ws_meta',
+    owner_user_id: 'owner_meta',
+    name: 'Meta Shop',
+    phone: '+919911223344'
+  });
+  mockDb.tables.business_approvals.push({
+    id: 'app_meta_imposter',
+    workspace_id: 'ws_meta',
+    action_type: 'customer_reply',
+    status: 'pending',
+    payload: { customer_phone: '+919876543210', suggested_reply: 'Secret promo' }
+  });
+  const imposterBtnPayload = {
+    entry: [{
+      changes: [{
+        value: {
+          metadata: { display_phone_number: '919911223344' },
+          messages: [{
+            id: 'wamid.HBgImposter',
+            from: '918888888888',
+            type: 'interactive',
+            interactive: {
+              type: 'button_reply',
+              button_reply: { id: 'approve_app_meta_imposter', title: 'Send Reply' }
+            }
+          }]
+        }
+      }]
+    }]
+  };
+  const imposterRaw = JSON.stringify(imposterBtnPayload);
+  const imposterReq = new Request('http://localhost/api/whatsapp/meta-webhook', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-hub-signature-256': makeMetaSignature(imposterRaw)
+    },
+    body: imposterRaw
+  });
+  await metaWebhookRoute(imposterReq);
+  const imposterApp = mockDb.tables.business_approvals.find(r => r.id === 'app_meta_imposter');
+  check('3.4 Non-owner interactive button click stays pending (not approved)', imposterApp && imposterApp.status === 'pending');
 }
 
 // ── 4. ROUTE /api/business/approvals (Item K) ─────────────────────────────────
@@ -683,6 +870,68 @@ console.log('\n--- 4. Testing /api/business/approvals (Send/Edit/Ignore) ---');
   const appAfterEdit = mockDb.tables.business_approvals.find(r => r.id === 'app_3');
   check('4.4 Approval marked approved with edit', appAfterEdit && appAfterEdit.status === 'approved');
   check('4.4 Outbound WhatsApp sent with edited text', mockFetchCalls.length === 1);
+
+  // 4.5 Send with null reply -> refused with 400 (Item 4)
+  mockDb.reset();
+  mockDb.tables.business_workspaces.push({
+    id: 'ws_app',
+    owner_user_id: 'u1',
+    name: 'Approval Shop'
+  });
+  mockDb.tables.business_approvals.push({
+    id: 'app_null_reply',
+    workspace_id: 'ws_app',
+    action_type: 'customer_reply',
+    status: 'pending',
+    payload: { customer_phone: '+919876543210', suggested_reply: null },
+    created_at: new Date().toISOString()
+  });
+  const nullReplyReq = new Request('http://localhost/api/business/approvals', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer test_jwt_token',
+      'X-Workspace-Id': 'ws_app'
+    },
+    body: JSON.stringify({ approval_id: 'app_null_reply', action: 'send' })
+  });
+  const nullReplyRes = await approvalsPost(nullReplyReq);
+  const nullReplyData = await nullReplyRes.json();
+  check('4.5 Send with null reply refused with 400 missing_reply_text', nullReplyRes.status === 400 && nullReplyData.code === 'missing_reply_text');
+  const nullApp = mockDb.tables.business_approvals.find(r => r.id === 'app_null_reply');
+  check('4.5 Approval stays pending when send refused', nullApp && nullApp.status === 'pending');
+
+  // 4.6 Failed Twilio send keeps status pending and returns error (Item 4)
+  mockDb.reset();
+  mockDb.tables.business_workspaces.push({
+    id: 'ws_app',
+    owner_user_id: 'u1',
+    name: 'Approval Shop'
+  });
+  mockDb.tables.business_approvals.push({
+    id: 'app_fail_send',
+    workspace_id: 'ws_app',
+    action_type: 'customer_reply',
+    status: 'pending',
+    payload: { customer_phone: '+919876543210', suggested_reply: 'Will fail to deliver' },
+    created_at: new Date().toISOString()
+  });
+  mockTwilioFail = true;
+  const failSendReq = new Request('http://localhost/api/business/approvals', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer test_jwt_token',
+      'X-Workspace-Id': 'ws_app'
+    },
+    body: JSON.stringify({ approval_id: 'app_fail_send', action: 'send' })
+  });
+  const failSendRes = await approvalsPost(failSendReq);
+  const failSendData = await failSendRes.json();
+  mockTwilioFail = false;
+  check('4.6 Failed Twilio send returns 502 send_failed', failSendRes.status === 502 && failSendData.code === 'send_failed');
+  const failedApp = mockDb.tables.business_approvals.find(r => r.id === 'app_fail_send');
+  check('4.6 Approval remains pending when send fails', failedApp && failedApp.status === 'pending');
 }
 
 // ── 5. ROUTE /api/business/dunning (Item G) ───────────────────────────────────
@@ -775,7 +1024,7 @@ console.log('\n--- 5. Testing POST /api/business/dunning (Shared caps & window) 
     id: 'p_recent_1',
     workspace_id: 'ws_dun',
     phone: '+919876543210',
-    message_type: 'payment_reminder',
+    message_type: 'promotional',
     status: 'sent',
     sent_at: todayStr
   });

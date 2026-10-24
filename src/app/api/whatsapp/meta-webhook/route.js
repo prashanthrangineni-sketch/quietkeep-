@@ -102,12 +102,15 @@ export async function POST(request) {
   const appSecret       = process.env.META_WHATSAPP_APP_SECRET;
   const signatureHeader = request.headers.get('x-hub-signature-256');
 
-  if (appSecret) {
-    const valid = await verifyMetaSignature(rawBody, signatureHeader, appSecret);
-    if (!valid) {
-      console.warn('[meta-webhook] Signature verification FAILED');
-      return new Response('Forbidden', { status: 403 });
-    }
+  if (!appSecret) {
+    console.warn('[meta-webhook] META_WHATSAPP_APP_SECRET is unset — rejecting');
+    return new Response('Forbidden: META_WHATSAPP_APP_SECRET not configured', { status: 403 });
+  }
+
+  const valid = await verifyMetaSignature(rawBody, signatureHeader, appSecret);
+  if (!valid) {
+    console.warn('[meta-webhook] Signature verification FAILED');
+    return new Response('Forbidden', { status: 403 });
   }
 
   const supabase = createClient(
@@ -130,32 +133,49 @@ export async function POST(request) {
       const metadata = value?.metadata;
       const messages = value?.messages || [];
 
-      // Resolve receiving business workspace (Item C & D)
+      // Resolve receiving business workspace (Item C, D & 7)
       const receivingPhone = normalizePhoneNumber(metadata?.display_phone_number || '');
       let workspace = null;
 
       if (receivingPhone) {
-        const { data: wsByPhone } = await supabase
+        const candidateReceiving = [receivingPhone];
+        if (receivingPhone.startsWith('+91') && receivingPhone.length === 13) {
+          const d10 = receivingPhone.slice(3);
+          candidateReceiving.push(d10, '0' + d10, '91' + d10);
+        }
+
+        const { data: wsByPhone, error: wsPhoneErr } = await supabase
           .from('business_workspaces')
           .select('id, owner_user_id, name, address, timings, phone')
-          .eq('phone', receivingPhone)
+          .in('phone', candidateReceiving)
           .maybeSingle();
 
+        if (wsPhoneErr) {
+          console.error('[meta-webhook] wsByPhone query error:', wsPhoneErr.message);
+        }
         workspace = wsByPhone;
 
         if (!workspace) {
-          const { data: sess } = await supabase
+          const { data: sess, error: sessErr } = await supabase
             .from('whatsapp_sessions')
             .select('user_id')
-            .eq('phone_number', receivingPhone)
+            .in('phone_number', candidateReceiving)
             .maybeSingle();
 
+          if (sessErr) {
+            console.error('[meta-webhook] session query error:', sessErr.message);
+          }
+
           if (sess?.user_id) {
-            const { data: wsByUser } = await supabase
+            const { data: wsByUser, error: wsUserErr } = await supabase
               .from('business_workspaces')
               .select('id, owner_user_id, name, address, timings, phone')
               .eq('owner_user_id', sess.user_id)
               .maybeSingle();
+
+            if (wsUserErr) {
+              console.error('[meta-webhook] wsByUser query error:', wsUserErr.message);
+            }
             workspace = wsByUser;
           }
         }
@@ -165,19 +185,50 @@ export async function POST(request) {
         const customerPhone = normalizePhoneNumber(msg.from || '');
         const msgId = msg.id;
 
-        // ── INTERACTIVE: Button reply (Approve / Dismiss) (Item K) ─────────
+        // ── INTERACTIVE: Button reply (Approve / Dismiss) (Item K & 8) ──────
         if (msg.type === 'interactive' && msg.interactive?.type === 'button_reply') {
-          const buttonId    = msg.interactive.button_reply.id;
+          const buttonId = msg.interactive.button_reply.id;
+
+          if (!workspace) {
+            console.warn('[meta-webhook] Button reply received without matching workspace — ignoring');
+            continue;
+          }
+
+          // Verify msg.from is the owner's phone (Item 8)
+          let ownerPhone = normalizePhoneNumber(workspace.phone || '');
+          if (!ownerPhone && workspace.owner_user_id) {
+            const { data: ownerSess, error: oSessErr } = await supabase
+              .from('whatsapp_sessions')
+              .select('phone_number')
+              .eq('user_id', workspace.owner_user_id)
+              .maybeSingle();
+            if (oSessErr) console.error('[meta-webhook] owner session query error:', oSessErr.message);
+            if (ownerSess?.phone_number) {
+              ownerPhone = normalizePhoneNumber(ownerSess.phone_number);
+            }
+          }
+
+          const senderPhone = normalizePhoneNumber(msg.from || '');
+          if (!ownerPhone || senderPhone !== ownerPhone) {
+            console.warn('[meta-webhook] Interactive button rejected: sender', senderPhone, 'is not owner', ownerPhone);
+            continue;
+          }
 
           if (buttonId.startsWith('approve_')) {
             const approvalId = buttonId.replace('approve_', '');
 
-            const { data: approval } = await supabase
+            // Scope approval lookup to workspace (Item 8)
+            const { data: approval, error: apprFetchErr } = await supabase
               .from('business_approvals')
               .select('*')
               .eq('id', approvalId)
+              .eq('workspace_id', workspace.id)
               .eq('status', 'pending')
               .maybeSingle();
+
+            if (apprFetchErr) {
+              console.error('[meta-webhook] approval query error:', apprFetchErr.message);
+            }
 
             if (approval) {
               const { error: updErr } = await supabase
@@ -186,7 +237,9 @@ export async function POST(request) {
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                 })
-                .eq('id', approvalId);
+                .eq('id', approvalId)
+                .eq('workspace_id', workspace.id)
+                .eq('status', 'pending');
 
               if (!updErr) {
                 // Actually send the message to the customer (Item K)
@@ -223,6 +276,7 @@ export async function POST(request) {
           } else if (buttonId.startsWith('dismiss_')) {
             const approvalId = buttonId.replace('dismiss_', '');
 
+            // Scope dismissal to workspace (Item 8)
             await supabase
               .from('business_approvals')
               .update({
@@ -230,6 +284,7 @@ export async function POST(request) {
                 approved_at: new Date().toISOString(),
               })
               .eq('id', approvalId)
+              .eq('workspace_id', workspace.id)
               .eq('status', 'pending');
 
             await supabase.from('behaviour_signals').insert({

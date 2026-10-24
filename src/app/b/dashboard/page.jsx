@@ -353,7 +353,7 @@ export default function BizDashboardPage() {
               <div key={a.id} className="qk-card" style={{ padding: '12px 14px', marginBottom: 8, border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: G }}>
-                    {a.action_type === 'business_order_confirm' || a.payload?.what === 'order_request' ? '📦 Order Request' : '💬 Customer Inquiry'}
+                    {a.action_type === 'business_order_confirm' || a.action_type === 'business_booking_confirm' || a.payload?.what === 'order_request' || a.payload?.what === 'order' || a.payload?.what === 'booking_request' || a.payload?.what === 'booking' ? '📦 Order Request' : '💬 Customer Inquiry'}
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>
                     {a.payload?.who || a.payload?.customerPhone || 'Customer'}
@@ -363,12 +363,49 @@ export default function BizDashboardPage() {
                   {a.payload?.snippet || a.payload?.rawMessage || 'Inbound message'}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => handleApprovalAction(a.id, a.action_type === 'business_order_confirm' ? 'confirm' : 'send')}
-                    className="qk-btn qk-btn-sm"
-                    style={{ background: G, color: '#fff', border: 'none', padding: '4px 10px', fontSize: 12 }}>
-                    ✓ {a.action_type === 'business_order_confirm' ? 'Confirm Order' : 'Send Reply'}
-                  </button>
+                  {(() => {
+                    const isOrderOrBooking =
+                      a.action_type === 'business_order_confirm' ||
+                      a.action_type === 'business_booking_confirm' ||
+                      a.payload?.what === 'order_request' ||
+                      a.payload?.what === 'order' ||
+                      a.payload?.what === 'booking_request' ||
+                      a.payload?.what === 'booking';
+
+                    if (isOrderOrBooking) {
+                      return (
+                        <button
+                          onClick={() => handleApprovalAction(a.id, 'confirm')}
+                          className="qk-btn qk-btn-sm"
+                          style={{ background: G, color: '#fff', border: 'none', padding: '4px 10px', fontSize: 12 }}>
+                          ✓ Confirm Order
+                        </button>
+                      );
+                    }
+
+                    if (a.payload?.suggested_reply) {
+                      return (
+                        <button
+                          onClick={() => handleApprovalAction(a.id, 'send')}
+                          className="qk-btn qk-btn-sm"
+                          style={{ background: G, color: '#fff', border: 'none', padding: '4px 10px', fontSize: 12 }}>
+                          ✓ Send Reply
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <button
+                        onClick={() => {
+                          const edit = prompt('Enter reply to customer:', '');
+                          if (edit) handleApprovalAction(a.id, 'edit', edit);
+                        }}
+                        className="qk-btn qk-btn-sm"
+                        style={{ background: G, color: '#fff', border: 'none', padding: '4px 10px', fontSize: 12 }}>
+                        ✏️ Edit Reply
+                      </button>
+                    );
+                  })()}
                   <button
                     onClick={() => {
                       const edit = prompt('Edit reply to customer:', a.payload?.suggested_reply || '');

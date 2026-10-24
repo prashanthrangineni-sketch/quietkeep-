@@ -1,6 +1,6 @@
 // src/app/api/aaria/route.js
 //
-// Server-side proxy to Aaria (pranix-aaria), Pranix''s shared voice/intent
+// Server-side proxy to Aaria (pranix-aaria), Pranix's shared voice/intent
 // understanding service.
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +54,7 @@ export async function POST(req) {
     const data = await res.json();
     // Expected shape: { intent, entities, confidence, engine_used }
 
-    // Best-effort visual-companion slice: ask Aaria''s /api/voice/speak for a
+    // Best-effort visual-companion slice: ask Aaria's /api/voice/speak for a
     // short spoken confirmation and surface its visual_companion metadata
     // (expression + caption timing) if present. Never blocks or fails the
     // primary /understand response above.
@@ -91,7 +91,7 @@ export async function POST(req) {
 }
 
 // Health passthrough — useful for quick ops checks without needing to know
-// Aaria''s base URL from the client.
+// Aaria's base URL from the client.
 export async function GET() {
   try {
     const res = await fetch(`${AARIA_BASE_URL}/api/health`);

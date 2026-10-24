@@ -4,8 +4,7 @@
 // and ensures deletion purges profile, consent records, and contacts Aaria engine forget.
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { hasAllClonedVoiceConsents } from '@/lib/cloned-voice-safeguards';
-import { askEngineToForget } from '@/lib/aaria-forget';
+import { hasAllClonedVoiceConsents, executeVoicePreferencesDelete } from '@/lib/cloned-voice-safeguards';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,93 +126,13 @@ export async function DELETE(req) {
   const sb = bearer(req); if (!sb) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const user = await getUser(sb); if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // 1. Engine forget: fail if key missing or if engine forget fails
-  if (!process.env.AARIA_CALLER_KEY) {
-    return NextResponse.json({
-      ok: false,
-      error: 'Engine key not configured (AARIA_CALLER_KEY missing). Cannot perform safe deletion.',
-    }, { status: 500 });
-  }
+  const result = await executeVoicePreferencesDelete({
+    supabase: sb,
+    userId: user.id,
+    elevenlabsApiKey: process.env.ELEVENLABS_API_KEY,
+    aariaCallerKey: process.env.AARIA_CALLER_KEY,
+    fetchImpl: fetch,
+  });
 
-  const engineRes = await askEngineToForget(user.id);
-  if (!engineRes.ok) {
-    return NextResponse.json({
-      ok: false,
-      error: 'Engine forget refused or failed. Cannot report success.',
-      reason: engineRes.reason,
-    }, { status: 502 });
-  }
-
-  // 2. Delete voice from ElevenLabs: delete user voice + any returned in providerVoicesToRemove
-  const { data: userSet, error: userSetErr } = await sb.from('user_settings')
-    .select('elevenlabs_voice_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (userSetErr) {
-    return NextResponse.json({ ok: false, error: userSetErr.message }, { status: 500 });
-  }
-
-  const voicesToDelete = new Set();
-  if (userSet?.elevenlabs_voice_id) {
-    voicesToDelete.add(userSet.elevenlabs_voice_id);
-  }
-  if (Array.isArray(engineRes.providerVoicesToRemove)) {
-    engineRes.providerVoicesToRemove.forEach(v => { if (v) voicesToDelete.add(v); });
-  }
-
-  const elKey = process.env.ELEVENLABS_API_KEY;
-  for (const vid of voicesToDelete) {
-    if (vid && elKey) {
-      try {
-        const elRes = await fetch(`https://api.elevenlabs.io/v1/voices/${vid}`, {
-          method: 'DELETE',
-          headers: { 'xi-api-key': elKey },
-        });
-        if (!elRes.ok && elRes.status !== 404) {
-          const detail = await elRes.text().catch(() => '');
-          return NextResponse.json({
-            ok: false,
-            error: `ElevenLabs voice deletion failed (${elRes.status}): ${detail.slice(0, 200)}`,
-          }, { status: 502 });
-        }
-      } catch (err) {
-        return NextResponse.json({
-          ok: false,
-          error: `Failed to contact ElevenLabs to delete voice: ${err.message}`,
-        }, { status: 502 });
-      }
-    }
-  }
-
-  // 3. Remove consent record from voice_profile_consents
-  const { error: consentDelErr } = await sb.from('voice_profile_consents').delete().eq('user_id', user.id);
-  if (consentDelErr) {
-    return NextResponse.json({ ok: false, error: consentDelErr.message }, { status: 500 });
-  }
-
-  // 4. Clear locally in user_settings
-  const { error: clearErr } = await sb.from('user_settings').upsert({
-    user_id: user.id,
-    elevenlabs_voice_id: null,
-    voice_clone_consent: false,
-    consent_own_or_permitted: false,
-    consent_no_deception: false,
-    consent_in_app_labeled: false,
-    voice_clone_consent_at: null,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id' });
-
-  if (clearErr) return NextResponse.json({ ok: false, error: clearErr.message }, { status: 500 });
-
-  try {
-    await sb.from('audit_log').insert({
-      user_id: user.id,
-      action: 'voice_clone_deleted',
-      service: 'voice_clone',
-      details: { purged_consents: true, erased: engineRes.erased },
-    });
-  } catch (_) {}
-
-  return NextResponse.json({ ok: true, deleted: true });
+  return NextResponse.json(result, { status: result.status });
 }

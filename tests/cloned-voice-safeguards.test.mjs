@@ -16,6 +16,8 @@ import {
   formatClonedVoiceLabel,
   setCustomVoiceSpeaking,
   onCustomVoiceSpeakingChange,
+  decideTtsVoice,
+  executeVoicePreferencesDelete,
 } from '../src/lib/cloned-voice-safeguards.js';
 
 let pass = 0, fail = 0;
@@ -247,24 +249,133 @@ function check(name, ok, detail = '') {
     }
   });
 
-  // Test simulated DELETE route logic when ElevenLabs fails -> reports not ok (status 502)
+  // Real DELETE logic tests (Item 9) with fake fetch & fake supabase
   {
-    const simulateDelete = async ({ elStatus }) => {
-      if (elStatus !== 200 && elStatus !== 404) {
-        return { ok: false, status: 502, error: 'ElevenLabs voice deletion failed' };
-      }
-      return { ok: true, deleted: true };
+    // Fake Supabase factory
+    const makeFakeSupabase = ({ voiceId = 'el_voice_123', deleteConsentError = null, upsertSettingsError = null } = {}) => {
+      return {
+        from: (table) => {
+          if (table === 'user_settings') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: { elevenlabs_voice_id: voiceId }, error: null }),
+                }),
+              }),
+              upsert: async () => ({ error: upsertSettingsError }),
+            };
+          }
+          if (table === 'voice_profile_consents') {
+            return {
+              delete: () => ({
+                eq: async () => ({ error: deleteConsentError }),
+              }),
+            };
+          }
+          if (table === 'audit_log') {
+            return {
+              insert: async () => ({ error: null }),
+            };
+          }
+          return {};
+        },
+      };
     };
 
-    simulateDelete({ elStatus: 500 }).then((res) => {
-      check('DELETE when ElevenLabs fails -> not success (ok: false, status: 502)',
-        res.ok === false && res.status === 502);
-    });
+    // Fake fetch for engine forget (success)
+    const fakeEngineFetch = async (url) => {
+      if (url.includes('/api/voice/forget')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ status: 'erased', erased: {}, provider_voices_to_remove: [] }),
+        };
+      }
+      return { ok: true, status: 200, text: async () => '' };
+    };
 
-    simulateDelete({ elStatus: 404 }).then((res) => {
-      check('DELETE when ElevenLabs voice is 404 (already deleted) -> success',
-        res.ok === true);
-    });
+    // Test: ElevenLabs 500 -> 502 ok:false
+    (async () => {
+      const fakeFetchEl500 = async (url) => {
+        if (url.includes('/api/voice/forget')) {
+          return fakeEngineFetch(url);
+        }
+        if (url.includes('api.elevenlabs.io')) {
+          return { ok: false, status: 500, text: async () => 'ElevenLabs internal error' };
+        }
+        return { ok: true, status: 200 };
+      };
+
+      const res = await executeVoicePreferencesDelete({
+        supabase: makeFakeSupabase(),
+        userId: 'user_test_1',
+        elevenlabsApiKey: 'el_key_123',
+        aariaCallerKey: 'test-key-not-real',
+        fetchImpl: fakeFetchEl500,
+      });
+      check('real DELETE logic: ElevenLabs 500 -> 502 ok:false',
+        res.ok === false && res.status === 502);
+    })();
+
+    // Test: ElevenLabs key missing when voice exists -> 500 ok:false
+    (async () => {
+      const res = await executeVoicePreferencesDelete({
+        supabase: makeFakeSupabase({ voiceId: 'el_voice_123' }),
+        userId: 'user_test_2',
+        elevenlabsApiKey: null, // missing
+        aariaCallerKey: 'test-key-not-real',
+        fetchImpl: fakeEngineFetch,
+      });
+      check('real DELETE logic: ElevenLabs key missing -> 500 ok:false',
+        res.ok === false && res.status === 500);
+    })();
+
+    // Test: Supabase delete error -> 500
+    (async () => {
+      const fakeFetchOk = async (url) => {
+        if (url.includes('/api/voice/forget')) return fakeEngineFetch(url);
+        return { ok: true, status: 200, text: async () => '' };
+      };
+
+      const res = await executeVoicePreferencesDelete({
+        supabase: makeFakeSupabase({ deleteConsentError: { message: 'DB connection error' } }),
+        userId: 'user_test_3',
+        elevenlabsApiKey: 'el_key_123',
+        aariaCallerKey: 'test-key-not-real',
+        fetchImpl: fakeFetchOk,
+      });
+      check('real DELETE logic: supabase delete error -> 500',
+        res.ok === false && res.status === 500);
+    })();
+
+    // Real TTS voice decision tests (Item 9)
+    const validUserSettings = {
+      elevenlabs_voice_id: 'voice_cloned_999',
+      consent_own_or_permitted: true,
+      consent_no_deception: true,
+      consent_in_app_labeled: true,
+      settings: { voice_provider: 'own' },
+    };
+
+    const sosDecision = decideTtsVoice({ userSettings: validUserSettings, purpose: 'sos' });
+    check('decideTtsVoice: purpose sos -> no voice_id in payload',
+      sosDecision.voiceId === null && sosDecision.canUseClonedVoice === false);
+
+    const whatsappDecision = decideTtsVoice({ userSettings: validUserSettings, purpose: 'whatsapp' });
+    check('decideTtsVoice: purpose whatsapp -> no voice_id in payload',
+      whatsappDecision.voiceId === null && whatsappDecision.canUseClonedVoice === false);
+
+    const exportDecision = decideTtsVoice({ userSettings: validUserSettings, purpose: 'export' });
+    check('decideTtsVoice: purpose export -> no voice_id in payload',
+      exportDecision.voiceId === null && exportDecision.canUseClonedVoice === false);
+
+    const isExportFlagDecision = decideTtsVoice({ userSettings: validUserSettings, purpose: 'conversational', isExport: true });
+    check('decideTtsVoice: isExport: true -> no voice_id in payload',
+      isExportFlagDecision.voiceId === null && isExportFlagDecision.canUseClonedVoice === false);
+
+    const conversationalDecision = decideTtsVoice({ userSettings: validUserSettings, purpose: 'conversational' });
+    check('decideTtsVoice: conversational + full consent -> cloned voice id',
+      conversationalDecision.voiceId === 'voice_cloned_999' && conversationalDecision.canUseClonedVoice === true);
   }
 }
 

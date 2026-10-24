@@ -159,10 +159,15 @@ export default function VoiceSettings() {
     // the LanguageProvider startup read will reconcile on the next launch.
     if (patch.voice_language) { try { setVoiceLang(patch.voice_language); } catch {} }
     try {
-      await fetch('/api/voice/preferences', {
+      const r = await fetch('/api/voice/preferences', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(patch),
       });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setMsg(d.error || 'Could not save');
+        return;
+      }
       setMsg('Saved ✓'); setTimeout(() => setMsg(''), 1500);
     } catch { setMsg('Could not save'); } finally { setSaving(false); }
   }
@@ -243,9 +248,11 @@ export default function VoiceSettings() {
       }));
       await save({
         provider: 'own',
-        consent_own_or_permitted: true,
-        consent_no_deception: true,
-        consent_in_app_labeled: true,
+        consents: {
+          consent_own_or_permitted: consentOwnership,
+          consent_no_deception: consentNoDeception,
+          consent_in_app_labeled: consentInAppAiLabel,
+        },
       });
       setRec('idle'); setAudioUrl(''); blobRef.current = null; setMsg('Your voice is ready 🎉');
     } catch { setMsg('Could not reach the voice service.'); setRec('recorded'); }
@@ -363,9 +370,11 @@ export default function VoiceSettings() {
       save({
         provider: v,
         ...(v === 'own' ? {
-          consent_own_or_permitted: consentOwnership,
-          consent_no_deception: consentNoDeception,
-          consent_in_app_labeled: consentInAppAiLabel,
+          consents: {
+            consent_own_or_permitted: consentOwnership,
+            consent_no_deception: consentNoDeception,
+            consent_in_app_labeled: consentInAppAiLabel,
+          },
         } : {}),
       });
     }}
@@ -449,9 +458,11 @@ export default function VoiceSettings() {
                         type="button"
                         onClick={() => save({
                           provider: 'own',
-                          consent_own_or_permitted: consentOwnership,
-                          consent_no_deception: consentNoDeception,
-                          consent_in_app_labeled: consentInAppAiLabel,
+                          consents: {
+                            consent_own_or_permitted: consentOwnership,
+                            consent_no_deception: consentNoDeception,
+                            consent_in_app_labeled: consentInAppAiLabel,
+                          },
                         })}
                         disabled={!allConsentsTicked}
                         style={{ ...btn, width: '100%', opacity: allConsentsTicked ? 1 : 0.5 }}

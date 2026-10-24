@@ -56,21 +56,8 @@ export function speakBrowser(text, { lang = 'en-IN', rate = 1, pitch = 1 } = {})
   });
 }
 
-// ── ElevenLabs TTS (direct — used only for the user's own/preset cloned voice) ──
-export async function speakElevenLabs(text, apiKey, voiceId = DEFAULT_VOICES.neutral_female) {
-  if (!apiKey) throw new Error('ElevenLabs API key required');
-  const res = await fetch(`${ELEVENLABS_BASE}/text-to-speech/${voiceId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey },
-    body: JSON.stringify({
-      text,
-      model_id: 'eleven_multilingual_v2',
-      voice_settings: { stability: 0.75, similarity_boost: 0.75, style: 0, use_speaker_boost: false },
-    }),
-  });
-  if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${await res.text()}`);
-  return res.arrayBuffer();
-}
+// Note: Direct ElevenLabs synthesis from client removed in AG-AARIA-24.
+// Cloned-voice synthesis is performed securely server-side via /api/voice/tts.
 
 // ── Aaria TTS (shared voice engine; Sarvam Bulbul v3 for Indic lives behind it) ──
 // Calls our server route /api/voice/tts, which proxies Aaria. No vendor key here.

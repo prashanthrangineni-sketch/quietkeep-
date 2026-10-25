@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/context/auth';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import BizNavbar from '@/components/biz/BizNavbar';
+import { normalizePhoneNumber } from '@/lib/business-limits';
 const G = '#10b981';
 
 const EMPTY = { name:'', phone:'', email:'', gstin:'', address:'', notes:'', credit_limit:'0' };
@@ -62,7 +63,8 @@ export default function CustomersPage() {
   async function saveCustomer() {
     if (!form.name || !workspace) return;
     setSaving(true);
-    const payload = { ...form, credit_limit: parseFloat(form.credit_limit) || 0 };
+    const normalizedPhone = form.phone ? normalizePhoneNumber(form.phone) : '';
+    const payload = { ...form, phone: normalizedPhone, credit_limit: parseFloat(form.credit_limit) || 0 };
     await fetch('/api/business/customers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },

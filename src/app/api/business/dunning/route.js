@@ -1,37 +1,19 @@
 // src/app/api/business/dunning/route.js
-// ─────────────────────────────────────────────────────────────────────────────
-// AUTOMATED WHATSAPP DUNNING (SOT P3) — the collections half of the wedge.
-//
-// Completes the cycle opened by the payment fix:
-//   overdue party → WhatsApp reminder + UPI pay link → customer pays
-//   → /api/business/payments/webhook → apply_business_payment()
-//   → ledger credit + khata cleared, automatically.
-//
-//   GET  → PREVIEW who would be reminded. Read-only, sends nothing.
-//   POST → actually send. Explicit call only.
-//
-// WHY NOT AUTOMATIC (yet)
-// This messages REAL CUSTOMERS. A bad run is a reputational failure, not a bad
-// row. So there is no cron here: the merchant triggers it, having seen the
-// preview. Wiring it to pg_cron is a deliberate opt-in, not a default.
-//
-// CONSENT: a customer is only messaged when whatsapp_opted_in is true AND a
-// phone number exists. Everyone else is reported as skipped, with the reason,
-// so the merchant can see who is unreachable instead of them vanishing.
-//
-// THE AMOUNT BUG THIS AVOIDS
-// business_ledger.amount_pending is NOT reliably populated — live data has rows
-// with payment_status='pending', amount=3200 and amount_pending=0.00. Dunning on
-// amount_pending alone would have found ZERO overdue customers and silently done
-// nothing. So the due amount falls back to `amount` when amount_pending is 0.
-// Likewise due_date is often null, so the clock falls back to
-// transaction_date + 15 days.
+// AUTOMATED WHATSAPP DUNNING — owner-triggered payment reminders with business limit enforcement.
+
 export const dynamic = 'force-dynamic';
 import { requireBizPermission } from '@/lib/biz-rbac';
 import { createWriteClient } from '@/lib/supabase-bearer';
 import { NextResponse } from 'next/server';
+import {
+  isCustomerOptedOutInDb,
+  normalizePhoneNumber,
+  isWithinPromoHours,
+  sanitizeSnippet,
+  getIstStartOfDay,
+} from '@/lib/business-limits';
 
-const STAGES = [15, 7, 3];          // checked high→low; first match wins
+const STAGES = [15, 7, 3];          // checked high->low; first match wins
 const GRACE_DAYS = 15;              // used when a ledger row has no due_date
 
 function stageFor(daysOverdue) {
@@ -45,7 +27,7 @@ function money(n) {
 
 // Load every overdue receivable for the workspace, joined to its customer.
 async function loadCandidates(db, workspaceId) {
-  const [{ data: ledger }, { data: customers }, { data: sent }] = await Promise.all([
+  const [{ data: ledger, error: errLedger }, { data: customers, error: errCust }, { data: sent, error: errSent }, { data: optOuts, error: errOptOuts }] = await Promise.all([
     db.from('business_ledger')
       .select('id,party_name,amount,amount_pending,due_date,transaction_date,payment_status')
       .eq('workspace_id', workspaceId)
@@ -57,7 +39,20 @@ async function loadCandidates(db, workspaceId) {
       .select('ledger_id,customer_id,stage')
       .eq('workspace_id', workspaceId)
       .eq('status', 'sent'),
+    db.from('business_customer_opt_outs')
+      .select('phone')
+      .eq('workspace_id', workspaceId),
   ]);
+
+  if (errLedger || errCust || errSent || errOptOuts) {
+    const msg = errLedger?.message || errCust?.message || errSent?.message || errOptOuts?.message;
+    console.error('[dunning] loadCandidates query error:', msg);
+    throw new Error(`Database error while loading dunning candidates: ${msg}`);
+  }
+
+  const optedOutPhones = new Set(
+    (optOuts || []).map((o) => normalizePhoneNumber(o.phone)).filter(Boolean)
+  );
 
   const byName = new Map(
     (customers || []).map((c) => [String(c.name || '').trim().toLowerCase(), c])
@@ -82,18 +77,20 @@ async function loadCandidates(db, workspaceId) {
     if (!stage) continue;
 
     const cust = byName.get(String(l.party_name || '').trim().toLowerCase()) || null;
+    const normPhone = normalizePhoneNumber(cust?.phone || '');
 
     let skip = null;
     if (alreadySent.has(`${l.id}:${stage}`)) skip = 'already_reminded_at_this_stage';
     else if (!cust) skip = 'no_customer_record';
-    else if (!cust.phone) skip = 'no_phone_number';
-    else if (!cust.whatsapp_opted_in) skip = 'not_opted_in_to_whatsapp';
+    else if (!normPhone) skip = 'no_phone_number';
+    else if (cust.whatsapp_opted_in === false) skip = 'not_opted_in_to_whatsapp';
+    else if (optedOutPhones.has(normPhone)) skip = 'customer_opted_out';
 
     out.push({
       ledger_id: l.id,
       customer_id: cust?.id || null,
       party_name: l.party_name,
-      phone: cust?.phone || null,
+      phone: normPhone || null,
       due_amount: due,
       days_overdue: daysOverdue,
       stage,
@@ -128,11 +125,19 @@ export async function GET(req) {
   }
 }
 
-// ── POST: send the reminders ────────────────────────────────────────────────
+// ── POST: send the reminders (Owner-triggered only, Item G) ───────────────────
 export async function POST(req) {
   try {
     const ctx = await requireBizPermission(req, 'billing', 'create');
     if (ctx.error) return ctx.error;
+
+    // Time window enforcement: 10:00 to 21:00 IST (Rule 4, Item G)
+    if (!isWithinPromoHours()) {
+      return NextResponse.json({
+        error: 'Payment reminder messages can only be sent between 10:00 and 21:00 IST (Rule 4).',
+        code: 'outside_promo_hours',
+      }, { status: 429 });
+    }
 
     const body = await req.json().catch(() => ({}));
     const includePayLink = body.include_pay_link !== false;
@@ -158,10 +163,83 @@ export async function POST(req) {
     const origin = new URL(req.url).origin;
     const results = [];
 
+    const todayStart = getIstStartOfDay();
+    const weekStart = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+
     for (const t of targets) {
-      // Optional UPI pay link. Reuses create-qr with the caller's own token so
-      // the QR logic lives in one place. Best-effort: if payments aren't
-      // configured the reminder still goes out, just without a link.
+      const normPhone = normalizePhoneNumber(t.phone);
+
+      // Check customer opt-out status with fail-closed error handling (Round 4 Item 1)
+      const { optedOut, error: optOutErr } = await isCustomerOptedOutInDb(db, ctx.workspace.id, normPhone);
+      if (optOutErr) {
+        console.error('[dunning] opt-out check error:', optOutErr.message || optOutErr);
+        return NextResponse.json({
+          error: 'Failed to verify customer opt-out status',
+          code: 'opt_out_check_failed',
+        }, { status: 500 });
+      }
+      if (optedOut) {
+        results.push({
+          ledger_id: t.ledger_id,
+          party_name: t.party_name,
+          stage: t.stage,
+          amount: t.due_amount,
+          status: 'skipped',
+          error: 'Customer opted out (STOP / వద్దు / बंद करो)',
+        });
+        continue;
+      }
+
+      // Check per-customer caps (1/day, 4/week) (Item 6 & 7, Round 4 Item 1 fail closed)
+      const [{ count: custTodayCount, error: errToday }, { count: custWeekCount, error: errWeek }] = await Promise.all([
+        db.from('business_promo_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', ctx.workspace.id)
+          .eq('phone', normPhone)
+          .eq('message_type', 'promotional')
+          .eq('status', 'sent')
+          .gte('sent_at', todayStart.toISOString()),
+        db.from('business_promo_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', ctx.workspace.id)
+          .eq('phone', normPhone)
+          .eq('message_type', 'promotional')
+          .eq('status', 'sent')
+          .gte('sent_at', weekStart.toISOString()),
+      ]);
+
+      if (errToday || errWeek) {
+        console.error('[dunning] promo count error:', errToday?.message || errWeek?.message);
+        return NextResponse.json({
+          error: 'Failed to verify customer promotional limits',
+          code: 'promo_count_failed',
+        }, { status: 500 });
+      }
+
+      if ((custTodayCount || 0) >= 1) {
+        results.push({
+          ledger_id: t.ledger_id,
+          party_name: t.party_name,
+          stage: t.stage,
+          amount: t.due_amount,
+          status: 'skipped',
+          error: 'Customer daily cap reached (max 1/day)',
+        });
+        continue;
+      }
+
+      if ((custWeekCount || 0) >= 4) {
+        results.push({
+          ledger_id: t.ledger_id,
+          party_name: t.party_name,
+          stage: t.stage,
+          amount: t.due_amount,
+          status: 'skipped',
+          error: 'Customer weekly cap reached (max 4/week)',
+        });
+        continue;
+      }
+
       let payLink = null;
       let paymentId = null;
       if (includePayLink) {
@@ -199,7 +277,7 @@ export async function POST(req) {
       try {
         const form = new URLSearchParams({
           From: `whatsapp:${from}`,
-          To: `whatsapp:${t.phone}`,
+          To: `whatsapp:${normPhone}`,
           Body: message,
         });
         const tw = await fetch(
@@ -222,15 +300,13 @@ export async function POST(req) {
         errorMessage = String(e?.message || e).slice(0, 200);
       }
 
-      // Log every attempt. The unique index means a 'sent' row for this
-      // (receivable, stage) can only exist once — so a re-run cannot spam.
-      await db.from('business_dunning_log').insert({
+      const { error: dunningErr } = await db.from('business_dunning_log').insert({
         workspace_id: ctx.workspace.id,
         customer_id: t.customer_id,
         ledger_id: t.ledger_id,
         stage: t.stage,
         amount: t.due_amount,
-        phone: t.phone,
+        phone: normPhone,
         channel: 'whatsapp',
         message,
         status,
@@ -238,6 +314,27 @@ export async function POST(req) {
         payment_id: paymentId,
         created_by: ctx.user.id,
       });
+
+      if (dunningErr) {
+        console.error('[dunning:POST] dunning log insert error:', dunningErr.message);
+      }
+
+      // Record in promo log to ensure customer caps are respected
+      const { error: promoLogErr } = await db.from('business_promo_log').insert({
+        workspace_id: ctx.workspace.id,
+        customer_id: t.customer_id,
+        phone: normPhone,
+        message_type: 'promotional',
+        status,
+        blocked_reason: errorMessage,
+        snippet: sanitizeSnippet(message),
+        sent_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      });
+
+      if (promoLogErr) {
+        console.error('[dunning:POST] promo log insert error:', promoLogErr.message);
+      }
 
       results.push({
         ledger_id: t.ledger_id,

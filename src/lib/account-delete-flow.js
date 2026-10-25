@@ -27,7 +27,6 @@ export async function runDeleteAccount({ token, fetchImpl = globalThis.fetch } =
     };
   }
 
-
   try {
     const res2 = await fetchImpl('/api/account/delete', {
       method: 'POST',
@@ -39,7 +38,7 @@ export async function runDeleteAccount({ token, fetchImpl = globalThis.fetch } =
     try {
       body2 = await res2.json();
     } catch {}
-    if (res2.status !== 200 || (body2 && body2.ok === false)) {
+    if (res2.status !== 200 || !body2 || body2.ok !== true) {
       return {
         ok: false,
         step: 'account',

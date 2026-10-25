@@ -14,8 +14,15 @@ function check(name, ok, detail = '') {
 // Runtime-built tokens/keys to satisfy gitleaks rule
 const FAKE_TOKEN = 't'.repeat(32);
 const FAKE_USER_ID = 'u'.repeat(16);
+const ATTACKER_USER_ID = 'x'.repeat(16);
 
-function makeFakeFetch({ forgetStatus = 200, forgetBody = { ok: true }, accountStatus = 200, accountBody = { ok: true } } = {}) {
+function makeFakeFetch({
+  forgetStatus = 200,
+  forgetBody = { ok: true },
+  accountStatus = 200,
+  accountBody = { ok: true },
+  accountNonJson = false,
+} = {}) {
   const calls = [];
   const f = async (url, init = {}) => {
     calls.push({ url, init });
@@ -27,6 +34,14 @@ function makeFakeFetch({ forgetStatus = 200, forgetBody = { ok: true }, accountS
       };
     }
     if (url === '/api/account/delete') {
+      if (accountNonJson) {
+        return {
+          status: accountStatus,
+          ok: accountStatus >= 200 && accountStatus < 300,
+          json: async () => { throw new Error('Unexpected token < in JSON'); },
+          text: async () => 'OK',
+        };
+      }
       return {
         status: accountStatus,
         ok: accountStatus >= 200 && accountStatus < 300,
@@ -87,28 +102,35 @@ function makeFakeFetch({ forgetStatus = 200, forgetBody = { ok: true }, accountS
   check('account 500: both endpoints were called', fetchImpl.calls.length === 2);
 }
 
-// 5. Route-level test with fake supabase client: cloned-voice delete fails -> 502 and deleteUser never called
+// 5. flow: non-JSON 200 -> ok:false
 {
-  let deleteUserCalled = false;
+  const fetchImpl = makeFakeFetch({
+    forgetStatus: 200,
+    forgetBody: { ok: true },
+    accountStatus: 200,
+    accountNonJson: true,
+  });
+  const res = await runDeleteAccount({ token: FAKE_TOKEN, fetchImpl });
+  check('flow: non-JSON 200 returns ok:false', res.ok === false);
+  check('flow: non-JSON 200 reports step account', res.step === 'account');
+  check('flow: non-JSON 200 reports failure message', res.message === 'Account deletion failed. Please try again.');
+}
+
+// 6. Route-level test: cloned-voice delete fails -> 502 and rpc not called
+{
+  let rpcCalled = false;
   const fakeSupabase = {
-    from() {
-      return {
-        delete() {
-          return {
-            eq() {
-              return Promise.resolve({ error: null });
-            },
-          };
-        },
-      };
-    },
-    auth: {
-      admin: {
-        async deleteUser() {
-          deleteUserCalled = true;
-          return { data: { user: { id: FAKE_USER_ID } }, error: null };
-        },
+    storage: {
+      from() {
+        return {
+          list: async () => ({ data: [], error: null }),
+          remove: async () => ({ data: [], error: null }),
+        };
       },
+    },
+    rpc() {
+      rpcCalled = true;
+      return Promise.resolve({ data: {}, error: null });
     },
   };
 
@@ -130,35 +152,31 @@ function makeFakeFetch({ forgetStatus = 200, forgetBody = { ok: true }, accountS
   });
 
   check('route cloned-voice delete fails: returns 502', res.status === 502);
-  check('route cloned-voice delete fails: deleteUser never called', deleteUserCalled === false);
+  check('route cloned-voice delete fails: rpc not called', rpcCalled === false);
   const data = await res.json();
   check('route cloned-voice delete fails: body ok:false', data.ok === false);
 }
 
-// 6. Route-level test: cloned-voice delete succeeds -> deletes non-cascade tables and calls deleteUser with verified id
+// 7. Route-level test: storage failure -> 502 and rpc not called
 {
-  let deleteUserCalledWith = null;
-  const deletedFromTables = [];
+  let rpcCalled = false;
   const fakeSupabase = {
-    from(table) {
-      return {
-        delete() {
-          return {
-            eq(col, val) {
-              deletedFromTables.push({ table, col, val });
-              return Promise.resolve({ error: null });
-            },
-          };
-        },
-      };
-    },
-    auth: {
-      admin: {
-        async deleteUser(id) {
-          deleteUserCalledWith = id;
-          return { data: { user: { id } }, error: null };
-        },
+    storage: {
+      from(bucket) {
+        return {
+          list: async () => {
+            if (bucket === 'memories') {
+              return { data: null, error: { message: 'Storage service timeout' } };
+            }
+            return { data: [], error: null };
+          },
+          remove: async () => ({ data: [], error: null }),
+        };
       },
+    },
+    rpc() {
+      rpcCalled = true;
+      return Promise.resolve({ data: {}, error: null });
     },
   };
 
@@ -179,17 +197,143 @@ function makeFakeFetch({ forgetStatus = 200, forgetBody = { ok: true }, accountS
     executeVoicePreferencesDelete: fakeVoiceDeleteSuccess,
   });
 
-  check('route success: returns 200', res.status === 200);
-  check('route success: deleteUser called with verified user id', deleteUserCalledWith === FAKE_USER_ID);
-  check('route success: deletes from non-cascade user tables',
-    deletedFromTables.some(d => d.table === 'contacts' && d.val === FAKE_USER_ID) &&
-    deletedFromTables.some(d => d.table === 'business_members' && d.val === FAKE_USER_ID) &&
-    deletedFromTables.some(d => d.table === 'user_settings' && d.val === FAKE_USER_ID));
+  check('route storage failure: returns 502', res.status === 502);
+  check('route storage failure: rpc not called', rpcCalled === false);
   const data = await res.json();
-  check('route success: body ok:true', data.ok === true);
+  check('route storage failure: body ok:false', data.ok === false);
+  check('route storage failure: mentions bucket or storage error', data.error.includes('memories') || data.error.includes('Storage'));
 }
 
-// 7. Route-level test: unauthenticated -> 401
+// 8. Route-level test: rpc error -> 500
+{
+  const fakeSupabase = {
+    storage: {
+      from() {
+        return {
+          list: async () => ({ data: [], error: null }),
+          remove: async () => ({ data: [], error: null }),
+        };
+      },
+    },
+    rpc(fn, args) {
+      if (fn === 'delete_user_data') {
+        return Promise.resolve({ data: null, error: { message: 'Foreign key violation in live DB' } });
+      }
+      return Promise.resolve({ data: {}, error: null });
+    },
+  };
+
+  const fakeVoiceDeleteSuccess = async () => ({
+    ok: true,
+    status: 200,
+    deleted: true,
+  });
+
+  const req = new Request('http://localhost:3000/api/account/delete', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${FAKE_TOKEN}` },
+  });
+
+  const res = await POST(req, {
+    user: { id: FAKE_USER_ID },
+    supabase: fakeSupabase,
+    executeVoicePreferencesDelete: fakeVoiceDeleteSuccess,
+  });
+
+  check('route rpc error: returns 500', res.status === 500);
+  const data = await res.json();
+  check('route rpc error: body ok:false', data.ok === false);
+  check('route rpc error: returns error message', data.error.includes('Foreign key violation'));
+}
+
+// 9. Route-level test: a userId in the body is ignored (uses ONLY verified user from bearer)
+{
+  let rpcArgsReceived = null;
+  const fakeSupabase = {
+    storage: {
+      from() {
+        return {
+          list: async () => ({ data: [], error: null }),
+          remove: async () => ({ data: [], error: null }),
+        };
+      },
+    },
+    rpc(fn, args) {
+      rpcArgsReceived = args;
+      return Promise.resolve({ data: { auth_users: 1 }, error: null });
+    },
+  };
+
+  const fakeVoiceDeleteSuccess = async ({ userId }) => {
+    check('route userId in body ignored: voice delete receives verified userId', userId === FAKE_USER_ID);
+    return { ok: true, status: 200, deleted: true };
+  };
+
+  // Malicious request attempting to delete another user by specifying userId in body
+  const req = new Request('http://localhost:3000/api/account/delete', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${FAKE_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      userId: ATTACKER_USER_ID,
+      id: ATTACKER_USER_ID,
+      user_id: ATTACKER_USER_ID,
+    }),
+  });
+
+  const res = await POST(req, {
+    user: { id: FAKE_USER_ID },
+    supabase: fakeSupabase,
+    executeVoicePreferencesDelete: fakeVoiceDeleteSuccess,
+  });
+
+  check('route userId in body ignored: returns 200', res.status === 200);
+  check('route userId in body ignored: rpc called with verified user id', rpcArgsReceived?.p_user === FAKE_USER_ID);
+  check('route userId in body ignored: rpc never receives attacker user id', rpcArgsReceived?.p_user !== ATTACKER_USER_ID);
+}
+
+// 10. Route-level test: success -> 200 and returns counts
+{
+  const fakeSupabase = {
+    storage: {
+      from() {
+        return {
+          list: async () => ({ data: [{ name: 'file1.txt', id: '1' }], error: null }),
+          remove: async () => ({ data: [], error: null }),
+        };
+      },
+    },
+    rpc(fn, args) {
+      return Promise.resolve({ data: { auth_users: 1, calendar_events: 2 }, error: null });
+    },
+  };
+
+  const fakeVoiceDeleteSuccess = async () => ({
+    ok: true,
+    status: 200,
+    deleted: true,
+  });
+
+  const req = new Request('http://localhost:3000/api/account/delete', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${FAKE_TOKEN}` },
+  });
+
+  const res = await POST(req, {
+    user: { id: FAKE_USER_ID },
+    supabase: fakeSupabase,
+    executeVoicePreferencesDelete: fakeVoiceDeleteSuccess,
+  });
+
+  check('route full success: returns 200', res.status === 200);
+  const data = await res.json();
+  check('route full success: body ok:true', data.ok === true);
+  check('route full success: returns counts', data.counts?.auth_users === 1 && data.counts?.calendar_events === 2);
+}
+
+// 11. Route-level test: unauthenticated -> 401
 {
   const req = new Request('http://localhost:3000/api/account/delete', {
     method: 'POST',

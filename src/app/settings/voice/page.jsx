@@ -153,7 +153,9 @@ export default function VoiceSettings() {
   }, [accessToken]);
 
   async function save(patch) {
-    setPrefs(p => ({ ...p, ...patch })); setSaving(true); setMsg('');
+    // If enabling own voice, do NOT optimistically show provider as 'own' before save is confirmed
+    const optimisticPatch = patch.provider === 'own' ? { ...patch, provider: prefs?.provider || 'system' } : patch;
+    setPrefs(p => ({ ...p, ...optimisticPatch })); setSaving(true); setMsg('');
     // Apply it to this device immediately. Deliberately before the fetch: if
     // the save fails the user still hears the language they just chose, and
     // the LanguageProvider startup read will reconcile on the next launch.
@@ -168,6 +170,7 @@ export default function VoiceSettings() {
         setMsg(d.error || 'Could not save');
         return false;
       }
+      setPrefs(p => ({ ...p, ...patch }));
       setMsg('Saved ✓'); setTimeout(() => setMsg(''), 1500);
       return true;
     } catch { setMsg('Could not save'); return false; } finally { setSaving(false); }
@@ -235,6 +238,15 @@ export default function VoiceSettings() {
       const r = await fetch('/api/voice/clone', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: fd });
       const d = await r.json();
       if (!r.ok) { setMsg(d.error || 'Could not create voice.'); setRec('recorded'); return; }
+      const saved = await save({
+        provider: 'own',
+        consents: {
+          consent_own_or_permitted: consentOwnership,
+          consent_no_deception: consentNoDeception,
+          consent_in_app_labeled: consentInAppAiLabel,
+        },
+      });
+      if (!saved) return;
       setPrefs(p => ({
         ...p,
         has_own_voice: true,
@@ -247,15 +259,6 @@ export default function VoiceSettings() {
           consented_at: new Date().toISOString(),
         },
       }));
-      const saved = await save({
-        provider: 'own',
-        consents: {
-          consent_own_or_permitted: consentOwnership,
-          consent_no_deception: consentNoDeception,
-          consent_in_app_labeled: consentInAppAiLabel,
-        },
-      });
-      if (!saved) return;
       setRec('idle'); setAudioUrl(''); blobRef.current = null; setMsg('Your voice is ready 🎉');
     } catch { setMsg('Could not reach the voice service.'); setRec('recorded'); }
   }

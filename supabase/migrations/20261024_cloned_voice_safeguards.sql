@@ -71,7 +71,16 @@ comment on column public.user_settings.voice_clone_consent_at is
 
 -- ── Privilege Hardening (Item 2) ───────────────────────────────────────────
 -- Revoke direct client update on sensitive voice and consent columns.
-revoke update (elevenlabs_voice_id, consent_own_or_permitted, consent_no_deception, consent_in_app_labeled, voice_clone_consent_at) on public.user_settings from authenticated;
+-- Revoke table-level INSERT and UPDATE from authenticated and anon to prevent bypass
+-- of column-level restrictions.
+revoke insert, update on public.user_settings from authenticated, anon;
+
+-- Grant INSERT and UPDATE only on permitted non-protected columns to authenticated.
+-- Protected (NOT granted): elevenlabs_voice_id, voice_clone_consent, voice_clone_at,
+-- consent_own_or_permitted, consent_no_deception, consent_in_app_labeled, voice_clone_consent_at.
+grant insert (id, user_id, voice_input_enabled, voice_language, voice_tone, created_at, updated_at, settings, notification_settings, preferred_language, theme_preference, push_enabled, push_subscription, action_window_start, action_window_end, avg_response_hours, phone_number, whatsapp_enabled, email_address, email_enabled, onesignal_player_id, fcm_token, calendar_refresh_token, calendar_enabled, google_access_token, google_token_expires_at, whatsapp_provider, wake_word, wake_mode_enabled) on public.user_settings to authenticated;
+
+grant update (id, user_id, voice_input_enabled, voice_language, voice_tone, created_at, updated_at, settings, notification_settings, preferred_language, theme_preference, push_enabled, push_subscription, action_window_start, action_window_end, avg_response_hours, phone_number, whatsapp_enabled, email_address, email_enabled, onesignal_player_id, fcm_token, calendar_refresh_token, calendar_enabled, google_access_token, google_token_expires_at, whatsapp_provider, wake_word, wake_mode_enabled) on public.user_settings to authenticated;
 
 -- Revoke direct insert and update on voice_profile_consents from authenticated users.
 revoke insert, update on public.voice_profile_consents from authenticated;

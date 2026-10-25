@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { extractAudio } from '@/lib/aaria-audio';
 import { engineHeaders } from '@/lib/aaria-pass';
-import { decideTtsVoice } from '@/lib/cloned-voice-safeguards';
+import { decideTtsVoice, hasAllClonedVoiceConsents } from '@/lib/cloned-voice-safeguards';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,10 +58,20 @@ export async function POST(req) {
     .maybeSingle();
 
   // Item 2: only use the cloned voice if user_settings.elevenlabs_voice_id equals voice_profile_consents.voice_id for that user
+  // and ALSO all three consent booleans are true on the voice_profile_consents record (not only user_settings)
   const voiceIdMatchesConsent = Boolean(
     userSettings?.elevenlabs_voice_id &&
     consentRecord?.voice_id &&
     userSettings.elevenlabs_voice_id === consentRecord.voice_id
+  );
+
+  const consentRecordValid = Boolean(
+    voiceIdMatchesConsent &&
+    hasAllClonedVoiceConsents({
+      consent_own_or_permitted: consentRecord?.consent_own_or_permitted,
+      consent_no_deception: consentRecord?.consent_no_deception,
+      consent_in_app_labeled: consentRecord?.consent_in_app_labeled,
+    })
   );
 
   const { voiceId: candidateVoiceId } = decideTtsVoice({
@@ -72,7 +82,7 @@ export async function POST(req) {
     isExport: body.is_export,
   });
 
-  const voiceId = voiceIdMatchesConsent ? candidateVoiceId : null;
+  const voiceId = consentRecordValid ? candidateVoiceId : null;
   const choseClonedVoice = Boolean(voiceId);
 
   try {

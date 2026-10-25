@@ -287,7 +287,7 @@ function check(name, ok, detail = '') {
     unsubCheck();
   }
 
-  // Test 3: tts route consent voice_id matching check (Item 2)
+  // Test 3: tts route consent voice_id matching check & consent booleans (Item 2)
   {
     const checkMatching = (userSettingId, consentId) => Boolean(
       userSettingId && consentId && userSettingId === consentId
@@ -298,6 +298,31 @@ function check(name, ok, detail = '') {
       checkMatching('voice_test_123', 'voice_other_456') === false);
     check('tts route: missing consent record voice_id disallowed',
       checkMatching('voice_test_123', null) === false);
+
+    const checkConsentValid = (userSettingId, consentRecord) => Boolean(
+      userSettingId &&
+      consentRecord?.voice_id &&
+      userSettingId === consentRecord.voice_id &&
+      hasAllClonedVoiceConsents({
+        consent_own_or_permitted: consentRecord?.consent_own_or_permitted,
+        consent_no_deception: consentRecord?.consent_no_deception,
+        consent_in_app_labeled: consentRecord?.consent_in_app_labeled,
+      })
+    );
+    const validConsentRecord = {
+      voice_id: 'voice_test_123',
+      consent_own_or_permitted: true,
+      consent_no_deception: true,
+      consent_in_app_labeled: true,
+    };
+    check('tts route: matching voice_id AND all 3 consent booleans on voice_profile_consents allowed',
+      checkConsentValid('voice_test_123', validConsentRecord) === true);
+    check('tts route: matching voice_id but false consent_own_or_permitted disallowed',
+      checkConsentValid('voice_test_123', { ...validConsentRecord, consent_own_or_permitted: false }) === false);
+    check('tts route: matching voice_id but false consent_no_deception disallowed',
+      checkConsentValid('voice_test_123', { ...validConsentRecord, consent_no_deception: false }) === false);
+    check('tts route: matching voice_id but false consent_in_app_labeled disallowed',
+      checkConsentValid('voice_test_123', { ...validConsentRecord, consent_in_app_labeled: false }) === false);
   }
 
   // Test 4: preferences POST consent withdrawal logic (Item 3)

@@ -1,3 +1,4 @@
+-- 25 Oct 2026: regex escapes corrected (single backslashes); the live DB was set up with this corrected version.
 -- 20261025_business_phone_normalise.sql
 -- Backfill business_customers.phone, business_workspaces.phone, and whatsapp_sessions.phone_number
 -- to +91XXXXXXXXXX format using the exact rules of the JavaScript normaliser.

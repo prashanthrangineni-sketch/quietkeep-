@@ -1,9 +1,12 @@
 // src/app/api/account/delete/route.js
 // POST -> Permanently delete user account and all user data.
 // 1. Verify user identity via bearer JWT (createBearerClient) -> 401 if invalid.
-// 2. Erase custom/cloned voice (executeVoicePreferencesDelete) -> 502 if fails (nothing else deleted).
-// 3. For each storage bucket, list and remove all user objects -> 502 on failure (account kept).
-// 4. Call service-role delete_user_data(p_user) RPC -> 500 on error.
+// 2. Any userId in body is ignored.
+// 3. Product rule: if user owns a business workspace with other active members -> 409 (delete nothing).
+// 4. Erase custom/cloned voice (executeVoicePreferencesDelete) -> 502 if fails (nothing else deleted).
+// 5. For each storage bucket, list and remove all user objects -> 502 on failure (account kept).
+// 6. Read user business_chat_messages attachment paths and remove them from voice-messages bucket -> 502 on failure (account kept).
+// 7. Call service-role delete_user_data(p_user) RPC -> 500 on error. Require counts.auth_users === 1 -> 500 if not.
 // Returns { ok: true, counts }.
 // Cache-Control: no-store, dynamic: force-dynamic.
 
@@ -86,7 +89,50 @@ export async function POST(req, context = {}) {
   // Use service-role write client
   const db = context.supabase || (context.createWriteClient ? context.createWriteClient() : createWriteClient());
 
-  // 2. Delete user's cloned voice using existing server helper.
+  // 2. PRODUCT RULE: if user owns a business workspace with other active members -> 409 (delete nothing)
+  if (db?.from) {
+    const { data: ownedWorkspaces, error: wsErr } = await db
+      .from('business_workspaces')
+      .select('id')
+      .eq('owner_user_id', user.id);
+
+    if (wsErr) {
+      return NextResponse.json(
+        { ok: false, error: `Failed to check workspace ownership: ${wsErr.message || wsErr}` },
+        { status: 500, headers: NO_STORE }
+      );
+    }
+
+    if (ownedWorkspaces && ownedWorkspaces.length > 0) {
+      const wsIds = ownedWorkspaces.map((w) => w.id);
+      const { data: members, error: mErr } = await db
+        .from('business_members')
+        .select('id, user_id, status, workspace_id')
+        .in('workspace_id', wsIds)
+        .eq('status', 'active');
+
+      if (mErr) {
+        return NextResponse.json(
+          { ok: false, error: `Failed to check workspace members: ${mErr.message || mErr}` },
+          { status: 500, headers: NO_STORE }
+        );
+      }
+
+      const otherActiveMembers = (members || []).filter((m) => m.user_id !== user.id);
+      if (otherActiveMembers.length > 0) {
+        return NextResponse.json(
+          {
+            ok: false,
+            reason: 'owns_business',
+            message: 'You own a business workspace with team members. Transfer ownership or remove the members first, then delete your account.',
+          },
+          { status: 409, headers: NO_STORE }
+        );
+      }
+    }
+  }
+
+  // 3. Delete user's cloned voice using existing server helper.
   // Failure -> 502, and nothing else deleted.
   const voiceDeleteHelper = context.executeVoicePreferencesDelete || executeVoicePreferencesDelete;
   try {
@@ -108,7 +154,7 @@ export async function POST(req, context = {}) {
     );
   }
 
-  // 3. For each bucket, list ALL user objects and remove them
+  // 4. For each bucket, list ALL user objects and remove them
   if (db?.storage?.from) {
     for (const bucket of BUCKETS) {
       const getPrefixes = BUCKET_PREFIXES[bucket] || ((uid) => [uid]);
@@ -144,7 +190,49 @@ export async function POST(req, context = {}) {
     }
   }
 
-  // 4. Service-role delete_user_data RPC
+  // 5. Read user's business_chat_messages attachment paths and remove them from voice-messages bucket
+  if (db?.from && db?.storage?.from) {
+    const { data: chatMsgs, error: chatErr } = await db
+      .from('business_chat_messages')
+      .select('id, content, metadata')
+      .eq('sender_id', user.id);
+
+    if (chatErr) {
+      return NextResponse.json(
+        { ok: false, error: `Failed to read business chat attachments: ${chatErr.message || chatErr}` },
+        { status: 502, headers: NO_STORE }
+      );
+    }
+
+    const chatAttachmentPaths = [];
+    for (const msg of chatMsgs || []) {
+      if (msg.metadata && typeof msg.metadata === 'object' && msg.metadata.path) {
+        chatAttachmentPaths.push(msg.metadata.path);
+      } else if (typeof msg.content === 'string') {
+        const match = msg.content.match(/voice-messages\/(.+?)(\?|$)/);
+        if (match) {
+          chatAttachmentPaths.push(decodeURIComponent(match[1]));
+        } else if (msg.content.startsWith('chat/')) {
+          chatAttachmentPaths.push(msg.content);
+        }
+      }
+    }
+
+    if (chatAttachmentPaths.length > 0) {
+      for (let i = 0; i < chatAttachmentPaths.length; i += 100) {
+        const chunk = chatAttachmentPaths.slice(i, i + 100);
+        const { error: chatRemErr } = await db.storage.from('voice-messages').remove(chunk);
+        if (chatRemErr) {
+          return NextResponse.json(
+            { ok: false, error: `Failed to remove business chat voice files: ${chatRemErr.message || chatRemErr}` },
+            { status: 502, headers: NO_STORE }
+          );
+        }
+      }
+    }
+  }
+
+  // 6. Service-role delete_user_data RPC
   const { data: counts, error: rpcErr } = await db.rpc('delete_user_data', { p_user: user.id });
   if (rpcErr) {
     return NextResponse.json(
@@ -153,5 +241,13 @@ export async function POST(req, context = {}) {
     );
   }
 
-  return NextResponse.json({ ok: true, counts: counts || {} }, { headers: NO_STORE });
+  // 7. Require counts.auth_users === 1, else 500
+  if (!counts || counts.auth_users !== 1) {
+    return NextResponse.json(
+      { ok: false, error: 'User sign-in record was not deleted' },
+      { status: 500, headers: NO_STORE }
+    );
+  }
+
+  return NextResponse.json({ ok: true, counts }, { headers: NO_STORE });
 }

@@ -16,7 +16,7 @@ export async function runDeleteAccount({ token, fetchImpl = globalThis.fetch } =
       return {
         ok: false,
         step: 'voice',
-        message: "We couldn't erase your voice data yet. Nothing was deleted. Please try again in a minute.",
+        message: body1?.message || "We couldn't erase your voice data yet. Nothing was deleted. Please try again in a minute.",
       };
     }
   } catch {
@@ -42,7 +42,8 @@ export async function runDeleteAccount({ token, fetchImpl = globalThis.fetch } =
       return {
         ok: false,
         step: 'account',
-        message: 'Account deletion failed. Please try again.',
+        reason: body2?.reason,
+        message: body2?.message || 'Account deletion failed. Please try again.',
       };
     }
     return { ok: true };

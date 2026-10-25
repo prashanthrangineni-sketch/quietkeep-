@@ -83,6 +83,31 @@ begin
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('audit_log_archive', v_count);
 
+  delete from notifications_sent where user_id = p_user;
+  get diagnostics v_count = row_count;
+  v_counts := v_counts || jsonb_build_object('notifications_sent', v_count);
+
+  delete from reminders where user_id = p_user;
+  get diagnostics v_count = row_count;
+  v_counts := v_counts || jsonb_build_object('reminders', v_count);
+
+  delete from expense_splits where user_id = p_user;
+  get diagnostics v_count = row_count;
+  v_counts := v_counts || jsonb_build_object('expense_splits', v_count);
+
+  delete from expenses where user_id = p_user;
+  get diagnostics v_count = row_count;
+  v_counts := v_counts || jsonb_build_object('expenses', v_count);
+
+  delete from voice_sessions where user_id = p_user;
+  get diagnostics v_count = row_count;
+  v_counts := v_counts || jsonb_build_object('voice_sessions', v_count);
+
+  delete from voice_samples where user_id = p_user;
+  get diagnostics v_count = row_count;
+  v_counts := v_counts || jsonb_build_object('voice_samples', v_count);
+
+  -- Delete intents AFTER expenses, voice_sessions, reminders, audit_log, decision_logs
   delete from intents where user_id = p_user;
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('intents', v_count);
@@ -261,14 +286,6 @@ begin
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('execution_queue', v_count);
 
-  delete from expense_splits where user_id = p_user;
-  get diagnostics v_count = row_count;
-  v_counts := v_counts || jsonb_build_object('expense_splits', v_count);
-
-  delete from expenses where user_id = p_user;
-  get diagnostics v_count = row_count;
-  v_counts := v_counts || jsonb_build_object('expenses', v_count);
-
   delete from family_invites where owner_user_id = p_user;
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('family_invites', v_count);
@@ -301,17 +318,9 @@ begin
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('mood_logs', v_count);
 
-  delete from notifications_sent where user_id = p_user;
-  get diagnostics v_count = row_count;
-  v_counts := v_counts || jsonb_build_object('notifications_sent', v_count);
-
   delete from nudge_queue where user_id = p_user;
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('nudge_queue', v_count);
-
-  delete from open_loop_summary where user_id = p_user;
-  get diagnostics v_count = row_count;
-  v_counts := v_counts || jsonb_build_object('open_loop_summary', v_count);
 
   delete from proactive_nudges where user_id = p_user;
   get diagnostics v_count = row_count;
@@ -328,10 +337,6 @@ begin
   delete from referral_uses where referee_user_id = p_user or referrer_user_id = p_user;
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('referral_uses', v_count);
-
-  delete from reminders where user_id = p_user;
-  get diagnostics v_count = row_count;
-  v_counts := v_counts || jsonb_build_object('reminders', v_count);
 
   delete from route_keeps where user_id = p_user;
   get diagnostics v_count = row_count;
@@ -360,14 +365,6 @@ begin
   delete from voice_profile_consents where user_id = p_user;
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('voice_profile_consents', v_count);
-
-  delete from voice_samples where user_id = p_user;
-  get diagnostics v_count = row_count;
-  v_counts := v_counts || jsonb_build_object('voice_samples', v_count);
-
-  delete from voice_sessions where user_id = p_user;
-  get diagnostics v_count = row_count;
-  v_counts := v_counts || jsonb_build_object('voice_sessions', v_count);
 
   delete from whatsapp_ocr_queue where user_id = p_user;
   get diagnostics v_count = row_count;
@@ -428,16 +425,6 @@ begin
     execute 'delete from public.drive_proof_runs where owner = $1' using p_user;
     get diagnostics v_count = row_count;
     v_counts := v_counts || jsonb_build_object('drive_proof_runs', v_count);
-  end if;
-
-  if to_regclass('storage.objects') is not null then
-    begin
-      execute 'delete from storage.objects where owner = $1' using p_user;
-      get diagnostics v_count = row_count;
-      v_counts := v_counts || jsonb_build_object('storage_objects', v_count);
-    exception when others then
-      -- storage permissions / schema variation fallback
-    end;
   end if;
 
   -- 7. Finally delete from auth.users (cascades any remaining FKs)

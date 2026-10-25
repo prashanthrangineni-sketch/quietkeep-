@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/context/auth';
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import NavbarClient from '@/components/NavbarClient';
+import { runDeleteAccount } from '@/lib/account-delete-flow';
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -20,7 +21,8 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState('');
   const [stats, setStats] = useState({ keeps: 0, reminders: 0, expenses: 0, docs: 0 });
-
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const [fullName, setFullName] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kolkata');
@@ -29,7 +31,7 @@ export default function ProfilePage() {
   useEffect(() => { if (!authLoading) loadProfile(); }, [authLoading]);
 
   async function loadProfile() {
-        if (authLoading) return;
+    if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
     
     const [profileRes, keepsRes, expensesRes, docsRes, remindersRes] = await Promise.all([
@@ -87,6 +89,29 @@ export default function ProfilePage() {
   async function signOut() {
     await supabase.auth.signOut();
     router.replace('/login');
+  }
+
+  async function handleDeleteAccount() {
+    setDeleteError('');
+    const confirmed = window.confirm(
+      'This permanently deletes your QuietKeep account, keeps and voice. This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const res = await runDeleteAccount({ token: accessToken });
+      if (!res.ok) {
+        setDeleteError(res.message || 'Account deletion failed. Please try again.');
+        setDeleting(false);
+        return;
+      }
+      await supabase.auth.signOut();
+      router.replace('/delete-account');
+    } catch (err) {
+      setDeleteError(err.message || 'Account deletion failed. Please try again.');
+      setDeleting(false);
+    }
   }
 
   if (loading) return (
@@ -211,10 +236,44 @@ export default function ProfilePage() {
         {/* Sign out */}
         <button
           onClick={signOut}
-          style={{ width: '100%', padding: '0.75rem', borderRadius: 8, border: '1px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer' }}
+          style={{ width: '100%', padding: '0.75rem', borderRadius: 8, border: '1px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer', marginBottom: '1rem' }}
         >
           Sign Out
         </button>
+
+        {/* Delete Account */}
+        <div style={{ marginTop: '0.5rem', textAlign: 'center' }}>
+          <button
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              borderRadius: 8,
+              border: 'none',
+              background: '#dc2626',
+              color: '#ffffff',
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              cursor: deleting ? 'not-allowed' : 'pointer',
+              opacity: deleting ? 0.7 : 1,
+            }}
+          >
+            {deleting ? 'Deleting Account…' : 'Delete Account'}
+          </button>
+          {deleteError && (
+            <div
+              style={{
+                color: '#ef4444',
+                fontSize: '0.82rem',
+                marginTop: '0.5rem',
+                lineHeight: 1.4,
+              }}
+            >
+              {deleteError}
+            </div>
+          )}
+        </div>
 
       </div>
     </div>

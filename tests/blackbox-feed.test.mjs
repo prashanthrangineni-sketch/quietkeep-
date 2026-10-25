@@ -79,7 +79,7 @@ await (async () => {
     push: async (s) => { pushed.push(s); },
   });
 
-  await new Promise(r => setTimeout(r, 600));
+  await new Promise(r => setTimeout(r, 650));
   stop();
   reader.destroy();
 

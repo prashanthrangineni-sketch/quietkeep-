@@ -10,6 +10,7 @@ import { AuthProvider } from '@/lib/context/auth';
 // nowhere else — the assistant existed on one page out of eighty.
 import { AariaProvider } from '@/lib/context/aaria';
 import AariaDock from '@/components/AariaDock';
+import ClonedVoiceLabel from '@/components/ClonedVoiceLabel';
 // Back belongs to the whole app, not to each page. Mounted once here so every
 // screen has a working back arrow and the hardware back never exits the app
 // from an inner screen.
@@ -156,6 +157,7 @@ export default async function RootLayout({ children }) {
                       that lock screen. Nesting makes "no assistant while locked"
                       structural rather than something to remember. */}
                   <AppBackGuard />
+              <ClonedVoiceLabel />
               <AariaDock />
                 </BiometricGate>
               </AariaProvider>

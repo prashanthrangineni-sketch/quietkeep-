@@ -1,34 +1,17 @@
 // src/app/api/voice/tts/route.js
 // Indic reply voice — via Pranix Aaria (the shared voice engine for ALL projects).
 //
-// WHY THIS EXISTS
-// QuietKeep understood Telugu/Hindi (STT) but REPLIED in a broken OS voice, because
-// src/lib/tts.js had no Indic path — only browser SpeechSynthesis and Pro-gated
-// ElevenLabs. This route gives the assistant a natural Indian reply voice.
-//
-// WHY AARIA AND NOT SARVAM DIRECTLY
-// Aaria (/api/health) already reports `sarvam:bulbul:v3` and `sarvam:saaras:v3` as
-// HEALTHY providers. Calling api.sarvam.ai from QuietKeep would duplicate a provider
-// that already lives inside Aaria, and would fragment the voice identity across
-// projects. QuietKeep therefore holds NO Sarvam key: Aaria owns provider choice,
-// keys, cost and fallback. Swapping Bulbul for something better later is an Aaria
-// change with no QuietKeep release.
-//
-//   POST { text, lang, quality_tier? }
-//     → { audio: "<base64>", codec, provider, visual_companion }   (audio available)
-//     → { audio: null, audio_url }                                 (URL-style reply)
-//     → { audio: null, reason }                                    (client falls back)
-//
-// Never returns a hard error to the user — an unavailable voice degrades to the
-// browser voice in src/lib/tts.js rather than breaking the reply.
+// CARD AG-AARIA-24:
+// - Sends `purpose` on every call to Aaria's /api/voice/speak endpoint.
+// - Enforces standard Aaria voice on SOS, alarm, money, payment, and confirmation replies.
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { extractAudio } from '@/lib/aaria-audio';
 import { engineHeaders } from '@/lib/aaria-pass';
+import { decideTtsVoice, hasAllClonedVoiceConsents } from '@/lib/cloned-voice-safeguards';
 
 export const dynamic = 'force-dynamic';
 
-// Same base URL the existing /api/aaria proxy uses; overridable per environment.
 const AARIA_BASE_URL = process.env.AARIA_BASE_URL || 'https://pranix-aaria.onrender.com';
 
 function bearer(req) {
@@ -42,18 +25,10 @@ function bearer(req) {
   );
 }
 
-// Aaria accepts a language hint; keep both bare ("te") and BCP-47 ("te-IN") usable.
 function normalizeLang(lang) {
   if (!lang) return 'en';
   return String(lang).trim();
 }
-
-// Audio extraction lives in src/lib/aaria-audio.js so it can be unit tested.
-// It could not be, sitting here: this file imports next/server, so no plain
-// node test could reach it - which is how it went a whole release cycle
-// looking for every field name except the one Aaria actually returns
-// (`audio_ref`), always answering "no audio", and silently handing every
-// reply back to the phone's built-in voice.
 
 export async function POST(req) {
   const sb = bearer(req);
@@ -68,17 +43,65 @@ export async function POST(req) {
   if (!text) return NextResponse.json({ error: 'text required' }, { status: 400 });
 
   const lang = normalizeLang(body.lang);
+  const rawPurpose = String(body.purpose || 'general').trim().toLowerCase();
+  const purpose = rawPurpose || 'general';
+
+  // Ignore client body.voice_id. Securely load session user's settings and consent record.
+  const { data: userSettings } = await sb.from('user_settings')
+    .select('elevenlabs_voice_id, consent_own_or_permitted, consent_no_deception, consent_in_app_labeled, voice_clone_consent, settings')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const { data: consentRecord } = await sb.from('voice_profile_consents')
+    .select('voice_id, voice_name, consent_own_or_permitted, consent_no_deception, consent_in_app_labeled')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  // Item 2: only use the cloned voice if user_settings.elevenlabs_voice_id equals voice_profile_consents.voice_id for that user
+  // and ALSO all three consent booleans are true on the voice_profile_consents record (not only user_settings)
+  const voiceIdMatchesConsent = Boolean(
+    userSettings?.elevenlabs_voice_id &&
+    consentRecord?.voice_id &&
+    userSettings.elevenlabs_voice_id === consentRecord.voice_id
+  );
+
+  const consentRecordValid = Boolean(
+    voiceIdMatchesConsent &&
+    hasAllClonedVoiceConsents({
+      consent_own_or_permitted: consentRecord?.consent_own_or_permitted,
+      consent_no_deception: consentRecord?.consent_no_deception,
+      consent_in_app_labeled: consentRecord?.consent_in_app_labeled,
+    })
+  );
+
+  const { voiceId: candidateVoiceId } = decideTtsVoice({
+    userSettings,
+    purpose,
+    isOutbound: body.is_outbound,
+    isCall: body.is_call,
+    isExport: body.is_export,
+  });
+
+  const voiceId = consentRecordValid ? candidateVoiceId : null;
+  const choseClonedVoice = Boolean(voiceId);
 
   try {
+    const payload = {
+      text,
+      lang,
+      product: 'QuietKeep',
+      quality_tier: body.quality_tier || 'standard',
+      purpose,
+      user_id: user.id,
+    };
+    if (voiceId) {
+      payload.voice_id = voiceId;
+    }
+
     const res = await fetch(`${AARIA_BASE_URL}/api/voice/speak`, {
       method: 'POST',
       headers: engineHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({
-        text,
-        lang,
-        product: 'QuietKeep',
-        quality_tier: body.quality_tier || 'standard',
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -95,6 +118,8 @@ export async function POST(req) {
         audio: null,
         reason: 'aaria_no_audio',
         visual_companion: data?.visual_companion ?? null,
+        cloned_voice: false,
+        voice_name: null,
       });
     }
 
@@ -105,6 +130,8 @@ export async function POST(req) {
       provider: data?.engine_used || data?.provider || 'aaria',
       lang,
       visual_companion: data?.visual_companion ?? null,
+      cloned_voice: choseClonedVoice,
+      voice_name: choseClonedVoice ? (consentRecord?.voice_name || 'My Voice') : null,
     });
   } catch (e) {
     return NextResponse.json({

@@ -1,14 +1,15 @@
-// src/lib/tts.js  v3
+// src/lib/tts.js  v4 (Safeguards for Cloned Voices - CARD AG-AARIA-24)
 // Voice realism: interrupt handling, contextual responses, latency reduction.
 //   Option A: Browser SpeechSynthesis (free, immediate, weak on Indic)
 //   Option B: ElevenLabs direct (own/preset cloned voice, requires key + consent)
-//   Option C: Pranix Aaria (shared voice engine — natural Indic reply voice)  <- v3 (new)
+//   Option C: Pranix Aaria (shared voice engine — natural Indic reply voice)
 //
-// Aaria is the shared voice engine across ALL Pranix projects. Its /api/health
-// reports sarvam:bulbul:v3 (Indic TTS) and elevenlabs as healthy providers, so
-// QuietKeep asks Aaria to speak and never talks to a TTS vendor directly.
-// Indic replies (te/hi/ta/kn/ml/mr/gu/bn/pa/od) now speak in a real Indian voice
-// instead of the broken OS voice. Deterministic output — no emotion, no suggestions.
+// Cloned Voice Safeguards:
+// - Refuses custom voices on outbound messages, calls, export, and restricted purposes
+//   (money/payment/UPI, SOS, alarm/reminder-alarm, action-confirmation).
+// - Shows visible tag "AI voice of <name>" while custom voice is speaking.
+
+import { resolveVoicePlayback, setCustomVoiceSpeaking } from './cloned-voice-safeguards.js';
 
 const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1';
 const DEFAULT_VOICES = {
@@ -26,6 +27,7 @@ export function isIndicLang(lang) {
 // Stop any ongoing TTS immediately (called when user starts speaking)
 export function interruptTTS() {
   if (typeof window === 'undefined') return;
+  setCustomVoiceSpeaking(false);
   if (window.speechSynthesis && window.speechSynthesis.speaking) {
     window.speechSynthesis.cancel();
   }
@@ -54,21 +56,8 @@ export function speakBrowser(text, { lang = 'en-IN', rate = 1, pitch = 1 } = {})
   });
 }
 
-// ── ElevenLabs TTS (direct — used only for the user's own/preset cloned voice) ──
-export async function speakElevenLabs(text, apiKey, voiceId = DEFAULT_VOICES.neutral_female) {
-  if (!apiKey) throw new Error('ElevenLabs API key required');
-  const res = await fetch(`${ELEVENLABS_BASE}/text-to-speech/${voiceId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey },
-    body: JSON.stringify({
-      text,
-      model_id: 'eleven_multilingual_v2',
-      voice_settings: { stability: 0.75, similarity_boost: 0.75, style: 0, use_speaker_boost: false },
-    }),
-  });
-  if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${await res.text()}`);
-  return res.arrayBuffer();
-}
+// Note: Direct ElevenLabs synthesis from client removed in AG-AARIA-24.
+// Cloned-voice synthesis is performed securely server-side via /api/voice/tts.
 
 // ── Aaria TTS (shared voice engine; Sarvam Bulbul v3 for Indic lives behind it) ──
 // Calls our server route /api/voice/tts, which proxies Aaria. No vendor key here.
@@ -81,12 +70,12 @@ function base64ToArrayBuffer(b64) {
   return bytes.buffer;
 }
 
-export async function speakAaria(text, { lang = 'hi-IN', authToken = null, qualityTier = 'standard' } = {}) {
+export async function speakAaria(text, { lang = 'hi-IN', authToken = null, qualityTier = 'standard', purpose = 'general' } = {}) {
   if (!authToken) throw new Error('Aaria requires an auth token');
   const res = await fetch('/api/voice/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-    body: JSON.stringify({ text, lang, quality_tier: qualityTier }),
+    body: JSON.stringify({ text, lang, quality_tier: qualityTier, purpose }),
   });
   if (!res.ok) throw new Error(`Aaria route ${res.status}`);
   const json = await res.json();
@@ -96,69 +85,118 @@ export async function speakAaria(text, { lang = 'hi-IN', authToken = null, quali
     window.__qkVisualCompanion = json.visual_companion;
   }
 
-  if (json?.audio) { await playAudioBuffer(base64ToArrayBuffer(json.audio)); return; }
-  if (json?.audio_url) { await playAudioUrl(json.audio_url); return; }
+  const meta = {
+    clonedVoice: Boolean(json?.cloned_voice),
+    voiceName: json?.voice_name || '',
+    lang,
+  };
+  if (json?.audio) { await playAudioBuffer(base64ToArrayBuffer(json.audio), meta); return; }
+  if (json?.audio_url) { await playAudioUrl(json.audio_url, false, meta); return; }
   throw new Error(`Aaria unavailable: ${json?.reason || 'no_audio'}`);
 }
 
 // ── Playback with interrupt support ─────────────────────────────────────────
-export function playAudioBuffer(buffer) {
+export function playAudioBuffer(buffer, meta = {}) {
   const blob = new Blob([buffer], { type: 'audio/mpeg' });
-  return playAudioUrl(URL.createObjectURL(blob), true);
+  return playAudioUrl(URL.createObjectURL(blob), true, meta);
 }
 
-export function playAudioUrl(url, revoke = false) {
+export function playAudioUrl(url, revoke = false, { clonedVoice = false, voiceName = '', lang = 'en' } = {}) {
   return new Promise((resolve, reject) => {
     interruptTTS();
+    if (typeof window === 'undefined' || typeof Audio === 'undefined') {
+      if (revoke && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+        try { URL.revokeObjectURL(url); } catch {}
+      }
+      resolve();
+      return;
+    }
     const audio = new Audio(url);
     window.__qkActiveAudio = audio;
-    const cleanup = () => { if (revoke) URL.revokeObjectURL(url); window.__qkActiveAudio = null; };
+    const cleanup = () => {
+      if (revoke && typeof URL !== 'undefined' && URL.revokeObjectURL) {
+        try { URL.revokeObjectURL(url); } catch {}
+      }
+      window.__qkActiveAudio = null;
+      setCustomVoiceSpeaking(false);
+    };
     audio.onended = () => { cleanup(); resolve(); };
     audio.onerror = () => { cleanup(); reject(new Error('Playback failed')); };
-    audio.play().catch(reject);
+    try {
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise
+          .then(() => {
+            if (window.__qkActiveAudio === audio && clonedVoice) {
+              setCustomVoiceSpeaking(true, voiceName, lang);
+            }
+          })
+          .catch(err => {
+            cleanup();
+            reject(err);
+          });
+      } else {
+        if (clonedVoice) {
+          setCustomVoiceSpeaking(true, voiceName, lang);
+        }
+      }
+    } catch (err) {
+      cleanup();
+      reject(err);
+    }
   });
 }
 
 // ── Primary TTS entry point ──────────────────────────────────────────────────
 // Priority:
-//   1. Explicit ElevenLabs own/preset voice — the user's own recorded voice wins.
-//   2. Aaria (Indic replies → Sarvam Bulbul v3 behind Aaria).
-//   3. Any ElevenLabs key (legacy English preset default).
-//   4. Browser SpeechSynthesis (last resort).
-// Every step falls through on failure — the user always hears *something*.
+//   1. Explicit ElevenLabs own/preset voice — IF allowed by safeguards (in-app only, non-restricted).
+//   2. Aaria (Indic replies → Sarvam Bulbul v3 behind Aaria, with purpose sent).
+//   3. Legacy: Any ElevenLabs key (if permitted).
+//   4. Native Android TTS bridge.
+//   5. Browser SpeechSynthesis (last resort).
 export async function speak(
   text,
-  { elevenlabsKey = null, voiceId = null, lang = 'en-IN', provider = null, authToken = null, qualityTier = 'standard' } = {}
+  {
+    elevenlabsKey = null,
+    voiceId = null,
+    lang = 'en-IN',
+    provider = null,
+    authToken = null,
+    qualityTier = 'standard',
+    purpose = 'general',
+    isOutbound = false,
+    isCall = false,
+    isExport = false,
+    hasConsent = false,
+    voiceName = 'My Voice',
+  } = {}
 ) {
   interruptTTS(); // Always interrupt before speaking
 
-  // 1. User explicitly chose their own / a preset ElevenLabs voice
-  if (elevenlabsKey && (provider === 'own' || provider === 'preset')) {
+  // Evaluate safeguards
+  const resolved = resolveVoicePlayback({
+    provider,
+    customVoiceId: voiceId,
+    purpose,
+    isOutbound,
+    isCall,
+    isExport,
+    hasConsent,
+  });
+
+  const isCustomVoice = resolved.provider === 'own' && Boolean(resolved.customVoiceId);
+
+  // 1. Cloned-voice synthesis & Indic speech are routed safely through /api/voice/tts
+  if (authToken) {
     try {
-      const buf = await speakElevenLabs(text, elevenlabsKey, voiceId || DEFAULT_VOICES.neutral_female);
-      await playAudioBuffer(buf);
+      await speakAaria(text, { lang, authToken, qualityTier, purpose });
       return;
-    } catch { /* fall through */ }
+    } catch {
+      /* fall through to native / browser voices */
+    }
   }
 
-  // 2. Aaria — required for Indic, also fine for English when no key is present
-  if (authToken && (isIndicLang(lang) || !elevenlabsKey)) {
-    try {
-      await speakAaria(text, { lang, authToken, qualityTier });
-      return;
-    } catch { /* fall through */ }
-  }
-
-  // 3. Legacy: any ElevenLabs key (English preset)
-  if (elevenlabsKey) {
-    try {
-      const buf = await speakElevenLabs(text, elevenlabsKey, voiceId || DEFAULT_VOICES.neutral_female);
-      await playAudioBuffer(buf);
-      return;
-    } catch { /* fall through */ }
-  }
-
-  // 4. Native Android TTS bridge
+  // 2. Native Android TTS bridge
   if (typeof window !== 'undefined' && typeof window.__QK_TTS__ === 'function') {
     try {
       if (typeof window.__QK_SET_LANG__ === 'function') {
@@ -184,7 +222,6 @@ export function buildTTSResponse(keep) {
 }
 
 // Contextual response: includes last intent + context match info
-// Called from DashboardClient with the new keep + previous keep context
 export function buildContextualTTSResponse(newKeep, prevKeep = null) {
   const content  = (newKeep.content    || '').slice(0, 80);
   const type     = (newKeep.intent_type || 'note');
@@ -198,7 +235,6 @@ export function buildContextualTTSResponse(newKeep, prevKeep = null) {
     OFF_HOURS:      'off-hours context noted',
   };
 
-  // Detect user state from local time
   const now = new Date();
   const istHour = (now.getUTCHours() + 5.5 + now.getUTCMinutes() / 60) % 24;
   const userState = istHour >= 6 && istHour < 9   ? 'START_OF_DAY'
@@ -211,6 +247,5 @@ export function buildContextualTTSResponse(newKeep, prevKeep = null) {
     ? `Previous pending: ${(prevKeep.content || '').slice(0, 40)}.`
     : '';
 
-  // Format: "Intent recorded. Pending action: <type>. Context matched: <state>. Next step unresolved."
   return `Intent recorded: ${content}. Pending action: ${type}. Context: ${contextNote}. ${pendingNote} Next step unresolved.`;
 }

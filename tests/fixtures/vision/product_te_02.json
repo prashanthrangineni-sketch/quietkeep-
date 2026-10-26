@@ -6,13 +6,13 @@
   "variation": "phone_shadow",
   "merchant": "శ్రీ వేంకటేశ్వర ఆగ్రో",
   "date": "2026-10-01",
-  "total": 320,
+  "total": null,
   "currency": "INR",
   "items": [
     {
       "name": "స్వచ్ఛమైన కొబ్బరి నూనె Coconut Oil",
       "qty": "1000 ml",
-      "price": 320
+      "price": 350
     }
   ],
   "mrp": 350,

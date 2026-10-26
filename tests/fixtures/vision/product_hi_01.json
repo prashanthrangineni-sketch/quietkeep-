@@ -6,13 +6,13 @@
   "variation": "clean",
   "merchant": "शुद्ध आहार ग्रामोद्योग",
   "date": "2026-09-10",
-  "total": 650,
+  "total": null,
   "currency": "INR",
   "items": [
     {
       "name": "शुद्ध देसी गाय का घी Pure Ghee",
       "qty": "1 kg",
-      "price": 650
+      "price": 700
     }
   ],
   "mrp": 700,

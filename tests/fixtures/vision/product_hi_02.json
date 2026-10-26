@@ -6,13 +6,13 @@
   "variation": "rotation",
   "merchant": "हिमालय जड़ी-बूटी भंडार",
   "date": "2026-08-25",
-  "total": 220,
+  "total": null,
   "currency": "INR",
   "items": [
     {
       "name": "अश्वगंधा चूर्ण Ashwagandha Powder",
       "qty": "250 g",
-      "price": 220
+      "price": 240
     }
   ],
   "mrp": 240,

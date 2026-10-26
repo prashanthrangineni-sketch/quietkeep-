@@ -329,7 +329,10 @@ export function scoreVisionRecord(expected, rawGot) {
 
   // items F1
   const itemsF1 = scoreItemsF1(expected.items, got.items)
-  if (expected.items && expected.items.length > 0 && itemsF1.f1 < 0.6) {
+  // Line items are scored only on itemised bills. A utility bill's charge
+  // lines and a product label's single product are not a shopping list.
+  const ITEMISED = new Set(['kirana', 'pharmacy', 'restaurant'])
+  if (ITEMISED.has(expected.doc_type) && expected.items && expected.items.length > 0 && itemsF1.f1 < 0.6) {
     fails.push(`items_f1_low: ${itemsF1.f1} (matched ${itemsF1.matched}/${expected.items.length})`)
   }
 

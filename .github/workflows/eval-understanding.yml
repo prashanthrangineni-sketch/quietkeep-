@@ -19,6 +19,8 @@
 name: Evaluate understanding models
 
 on:
+  push:
+    branches: [eval/telugu-script-measure]   # measurement branch only; never merged
   workflow_dispatch:
     inputs:
       models:
@@ -52,7 +54,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          MODELS_INPUT: ${{ inputs.models }}
+          LIMIT_INPUT: ${{ inputs.limit || '' }}
+          MODELS_INPUT: ${{ inputs.models || 'sarvam:sarvam-105b-conversations' }}
         run: |
           # The standard set. sarvam-105b-conversations is production's model
           # and the baseline; the OpenRouter models are src/lib/llm.js
@@ -67,6 +70,7 @@ jobs:
           for k in SARVAM_API_KEY GROQ_API_KEY GEMINI_API_KEY OPENROUTER_API_KEY; do
             if [ -n "${!k}" ]; then echo "$k: present"; else echo "$k: not set - that provider will be reported as not measured"; fi
           done
+          if [ -n "$LIMIT_INPUT" ]; then args+=(--limit "$LIMIT_INPUT"); fi
           node scripts/eval-understanding.mjs "${args[@]}" --out measurements/understanding-latest
 
       - name: Commit the measurements to ${{ github.ref_name }}

@@ -1,0 +1,1551 @@
+{
+  "measured_at": "2026-10-26T17:14:56.151Z",
+  "run_url": "https://github.com/prashanthrangineni-sketch/quietkeep-/actions/runs/40366786737",
+  "timeout_ms": 45000,
+  "cases": {
+    "total": 40
+  },
+  "models": [
+    {
+      "id": "openrouter:nvidia/nemotron-3.5-super-vl:free",
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3.5-super-vl:free",
+      "status": "measured",
+      "rows": [
+        {
+          "id": "kirana_en_01",
+          "doc_type": "kirana",
+          "script": "english",
+          "variation": "clean",
+          "ms": 80,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "kirana_en_02",
+          "doc_type": "kirana",
+          "script": "english",
+          "variation": "thermal_faded",
+          "ms": 71,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "kirana_hi_01",
+          "doc_type": "kirana",
+          "script": "hindi",
+          "variation": "clean",
+          "ms": 88,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "kirana_hi_02",
+          "doc_type": "kirana",
+          "script": "hindi",
+          "variation": "low_contrast",
+          "ms": 67,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "kirana_hi_03",
+          "doc_type": "kirana",
+          "script": "hindi",
+          "variation": "rotation",
+          "ms": 80,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "kirana_mixed_01",
+          "doc_type": "kirana",
+          "script": "mixed",
+          "variation": "rotation",
+          "ms": 60,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "kirana_mixed_02",
+          "doc_type": "kirana",
+          "script": "mixed",
+          "variation": "blur",
+          "ms": 77,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "kirana_te_01",
+          "doc_type": "kirana",
+          "script": "telugu",
+          "variation": "clean",
+          "ms": 76,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "kirana_te_02",
+          "doc_type": "kirana",
+          "script": "telugu",
+          "variation": "thermal_faded",
+          "ms": 112,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "kirana_te_03",
+          "doc_type": "kirana",
+          "script": "telugu",
+          "variation": "phone_shadow",
+          "ms": 94,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 4,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "pharma_en_01",
+          "doc_type": "pharmacy",
+          "script": "english",
+          "variation": "clean",
+          "ms": 188,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "pharma_en_02",
+          "doc_type": "pharmacy",
+          "script": "english",
+          "variation": "rotation",
+          "ms": 69,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "pharma_en_03",
+          "doc_type": "pharmacy",
+          "script": "english",
+          "variation": "phone_shadow",
+          "ms": 75,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "pharma_hi_01",
+          "doc_type": "pharmacy",
+          "script": "hindi",
+          "variation": "clean",
+          "ms": 67,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "pharma_hi_02",
+          "doc_type": "pharmacy",
+          "script": "hindi",
+          "variation": "low_contrast",
+          "ms": 90,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "pharma_mixed_01",
+          "doc_type": "pharmacy",
+          "script": "mixed",
+          "variation": "rotation",
+          "ms": 99,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "pharma_te_01",
+          "doc_type": "pharmacy",
+          "script": "telugu",
+          "variation": "clean",
+          "ms": 76,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "pharma_te_02",
+          "doc_type": "pharmacy",
+          "script": "telugu",
+          "variation": "thermal_faded",
+          "ms": 79,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "product_en_01",
+          "doc_type": "product_label",
+          "script": "english",
+          "variation": "clean",
+          "ms": 80,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "product_en_02",
+          "doc_type": "product_label",
+          "script": "english",
+          "variation": "low_contrast",
+          "ms": 56,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "product_hi_01",
+          "doc_type": "product_label",
+          "script": "hindi",
+          "variation": "clean",
+          "ms": 77,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "product_hi_02",
+          "doc_type": "product_label",
+          "script": "hindi",
+          "variation": "rotation",
+          "ms": 75,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "product_mixed_01",
+          "doc_type": "product_label",
+          "script": "mixed",
+          "variation": "blur",
+          "ms": 73,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "product_mixed_02",
+          "doc_type": "product_label",
+          "script": "mixed",
+          "variation": "thermal_faded",
+          "ms": 60,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "product_te_01",
+          "doc_type": "product_label",
+          "script": "telugu",
+          "variation": "clean",
+          "ms": 58,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "product_te_02",
+          "doc_type": "product_label",
+          "script": "telugu",
+          "variation": "phone_shadow",
+          "ms": 97,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "restaurant_en_01",
+          "doc_type": "restaurant",
+          "script": "english",
+          "variation": "clean",
+          "ms": 57,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "restaurant_en_02",
+          "doc_type": "restaurant",
+          "script": "english",
+          "variation": "phone_shadow",
+          "ms": 103,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "restaurant_hi_01",
+          "doc_type": "restaurant",
+          "script": "hindi",
+          "variation": "clean",
+          "ms": 79,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "restaurant_hi_02",
+          "doc_type": "restaurant",
+          "script": "hindi",
+          "variation": "low_contrast",
+          "ms": 79,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "restaurant_mixed_01",
+          "doc_type": "restaurant",
+          "script": "mixed",
+          "variation": "rotation",
+          "ms": 64,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "restaurant_mixed_02",
+          "doc_type": "restaurant",
+          "script": "mixed",
+          "variation": "blur",
+          "ms": 93,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "restaurant_te_01",
+          "doc_type": "restaurant",
+          "script": "telugu",
+          "variation": "clean",
+          "ms": 74,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "restaurant_te_02",
+          "doc_type": "restaurant",
+          "script": "telugu",
+          "variation": "thermal_faded",
+          "ms": 74,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "utility_en_01",
+          "doc_type": "utility",
+          "script": "english",
+          "variation": "clean",
+          "ms": 64,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "utility_en_02",
+          "doc_type": "utility",
+          "script": "english",
+          "variation": "phone_shadow",
+          "ms": 127,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "utility_hi_01",
+          "doc_type": "utility",
+          "script": "hindi",
+          "variation": "low_contrast",
+          "ms": 65,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "utility_mixed_01",
+          "doc_type": "utility",
+          "script": "mixed",
+          "variation": "blur",
+          "ms": 61,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "utility_te_01",
+          "doc_type": "utility",
+          "script": "telugu",
+          "variation": "clean",
+          "ms": 73,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null
+        },
+        {
+          "id": "utility_te_02",
+          "doc_type": "utility",
+          "script": "telugu",
+          "variation": "rotation",
+          "ms": 67,
+          "retries": 2,
+          "failure": "http_429",
+          "failure_kind": "http",
+          "error": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remaining\":\"0\",\"X-RateLimit-Reset\":\"1793059200000\"},\"limit_source\":\"openrouter_free_tier_daily\",\"remedy_hi",
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "http_429"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null
+        }
+      ],
+      "summary": {
+        "calls": 40,
+        "json_valid": {
+          "ok": 0,
+          "n": 40,
+          "pct": 0
+        },
+        "full_pass": {
+          "ok": 0,
+          "n": 40,
+          "pct": 0
+        },
+        "total": {
+          "ok": 0,
+          "n": 40,
+          "pct": 0
+        },
+        "date": {
+          "ok": 0,
+          "n": 40,
+          "pct": 0
+        },
+        "mrp": {
+          "ok": 0,
+          "n": 40,
+          "pct": 0
+        },
+        "expiry": {
+          "ok": 0,
+          "n": 40,
+          "pct": 0
+        },
+        "merchant": {
+          "ok": 0,
+          "n": 40,
+          "pct": 0
+        },
+        "avg_items_f1": 0,
+        "by_doc_type": {
+          "kirana": {
+            "full_pass": {
+              "ok": 0,
+              "n": 10,
+              "pct": 0
+            },
+            "total": {
+              "ok": 0,
+              "n": 10,
+              "pct": 0
+            },
+            "merchant": {
+              "ok": 0,
+              "n": 10,
+              "pct": 0
+            },
+            "avg_f1": 0
+          },
+          "pharmacy": {
+            "full_pass": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "total": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "merchant": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "avg_f1": 0
+          },
+          "restaurant": {
+            "full_pass": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "total": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "merchant": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "avg_f1": 0
+          },
+          "utility": {
+            "full_pass": {
+              "ok": 0,
+              "n": 6,
+              "pct": 0
+            },
+            "total": {
+              "ok": 0,
+              "n": 6,
+              "pct": 0
+            },
+            "merchant": {
+              "ok": 0,
+              "n": 6,
+              "pct": 0
+            },
+            "avg_f1": 0
+          },
+          "product_label": {
+            "full_pass": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "total": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "merchant": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "avg_f1": 0
+          }
+        },
+        "by_script": {
+          "telugu": {
+            "full_pass": {
+              "ok": 0,
+              "n": 11,
+              "pct": 0
+            },
+            "merchant": {
+              "ok": 0,
+              "n": 11,
+              "pct": 0
+            },
+            "avg_f1": 0
+          },
+          "hindi": {
+            "full_pass": {
+              "ok": 0,
+              "n": 10,
+              "pct": 0
+            },
+            "merchant": {
+              "ok": 0,
+              "n": 10,
+              "pct": 0
+            },
+            "avg_f1": 0
+          },
+          "english": {
+            "full_pass": {
+              "ok": 0,
+              "n": 11,
+              "pct": 0
+            },
+            "merchant": {
+              "ok": 0,
+              "n": 11,
+              "pct": 0
+            },
+            "avg_f1": 0
+          },
+          "mixed": {
+            "full_pass": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "merchant": {
+              "ok": 0,
+              "n": 8,
+              "pct": 0
+            },
+            "avg_f1": 0
+          }
+        },
+        "latency_ms": {
+          "answered": 0,
+          "p50": null,
+          "p95": null
+        },
+        "failures": {
+          "timeout": 0,
+          "http": 40,
+          "no_json": 0,
+          "threw": 0
+        }
+      },
+      "price": {
+        "text": "$0 (OpenRouter \":free\" variant; rate-limited)",
+        "url": "https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free"
+      }
+    },
+    {
+      "id": "gemini:gemini-2.5-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-2.5-flash-lite",
+      "status": "not offered",
+      "note": "HTTP 404: [{ \"error\": { \"code\": 404, \"message\": \"This model models/gemini-2.5-flash-lite is no longer available to new users. Please update your code to use models/gemini-3.5-flash-lite for the latest features and improvements. We recommend you to use the Interactions API (https://ai.google.dev/gemini-api/doc",
+      "rows": [],
+      "summary": null,
+      "price": {
+        "text": "$0.10 in / $0.40 out per 1M tokens, paid tier",
+        "url": "https://ai.google.dev/gemini-api/docs/pricing"
+      }
+    }
+  ]
+}

@@ -55,10 +55,6 @@ begin
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('intent_suggestions', v_count);
 
-  delete from suggestions where intent_id in (select id from intents where user_id = p_user);
-  get diagnostics v_count = row_count;
-  v_counts := v_counts || jsonb_build_object('suggestions', v_count);
-
   delete from intent_events where user_id = p_user or intent_id in (select id from intents where user_id = p_user);
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('intent_events', v_count);
@@ -132,6 +128,11 @@ begin
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('kids_profiles', v_count);
 
+  -- 2c. Delete whatsapp_ocr_queue BEFORE products
+  delete from whatsapp_ocr_queue where user_id = p_user or product_id in (select id from products where user_id = p_user);
+  get diagnostics v_count = row_count;
+  v_counts := v_counts || jsonb_build_object('whatsapp_ocr_queue', v_count);
+
   delete from replacement_plans where user_id = p_user;
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('replacement_plans', v_count);
@@ -160,9 +161,23 @@ begin
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('business_approvals', v_count);
 
+  -- 2a. Clear business_tasks assigned to this user's business_members rows before member deletion
+  update business_tasks
+     set assigned_to_member_id = null
+   where assigned_to_member_id in (select id from business_members where user_id = p_user);
+  get diagnostics v_count = row_count;
+  v_counts := v_counts || jsonb_build_object('business_tasks_assigned_member', v_count);
+
   delete from business_members where user_id = p_user;
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('business_members', v_count);
+
+  -- 2b. Clear reply_to_id in qk_messages pointing to this user's messages before message deletion
+  update qk_messages
+     set reply_to_id = null
+   where reply_to_id in (select id from qk_messages where sender_id::text = p_user::text);
+  get diagnostics v_count = row_count;
+  v_counts := v_counts || jsonb_build_object('qk_messages_reply_to', v_count);
 
   delete from qk_messages where sender_id::text = p_user::text;
   get diagnostics v_count = row_count;
@@ -365,10 +380,6 @@ begin
   delete from voice_profile_consents where user_id = p_user;
   get diagnostics v_count = row_count;
   v_counts := v_counts || jsonb_build_object('voice_profile_consents', v_count);
-
-  delete from whatsapp_ocr_queue where user_id = p_user;
-  get diagnostics v_count = row_count;
-  v_counts := v_counts || jsonb_build_object('whatsapp_ocr_queue', v_count);
 
   delete from whatsapp_outbound where user_id = p_user;
   get diagnostics v_count = row_count;

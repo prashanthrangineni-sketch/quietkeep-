@@ -20,8 +20,6 @@ const ATTACKER_USER_ID = 'x'.repeat(16);
 const OTHER_MEMBER_ID = 'm'.repeat(16);
 
 function makeFakeFetch({
-  forgetStatus = 200,
-  forgetBody = { ok: true },
   accountStatus = 200,
   accountBody = { ok: true },
   accountNonJson = false,
@@ -29,13 +27,6 @@ function makeFakeFetch({
   const calls = [];
   const f = async (url, init = {}) => {
     calls.push({ url, init });
-    if (url === '/api/voice/forget-me') {
-      return {
-        status: forgetStatus,
-        ok: forgetStatus >= 200 && forgetStatus < 300,
-        json: async () => forgetBody,
-      };
-    }
     if (url === '/api/account/delete') {
       if (accountNonJson) {
         return {
@@ -89,59 +80,76 @@ function makeFakeFetch({
   check('migration: contains delete from voice_sessions', voiceSessionsIdx !== -1);
   check('migration: intents deleted after expenses', intentsIdx > expensesIdx);
   check('migration: intents deleted after voice_sessions', intentsIdx > voiceSessionsIdx);
+
+  // Check 4a: business_tasks assigned_to_member_id cleared BEFORE business_members delete
+  const assignedUpdateIdx = sql.indexOf('assigned_to_member_id = null');
+  const businessMembersIdx = sql.indexOf('delete from business_members');
+  check('migration: contains business_tasks assigned_to_member_id update', assignedUpdateIdx !== -1);
+  check('migration: contains delete from business_members', businessMembersIdx !== -1);
+  check('migration: assigned_to_member_id cleared before business_members delete', assignedUpdateIdx < businessMembersIdx);
+
+  // Check 4b: qk_messages reply_to_id cleared BEFORE qk_messages delete
+  const replyToIdx = sql.indexOf('reply_to_id = null');
+  const qkMessagesIdx = sql.indexOf('delete from qk_messages');
+  check('migration: contains qk_messages reply_to_id update', replyToIdx !== -1);
+  check('migration: contains delete from qk_messages', qkMessagesIdx !== -1);
+  check('migration: reply_to_id cleared before qk_messages delete', replyToIdx < qkMessagesIdx);
+
+  // Check 4c: whatsapp_ocr_queue deleted BEFORE products delete
+  const ocrQueueIdx = sql.indexOf('delete from whatsapp_ocr_queue');
+  const productsIdx = sql.indexOf('delete from products');
+  check('migration: contains delete from whatsapp_ocr_queue', ocrQueueIdx !== -1);
+  check('migration: contains delete from products', productsIdx !== -1);
+  check('migration: whatsapp_ocr_queue deleted before products', ocrQueueIdx < productsIdx);
+
+  // Check 5: no delete from suggestions targeting intent_id
+  const hasSuggestionsIntent = /delete\s+from\s+suggestions.*intent_id/i.test(sql);
+  check('migration: no delete from suggestions by intent_id', !hasSuggestionsIntent);
 }
 
 // ── Flow Tests (runDeleteAccount) ──────────────────────────────────────────
 
-// 1. forget-me 502 -> account route never called, ok:false
+// 1. flow: both 200 -> ok:true, calls ONLY POST /api/account/delete
 {
-  const fetchImpl = makeFakeFetch({ forgetStatus: 502, forgetBody: { ok: false, reason: 'engine_error' } });
+  const fetchImpl = makeFakeFetch({ accountStatus: 200, accountBody: { ok: true } });
   const res = await runDeleteAccount({ token: FAKE_TOKEN, fetchImpl });
-  check('forget-me 502: returns ok:false', res.ok === false);
-  check('forget-me 502: reports step voice', res.step === 'voice');
-  check('forget-me 502: friendly message shown', res.message.includes("We couldn't erase your voice data yet"));
-  check('forget-me 502: account route never called', fetchImpl.calls.length === 1 && fetchImpl.calls[0].url === '/api/voice/forget-me');
-}
-
-// 2. forget-me 401 -> same (account route never called, ok:false)
-{
-  const fetchImpl = makeFakeFetch({ forgetStatus: 401, forgetBody: { ok: false, reason: 'not_signed_in' } });
-  const res = await runDeleteAccount({ token: FAKE_TOKEN, fetchImpl });
-  check('forget-me 401: returns ok:false', res.ok === false);
-  check('forget-me 401: reports step voice', res.step === 'voice');
-  check('forget-me 401: account route never called', fetchImpl.calls.length === 1 && fetchImpl.calls[0].url === '/api/voice/forget-me');
-}
-
-// 3. both 200 -> ok:true, calls in order
-{
-  const fetchImpl = makeFakeFetch({ forgetStatus: 200, forgetBody: { ok: true }, accountStatus: 200, accountBody: { ok: true } });
-  const res = await runDeleteAccount({ token: FAKE_TOKEN, fetchImpl });
-  check('both 200: returns ok:true', res.ok === true);
-  check('both 200: exactly two calls made', fetchImpl.calls.length === 2);
-  check('both 200: calls in order (/api/voice/forget-me then /api/account/delete)',
-    fetchImpl.calls[0].url === '/api/voice/forget-me' &&
-    fetchImpl.calls[1].url === '/api/account/delete');
-  check('both 200: Bearer token sent on voice call',
+  check('flow 200: returns ok:true', res.ok === true);
+  check('flow 200: exactly one call made', fetchImpl.calls.length === 1);
+  check('flow 200: calls ONLY /api/account/delete', fetchImpl.calls[0].url === '/api/account/delete');
+  check('flow 200: Bearer token sent on call',
     fetchImpl.calls[0].init.headers.Authorization === `Bearer ${FAKE_TOKEN}`);
-  check('both 200: Bearer token sent on account call',
-    fetchImpl.calls[1].init.headers.Authorization === `Bearer ${FAKE_TOKEN}`);
 }
 
-// 4. account 500 -> ok:false
+// 2. flow: account 502 (e.g. voice engine error) -> ok:false, reports error message
 {
-  const fetchImpl = makeFakeFetch({ forgetStatus: 200, forgetBody: { ok: true }, accountStatus: 500, accountBody: { ok: false } });
+  const fetchImpl = makeFakeFetch({
+    accountStatus: 502,
+    accountBody: {
+      ok: false,
+      error: 'Failed to erase voice engine data',
+      message: "We couldn't erase your voice data yet. Nothing was deleted. Please try again in a minute.",
+    },
+  });
+  const res = await runDeleteAccount({ token: FAKE_TOKEN, fetchImpl });
+  check('flow 502: returns ok:false', res.ok === false);
+  check('flow 502: reports step account', res.step === 'account');
+  check('flow 502: reports friendly message', res.message.includes("We couldn't erase your voice data yet"));
+  check('flow 502: exactly one call made', fetchImpl.calls.length === 1);
+}
+
+// 3. flow: account 500 -> ok:false
+{
+  const fetchImpl = makeFakeFetch({ accountStatus: 500, accountBody: { ok: false } });
   const res = await runDeleteAccount({ token: FAKE_TOKEN, fetchImpl });
   check('account 500: returns ok:false', res.ok === false);
   check('account 500: reports step account', res.step === 'account');
   check('account 500: reports account failure message', res.message === 'Account deletion failed. Please try again.');
-  check('account 500: both endpoints were called', fetchImpl.calls.length === 2);
+  check('account 500: exactly one call made', fetchImpl.calls.length === 1);
 }
 
-// 5. flow: non-JSON 200 -> ok:false
+// 4. flow: non-JSON 200 -> ok:false
 {
   const fetchImpl = makeFakeFetch({
-    forgetStatus: 200,
-    forgetBody: { ok: true },
     accountStatus: 200,
     accountNonJson: true,
   });
@@ -149,13 +157,12 @@ function makeFakeFetch({
   check('flow: non-JSON 200 returns ok:false', res.ok === false);
   check('flow: non-JSON 200 reports step account', res.step === 'account');
   check('flow: non-JSON 200 reports failure message', res.message === 'Account deletion failed. Please try again.');
+  check('flow: non-JSON 200 exactly one call made', fetchImpl.calls.length === 1);
 }
 
-// 6. flow: 409 owns_business -> returns message and reason
+// 5. flow: 409 owns_business -> returns message and reason
 {
   const fetchImpl = makeFakeFetch({
-    forgetStatus: 200,
-    forgetBody: { ok: true },
     accountStatus: 409,
     accountBody: {
       ok: false,
@@ -167,6 +174,7 @@ function makeFakeFetch({
   check('flow: 409 owns_business returns ok:false', res.ok === false);
   check('flow: 409 owns_business reason is owns_business', res.reason === 'owns_business');
   check('flow: 409 owns_business message matches founder copy', res.message.includes('Transfer ownership or remove the members first'));
+  check('flow: 409 owns_business exactly one call made', fetchImpl.calls.length === 1);
 }
 
 // ── Route Tests (POST /api/account/delete) ─────────────────────────────────
@@ -245,8 +253,9 @@ function createMockSupabase({
   };
 }
 
-// 7. Product Rule: user owns business workspace with other active members -> 409 (deletes nothing)
+// 6. Product Rule: user owns business workspace with other active members -> 409 BEFORE forget-me is called
 {
+  let forgetCalled = false;
   let voiceCalled = false;
   const fakeSupabase = createMockSupabase({
     ownedWorkspaces: [{ id: 'ws-1' }],
@@ -264,15 +273,47 @@ function createMockSupabase({
   const res = await POST(req, {
     user: { id: FAKE_USER_ID },
     supabase: fakeSupabase,
+    askEngineToForget: async () => { forgetCalled = true; return { ok: true }; },
     executeVoicePreferencesDelete: async () => { voiceCalled = true; return { ok: true }; },
   });
 
   check('product rule: active members returns 409', res.status === 409);
+  check('product rule: forget-me never called', forgetCalled === false);
   check('product rule: voice delete never called', voiceCalled === false);
   check('product rule: rpc never called', fakeSupabase.getRpcCalled() === false);
   const data = await res.json();
   check('product rule: reason is owns_business', data.reason === 'owns_business');
   check('product rule: message guides user to transfer or remove members', data.message.includes('Transfer ownership or remove the members first'));
+}
+
+// 7. Route: forget-me on voice engine fails -> 502, no cloned voice delete, no storage/rpc
+{
+  let voiceCalled = false;
+  const fakeSupabase = createMockSupabase();
+  const fakeForgetFails = async () => ({
+    ok: false,
+    status: 502,
+    reason: 'engine_error',
+  });
+
+  const req = new Request('http://localhost:3000/api/account/delete', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${FAKE_TOKEN}` },
+  });
+
+  const res = await POST(req, {
+    user: { id: FAKE_USER_ID },
+    supabase: fakeSupabase,
+    askEngineToForget: fakeForgetFails,
+    executeVoicePreferencesDelete: async () => { voiceCalled = true; return { ok: true }; },
+  });
+
+  check('route forget-me failure: returns 502', res.status === 502);
+  check('route forget-me failure: cloned voice never called', voiceCalled === false);
+  check('route forget-me failure: no storage files removed', fakeSupabase.getRemovedFiles().length === 0);
+  check('route forget-me failure: rpc not called', fakeSupabase.getRpcCalled() === false);
+  const data = await res.json();
+  check('route forget-me failure: friendly message returned', data.message.includes("We couldn't erase your voice data yet"));
 }
 
 // 8. Product Rule: user owns workspace with NO other members -> proceeds and succeeds
@@ -292,6 +333,7 @@ function createMockSupabase({
   const res = await POST(req, {
     user: { id: FAKE_USER_ID },
     supabase: fakeSupabase,
+    askEngineToForget: async () => ({ ok: true, status: 200 }),
     executeVoicePreferencesDelete: async () => ({ ok: true, status: 200 }),
   });
 
@@ -316,6 +358,7 @@ function createMockSupabase({
   const res = await POST(req, {
     user: { id: FAKE_USER_ID },
     supabase: fakeSupabase,
+    askEngineToForget: async () => ({ ok: true, status: 200 }),
     executeVoicePreferencesDelete: fakeVoiceDeleteFails,
   });
 
@@ -337,6 +380,7 @@ function createMockSupabase({
   const res = await POST(req, {
     user: { id: FAKE_USER_ID },
     supabase: fakeSupabase,
+    askEngineToForget: async () => ({ ok: true, status: 200 }),
     executeVoicePreferencesDelete: async () => ({ ok: true, status: 200 }),
   });
 
@@ -361,6 +405,7 @@ function createMockSupabase({
   const res = await POST(req, {
     user: { id: FAKE_USER_ID },
     supabase: fakeSupabase,
+    askEngineToForget: async () => ({ ok: true, status: 200 }),
     executeVoicePreferencesDelete: async () => ({ ok: true, status: 200 }),
   });
 
@@ -385,6 +430,7 @@ function createMockSupabase({
   const res = await POST(req, {
     user: { id: FAKE_USER_ID },
     supabase: fakeSupabase,
+    askEngineToForget: async () => ({ ok: true, status: 200 }),
     executeVoicePreferencesDelete: async () => ({ ok: true, status: 200 }),
   });
 
@@ -405,6 +451,7 @@ function createMockSupabase({
   const res = await POST(req, {
     user: { id: FAKE_USER_ID },
     supabase: fakeSupabase,
+    askEngineToForget: async () => ({ ok: true, status: 200 }),
     executeVoicePreferencesDelete: async () => ({ ok: true, status: 200 }),
   });
 
@@ -429,9 +476,14 @@ function createMockSupabase({
     }),
   });
 
+  let forgetUserId = null;
   const res = await POST(req, {
     user: { id: FAKE_USER_ID },
     supabase: fakeSupabase,
+    askEngineToForget: async (uid) => {
+      forgetUserId = uid;
+      return { ok: true, status: 200 };
+    },
     executeVoicePreferencesDelete: async ({ userId }) => {
       check('userId in body ignored: voice delete receives verified userId', userId === FAKE_USER_ID);
       return { ok: true, status: 200 };
@@ -439,6 +491,7 @@ function createMockSupabase({
   });
 
   check('userId in body ignored: returns 200', res.status === 200);
+  check('userId in body ignored: forget-me received verified userId', forgetUserId === FAKE_USER_ID);
   check('userId in body ignored: rpc called with verified user id', fakeSupabase.getRpcArgs()?.p_user === FAKE_USER_ID);
   check('userId in body ignored: rpc never receives attacker user id', fakeSupabase.getRpcArgs()?.p_user !== ATTACKER_USER_ID);
 }

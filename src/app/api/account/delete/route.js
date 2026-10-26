@@ -3,15 +3,17 @@
 // 1. Verify user identity via bearer JWT (createBearerClient) -> 401 if invalid.
 // 2. Any userId in body is ignored.
 // 3. Product rule: if user owns a business workspace with other active members -> 409 (delete nothing).
-// 4. Erase custom/cloned voice (executeVoicePreferencesDelete) -> 502 if fails (nothing else deleted).
-// 5. For each storage bucket, list and remove all user objects -> 502 on failure (account kept).
-// 6. Read user business_chat_messages attachment paths and remove them from voice-messages bucket -> 502 on failure (account kept).
-// 7. Call service-role delete_user_data(p_user) RPC -> 500 on error. Require counts.auth_users === 1 -> 500 if not.
+// 4. Forget-me on the Aaria engine (askEngineToForget) -> 502 if fails (nothing else deleted).
+// 5. Erase custom/cloned voice (executeVoicePreferencesDelete) -> 502 if fails (nothing else deleted).
+// 6. For each storage bucket, list and remove all user objects -> 502 on failure (account kept).
+// 7. Read user business_chat_messages attachment paths and remove them from voice-messages bucket -> 502 on failure (account kept).
+// 8. Call service-role delete_user_data(p_user) RPC -> 500 on error. Require counts.auth_users === 1 -> 500 if not.
 // Returns { ok: true, counts }.
 // Cache-Control: no-store, dynamic: force-dynamic.
 
 import { NextResponse } from 'next/server';
 import { createBearerClient, createWriteClient } from '@/lib/supabase-bearer';
+import { askEngineToForget } from '@/lib/aaria-forget';
 import { executeVoicePreferencesDelete } from '@/lib/cloned-voice-delete.server';
 
 export const dynamic = 'force-dynamic';
@@ -132,7 +134,36 @@ export async function POST(req, context = {}) {
     }
   }
 
-  // 3. Delete user's cloned voice using existing server helper.
+  // 3. Ask Aaria voice engine to forget user data (askEngineToForget).
+  // Must succeed else 502 (nothing else deleted).
+  const forgetHelper = context.askEngineToForget || askEngineToForget;
+  try {
+    const forgetRes = await forgetHelper(user.id, {
+      fetchImpl: context.fetchImpl || globalThis.fetch,
+    });
+    if (!forgetRes || !forgetRes.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: forgetRes?.reason ? `Voice engine forget failed: ${forgetRes.reason}` : 'Failed to erase voice engine data',
+          reason: forgetRes?.reason,
+          message: "We couldn't erase your voice data yet. Nothing was deleted. Please try again in a minute.",
+        },
+        { status: 502, headers: NO_STORE }
+      );
+    }
+  } catch (err) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: err.message || 'Failed to erase voice engine data',
+        message: "We couldn't erase your voice data yet. Nothing was deleted. Please try again in a minute.",
+      },
+      { status: 502, headers: NO_STORE }
+    );
+  }
+
+  // 4. Delete user's cloned voice using existing server helper.
   // Failure -> 502, and nothing else deleted.
   const voiceDeleteHelper = context.executeVoicePreferencesDelete || executeVoicePreferencesDelete;
   try {
@@ -154,7 +185,7 @@ export async function POST(req, context = {}) {
     );
   }
 
-  // 4. For each bucket, list ALL user objects and remove them
+  // 5. For each bucket, list ALL user objects and remove them
   if (db?.storage?.from) {
     for (const bucket of BUCKETS) {
       const getPrefixes = BUCKET_PREFIXES[bucket] || ((uid) => [uid]);
@@ -190,7 +221,7 @@ export async function POST(req, context = {}) {
     }
   }
 
-  // 5. Read user's business_chat_messages attachment paths and remove them from voice-messages bucket
+  // 6. Read user's business_chat_messages attachment paths and remove them from voice-messages bucket
   if (db?.from && db?.storage?.from) {
     const { data: chatMsgs, error: chatErr } = await db
       .from('business_chat_messages')
@@ -232,7 +263,7 @@ export async function POST(req, context = {}) {
     }
   }
 
-  // 6. Service-role delete_user_data RPC
+  // 7. Service-role delete_user_data RPC
   const { data: counts, error: rpcErr } = await db.rpc('delete_user_data', { p_user: user.id });
   if (rpcErr) {
     return NextResponse.json(
@@ -241,7 +272,7 @@ export async function POST(req, context = {}) {
     );
   }
 
-  // 7. Require counts.auth_users === 1, else 500
+  // 8. Require counts.auth_users === 1, else 500
   if (!counts || counts.auth_users !== 1) {
     return NextResponse.json(
       { ok: false, error: 'User sign-in record was not deleted' },

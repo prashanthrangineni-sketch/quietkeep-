@@ -19,6 +19,8 @@
 name: Evaluate vision models
 
 on:
+  push:
+    branches: [eval/vision-measure]   # measurement branch only; never merged
   workflow_dispatch:
     inputs:
       models:

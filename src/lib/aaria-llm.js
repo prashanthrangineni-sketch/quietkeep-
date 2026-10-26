@@ -193,8 +193,9 @@ OTHER RULES:
   also when it asks about money, reminders or meetings already saved ("what did I
   spend today", "repu naaku emaina reminders unnaya?", "आज कितना खर्च किया?").
   A statement, observation or opinion (not asking a question) is "none", never "query".
-  Questions about vehicle condition, faults, road hazards or inventory belong to
-  their specific intents ("read_health", "read_faults", "hazard_ahead", "stock"), never "query".
+  Questions about vehicle condition, faults, road hazards, inventory or a staff member's
+  salary belong to their specific intents ("read_health", "read_faults", "hazard_ahead",
+  "stock", "payroll"), never "query".
 - Sold something = "sale" ("ammanu", "అమ్మాను", "becha", "sale ayindi"). Lent money or
   gave on credit = "ledger_debit", direction "out" ("appu icchanu", "उधार दिए", "on credit"),
   not expense. Someone paid back what they owed = "income", direction "in" ("baki ke de
@@ -211,7 +212,7 @@ OTHER RULES:
   "cancel that" alone is "confirm". entities.item = the words that describe it;
   person when it names someone (in English letters: e.g. "Srinu"). Reply by asking which item, never say it is deleted.
 - "confirm": ONLY a bare yes / no / okay / cancel with nothing else ("yes please", "okay",
-  "avunu", "sare", "haan ji", "ठीक है", "సరే", "అవునండి", "వద్దండి", "లేదు", "ఆపండి",
+  "avunu", "sare", "haan ji", "ठीक है", "సరే", "అవును", "ఔను", "అవునండి", "వద్దండి", "లేదు", "ఆపండి",
   "nahi, rehne do", "vaddu le", "no, cancel that"). A bare yes or no (in English, Hindi,
   or Telugu script) is ALWAYS "confirm", never "none". Not a new instruction.
 - BUSINESS RECORDS (staff and shop stock). Use these in either mode; the app decides.

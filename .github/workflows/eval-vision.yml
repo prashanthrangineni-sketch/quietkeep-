@@ -26,7 +26,7 @@ on:
       models:
         description: 'Comma-separated provider:model list (blank = default set)'
         required: false
-        default: 'openrouter:nvidia/nemotron-3.5-super-vl:free,gemini:gemini-2.5-flash-lite'
+        default: 'openrouter:nvidia/nemotron-3.5-super-vl:free,gemini:gemini-3.5-flash-lite'
 
 permissions:
   contents: write   # to commit the measurement files back to this branch
@@ -54,7 +54,7 @@ jobs:
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           MODELS_INPUT: ${{ inputs.models }}
         run: |
-          MODELS="${MODELS_INPUT:-openrouter:nvidia/nemotron-3.5-super-vl:free,gemini:gemini-2.5-flash-lite}"
+          MODELS="${MODELS_INPUT:-openrouter:nvidia/nemotron-3.5-super-vl:free,gemini:gemini-3.5-flash-lite}"
           args=()
           IFS=',' read -ra list <<< "$MODELS"
           for m in "${list[@]}"; do

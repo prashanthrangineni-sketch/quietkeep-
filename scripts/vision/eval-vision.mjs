@@ -5,7 +5,7 @@
 // against the synthetic ground-truth test suite in tests/fixtures/vision/.
 //
 // Models are specified via --model provider:model (e.g. openrouter:nvidia/nemotron-3.5-super-vl:free,
-// gemini:gemini-2.5-flash-lite). Keys are read only from environment variables
+// gemini:gemini-3.5-flash-lite). Keys are read only from environment variables
 // (OPENROUTER_API_KEY, GEMINI_API_KEY) and are never printed.
 //
 // Writes:
@@ -58,7 +58,7 @@ for (let i = 0; i < argv.length; i++) {
 
 const DEFAULT_MODELS = [
   'openrouter:nvidia/nemotron-3.5-super-vl:free',
-  'gemini:gemini-2.5-flash-lite',
+  'gemini:gemini-3.5-flash-lite',
 ]
 
 if (!modelArgs.length) {
@@ -99,8 +99,8 @@ const PRICES = {
     text: '$0 (OpenRouter ":free" variant; rate-limited)',
     url: 'https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free',
   },
-  'gemini:gemini-2.5-flash-lite': {
-    text: '$0.10 in / $0.40 out per 1M tokens, paid tier',
+  'gemini:gemini-3.5-flash-lite': {
+    text: 'not re-checked for 3.5 - see the pricing page',
     url: 'https://ai.google.dev/gemini-api/docs/pricing',
   },
 }
@@ -308,6 +308,14 @@ async function runModel(id) {
     }
   }
 
+  // Every call failed (e.g. the provider's daily limit): that is not a 0%
+  // score - nothing was read - so say so instead of printing 0% rows.
+  if (rows.length && rows.every((r) => r.failure)) {
+    const kinds = {}
+    for (const r of rows) kinds[r.failure] = (kinds[r.failure] || 0) + 1
+    const top = Object.entries(kinds).sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k}x${v}`).join(', ')
+    return { id, provider, model, status: `not measured - every call failed (${top})`, note: String(rows[0].error || '').slice(0, 200), rows }
+  }
   return { id, provider, model, status: 'measured', rows }
 }
 

@@ -19,6 +19,8 @@
 name: Evaluate understanding models
 
 on:
+  push:
+    branches: [eval/nemotron-super-vl]   # measurement branch only; never merged
   workflow_dispatch:
     inputs:
       models:
@@ -56,8 +58,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          MODELS_INPUT: ${{ inputs.models }}
-          LIMIT_INPUT: ${{ inputs.limit }}
+          MODELS_INPUT: ${{ inputs.models || 'sarvam:sarvam-105b-conversations,openrouter:nvidia/nemotron-3.5-super-vl:free' }}
+          LIMIT_INPUT: ${{ inputs.limit || '80' }}
         run: |
           # The standard set. sarvam-105b-conversations is production's model
           # and the baseline; the OpenRouter models are src/lib/llm.js

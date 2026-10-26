@@ -1,0 +1,22 @@
+{
+  "id": "utility_en_02",
+  "synthetic": true,
+  "doc_type": "utility",
+  "script": "english",
+  "variation": "phone_shadow",
+  "merchant": "HMWSSB Water Supply Board",
+  "date": "2026-10-10",
+  "total": 560,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Monthly Water Supply & Sewerage",
+      "qty": "1 month",
+      "price": 560
+    }
+  ],
+  "consumer_no": "CAN-44210988",
+  "due_date": "2026-10-25",
+  "mrp": null,
+  "expiry": null
+}

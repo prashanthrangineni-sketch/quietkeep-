@@ -1,0 +1,32 @@
+{
+  "id": "pharma_mixed_01",
+  "synthetic": true,
+  "doc_type": "pharmacy",
+  "script": "mixed",
+  "variation": "rotation",
+  "merchant": "National SafeCare Medicals మెడికల్స్",
+  "date": "2026-10-23",
+  "total": 410,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Azithromycin 500mg అజిత్రోమైసిన్",
+      "qty": "5 tabs",
+      "price": 120
+    },
+    {
+      "name": "Ascoril D Plus Syrup సిరప్",
+      "qty": "1 bottle",
+      "price": 140
+    },
+    {
+      "name": "Volini Pain Spray స్ప్రే",
+      "qty": "1 can",
+      "price": 150
+    }
+  ],
+  "mrp": 435,
+  "batch": "NSM-77",
+  "expiry": "2027-08",
+  "gstin": "36AAAAA0000A1Z5"
+}

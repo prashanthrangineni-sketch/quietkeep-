@@ -1,0 +1,32 @@
+{
+  "id": "pharma_en_01",
+  "synthetic": true,
+  "doc_type": "pharmacy",
+  "script": "english",
+  "variation": "clean",
+  "merchant": "Apollo SafeCare Pharmacy",
+  "date": "2026-10-20",
+  "total": 342,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Dolo 650mg Paracetamol Tab",
+      "qty": "15 tabs",
+      "price": 42
+    },
+    {
+      "name": "Augmentin 625 Duo Tab",
+      "qty": "10 tabs",
+      "price": 180
+    },
+    {
+      "name": "Benadryl Cough Syrup 100ml",
+      "qty": "1 bottle",
+      "price": 120
+    }
+  ],
+  "mrp": 360,
+  "batch": "BTH-9942",
+  "expiry": "2027-12",
+  "gstin": "36AAAAA0000A1Z5"
+}

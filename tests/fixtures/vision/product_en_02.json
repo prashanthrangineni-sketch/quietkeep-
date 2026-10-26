@@ -1,0 +1,20 @@
+{
+  "id": "product_en_02",
+  "synthetic": true,
+  "doc_type": "product_label",
+  "script": "english",
+  "variation": "low_contrast",
+  "merchant": "AyurGlow Care",
+  "date": "2026-08-15",
+  "total": 180,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Pure Herbal Aloe Vera Gel",
+      "qty": "200 g",
+      "price": 180
+    }
+  ],
+  "mrp": 199,
+  "expiry": "2028-08-15"
+}

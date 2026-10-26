@@ -1,0 +1,31 @@
+{
+  "id": "restaurant_hi_01",
+  "synthetic": true,
+  "doc_type": "restaurant",
+  "script": "hindi",
+  "variation": "clean",
+  "merchant": "शाकाहारी भोजन वाटिका",
+  "date": "2026-10-15",
+  "total": 399,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "दाल मखनी",
+      "qty": "1",
+      "price": 180
+    },
+    {
+      "name": "तंदूरी रोटी",
+      "qty": "4",
+      "price": 80
+    },
+    {
+      "name": "जीरा राइस",
+      "qty": "1",
+      "price": 120
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "07AAAAA0000A1Z8"
+}

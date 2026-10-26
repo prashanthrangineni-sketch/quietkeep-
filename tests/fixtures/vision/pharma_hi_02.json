@@ -1,0 +1,32 @@
+{
+  "id": "pharma_hi_02",
+  "synthetic": true,
+  "doc_type": "pharmacy",
+  "script": "hindi",
+  "variation": "low_contrast",
+  "merchant": "जन औषधि केंद्र दवाखाना",
+  "date": "2026-10-21",
+  "total": 145,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "पैरासिटामोल 500mg",
+      "qty": "20 गोलियां",
+      "price": 20
+    },
+    {
+      "name": "मल्टीविटामिन सिरप",
+      "qty": "1 बोतल",
+      "price": 85
+    },
+    {
+      "name": "बैंड एड पट्टी",
+      "qty": "10 स्ट्रिप",
+      "price": 40
+    }
+  ],
+  "mrp": 155,
+  "batch": "JAS-09",
+  "expiry": "2028-01",
+  "gstin": "08AAAAA0000A1Z9"
+}

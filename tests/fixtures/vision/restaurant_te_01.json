@@ -1,0 +1,31 @@
+{
+  "id": "restaurant_te_01",
+  "synthetic": true,
+  "doc_type": "restaurant",
+  "script": "telugu",
+  "variation": "clean",
+  "merchant": "గోదావరి రుచులు రెస్టారెంట్",
+  "date": "2026-10-18",
+  "total": 472,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "నాటుకోడి పులావ్",
+      "qty": "1",
+      "price": 290
+    },
+    {
+      "name": "గోంగూర పచ్చడి అన్నం",
+      "qty": "1",
+      "price": 110
+    },
+    {
+      "name": "మజ్జిగ",
+      "qty": "2",
+      "price": 50
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

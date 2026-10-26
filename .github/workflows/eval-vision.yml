@@ -1,0 +1,81 @@
+# Measure vision image-reading models on Indian bills, receipts, and product labels.
+#
+# WHY THIS FILE EXISTS
+# Evaluates image-reading models (e.g. NVIDIA Nemotron 3.5 Super VL, Gemini 2.5 Flash Lite)
+# on synthetic Indian bills, receipts, and product labels to measure fact extraction accuracy
+# (totals, dates, MRP, expiry, merchant, items F1) for QuickScanZ and Cart2Save.
+# Commits the resulting measurement table back to the branch:
+#   measurements/vision-latest.md    table of extraction accuracy and speeds
+#   measurements/vision-latest.json  full per-call logs
+#
+# workflow_dispatch ONLY. Never runs on push or pull_request.
+# Start it from the Actions tab or:
+#     gh workflow run eval-vision.yml --ref <branch>
+#
+# A provider whose secret is not set is written as "not measured - no key";
+# that is a result, not a failure. Keys come from repository secrets, reach
+# the script only through the environment, and are never printed.
+
+name: Evaluate vision models
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: 'Comma-separated provider:model list (blank = default set)'
+        required: false
+        default: 'openrouter:nvidia/nemotron-3.5-super-vl:free,gemini:gemini-2.5-flash-lite'
+
+permissions:
+  contents: write   # to commit the measurement files back to this branch
+
+concurrency:
+  group: eval-vision-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    name: Measure vision models
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run vision evaluation
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MODELS_INPUT: ${{ inputs.models }}
+        run: |
+          MODELS="${MODELS_INPUT:-openrouter:nvidia/nemotron-3.5-super-vl:free,gemini:gemini-2.5-flash-lite}"
+          args=()
+          IFS=',' read -ra list <<< "$MODELS"
+          for m in "${list[@]}"; do
+            m="$(echo "$m" | xargs)"
+            [ -n "$m" ] && args+=(--model "$m")
+          done
+          for k in GEMINI_API_KEY OPENROUTER_API_KEY; do
+            if [ -n "${!k}" ]; then echo "$k: present"; else echo "$k: not set - that provider will be reported as not measured"; fi
+          done
+          node scripts/vision/eval-vision.mjs "${args[@]}" --out measurements/vision-latest
+
+      - name: Commit measurements to ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add measurements/vision-latest.md measurements/vision-latest.json
+          if git diff --cached --quiet; then
+            echo "No change to commit."
+            exit 0
+          fi
+          git commit -m "measurements: vision model table (run ${{ github.run_id }})"
+          for i in 1 2 3; do
+            git pull --rebase origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}" && exit 0
+            sleep $((i * 5))
+          done
+          echo "Could not push the measurements." && exit 1

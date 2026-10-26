@@ -1,0 +1,26 @@
+{
+  "id": "kirana_hi_02",
+  "synthetic": true,
+  "doc_type": "kirana",
+  "script": "hindi",
+  "variation": "low_contrast",
+  "merchant": "अग्रवाल प्रोविजन स्टोर",
+  "date": "2026-10-19",
+  "total": 275,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "राजमा चित्रा",
+      "qty": "1 kg",
+      "price": 145
+    },
+    {
+      "name": "सफेद चना",
+      "qty": "1 kg",
+      "price": 130
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "07AAAAA0000A1Z8"
+}

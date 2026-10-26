@@ -1,0 +1,20 @@
+{
+  "id": "product_hi_02",
+  "synthetic": true,
+  "doc_type": "product_label",
+  "script": "hindi",
+  "variation": "rotation",
+  "merchant": "हिमालय जड़ी-बूटी भंडार",
+  "date": "2026-08-25",
+  "total": 220,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "अश्वगंधा चूर्ण Ashwagandha Powder",
+      "qty": "250 g",
+      "price": 220
+    }
+  ],
+  "mrp": 240,
+  "expiry": "2028-08-25"
+}

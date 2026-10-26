@@ -1,0 +1,32 @@
+{
+  "id": "pharma_hi_01",
+  "synthetic": true,
+  "doc_type": "pharmacy",
+  "script": "hindi",
+  "variation": "clean",
+  "merchant": "संजीवनी मेडिकल स्टोर",
+  "date": "2026-10-18",
+  "total": 320,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "दर्द निवारक जेल Moov",
+      "qty": "1 ट्यूब",
+      "price": 135
+    },
+    {
+      "name": "गैस की गोली Rabeprazole",
+      "qty": "15 गोलियां",
+      "price": 125
+    },
+    {
+      "name": "पुदीन हरा कैप्सूल",
+      "qty": "10 कैप्सूल",
+      "price": 60
+    }
+  ],
+  "mrp": 340,
+  "batch": "SJ-552",
+  "expiry": "2027-11",
+  "gstin": "07AAAAA0000A1Z8"
+}

@@ -1,0 +1,32 @@
+{
+  "id": "pharma_en_02",
+  "synthetic": true,
+  "doc_type": "pharmacy",
+  "script": "english",
+  "variation": "rotation",
+  "merchant": "MedPlus Health Care Chemists",
+  "date": "2026-10-22",
+  "total": 275,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Pantocid DSR Capsule",
+      "qty": "10 caps",
+      "price": 165
+    },
+    {
+      "name": "Cetirizine 10mg Tab",
+      "qty": "20 tabs",
+      "price": 50
+    },
+    {
+      "name": "Electral Powder 21.8g",
+      "qty": "3 sachets",
+      "price": 60
+    }
+  ],
+  "mrp": 290,
+  "batch": "MP-4410",
+  "expiry": "2028-05",
+  "gstin": "36AAAAA0000A1Z5"
+}

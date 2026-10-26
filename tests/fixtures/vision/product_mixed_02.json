@@ -1,0 +1,20 @@
+{
+  "id": "product_mixed_02",
+  "synthetic": true,
+  "doc_type": "product_label",
+  "script": "mixed",
+  "variation": "thermal_faded",
+  "merchant": "Kisan Shakti किसान शक्ति",
+  "date": "2026-10-05",
+  "total": 95,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Chana Sattu चना सत्तू",
+      "qty": "500 g",
+      "price": 95
+    }
+  ],
+  "mrp": 110,
+  "expiry": "2027-04-05"
+}

@@ -1,0 +1,31 @@
+{
+  "id": "kirana_mixed_02",
+  "synthetic": true,
+  "doc_type": "kirana",
+  "script": "mixed",
+  "variation": "blur",
+  "merchant": "Shree Ram किराना & Daily Needs",
+  "date": "2026-10-24",
+  "total": 380,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Good Day बिस्कुट 4-pack",
+      "qty": "1 pkt",
+      "price": 80
+    },
+    {
+      "name": "Maggi Noodles मसाला",
+      "qty": "1 pack",
+      "price": 140
+    },
+    {
+      "name": "Amul Butter बटर 100g",
+      "qty": "2 pcs",
+      "price": 160
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "27AAAAA0000A1Z1"
+}

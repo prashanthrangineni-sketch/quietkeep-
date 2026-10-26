@@ -1,0 +1,26 @@
+{
+  "id": "restaurant_te_02",
+  "synthetic": true,
+  "doc_type": "restaurant",
+  "script": "telugu",
+  "variation": "thermal_faded",
+  "merchant": "శ్రీ కాకతీయ మెస్",
+  "date": "2026-10-22",
+  "total": 262,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "ఆంధ్రా భోజనం మీల్స్",
+      "qty": "2",
+      "price": 220
+    },
+    {
+      "name": "స్పెషల్ పెరుగు",
+      "qty": "1",
+      "price": 30
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

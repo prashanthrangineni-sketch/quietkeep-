@@ -1,0 +1,31 @@
+{
+  "id": "restaurant_en_01",
+  "synthetic": true,
+  "doc_type": "restaurant",
+  "script": "english",
+  "variation": "clean",
+  "merchant": "Swagath Udupi Grand",
+  "date": "2026-10-17",
+  "total": 336,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Masala Dosa",
+      "qty": "2",
+      "price": 160
+    },
+    {
+      "name": "Idli Vada Combo",
+      "qty": "1",
+      "price": 90
+    },
+    {
+      "name": "Filter Coffee",
+      "qty": "2",
+      "price": 70
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

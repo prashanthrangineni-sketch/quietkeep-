@@ -1,0 +1,31 @@
+{
+  "id": "restaurant_mixed_02",
+  "synthetic": true,
+  "doc_type": "restaurant",
+  "script": "mixed",
+  "variation": "blur",
+  "merchant": "Punjab Rasoi పంజాబ్ రసోయి",
+  "date": "2026-10-24",
+  "total": 462,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Paneer Tikka పన్నీర్ టిక్కా",
+      "qty": "1",
+      "price": 240
+    },
+    {
+      "name": "Garlic Naan గార్లిక్ నాన్",
+      "qty": "2",
+      "price": 120
+    },
+    {
+      "name": "Sweet Lassi లస్సీ",
+      "qty": "1",
+      "price": 80
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

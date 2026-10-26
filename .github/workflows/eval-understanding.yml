@@ -25,6 +25,10 @@ on:
         description: 'Comma-separated provider:model list (blank = the standard set)'
         required: false
         default: ''
+      limit:
+        description: 'Only the first N sentences (blank = all). For slow models that would pass the 75-minute limit.'
+        required: false
+        default: ''
 
 permissions:
   contents: write   # to commit the measurement files back to this branch
@@ -53,6 +57,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           MODELS_INPUT: ${{ inputs.models }}
+          LIMIT_INPUT: ${{ inputs.limit }}
         run: |
           # The standard set. sarvam-105b-conversations is production's model
           # and the baseline; the OpenRouter models are src/lib/llm.js
@@ -67,6 +72,7 @@ jobs:
           for k in SARVAM_API_KEY GROQ_API_KEY GEMINI_API_KEY OPENROUTER_API_KEY; do
             if [ -n "${!k}" ]; then echo "$k: present"; else echo "$k: not set - that provider will be reported as not measured"; fi
           done
+          if [ -n "$LIMIT_INPUT" ]; then args+=(--limit "$LIMIT_INPUT"); fi
           node scripts/eval-understanding.mjs "${args[@]}" --out measurements/understanding-latest
 
       - name: Commit the measurements to ${{ github.ref_name }}

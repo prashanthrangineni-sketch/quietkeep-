@@ -1,6 +1,6 @@
 {
-  "measured_at": "2026-10-26T17:51:12.716Z",
-  "run_url": "https://github.com/prashanthrangineni-sketch/quietkeep-/actions/runs/40372463561",
+  "measured_at": "2026-10-26T18:15:57.629Z",
+  "run_url": "https://github.com/prashanthrangineni-sketch/quietkeep-/actions/runs/40376169127",
   "timeout_ms": 45000,
   "cases": {
     "total": 40
@@ -18,7 +18,7 @@
           "doc_type": "kirana",
           "script": "english",
           "variation": "clean",
-          "ms": 74,
+          "ms": 68,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -51,7 +51,7 @@
           "doc_type": "kirana",
           "script": "english",
           "variation": "thermal_faded",
-          "ms": 84,
+          "ms": 55,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -84,7 +84,7 @@
           "doc_type": "kirana",
           "script": "hindi",
           "variation": "clean",
-          "ms": 121,
+          "ms": 74,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -117,7 +117,7 @@
           "doc_type": "kirana",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 104,
+          "ms": 75,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -150,7 +150,7 @@
           "doc_type": "kirana",
           "script": "hindi",
           "variation": "rotation",
-          "ms": 83,
+          "ms": 69,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -183,7 +183,7 @@
           "doc_type": "kirana",
           "script": "mixed",
           "variation": "rotation",
-          "ms": 130,
+          "ms": 56,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -216,7 +216,7 @@
           "doc_type": "kirana",
           "script": "mixed",
           "variation": "blur",
-          "ms": 114,
+          "ms": 91,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -249,7 +249,7 @@
           "doc_type": "kirana",
           "script": "telugu",
           "variation": "clean",
-          "ms": 79,
+          "ms": 66,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -282,7 +282,7 @@
           "doc_type": "kirana",
           "script": "telugu",
           "variation": "thermal_faded",
-          "ms": 94,
+          "ms": 71,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -315,7 +315,7 @@
           "doc_type": "kirana",
           "script": "telugu",
           "variation": "phone_shadow",
-          "ms": 204,
+          "ms": 76,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -348,7 +348,7 @@
           "doc_type": "pharmacy",
           "script": "english",
           "variation": "clean",
-          "ms": 89,
+          "ms": 78,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -381,7 +381,7 @@
           "doc_type": "pharmacy",
           "script": "english",
           "variation": "rotation",
-          "ms": 116,
+          "ms": 67,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -414,7 +414,7 @@
           "doc_type": "pharmacy",
           "script": "english",
           "variation": "phone_shadow",
-          "ms": 108,
+          "ms": 55,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -447,7 +447,7 @@
           "doc_type": "pharmacy",
           "script": "hindi",
           "variation": "clean",
-          "ms": 90,
+          "ms": 98,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -480,7 +480,7 @@
           "doc_type": "pharmacy",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 120,
+          "ms": 104,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -513,7 +513,7 @@
           "doc_type": "pharmacy",
           "script": "mixed",
           "variation": "rotation",
-          "ms": 95,
+          "ms": 80,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -546,7 +546,7 @@
           "doc_type": "pharmacy",
           "script": "telugu",
           "variation": "clean",
-          "ms": 116,
+          "ms": 200,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -579,7 +579,7 @@
           "doc_type": "pharmacy",
           "script": "telugu",
           "variation": "thermal_faded",
-          "ms": 71,
+          "ms": 75,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -612,7 +612,7 @@
           "doc_type": "product_label",
           "script": "english",
           "variation": "clean",
-          "ms": 207,
+          "ms": 59,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -645,7 +645,7 @@
           "doc_type": "product_label",
           "script": "english",
           "variation": "low_contrast",
-          "ms": 144,
+          "ms": 114,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -678,7 +678,7 @@
           "doc_type": "product_label",
           "script": "hindi",
           "variation": "clean",
-          "ms": 199,
+          "ms": 56,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -711,7 +711,7 @@
           "doc_type": "product_label",
           "script": "hindi",
           "variation": "rotation",
-          "ms": 110,
+          "ms": 99,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -744,7 +744,7 @@
           "doc_type": "product_label",
           "script": "mixed",
           "variation": "blur",
-          "ms": 246,
+          "ms": 63,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -777,7 +777,7 @@
           "doc_type": "product_label",
           "script": "mixed",
           "variation": "thermal_faded",
-          "ms": 85,
+          "ms": 86,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -810,7 +810,7 @@
           "doc_type": "product_label",
           "script": "telugu",
           "variation": "clean",
-          "ms": 134,
+          "ms": 89,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -843,7 +843,7 @@
           "doc_type": "product_label",
           "script": "telugu",
           "variation": "phone_shadow",
-          "ms": 131,
+          "ms": 115,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -876,7 +876,7 @@
           "doc_type": "restaurant",
           "script": "english",
           "variation": "clean",
-          "ms": 130,
+          "ms": 75,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -909,7 +909,7 @@
           "doc_type": "restaurant",
           "script": "english",
           "variation": "phone_shadow",
-          "ms": 99,
+          "ms": 48,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -942,7 +942,7 @@
           "doc_type": "restaurant",
           "script": "hindi",
           "variation": "clean",
-          "ms": 102,
+          "ms": 45,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -975,7 +975,7 @@
           "doc_type": "restaurant",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 2548,
+          "ms": 2699,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1008,7 +1008,7 @@
           "doc_type": "restaurant",
           "script": "mixed",
           "variation": "rotation",
-          "ms": 91,
+          "ms": 79,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1041,7 +1041,7 @@
           "doc_type": "restaurant",
           "script": "mixed",
           "variation": "blur",
-          "ms": 145,
+          "ms": 47,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1074,7 +1074,7 @@
           "doc_type": "restaurant",
           "script": "telugu",
           "variation": "clean",
-          "ms": 910,
+          "ms": 56,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1107,7 +1107,7 @@
           "doc_type": "restaurant",
           "script": "telugu",
           "variation": "thermal_faded",
-          "ms": 247,
+          "ms": 86,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1140,7 +1140,7 @@
           "doc_type": "utility",
           "script": "english",
           "variation": "clean",
-          "ms": 666,
+          "ms": 70,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1173,7 +1173,7 @@
           "doc_type": "utility",
           "script": "english",
           "variation": "phone_shadow",
-          "ms": 219,
+          "ms": 70,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1206,7 +1206,7 @@
           "doc_type": "utility",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 158,
+          "ms": 107,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1239,7 +1239,7 @@
           "doc_type": "utility",
           "script": "mixed",
           "variation": "blur",
-          "ms": 167,
+          "ms": 60,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1272,7 +1272,7 @@
           "doc_type": "utility",
           "script": "telugu",
           "variation": "clean",
-          "ms": 179,
+          "ms": 80,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1305,7 +1305,7 @@
           "doc_type": "utility",
           "script": "telugu",
           "variation": "rotation",
-          "ms": 179,
+          "ms": 97,
           "retries": 2,
           "failure": "http_429",
           "failure_kind": "http",
@@ -1351,7 +1351,7 @@
           "doc_type": "kirana",
           "script": "english",
           "variation": "clean",
-          "ms": 23407,
+          "ms": 37210,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1407,7 +1407,7 @@
           "doc_type": "kirana",
           "script": "english",
           "variation": "thermal_faded",
-          "ms": 10414,
+          "ms": 35485,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1458,7 +1458,7 @@
           "doc_type": "kirana",
           "script": "hindi",
           "variation": "clean",
-          "ms": 12043,
+          "ms": 11539,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1514,7 +1514,7 @@
           "doc_type": "kirana",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 9932,
+          "ms": 41531,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1565,7 +1565,7 @@
           "doc_type": "kirana",
           "script": "hindi",
           "variation": "rotation",
-          "ms": 20800,
+          "ms": 6051,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1621,7 +1621,7 @@
           "doc_type": "kirana",
           "script": "mixed",
           "variation": "rotation",
-          "ms": 13822,
+          "ms": 1140,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1677,7 +1677,7 @@
           "doc_type": "kirana",
           "script": "mixed",
           "variation": "blur",
-          "ms": 17052,
+          "ms": 1289,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1733,7 +1733,7 @@
           "doc_type": "kirana",
           "script": "telugu",
           "variation": "clean",
-          "ms": 12807,
+          "ms": 5213,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1784,7 +1784,7 @@
           "doc_type": "kirana",
           "script": "telugu",
           "variation": "thermal_faded",
-          "ms": 13552,
+          "ms": 5771,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1840,7 +1840,7 @@
           "doc_type": "kirana",
           "script": "telugu",
           "variation": "phone_shadow",
-          "ms": 12592,
+          "ms": 1120,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1901,7 +1901,7 @@
           "doc_type": "pharmacy",
           "script": "english",
           "variation": "clean",
-          "ms": 8164,
+          "ms": 1303,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1959,7 +1959,7 @@
           "doc_type": "pharmacy",
           "script": "english",
           "variation": "rotation",
-          "ms": 10451,
+          "ms": 9355,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2017,121 +2017,73 @@
           "doc_type": "pharmacy",
           "script": "english",
           "variation": "phone_shadow",
-          "ms": 6932,
+          "ms": 1071,
           "retries": 0,
-          "failure": null,
-          "failure_kind": null,
-          "error": null,
-          "pass": true,
-          "json_valid": true,
+          "failure": "http_503",
+          "failure_kind": "http",
+          "error": "[{ \"error\": { \"code\": 503, \"message\": \"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\", \"status\": \"UNAVAILABLE\" } } ]",
+          "pass": false,
+          "json_valid": false,
           "checks": {
-            "json_valid": true,
-            "total": true,
-            "date": true,
-            "mrp": true,
-            "expiry": true,
-            "merchant": true
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
           },
-          "fails": [],
+          "fails": [
+            "http_503"
+          ],
           "items_f1": {
-            "precision": 1,
-            "recall": 1,
-            "f1": 1,
-            "matched": 3,
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
             "expected": 3,
-            "got": 3
+            "got": 0
           },
-          "got": {
-            "doc_type": "pharmacy",
-            "merchant": "Lifeline Medical & General Stores",
-            "date": "2026-10-25",
-            "total": 450,
-            "currency": "INR",
-            "items": [
-              {
-                "name": "Telma 40mg Tablet",
-                "qty": "30 tabs",
-                "price": 280
-              },
-              {
-                "name": "Ecosprin 75mg Tablet",
-                "qty": "14 tabs",
-                "price": 30
-              },
-              {
-                "name": "Shelcal 500mg Calcium",
-                "qty": "15 tabs",
-                "price": 140
-              }
-            ],
-            "mrp": 475,
-            "expiry": "2027-09"
-          }
+          "got": null
         },
         {
           "id": "pharma_hi_01",
           "doc_type": "pharmacy",
           "script": "hindi",
           "variation": "clean",
-          "ms": 7181,
+          "ms": 1325,
           "retries": 0,
-          "failure": null,
-          "failure_kind": null,
-          "error": null,
+          "failure": "http_503",
+          "failure_kind": "http",
+          "error": "[{ \"error\": { \"code\": 503, \"message\": \"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\", \"status\": \"UNAVAILABLE\" } } ]",
           "pass": false,
-          "json_valid": true,
+          "json_valid": false,
           "checks": {
-            "json_valid": true,
-            "total": true,
-            "date": true,
-            "mrp": true,
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
             "expiry": false,
-            "merchant": true
+            "merchant": false
           },
           "fails": [
-            "expiry: expected 2027-11, got null"
+            "http_503"
           ],
           "items_f1": {
-            "precision": 1,
-            "recall": 1,
-            "f1": 1,
-            "matched": 3,
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
             "expected": 3,
-            "got": 3
+            "got": 0
           },
-          "got": {
-            "doc_type": "pharmacy",
-            "merchant": "संजीवनी मेडिकल स्टोर",
-            "date": "2026-10-18",
-            "total": 320,
-            "currency": "INR",
-            "items": [
-              {
-                "name": "दर्द निवारक जेल Moov",
-                "qty": "1 ट्यूब",
-                "price": 135
-              },
-              {
-                "name": "गैस की गोली Rabeprazole",
-                "qty": "15 गोलियां",
-                "price": 125
-              },
-              {
-                "name": "पुदीन हरा कैप्सूल",
-                "qty": "10 कैप्सूल",
-                "price": 60
-              }
-            ],
-            "mrp": 340,
-            "expiry": null
-          }
+          "got": null
         },
         {
           "id": "pharma_hi_02",
           "doc_type": "pharmacy",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 8987,
+          "ms": 26113,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2187,7 +2139,7 @@
           "doc_type": "pharmacy",
           "script": "mixed",
           "variation": "rotation",
-          "ms": 8021,
+          "ms": 32081,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2243,7 +2195,7 @@
           "doc_type": "pharmacy",
           "script": "telugu",
           "variation": "clean",
-          "ms": 9605,
+          "ms": 43652,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2301,7 +2253,7 @@
           "doc_type": "pharmacy",
           "script": "telugu",
           "variation": "thermal_faded",
-          "ms": 7852,
+          "ms": 14807,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2357,30 +2309,27 @@
           "doc_type": "product_label",
           "script": "english",
           "variation": "clean",
-          "ms": 6880,
+          "ms": 13835,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
-            "total": false,
+            "total": true,
             "date": true,
             "mrp": true,
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "total: expected 275, got null",
-            "items_f1_low: 0 (matched 0/1)"
-          ],
+          "fails": [],
           "items_f1": {
-            "precision": 0,
-            "recall": 0,
-            "f1": 0,
-            "matched": 0,
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
             "expected": 1,
             "got": 1
           },
@@ -2388,7 +2337,7 @@
             "doc_type": "product_label",
             "merchant": "NaturePure Foods",
             "date": "2026-09-20",
-            "total": null,
+            "total": 299,
             "currency": "INR",
             "items": [
               {
@@ -2406,30 +2355,27 @@
           "doc_type": "product_label",
           "script": "english",
           "variation": "low_contrast",
-          "ms": 8217,
+          "ms": 4162,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
-            "total": false,
+            "total": true,
             "date": true,
             "mrp": true,
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "total: expected 180, got null",
-            "items_f1_low: 0 (matched 0/1)"
-          ],
+          "fails": [],
           "items_f1": {
-            "precision": 0,
-            "recall": 0,
-            "f1": 0,
-            "matched": 0,
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
             "expected": 1,
             "got": 1
           },
@@ -2455,30 +2401,27 @@
           "doc_type": "product_label",
           "script": "hindi",
           "variation": "clean",
-          "ms": 10363,
+          "ms": 6722,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
-            "total": false,
+            "total": true,
             "date": true,
             "mrp": true,
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "total: expected 650, got null",
-            "items_f1_low: 0 (matched 0/1)"
-          ],
+          "fails": [],
           "items_f1": {
-            "precision": 0,
-            "recall": 0,
-            "f1": 0,
-            "matched": 0,
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
             "expected": 1,
             "got": 1
           },
@@ -2504,30 +2447,27 @@
           "doc_type": "product_label",
           "script": "hindi",
           "variation": "rotation",
-          "ms": 7578,
+          "ms": 2555,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
-            "total": false,
+            "total": true,
             "date": true,
             "mrp": true,
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "total: expected 220, got null",
-            "items_f1_low: 0 (matched 0/1)"
-          ],
+          "fails": [],
           "items_f1": {
-            "precision": 0,
-            "recall": 0,
-            "f1": 0,
-            "matched": 0,
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
             "expected": 1,
             "got": 1
           },
@@ -2553,30 +2493,27 @@
           "doc_type": "product_label",
           "script": "mixed",
           "variation": "blur",
-          "ms": 11429,
+          "ms": 10349,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
-            "total": false,
+            "total": true,
             "date": true,
             "mrp": true,
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "total: expected 140, got null",
-            "items_f1_low: 0 (matched 0/1)"
-          ],
+          "fails": [],
           "items_f1": {
-            "precision": 0,
-            "recall": 0,
-            "f1": 0,
-            "matched": 0,
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
             "expected": 1,
             "got": 1
           },
@@ -2602,30 +2539,27 @@
           "doc_type": "product_label",
           "script": "mixed",
           "variation": "thermal_faded",
-          "ms": 8253,
+          "ms": 3562,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
-            "total": false,
+            "total": true,
             "date": true,
             "mrp": true,
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "total: expected 95, got null",
-            "items_f1_low: 0 (matched 0/1)"
-          ],
+          "fails": [],
           "items_f1": {
-            "precision": 0,
-            "recall": 0,
-            "f1": 0,
-            "matched": 0,
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
             "expected": 1,
             "got": 1
           },
@@ -2633,7 +2567,7 @@
             "doc_type": "product_label",
             "merchant": "Kisan Shakti",
             "date": "2026-10-05",
-            "total": null,
+            "total": 110,
             "currency": "INR",
             "items": [
               {
@@ -2651,7 +2585,7 @@
           "doc_type": "product_label",
           "script": "telugu",
           "variation": "clean",
-          "ms": 9217,
+          "ms": 2066,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2660,22 +2594,20 @@
           "json_valid": true,
           "checks": {
             "json_valid": true,
-            "total": false,
+            "total": true,
             "date": true,
             "mrp": true,
             "expiry": true,
             "merchant": false
           },
           "fails": [
-            "total: expected 240, got null",
-            "merchant: expected \"గోదావరి నేచురల్స్\", got \"Godavari Naturals\"",
-            "items_f1_low: 0 (matched 0/1)"
+            "merchant: expected \"గోదావరి నేచురల్స్\", got \"Godavari Naturals\""
           ],
           "items_f1": {
-            "precision": 0,
-            "recall": 0,
-            "f1": 0,
-            "matched": 0,
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
             "expected": 1,
             "got": 1
           },
@@ -2701,30 +2633,27 @@
           "doc_type": "product_label",
           "script": "telugu",
           "variation": "phone_shadow",
-          "ms": 11256,
+          "ms": 1822,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
-            "total": false,
+            "total": true,
             "date": true,
             "mrp": true,
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "total: expected 320, got null",
-            "items_f1_low: 0 (matched 0/1)"
-          ],
+          "fails": [],
           "items_f1": {
-            "precision": 0,
-            "recall": 0,
-            "f1": 0,
-            "matched": 0,
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
             "expected": 1,
             "got": 1
           },
@@ -2736,7 +2665,7 @@
             "currency": "INR",
             "items": [
               {
-                "name": "Coconut Oil",
+                "name": "స్వచ్ఛమైన కొబ్బరి నూనె Coconut Oil",
                 "qty": "1000 ml",
                 "price": 350
               }
@@ -2750,7 +2679,7 @@
           "doc_type": "restaurant",
           "script": "english",
           "variation": "clean",
-          "ms": 9692,
+          "ms": 13336,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2806,7 +2735,7 @@
           "doc_type": "restaurant",
           "script": "english",
           "variation": "phone_shadow",
-          "ms": 17425,
+          "ms": 2173,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2862,7 +2791,7 @@
           "doc_type": "restaurant",
           "script": "hindi",
           "variation": "clean",
-          "ms": 15976,
+          "ms": 13165,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2918,7 +2847,7 @@
           "doc_type": "restaurant",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 32221,
+          "ms": 12135,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2969,7 +2898,7 @@
           "doc_type": "restaurant",
           "script": "mixed",
           "variation": "rotation",
-          "ms": 15722,
+          "ms": 20719,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -3025,7 +2954,7 @@
           "doc_type": "restaurant",
           "script": "mixed",
           "variation": "blur",
-          "ms": 12131,
+          "ms": 12100,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -3067,7 +2996,7 @@
                 "price": 120
               },
               {
-                "name": "Sweet Lassi లసీ్స",
+                "name": "Sweet Lassi లస్సీ",
                 "qty": "1",
                 "price": 80
               }
@@ -3081,7 +3010,7 @@
           "doc_type": "restaurant",
           "script": "telugu",
           "variation": "clean",
-          "ms": 13812,
+          "ms": 6484,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -3137,7 +3066,7 @@
           "doc_type": "restaurant",
           "script": "telugu",
           "variation": "thermal_faded",
-          "ms": 14648,
+          "ms": 7862,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -3188,7 +3117,7 @@
           "doc_type": "utility",
           "script": "english",
           "variation": "clean",
-          "ms": 14921,
+          "ms": 2852,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -3239,12 +3168,12 @@
           "doc_type": "utility",
           "script": "english",
           "variation": "phone_shadow",
-          "ms": 21572,
+          "ms": 6308,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
@@ -3254,9 +3183,7 @@
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "items_f1_low: 0 (matched 0/1)"
-          ],
+          "fails": [],
           "items_f1": {
             "precision": 0,
             "recall": 0,
@@ -3292,12 +3219,12 @@
           "doc_type": "utility",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 22785,
+          "ms": 3523,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
@@ -3307,9 +3234,7 @@
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "items_f1_low: 0 (matched 0/2)"
-          ],
+          "fails": [],
           "items_f1": {
             "precision": 0,
             "recall": 0,
@@ -3345,12 +3270,12 @@
           "doc_type": "utility",
           "script": "mixed",
           "variation": "blur",
-          "ms": 18109,
+          "ms": 1472,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
@@ -3360,9 +3285,7 @@
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "items_f1_low: 0 (matched 0/2)"
-          ],
+          "fails": [],
           "items_f1": {
             "precision": 0,
             "recall": 0,
@@ -3398,12 +3321,12 @@
           "doc_type": "utility",
           "script": "telugu",
           "variation": "clean",
-          "ms": 18957,
+          "ms": 6368,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
@@ -3413,9 +3336,7 @@
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "items_f1_low: 0 (matched 0/2)"
-          ],
+          "fails": [],
           "items_f1": {
             "precision": 0,
             "recall": 0,
@@ -3451,12 +3372,12 @@
           "doc_type": "utility",
           "script": "telugu",
           "variation": "rotation",
-          "ms": 19305,
+          "ms": 13309,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": false,
+          "pass": true,
           "json_valid": true,
           "checks": {
             "json_valid": true,
@@ -3466,9 +3387,7 @@
             "expiry": true,
             "merchant": true
           },
-          "fails": [
-            "items_f1_low: 0 (matched 0/2)"
-          ],
+          "fails": [],
           "items_f1": {
             "precision": 0,
             "recall": 0,
@@ -3503,41 +3422,41 @@
       "summary": {
         "calls": 40,
         "json_valid": {
-          "ok": 40,
+          "ok": 38,
           "n": 40,
-          "pct": 100
+          "pct": 95
         },
         "full_pass": {
-          "ok": 23,
+          "ok": 34,
           "n": 40,
-          "pct": 57.5
+          "pct": 85
         },
         "total": {
-          "ok": 32,
+          "ok": 38,
           "n": 40,
-          "pct": 80
+          "pct": 95
         },
         "date": {
-          "ok": 40,
+          "ok": 38,
           "n": 40,
-          "pct": 100
+          "pct": 95
         },
         "mrp": {
-          "ok": 40,
+          "ok": 38,
           "n": 40,
-          "pct": 100
+          "pct": 95
         },
         "expiry": {
-          "ok": 36,
+          "ok": 35,
           "n": 40,
-          "pct": 90
+          "pct": 87.5
         },
         "merchant": {
-          "ok": 39,
+          "ok": 37,
           "n": 40,
-          "pct": 97.5
+          "pct": 92.5
         },
-        "avg_items_f1": 0.675,
+        "avg_items_f1": 0.825,
         "by_doc_type": {
           "kirana": {
             "full_pass": {
@@ -3559,21 +3478,21 @@
           },
           "pharmacy": {
             "full_pass": {
-              "ok": 4,
+              "ok": 3,
               "n": 8,
-              "pct": 50
+              "pct": 37.5
             },
             "total": {
-              "ok": 8,
+              "ok": 6,
               "n": 8,
-              "pct": 100
+              "pct": 75
             },
             "merchant": {
-              "ok": 8,
+              "ok": 6,
               "n": 8,
-              "pct": 100
+              "pct": 75
             },
-            "avg_f1": 1
+            "avg_f1": 0.75
           },
           "restaurant": {
             "full_pass": {
@@ -3595,9 +3514,9 @@
           },
           "utility": {
             "full_pass": {
-              "ok": 1,
+              "ok": 6,
               "n": 6,
-              "pct": 16.7
+              "pct": 100
             },
             "total": {
               "ok": 6,
@@ -3613,85 +3532,85 @@
           },
           "product_label": {
             "full_pass": {
-              "ok": 0,
+              "ok": 7,
               "n": 8,
-              "pct": 0
+              "pct": 87.5
             },
             "total": {
-              "ok": 0,
+              "ok": 8,
               "n": 8,
-              "pct": 0
+              "pct": 100
             },
             "merchant": {
               "ok": 7,
               "n": 8,
               "pct": 87.5
             },
-            "avg_f1": 0
+            "avg_f1": 1
           }
         },
         "by_script": {
           "telugu": {
             "full_pass": {
-              "ok": 6,
+              "ok": 9,
               "n": 11,
-              "pct": 54.5
+              "pct": 81.8
             },
             "merchant": {
               "ok": 10,
               "n": 11,
               "pct": 90.9
             },
-            "avg_f1": 0.636
+            "avg_f1": 0.818
           },
           "hindi": {
             "full_pass": {
-              "ok": 6,
+              "ok": 9,
               "n": 10,
-              "pct": 60
+              "pct": 90
             },
             "merchant": {
-              "ok": 10,
+              "ok": 9,
               "n": 10,
-              "pct": 100
+              "pct": 90
             },
-            "avg_f1": 0.7
+            "avg_f1": 0.8
           },
           "english": {
             "full_pass": {
-              "ok": 6,
+              "ok": 8,
               "n": 11,
-              "pct": 54.5
+              "pct": 72.7
             },
             "merchant": {
-              "ok": 11,
+              "ok": 10,
               "n": 11,
-              "pct": 100
+              "pct": 90.9
             },
-            "avg_f1": 0.727
+            "avg_f1": 0.818
           },
           "mixed": {
             "full_pass": {
-              "ok": 5,
+              "ok": 8,
               "n": 8,
-              "pct": 62.5
+              "pct": 100
             },
             "merchant": {
               "ok": 8,
               "n": 8,
               "pct": 100
             },
-            "avg_f1": 0.625
+            "avg_f1": 0.875
           }
         },
         "latency_ms": {
-          "answered": 40,
-          "p50": 12043,
-          "p95": 22785
+          "answered": 38,
+          "p50": 6484,
+          "p95": 41531
         },
         "failures": {
           "timeout": 0,
-          "http": 0,
+          "http": 2,
           "no_json": 0,
           "threw": 0
         }

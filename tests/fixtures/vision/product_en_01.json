@@ -6,13 +6,13 @@
   "variation": "clean",
   "merchant": "NaturePure Foods",
   "date": "2026-09-20",
-  "total": 275,
+  "total": null,
   "currency": "INR",
   "items": [
     {
       "name": "Cold Pressed Groundnut Oil",
       "qty": "1 Litre",
-      "price": 275
+      "price": 299
     }
   ],
   "mrp": 299,

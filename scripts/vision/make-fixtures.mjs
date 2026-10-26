@@ -768,65 +768,65 @@ export const FIXTURES = [
   // ── Packaged Product Labels (8) ───────────────────────────────────────────
   {
     id: 'product_en_01', synthetic: true, doc_type: 'product_label', script: 'english', variation: 'clean',
-    merchant: 'NaturePure Foods', date: '2026-09-20', total: 275, currency: 'INR',
+    merchant: 'NaturePure Foods', date: '2026-09-20', total: null, currency: 'INR',
     items: [
-      { name: 'Cold Pressed Groundnut Oil', qty: '1 Litre', price: 275 },
+      { name: 'Cold Pressed Groundnut Oil', qty: '1 Litre', price: 299 },
     ],
     mrp: 299, expiry: '2027-09-20',
   },
   {
     id: 'product_en_02', synthetic: true, doc_type: 'product_label', script: 'english', variation: 'low_contrast',
-    merchant: 'AyurGlow Care', date: '2026-08-15', total: 180, currency: 'INR',
+    merchant: 'AyurGlow Care', date: '2026-08-15', total: null, currency: 'INR',
     items: [
-      { name: 'Pure Herbal Aloe Vera Gel', qty: '200 g', price: 180 },
+      { name: 'Pure Herbal Aloe Vera Gel', qty: '200 g', price: 199 },
     ],
     mrp: 199, expiry: '2028-08-15',
   },
   {
     id: 'product_te_01', synthetic: true, doc_type: 'product_label', script: 'telugu', variation: 'clean',
-    merchant: 'గోదావరి నేచురల్స్', date: '2026-09-15', total: 240, currency: 'INR',
+    merchant: 'గోదావరి నేచురల్స్', date: '2026-09-15', total: null, currency: 'INR',
     items: [
-      { name: 'గానుగ నువ్వుల నూనె Sesame Oil', qty: '500 ml', price: 240 },
+      { name: 'గానుగ నువ్వుల నూనె Sesame Oil', qty: '500 ml', price: 260 },
     ],
     mrp: 260, expiry: '2027-03-15',
   },
   {
     id: 'product_te_02', synthetic: true, doc_type: 'product_label', script: 'telugu', variation: 'phone_shadow',
-    merchant: 'శ్రీ వేంకటేశ్వర ఆగ్రో', date: '2026-10-01', total: 320, currency: 'INR',
+    merchant: 'శ్రీ వేంకటేశ్వర ఆగ్రో', date: '2026-10-01', total: null, currency: 'INR',
     items: [
-      { name: 'స్వచ్ఛమైన కొబ్బరి నూనె Coconut Oil', qty: '1000 ml', price: 320 },
+      { name: 'స్వచ్ఛమైన కొబ్బరి నూనె Coconut Oil', qty: '1000 ml', price: 350 },
     ],
     mrp: 350, expiry: '2027-10-01',
   },
   {
     id: 'product_hi_01', synthetic: true, doc_type: 'product_label', script: 'hindi', variation: 'clean',
-    merchant: 'शुद्ध आहार ग्रामोद्योग', date: '2026-09-10', total: 650, currency: 'INR',
+    merchant: 'शुद्ध आहार ग्रामोद्योग', date: '2026-09-10', total: null, currency: 'INR',
     items: [
-      { name: 'शुद्ध देसी गाय का घी Pure Ghee', qty: '1 kg', price: 650 },
+      { name: 'शुद्ध देसी गाय का घी Pure Ghee', qty: '1 kg', price: 700 },
     ],
     mrp: 700, expiry: '2027-06-10',
   },
   {
     id: 'product_hi_02', synthetic: true, doc_type: 'product_label', script: 'hindi', variation: 'rotation',
-    merchant: 'हिमालय जड़ी-बूटी भंडार', date: '2026-08-25', total: 220, currency: 'INR',
+    merchant: 'हिमालय जड़ी-बूटी भंडार', date: '2026-08-25', total: null, currency: 'INR',
     items: [
-      { name: 'अश्वगंधा चूर्ण Ashwagandha Powder', qty: '250 g', price: 220 },
+      { name: 'अश्वगंधा चूर्ण Ashwagandha Powder', qty: '250 g', price: 240 },
     ],
     mrp: 240, expiry: '2028-08-25',
   },
   {
     id: 'product_mixed_01', synthetic: true, doc_type: 'product_label', script: 'mixed', variation: 'blur',
-    merchant: 'Deccan Spices డెక్కన్ స్పైసెస్', date: '2026-09-18', total: 140, currency: 'INR',
+    merchant: 'Deccan Spices డెక్కన్ స్పైసెస్', date: '2026-09-18', total: null, currency: 'INR',
     items: [
-      { name: 'Guntur Red Chilli Powder గుంటూరు కారం', qty: '500 g', price: 140 },
+      { name: 'Guntur Red Chilli Powder గుంటూరు కారం', qty: '500 g', price: 155 },
     ],
     mrp: 155, expiry: '2027-09-18',
   },
   {
     id: 'product_mixed_02', synthetic: true, doc_type: 'product_label', script: 'mixed', variation: 'thermal_faded',
-    merchant: 'Kisan Shakti किसान शक्ति', date: '2026-10-05', total: 95, currency: 'INR',
+    merchant: 'Kisan Shakti किसान शक्ति', date: '2026-10-05', total: null, currency: 'INR',
     items: [
-      { name: 'Chana Sattu चना सत्तू', qty: '500 g', price: 95 },
+      { name: 'Chana Sattu चना सत्तू', qty: '500 g', price: 110 },
     ],
     mrp: 110, expiry: '2027-04-05',
   },

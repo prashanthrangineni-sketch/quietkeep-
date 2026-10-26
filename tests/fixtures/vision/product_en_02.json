@@ -6,13 +6,13 @@
   "variation": "low_contrast",
   "merchant": "AyurGlow Care",
   "date": "2026-08-15",
-  "total": 180,
+  "total": null,
   "currency": "INR",
   "items": [
     {
       "name": "Pure Herbal Aloe Vera Gel",
       "qty": "200 g",
-      "price": 180
+      "price": 199
     }
   ],
   "mrp": 199,

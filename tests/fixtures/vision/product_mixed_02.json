@@ -6,13 +6,13 @@
   "variation": "thermal_faded",
   "merchant": "Kisan Shakti किसान शक्ति",
   "date": "2026-10-05",
-  "total": 95,
+  "total": null,
   "currency": "INR",
   "items": [
     {
       "name": "Chana Sattu चना सत्तू",
       "qty": "500 g",
-      "price": 95
+      "price": 110
     }
   ],
   "mrp": 110,

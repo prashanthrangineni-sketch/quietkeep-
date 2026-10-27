@@ -51,6 +51,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SHAKTI_API_KEY: ${{ secrets.SHAKTI_API_KEY }}
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           MODELS_INPUT: ${{ inputs.models }}
         run: |
@@ -64,7 +65,7 @@ jobs:
             m="$(echo "$m" | xargs)"
             [ -n "$m" ] && args+=(--model "$m")
           done
-          for k in SARVAM_API_KEY GROQ_API_KEY GEMINI_API_KEY OPENROUTER_API_KEY; do
+          for k in SARVAM_API_KEY GROQ_API_KEY GEMINI_API_KEY OPENROUTER_API_KEY SHAKTI_API_KEY; do
             if [ -n "${!k}" ]; then echo "$k: present"; else echo "$k: not set - that provider will be reported as not measured"; fi
           done
           node scripts/eval-understanding.mjs "${args[@]}" --out measurements/understanding-latest

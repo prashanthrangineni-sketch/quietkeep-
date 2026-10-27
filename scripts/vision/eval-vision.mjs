@@ -70,7 +70,26 @@ const TIMEOUT_MS = Number(process.env.VISION_TIMEOUT_MS || 45000)
 const NOW = new Date()
 
 // ── providers ───────────────────────────────────────────────────────────────
+// Yotta Shakti Studio (India): OpenAI-style chat completions at one address;
+// the model is picked by the "id" header (its Shakti model UUID) plus the
+// model name. Short names below map to both. Read from the Shakti Studio
+// console on 27 Oct 2026. Billed per token from Pranix's Shakti credit.
+const SHAKTI_MODELS = {
+  'qwen2.5-vl-72b': { model: 'Qwen/Qwen2.5-VL-72B-Instruct', id: '6dd41d60-1a64-4fa4-9871-17dbe1c73833' },
+  'gemma-3-27b': { model: 'gemma-it', id: '23a8dfd7-f6d4-426c-b637-517c205282c7' },
+  'llama-4-maverick': { model: 'llama-4', id: '5a5bddc0-4ea9-40c6-b946-2efc2113fa76' },
+  'gpt-oss-120b': { model: 'openai/gpt-oss-120b', id: 'cde45577-aa83-442d-bbb4-fb3c54980bf5' },
+}
+
 const PROVIDERS = {
+  shakti: {
+    url: 'https://http.prod-llm.shaktistudio.shakticloud.ai/chat/completions',
+    keyName: 'SHAKTI_API_KEY',
+    headers: (k, model) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${k}`, ...(SHAKTI_MODELS[model] ? { id: SHAKTI_MODELS[model].id } : {}) }),
+    bodyModel: (model) => SHAKTI_MODELS[model]?.model || model,
+    gapMs: 1000,
+  },
+
   openrouter: {
     url: 'https://openrouter.ai/api/v1/chat/completions',
     keyName: 'OPENROUTER_API_KEY',
@@ -161,7 +180,7 @@ async function callOnce(provider, model, fixture, key) {
   const base64Data = readFileSync(fixture.pngPath).toString('base64')
 
   const requestBody = {
-    model,
+    model: p.bodyModel ? p.bodyModel(model) : model,
     messages: [
       {
         role: 'user',
@@ -186,7 +205,7 @@ async function callOnce(provider, model, fixture, key) {
   try {
     const res = await fetch(p.url, {
       method: 'POST',
-      headers: p.headers(key),
+      headers: p.headers(key, model),
       body: JSON.stringify(requestBody),
       signal: ctrl.signal,
     })

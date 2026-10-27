@@ -31,6 +31,13 @@
 // read_health, read_faults, hazard_ahead, stay_awake). A script compared every
 // field of the old and new bodies except the prompt text, plus URL and
 // headers: 0 differences before re-capturing.
+//
+// 26 Oct 2026: re-captured once more, on purpose, when the prompt gained
+// Telugu-script instructions and examples for confirm, delete, none,
+// save_last_60s and read_health (AG-8); then salary questions -> payroll and
+// "అవును"/"ఔను" as yes, after its first measurement broke two payroll sentences. A script compared every field of the
+// old and new bodies except the prompt text, plus URL and headers: 0 differences
+// before re-capturing.
 
 import assert from 'node:assert/strict'
 import test from 'node:test'

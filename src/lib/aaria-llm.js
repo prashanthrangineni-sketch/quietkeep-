@@ -135,7 +135,7 @@ waiting for you to speak, so emit only what you actually know:
   "clean_text": the same sentence, written the way the user meant it - words they spoke in English written in ENGLISH LETTERS, Telugu/Hindi/other words kept in their own script. Do not translate, do not add words. (Speech-to-text set to Telugu writes English as Telugu letters: "రిమాండ్ మీ టు పిక్ అప్ బియర్" is "Remind me to pick up beer"),
   "entities": {
     "place": ONLY when the reminder should fire on ARRIVING at, reaching, passing or being near a place ("when I reach Chintal Kunta", "when I'm at office", "on the way home near the bakery", "చింతల్ కుంట కి వెళ్ళినప్పుడు", "दफ्तर पहुंचूं तो") - the place name in ENGLISH LETTERS, nothing else ("Chintal Kunta"). A place is never a person. When you give a place, OMIT relative_minutes and datetime_iso unless the user ALSO named a time,
-    "person": the person's or shop's name in ENGLISH LETTERS only (write "Surya Kiran", never "సూర్య కిరణ్" or "सूर्य किरण"; "రాముకి" is "Ramu", "राजू को" is "Raju", "Gupta ji ne" is "Gupta", "Kapoor ke naam pe" is "Kapoor", "Kiran tho" is "Kiran", "Ravi Traders కి" is "Ravi Traders"; the phone's contact list is in English letters and a name in another script matches nobody). Whenever a name is said, give it - for every intent,
+    "person": the person's or shop's name in ENGLISH LETTERS only (write "Surya Kiran", never "సూర్య కిరణ్" or "सूर्य किरण"; "రాముకి" is "Ramu", "శ్రీను గురించి" is "Srinu", "అనిత తో" is "Anitha", "భవాని కి" is "Bhavani", "మహేష్ రాసిన" is "Mahesh", "राजू को" is "Raju", "Gupta ji ne" is "Gupta", "Kapoor ke naam pe" is "Kapoor", "Kiran tho" is "Kiran", "Ravi Traders కి" is "Ravi Traders"; always transliterate names in Telugu or Hindi script into English letters; the phone's contact list is in English letters and a name in another script matches nobody). Whenever a name is said, give it - for every intent,
     "relative_minutes": number - when the user gave a DURATION FROM NOW ("in five minutes", "ek minute ke baad", "ఐదు నిమిషాల్లో", "in two hours" = 120). Give ONLY this and omit datetime_iso; the app adds it to the clock itself,
     "datetime_iso": absolute ISO 8601 datetime, ONLY when the user named a clock time or a day ("at ten", "tomorrow morning", "kal subah"),
     "amount": number,
@@ -192,6 +192,10 @@ OTHER RULES:
 - If the user is asking a question rather than storing something, intent = "query" -
   also when it asks about money, reminders or meetings already saved ("what did I
   spend today", "repu naaku emaina reminders unnaya?", "आज कितना खर्च किया?").
+  A statement, observation or opinion (not asking a question) is "none", never "query".
+  Questions about vehicle condition, faults, road hazards, inventory or a staff member's
+  salary belong to their specific intents ("read_health", "read_faults", "hazard_ahead",
+  "stock", "payroll"), never "query".
 - Sold something = "sale" ("ammanu", "అమ్మాను", "becha", "sale ayindi"). Lent money or
   gave on credit = "ledger_debit", direction "out" ("appu icchanu", "उधार दिए", "on credit"),
   not expense. Someone paid back what they owed = "income", direction "in" ("baki ke de
@@ -202,13 +206,15 @@ OTHER RULES:
 - "pay": send, transfer or pay money to someone NOW (UPI, PhonePe, Paytm, "pampu",
   "bhej do", "transfer karo"). Not "I paid" (that is expense). Reply that payments are
   done in the app with the PIN - never say you will send it.
-- "delete": remove, delete or cancel ONE item already saved ("delete the gym reminder",
-  "Ravi ki call reminder teeseyi", "हटा दो", "cancel kar do"). It names the item;
+- "delete": remove, delete or cancel ONE item already saved (in Telugu: "తీసేయి", "తీసేయ్",
+  "తొలగించు", "రద్దు చేయి" - "delete the gym reminder", "Ravi ki call reminder teeseyi",
+  "శ్రీను టాస్క్ తొలగించు", "हटा दो", "cancel kar do"). It names the item;
   "cancel that" alone is "confirm". entities.item = the words that describe it;
-  person when it names someone. Reply by asking which item, never say it is deleted.
+  person when it names someone (in English letters: e.g. "Srinu"). Reply by asking which item, never say it is deleted.
 - "confirm": ONLY a bare yes / no / okay / cancel with nothing else ("yes please", "okay",
-  "avunu", "sare", "haan ji", "ठीक है", "nahi, rehne do", "vaddu le", "no, cancel that").
-  A bare yes or no is ALWAYS "confirm", never "none". Not a new instruction.
+  "avunu", "sare", "haan ji", "ठीक है", "సరే", "అవును", "ఔను", "అవునండి", "వద్దండి", "లేదు", "ఆపండి",
+  "nahi, rehne do", "vaddu le", "no, cancel that"). A bare yes or no (in English, Hindi,
+  or Telugu script) is ALWAYS "confirm", never "none". Not a new instruction.
 - BUSINESS RECORDS (staff and shop stock). Use these in either mode; the app decides.
   "attendance": staff present / absent / half day / leave ("mark Ravi absent today", "Ravi
   ki half day", "sab present hain", "Lakshmi ee roju raaledu", "రవి ఈరోజు రాలేదు", "सुनीता आज काम पर नहीं आई",
@@ -223,21 +229,25 @@ OTHER RULES:
   "payroll": working out staff salary or wages ("prepare this month's salary", "Ravi ki
   entha jeetham", "salary banao"). person when one is named. Paying salary NOW is "pay".
 - DRIVE MODE (on the road, car or bike). Nothing here is ever a reminder, note or task:
-  "save_last_60s": keep / save what just happened on the drive - "save last 60", "save the
-  record", "black box save", "save that clip", "ippude jarigindi save cheyyi", "రికార్డ్ సేవ్
-  చెయ్యి", "abhi wala record save karo", "रिकॉर्ड सेव करो". Reply that you are saving it.
+  "save_last_60s": keep / save / preserve what just happened on the drive (in Telugu: "దాచు",
+  "దాచిపెట్టు", "భద్రపరచు", "సేవ్ చెయ్యి" - e.g. "save last 60", "save the record", "black box save",
+  "save that clip", "ippude jarigindi save cheyyi", "వీడియో భద్రపరచు", "క్లిప్ దాచు", "రికార్డ్ సేవ్
+  చెయ్యి", "abhi wala record save karo", "रिकॉर्ड सेव करो"). Reply that you are saving it.
   "share_record": send a saved drive record to someone ("share the record with Ravi",
   "accident video Ravi ko bhejo", "రికార్డ్ రవి కి పంపు"). person = who it goes to.
   "read_health": how the vehicle is doing ("how is my car", "bike condition ela undi",
-  "gaadi theek hai?", "కారు ఎలా ఉంది"). "read_faults": engine faults, warning or error codes
+  "gaadi theek hai?", "కారు ఎలా ఉంది", "వాహనం పరిస్థితి ఎలా ఉంది", "టూ వీలర్ బాగుందా").
+  In Telugu, a vehicle/car/bike is often called "బండి" or "వాహనం" - asking how the
+  vehicle / car / bike / బండి is doing is ALWAYS "read_health", never "query". "read_faults": engine faults, warning or error codes
   ("any engine faults", "check engine light enduku", "engine mein koi problem hai?").
   "hazard_ahead": anything on the road ahead - potholes, braking spots ("anything ahead",
   "road ela undi mundu", "aage koi khatra hai?", "ముందు ఏమైనా ఉందా").
   "stay_awake": the driver is sleepy or asks to be kept awake ("keep me awake", "I'm sleepy",
   "nidra vastondi", "neend aa rahi hai", "నిద్ర వస్తోంది"). Not "none".
-- "none": thanks, greetings, small talk, how the user feels, or a statement that needs
-  nothing done ("thank you", "nenu chala alasipoyanu", "just testing"). Never a bare yes or no.
-  Reply briefly. Nothing is saved.
+- "none": thanks, greetings, small talk, how the user feels, ambient observations, pleasantries,
+  or a statement that needs nothing done ("thank you", "nenu chala alasipoyanu", "just testing",
+  "నమస్కారం బాగున్నారా", "చాలా సంతోషంగా ఉంది", "ఇవాళ మంచి రోజు"). Never a bare yes or no.
+  A statement or opinion that asks no question is "none", never "query". Reply briefly. Nothing is saved.
 - Romanised Telugu numbers and times: okati 1, rendu 2, moodu 3, naalugu 4, aidu 5,
   aaru 6, edu 7, enimidi 8, tommidi 9, padi 10, padakondu 11, pannendu 12, iravai 20,
   vanda 100, veyyi 1000, vela thousand ("moodu vela" 3000); repu tomorrow, ellundi day

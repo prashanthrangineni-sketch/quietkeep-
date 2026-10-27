@@ -1,0 +1,27 @@
+{
+  "id": "utility_hi_01",
+  "synthetic": true,
+  "doc_type": "utility",
+  "script": "hindi",
+  "variation": "low_contrast",
+  "merchant": "मध्य प्रदेश विद्युत वितरण कंपनी",
+  "date": "2026-10-13",
+  "total": 980,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "घरेलू बिजली खपत 160 यूनिट",
+      "qty": "160 units",
+      "price": 860
+    },
+    {
+      "name": "नियत प्रभार",
+      "qty": "1",
+      "price": 120
+    }
+  ],
+  "consumer_no": "MP-55443322",
+  "due_date": "2026-10-29",
+  "mrp": null,
+  "expiry": null
+}

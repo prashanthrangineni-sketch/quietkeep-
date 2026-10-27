@@ -1,0 +1,32 @@
+{
+  "id": "pharma_te_02",
+  "synthetic": true,
+  "doc_type": "pharmacy",
+  "script": "telugu",
+  "variation": "thermal_faded",
+  "merchant": "ఆరోగ్య ఫార్మసీ",
+  "date": "2026-10-19",
+  "total": 280,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "కడుపునొప్పి మాత్రలు",
+      "qty": "10 మాత్రలు",
+      "price": 90
+    },
+    {
+      "name": "ఓ ఆర్ ఎస్ ప్యాకెట్లు",
+      "qty": "4 ప్యాకెట్లు",
+      "price": 80
+    },
+    {
+      "name": "బాండేజ్ పట్టీ",
+      "qty": "2 రోల్స్",
+      "price": 110
+    }
+  ],
+  "mrp": 300,
+  "batch": "AR-109",
+  "expiry": "2028-02",
+  "gstin": "36AAAAA0000A1Z5"
+}

@@ -1,0 +1,32 @@
+{
+  "id": "pharma_en_03",
+  "synthetic": true,
+  "doc_type": "pharmacy",
+  "script": "english",
+  "variation": "phone_shadow",
+  "merchant": "Lifeline Medical & General Stores",
+  "date": "2026-10-25",
+  "total": 450,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Telma 40mg Tablet",
+      "qty": "30 tabs",
+      "price": 280
+    },
+    {
+      "name": "Ecosprin 75mg Tablet",
+      "qty": "14 tabs",
+      "price": 30
+    },
+    {
+      "name": "Shelcal 500mg Calcium",
+      "qty": "15 tabs",
+      "price": 140
+    }
+  ],
+  "mrp": 475,
+  "batch": "LF-7891",
+  "expiry": "2027-09",
+  "gstin": "36AAAAA0000A1Z5"
+}

@@ -1,0 +1,27 @@
+{
+  "id": "utility_mixed_01",
+  "synthetic": true,
+  "doc_type": "utility",
+  "script": "mixed",
+  "variation": "blur",
+  "merchant": "BSES Yamuna Power Limited यमुना पावर",
+  "date": "2026-10-15",
+  "total": 1650,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Electricity Charges बिजली शुल्क",
+      "qty": "250 units",
+      "price": 1530
+    },
+    {
+      "name": "Fixed Charges",
+      "qty": "1",
+      "price": 120
+    }
+  ],
+  "consumer_no": "CA-10293847",
+  "due_date": "2026-10-31",
+  "mrp": null,
+  "expiry": null
+}

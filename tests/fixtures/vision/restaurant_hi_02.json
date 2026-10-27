@@ -1,0 +1,26 @@
+{
+  "id": "restaurant_hi_02",
+  "synthetic": true,
+  "doc_type": "restaurant",
+  "script": "hindi",
+  "variation": "low_contrast",
+  "merchant": "दिल्ली स्वाद ढाबा",
+  "date": "2026-10-20",
+  "total": 294,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "छोले भटूरे",
+      "qty": "2 प्लेट",
+      "price": 180
+    },
+    {
+      "name": "मीठी लस्सी",
+      "qty": "2 गिलास",
+      "price": 100
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "06AAAAA0000A1Z7"
+}

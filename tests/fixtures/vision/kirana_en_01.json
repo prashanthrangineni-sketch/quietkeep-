@@ -1,0 +1,31 @@
+{
+  "id": "kirana_en_01",
+  "synthetic": true,
+  "doc_type": "kirana",
+  "script": "english",
+  "variation": "clean",
+  "merchant": "Bharat Super Kirana Store",
+  "date": "2026-10-16",
+  "total": 395,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Fortune Sunflower Oil 1L",
+      "qty": "1 pouch",
+      "price": 155
+    },
+    {
+      "name": "Tata Salt 1kg",
+      "qty": "2 pkts",
+      "price": 50
+    },
+    {
+      "name": "Aashirvaad Atta 5kg",
+      "qty": "1 bag",
+      "price": 190
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

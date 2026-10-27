@@ -1,0 +1,31 @@
+{
+  "id": "kirana_te_02",
+  "synthetic": true,
+  "doc_type": "kirana",
+  "script": "telugu",
+  "variation": "thermal_faded",
+  "merchant": "లక్ష్మి ట్రేడర్స్ కిరాణా",
+  "date": "2026-10-20",
+  "total": 340,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "వేరుశనగ గుళ్ళు",
+      "qty": "1 kg",
+      "price": 180
+    },
+    {
+      "name": "పంచదార",
+      "qty": "2 kg",
+      "price": 90
+    },
+    {
+      "name": "టీ పొడి",
+      "qty": "250 g",
+      "price": 70
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

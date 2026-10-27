@@ -1,0 +1,36 @@
+{
+  "id": "kirana_te_03",
+  "synthetic": true,
+  "doc_type": "kirana",
+  "script": "telugu",
+  "variation": "phone_shadow",
+  "merchant": "రైతు బజార్ ప్రొవిజన్స్",
+  "date": "2026-10-22",
+  "total": 610,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "సన్ ఫ్లవర్ నూనె",
+      "qty": "2 L",
+      "price": 290
+    },
+    {
+      "name": "గోధుమ పిండి",
+      "qty": "5 kg",
+      "price": 240
+    },
+    {
+      "name": "ఉప్పు ప్యాకెట్",
+      "qty": "2 pcs",
+      "price": 40
+    },
+    {
+      "name": "పసుపు",
+      "qty": "200 g",
+      "price": 40
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

@@ -1,0 +1,27 @@
+{
+  "id": "utility_en_01",
+  "synthetic": true,
+  "doc_type": "utility",
+  "script": "english",
+  "variation": "clean",
+  "merchant": "TGSPDCL Southern Power",
+  "date": "2026-10-12",
+  "total": 1420,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Electricity Consumption Charges 210 units",
+      "qty": "210 kWh",
+      "price": 1300
+    },
+    {
+      "name": "Customer Charges",
+      "qty": "1",
+      "price": 120
+    }
+  ],
+  "consumer_no": "TG-9876543210",
+  "due_date": "2026-10-28",
+  "mrp": null,
+  "expiry": null
+}

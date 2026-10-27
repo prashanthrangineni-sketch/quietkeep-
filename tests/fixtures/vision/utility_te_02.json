@@ -1,0 +1,27 @@
+{
+  "id": "utility_te_02",
+  "synthetic": true,
+  "doc_type": "utility",
+  "script": "telugu",
+  "variation": "rotation",
+  "merchant": "ఉత్తర విద్యుత్ పంపిణీ సంస్థ TSNPDCL",
+  "date": "2026-10-14",
+  "total": 1150,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "కరెంట్ బిల్లు LT-1B",
+      "qty": "185 units",
+      "price": 1030
+    },
+    {
+      "name": "కస్టమర్ ఛార్జీలు",
+      "qty": "1",
+      "price": 120
+    }
+  ],
+  "consumer_no": "SC-88776655",
+  "due_date": "2026-10-30",
+  "mrp": null,
+  "expiry": null
+}

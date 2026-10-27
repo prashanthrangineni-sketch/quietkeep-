@@ -1,0 +1,26 @@
+{
+  "id": "kirana_te_01",
+  "synthetic": true,
+  "doc_type": "kirana",
+  "script": "telugu",
+  "variation": "clean",
+  "merchant": "శ్రీ వేంకటేశ్వర కిరాణా జనరల్ స్టోర్స్",
+  "date": "2026-10-18",
+  "total": 485,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "సోనా మసూరి బియ్యం",
+      "qty": "5 kg",
+      "price": 320
+    },
+    {
+      "name": "కందిపప్పు",
+      "qty": "1 kg",
+      "price": 165
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

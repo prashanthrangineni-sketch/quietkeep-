@@ -1,0 +1,31 @@
+{
+  "id": "kirana_mixed_01",
+  "synthetic": true,
+  "doc_type": "kirana",
+  "script": "mixed",
+  "variation": "rotation",
+  "merchant": "Sri Balaji Kirana & జనరల్ స్టోర్స్",
+  "date": "2026-10-17",
+  "total": 540,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Sona Masoori బియ్యం 5kg",
+      "qty": "1 bag",
+      "price": 330
+    },
+    {
+      "name": "Surf Excel వాషింగ్ పౌడర్",
+      "qty": "1 kg",
+      "price": 140
+    },
+    {
+      "name": "Lifebuoy సబ్బు",
+      "qty": "2 pcs",
+      "price": 70
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

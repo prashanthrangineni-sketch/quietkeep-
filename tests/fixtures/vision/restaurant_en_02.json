@@ -1,0 +1,31 @@
+{
+  "id": "restaurant_en_02",
+  "synthetic": true,
+  "doc_type": "restaurant",
+  "script": "english",
+  "variation": "phone_shadow",
+  "merchant": "Paradise Biryani Hub",
+  "date": "2026-10-21",
+  "total": 682,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Special Chicken Biryani",
+      "qty": "1",
+      "price": 380
+    },
+    {
+      "name": "Butter Naan",
+      "qty": "3",
+      "price": 150
+    },
+    {
+      "name": "Paneer Butter Masala",
+      "qty": "1",
+      "price": 120
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

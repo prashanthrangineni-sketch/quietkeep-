@@ -1,0 +1,26 @@
+{
+  "id": "kirana_en_02",
+  "synthetic": true,
+  "doc_type": "kirana",
+  "script": "english",
+  "variation": "thermal_faded",
+  "merchant": "New City Provision Store",
+  "date": "2026-10-23",
+  "total": 215,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Brooke Bond Red Label Tea",
+      "qty": "250 g",
+      "price": 135
+    },
+    {
+      "name": "Sugar Medium",
+      "qty": "2 kg",
+      "price": 80
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

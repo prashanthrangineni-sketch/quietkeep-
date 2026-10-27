@@ -1,0 +1,31 @@
+{
+  "id": "restaurant_mixed_01",
+  "synthetic": true,
+  "doc_type": "restaurant",
+  "script": "mixed",
+  "variation": "rotation",
+  "merchant": "Anand Bhavan Tiffins ఆనంద్ భవన్",
+  "date": "2026-10-23",
+  "total": 241,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Onion Rava Dosa ఉల్లి రవ్వ దోశ",
+      "qty": "1",
+      "price": 95
+    },
+    {
+      "name": "Poori Bhaji పూరి కూర",
+      "qty": "1",
+      "price": 85
+    },
+    {
+      "name": "Special Tea టీ",
+      "qty": "2",
+      "price": 50
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "36AAAAA0000A1Z5"
+}

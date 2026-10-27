@@ -1,0 +1,20 @@
+{
+  "id": "product_mixed_01",
+  "synthetic": true,
+  "doc_type": "product_label",
+  "script": "mixed",
+  "variation": "blur",
+  "merchant": "Deccan Spices డెక్కన్ స్పైసెస్",
+  "date": "2026-09-18",
+  "total": null,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "Guntur Red Chilli Powder గుంటూరు కారం",
+      "qty": "500 g",
+      "price": 155
+    }
+  ],
+  "mrp": 155,
+  "expiry": "2027-09-18"
+}

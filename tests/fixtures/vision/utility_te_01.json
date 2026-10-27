@@ -1,0 +1,27 @@
+{
+  "id": "utility_te_01",
+  "synthetic": true,
+  "doc_type": "utility",
+  "script": "telugu",
+  "variation": "clean",
+  "merchant": "తెలంగాణ విద్యుత్ సరఫరా సంస్థ TGSPDCL",
+  "date": "2026-10-11",
+  "total": 890,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "గృహ విద్యుత్ ఛార్జీలు 140 యూనిట్లు",
+      "qty": "140 units",
+      "price": 770
+    },
+    {
+      "name": "స్థిర ఛార్జీలు",
+      "qty": "1",
+      "price": 120
+    }
+  ],
+  "consumer_no": "USC-11223344",
+  "due_date": "2026-10-26",
+  "mrp": null,
+  "expiry": null
+}

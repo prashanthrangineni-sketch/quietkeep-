@@ -1,0 +1,32 @@
+{
+  "id": "pharma_te_01",
+  "synthetic": true,
+  "doc_type": "pharmacy",
+  "script": "telugu",
+  "variation": "clean",
+  "merchant": "శ్రీనివాస మెడికల్స్",
+  "date": "2026-10-14",
+  "total": 195,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "జ్వరం మాత్రలు పారాసిటమాల్",
+      "qty": "10 మాత్రలు",
+      "price": 35
+    },
+    {
+      "name": "దగ్గు మందు సిరప్",
+      "qty": "1 బాటిల్",
+      "price": 110
+    },
+    {
+      "name": "విటమిన్ సి మాత్రలు",
+      "qty": "10 మాత్రలు",
+      "price": 50
+    }
+  ],
+  "mrp": 210,
+  "batch": "SN-320",
+  "expiry": "2027-10",
+  "gstin": "36AAAAA0000A1Z5"
+}

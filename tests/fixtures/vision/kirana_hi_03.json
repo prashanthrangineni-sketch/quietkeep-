@@ -1,0 +1,31 @@
+{
+  "id": "kirana_hi_03",
+  "synthetic": true,
+  "doc_type": "kirana",
+  "script": "hindi",
+  "variation": "rotation",
+  "merchant": "किसान सेवा किराना भंडार",
+  "date": "2026-10-21",
+  "total": 460,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "सूजी रवा",
+      "qty": "1 kg",
+      "price": 50
+    },
+    {
+      "name": "मैदा",
+      "qty": "1 kg",
+      "price": 45
+    },
+    {
+      "name": "देसी घी",
+      "qty": "500 g",
+      "price": 365
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "09AAAAA0000A1Z3"
+}

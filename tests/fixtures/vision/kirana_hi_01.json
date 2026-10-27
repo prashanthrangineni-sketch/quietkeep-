@@ -1,0 +1,31 @@
+{
+  "id": "kirana_hi_01",
+  "synthetic": true,
+  "doc_type": "kirana",
+  "script": "hindi",
+  "variation": "clean",
+  "merchant": "श्री गणेश किराना स्टोर",
+  "date": "2026-10-15",
+  "total": 530,
+  "currency": "INR",
+  "items": [
+    {
+      "name": "बासमती चावल",
+      "qty": "2 kg",
+      "price": 220
+    },
+    {
+      "name": "अरहर दाल",
+      "qty": "1 kg",
+      "price": 170
+    },
+    {
+      "name": "सरसों का तेल",
+      "qty": "1 L",
+      "price": 140
+    }
+  ],
+  "mrp": null,
+  "expiry": null,
+  "gstin": "23AAAAA0000A1Z2"
+}

@@ -224,12 +224,17 @@ function rawIntentOf(raw) {
   return m ? m[1] : null
 }
 
+const DAILY_LIMIT = /(per[- ]day|per day|daily)/i
+
 async function call(provider, model, c, key) {
   let r
   let retries = 0
   for (;;) {
     r = await callOnce(provider, model, c, key)
     if (r.status !== 429 || retries >= 2) break
+    // A daily quota will not come back in 15 s: retrying only burns the run's
+    // time budget (26 Oct: 283 x 2 retries ran a whole run out of time).
+    if (DAILY_LIMIT.test(r.error || '')) { r.dailyLimit = true; break }
     retries++
     await sleep(Math.min(60, r.retryAfter || 15) * 1000)
   }
@@ -336,6 +341,9 @@ async function runModel(id) {
     const gap = process.env.EVAL_GAP_MS !== undefined ? Number(process.env.EVAL_GAP_MS) : PROVIDERS[provider].gapMs
     if (n > 0 && gap > 0) await sleep(gap)
     const r = await call(provider, model, c, key)
+    if (r.dailyLimit) {
+      return { id, provider, model, status: `not measured - provider daily limit reached (after ${n} answers)`, note: String(r.error || '').slice(0, 200), rows: [] }
+    }
     if (n === 0 && r.status && r.status >= 400 && r.status < 500 && r.status !== 429 && GONE.test(r.error || '')) {
       return { id, provider, model, status: provider === 'openrouter' ? 'retired' : 'not offered', note: `HTTP ${r.status}: ${r.error}`, rows: [] }
     }

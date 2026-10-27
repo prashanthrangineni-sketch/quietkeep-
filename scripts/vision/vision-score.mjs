@@ -254,7 +254,14 @@ export function scoreVisionRecord(expected, rawGot) {
       let cleaned = rawGot.trim()
       const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
       if (fenceMatch) cleaned = fenceMatch[1].trim()
-      got = JSON.parse(cleaned)
+      try {
+        got = JSON.parse(cleaned)
+      } catch {
+        // Some models wrap the JSON in a sentence. Take the outermost {...}.
+        const a = cleaned.indexOf('{'), b = cleaned.lastIndexOf('}')
+        if (a < 0 || b <= a) throw new Error('no json object')
+        got = JSON.parse(cleaned.slice(a, b + 1))
+      }
       jsonValid = got !== null && typeof got === 'object'
     } catch {
       got = null

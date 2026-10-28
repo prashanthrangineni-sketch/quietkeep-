@@ -72,9 +72,10 @@ function BiometricToggleSection() {
   const [msg,       setMsg]       = React.useState('');
 
   React.useEffect(() => {
-    import('@/lib/biometricLock').then(m => {
+    import('@/lib/biometricLock').then(async m => {
       setSupported(m.isBiometricSupported());
-      setEnabled(m.isBiometricEnabled());
+      const en = typeof m.getBiometricEnabled === 'function' ? await m.getBiometricEnabled() : m.isBiometricEnabled();
+      setEnabled(en);
     }).catch(() => {});
   }, []);
 

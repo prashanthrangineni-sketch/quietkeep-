@@ -1,4 +1,18 @@
-import { describe, it, expect } from 'vitest';
+// Node's built-in test runner (CI runs plain node; vitest is not installed).
+import { describe, it as nodeIt } from 'node:test';
+import assert from 'node:assert/strict';
+const fmtName = (name, row, i) => {
+  if (row !== null && typeof row === 'object') {
+    return name.replace(/\$(\w+)/g, (_, k) => String(row[k])).replace('%j', JSON.stringify(row)) + ' [' + i + ']';
+  }
+  return name.replace('%s', String(row)) + ' [' + i + ']';
+};
+const it = (name, fn) => nodeIt(name, fn);
+it.each = (rows) => (name, fn) => rows.forEach((row, i) => nodeIt(fmtName(name, row, i), () => fn(row)));
+const expect = (actual) => ({
+  toBe: (expected) => assert.strictEqual(actual, expected),
+  toBeFalsy: () => assert.ok(!actual),
+});
 import {
   decideVoiceGate,
   isPrivateRead,

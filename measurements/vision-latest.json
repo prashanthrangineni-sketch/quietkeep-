@@ -1,6 +1,6 @@
 {
-  "measured_at": "2026-10-28T05:17:33.415Z",
-  "run_url": "https://github.com/prashanthrangineni-sketch/quietkeep-/actions/runs/40637112358",
+  "measured_at": "2026-10-28T05:30:41.991Z",
+  "run_url": "https://github.com/prashanthrangineni-sketch/quietkeep-/actions/runs/40638393172",
   "timeout_ms": 45000,
   "cases": {
     "total": 40
@@ -10,19 +10,6 @@
       "id": "openrouter:nvidia/nemotron-3.5-super-vl:free",
       "provider": "openrouter",
       "model": "nvidia/nemotron-3.5-super-vl:free",
-      "status": "not measured - provider daily limit reached (after 19 answers)",
-      "note": "{\"error\":{\"message\":\"Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day\",\"code\":429,\"metadata\":{\"headers\":{\"X-RateLimit-Limit\":\"50\",\"X-RateLimit-Remain",
-      "rows": [],
-      "summary": null,
-      "price": {
-        "text": "$0 (OpenRouter \":free\" variant; rate-limited)",
-        "url": "https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free"
-      }
-    },
-    {
-      "id": "gemini:gemini-3.5-flash-lite",
-      "provider": "gemini",
-      "model": "gemini-3.5-flash-lite",
       "status": "measured",
       "rows": [
         {
@@ -30,7 +17,7 @@
           "doc_type": "kirana",
           "script": "english",
           "variation": "clean",
-          "ms": 1555,
+          "ms": 15097,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -87,7 +74,7 @@
           "doc_type": "kirana",
           "script": "english",
           "variation": "thermal_faded",
-          "ms": 1153,
+          "ms": 5278,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -132,14 +119,14 @@
             "mrp": null,
             "expiry": null
           },
-          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"New City Provision Store\",\n  \"date\": \"2026-10-23\",\n  \"total\": 215,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Brooke Bond Red Label Tea\",\n      \"qty\": \"250 g\",\n      \"price\": 135\n    },\n    {\n      \"name\": \"Sugar Medium\",\n      \"qty\": \"2 kg\",\n      \"price\": 80\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\": null\n}"
+          "raw_head": "{\"doc_type\": \"kirana\", \"merchant\": \"New City Provision Store\", \"date\": \"2026-10-23\", \"total\": 215, \"currency\": \"INR\", \"items\": [{\"name\": \"Brooke Bond Red Label Tea\", \"qty\": \"250 g\", \"price\": 135}, {\"name\": \"Sugar Medium\", \"qty\": \"2 kg\", \"price\": 80}], \"mrp\": null, \"expiry\": null}"
         },
         {
           "id": "kirana_hi_01",
           "doc_type": "kirana",
           "script": "hindi",
           "variation": "clean",
-          "ms": 1459,
+          "ms": 5813,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -189,19 +176,19 @@
             "mrp": null,
             "expiry": null
           },
-          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"श्री गणेश किराना स्टोर\",\n  \"date\": \"2026-10-15\",\n  \"total\": 530,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"बासमती चावल\",\n      \"qty\": \"2 kg\",\n      \"price\": 220\n    },\n    {\n      \"name\": \"अरहर दाल\",\n      \"qty\": \"1 kg\",\n      \"price\": 170\n    },\n    {\n      \"name\": \"सरसों का तेल\",\n      \"qty\": \"1 L\",\n      \"price\": 140\n    }\n  ],\n  \"mrp\": null"
+          "raw_head": "{\"doc_type\": \"kirana\", \"merchant\": \"श्री गणेश किराना स्टोर\", \"date\": \"2026-10-15\", \"total\": 530, \"currency\": \"INR\", \"items\": [{\"name\": \"बासमती चावल\", \"qty\": \"2 kg\", \"price\": 220}, {\"name\": \"अरहर दाल\", \"qty\": \"1 kg\", \"price\": 170}, {\"name\": \"सरसों का तेल\", \"qty\": \"1 L\", \"price\": 140}], \"mrp\": null, \"expiry\": null}"
         },
         {
           "id": "kirana_hi_02",
           "doc_type": "kirana",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 1555,
+          "ms": 9584,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
           "error": null,
-          "pass": true,
+          "pass": false,
           "json_valid": true,
           "checks": {
             "json_valid": true,
@@ -209,31 +196,34 @@
             "date": true,
             "mrp": true,
             "expiry": true,
-            "merchant": true
+            "merchant": false
           },
-          "fails": [],
+          "fails": [
+            "merchant: expected \"अग्रवाल प्रोविजन स्टोर\", got \"KIRANA & PROVISION MERCHANTS\"",
+            "items_f1_low: 0.5 (matched 1/2)"
+          ],
           "items_f1": {
-            "precision": 1,
-            "recall": 1,
-            "f1": 1,
-            "matched": 2,
+            "precision": 0.5,
+            "recall": 0.5,
+            "f1": 0.5,
+            "matched": 1,
             "expected": 2,
             "got": 2
           },
           "got": {
             "doc_type": "kirana",
-            "merchant": "अग्रवाल प्रोविजन स्टोर",
+            "merchant": "KIRANA & PROVISION MERCHANTS",
             "date": "2026-10-19",
             "total": 275,
             "currency": "INR",
             "items": [
               {
-                "name": "राजमा चित्रा",
+                "name": "राजमा चावल",
                 "qty": "1 kg",
                 "price": 145
               },
               {
-                "name": "सफेद चना",
+                "name": "सेफ्ट चना",
                 "qty": "1 kg",
                 "price": 130
               }
@@ -241,14 +231,14 @@
             "mrp": null,
             "expiry": null
           },
-          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"अग्रवाल प्रोविजन स्टोर\",\n  \"date\": \"2026-10-19\",\n  \"total\": 275,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"राजमा चित्रा\",\n      \"qty\": \"1 kg\",\n      \"price\": 145\n    },\n    {\n      \"name\": \"सफेद चना\",\n      \"qty\": \"1 kg\",\n      \"price\": 130\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\": null\n}"
+          "raw_head": "{\"doc_type\": \"kirana\", \"merchant\": \"KIRANA & PROVISION MERCHANTS\", \"date\": \"2026-10-19\", \"total\": 275, \"currency\": \"INR\", \"items\": [{\"name\": \"राजमा चावल\", \"qty\": \"1 kg\", \"price\": 145}, {\"name\": \"सेफ्ट चना\", \"qty\": \"1 kg\", \"price\": 130}], \"mrp\": null, \"expiry\": null}"
         },
         {
           "id": "kirana_hi_03",
           "doc_type": "kirana",
           "script": "hindi",
           "variation": "rotation",
-          "ms": 1366,
+          "ms": 7320,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -305,7 +295,7 @@
           "doc_type": "kirana",
           "script": "mixed",
           "variation": "rotation",
-          "ms": 1602,
+          "ms": 6190,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -331,7 +321,7 @@
           },
           "got": {
             "doc_type": "kirana",
-            "merchant": "Sri Balaji Kirana & జనరల్ స్టోర్స్",
+            "merchant": "Sri Balaji Kirana",
             "date": "2026-10-17",
             "total": 540,
             "currency": "INR",
@@ -355,14 +345,14 @@
             "mrp": null,
             "expiry": null
           },
-          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"Sri Balaji Kirana & జనరల్ స్టోర్స్\",\n  \"date\": \"2026-10-17\",\n  \"total\": 540,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Sona Masoori బియ్యం 5kg\",\n      \"qty\": \"1 bag\",\n      \"price\": 330\n    },\n    {\n      \"name\": \"Surf Excel వాషింగ్ పౌడర్\",\n      \"qty\": \"1 kg\",\n      \"price\": 140\n    },\n    {\n      \"name\": \"Lifebuoy సబ్బు\",\n      \"qty\": \"2 pcs\""
+          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"Sri Balaji Kirana\",\n  \"date\": \"2026-10-17\",\n  \"total\": 540,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Sona Masoori బియ్యం 5kg\",\n      \"qty\": \"1 bag\",\n      \"price\": 330\n    },\n    {\n      \"name\": \"Surf Excel వాషింగ్ పౌడర్\",\n      \"qty\": \"1 kg\",\n      \"price\": 140\n    },\n    {\n      \"name\": \"Lifebuoy సబ్బు\",\n      \"qty\": \"2 pcs\",\n      \"price\": "
         },
         {
           "id": "kirana_mixed_02",
           "doc_type": "kirana",
           "script": "mixed",
           "variation": "blur",
-          "ms": 1505,
+          "ms": 5371,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -419,7 +409,1791 @@
           "doc_type": "kirana",
           "script": "telugu",
           "variation": "clean",
-          "ms": 1435,
+          "ms": 9950,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": false,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": false
+          },
+          "fails": [
+            "merchant: expected \"శ్రీ వేంకటేశ్వర కిరాణా జనరల్ స్టోర్స్\", got \"KIRANA & PROVISION MERCHANTS\""
+          ],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 2,
+            "expected": 2,
+            "got": 2
+          },
+          "got": {
+            "doc_type": "kirana",
+            "merchant": "KIRANA & PROVISION MERCHANTS",
+            "date": "2026-10-18",
+            "total": 485,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "సోనా మసూరి బియ్యం",
+                "qty": "5 kg",
+                "price": 320
+              },
+              {
+                "name": "కందపప్పు",
+                "qty": "1 kg",
+                "price": 165
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\"doc_type\": \"kirana\", \"merchant\": \"KIRANA & PROVISION MERCHANTS\", \"date\": \"2026-10-18\", \"total\": 485, \"currency\": \"INR\", \"items\": [{\"name\": \"సోనా మసూరి బియ్యం\", \"qty\": \"5 kg\", \"price\": 320}, {\"name\": \"కందపప్పు\", \"qty\": \"1 kg\", \"price\": 165}], \"mrp\": null, \"expiry\": null}"
+        },
+        {
+          "id": "kirana_te_02",
+          "doc_type": "kirana",
+          "script": "telugu",
+          "variation": "thermal_faded",
+          "ms": 9270,
+          "retries": 0,
+          "failure": "no_json",
+          "failure_kind": "no_json",
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "no_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": ""
+        },
+        {
+          "id": "kirana_te_03",
+          "doc_type": "kirana",
+          "script": "telugu",
+          "variation": "phone_shadow",
+          "ms": 11124,
+          "retries": 0,
+          "failure": "no_json",
+          "failure_kind": "no_json",
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "no_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 4,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": ""
+        },
+        {
+          "id": "pharma_en_01",
+          "doc_type": "pharmacy",
+          "script": "english",
+          "variation": "clean",
+          "ms": 6576,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": false,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": false,
+            "merchant": true
+          },
+          "fails": [
+            "expiry: expected 2027-12, got null"
+          ],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "pharmacy",
+            "merchant": "Apollo SafeCare Pharmacy",
+            "date": "2026-10-20",
+            "total": 342,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Dolo 650mg Paracetamol Tab",
+                "qty": "15 tabs",
+                "price": 42
+              },
+              {
+                "name": "Augmentin 625 Duo Tab",
+                "qty": "10 tabs",
+                "price": 180
+              },
+              {
+                "name": "Benadryl Cough Syrup 100ml",
+                "qty": "1 bottle",
+                "price": 120
+              }
+            ],
+            "mrp": 360,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"pharmacy\",\n  \"merchant\": \"Apollo SafeCare Pharmacy\",\n  \"date\": \"2026-10-20\",\n  \"total\": 342,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Dolo 650mg Paracetamol Tab\",\n      \"qty\": \"15 tabs\",\n      \"price\": 42\n    },\n    {\n      \"name\": \"Augmentin 625 Duo Tab\",\n      \"qty\": \"10 tabs\",\n      \"price\": 180\n    },\n    {\n      \"name\": \"Benadryl Cough Syrup 100ml\",\n      \"qty\":"
+        },
+        {
+          "id": "pharma_en_02",
+          "doc_type": "pharmacy",
+          "script": "english",
+          "variation": "rotation",
+          "ms": 27795,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "pharmacy",
+            "merchant": "MedPlus Health Care Chemists",
+            "date": "2026-10-22",
+            "total": 275,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Pantocid DSR Capsule",
+                "qty": "10 caps",
+                "price": 165
+              },
+              {
+                "name": "Cetirizine 10mg Tab",
+                "qty": "20 tabs",
+                "price": 50
+              },
+              {
+                "name": "Electral Powder 21.8g",
+                "qty": "3 sachets",
+                "price": 60
+              }
+            ],
+            "mrp": 290,
+            "expiry": "2028-05"
+          },
+          "raw_head": "{\n  \"doc_type\": \"pharmacy\",\n  \"merchant\": \"MedPlus Health Care Chemists\",\n  \"date\": \"2026-10-22\",\n  \"total\": 275,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Pantocid DSR Capsule\",\n      \"qty\": \"10 caps\",\n      \"price\": 165\n    },\n    {\n      \"name\": \"Cetirizine 10mg Tab\",\n      \"qty\": \"20 tabs\",\n      \"price\": 50\n    },\n    {\n      \"name\": \"Electral Powder 21.8g\",\n      \"qty\": \"3 sache"
+        },
+        {
+          "id": "pharma_en_03",
+          "doc_type": "pharmacy",
+          "script": "english",
+          "variation": "phone_shadow",
+          "ms": 11167,
+          "retries": 0,
+          "failure": "no_json",
+          "failure_kind": "no_json",
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "no_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": ""
+        },
+        {
+          "id": "pharma_hi_01",
+          "doc_type": "pharmacy",
+          "script": "hindi",
+          "variation": "clean",
+          "ms": 16035,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "invalid_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": "{\n  \"doc_type\": \"pharmacy\",\n  \"merchant\": \"संजीवनी मेडिकल स्टोर\",\n  \"date\": \"2026-10-18\",\n  \"total\": 320,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"वर्ड सिपराक्ज़ एवं Moov\",\n      \"qty\": \"1 ट्यूब\",\n      \"price\": 135\n    },\n    {\n      \"name\": \"गैस की गोली Rabeprazole\",\n      \"qty\": \"15 गोलियां\",\n      \"price\": 125\n    },\n    {\n      \"name\": \"पudin हारा कैम्पूल\",\n      \"qty\": \"1"
+        },
+        {
+          "id": "pharma_hi_02",
+          "doc_type": "pharmacy",
+          "script": "hindi",
+          "variation": "low_contrast",
+          "ms": 6719,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "pharmacy",
+            "merchant": "जन औषधि केन्द्र दवाखाना",
+            "date": "2026-10-21",
+            "total": 145,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "पेरासिटामोल 500mg",
+                "qty": "20 गोली",
+                "price": 20
+              },
+              {
+                "name": "मल्टीविटामिन सिरप",
+                "qty": "1 बोतल",
+                "price": 85
+              },
+              {
+                "name": "बैंड एड पट्टी",
+                "qty": "10 पिस",
+                "price": 40
+              }
+            ],
+            "mrp": 155,
+            "expiry": "2028-01"
+          },
+          "raw_head": "{\n  \"doc_type\": \"pharmacy\",\n  \"merchant\": \"जन औषधि केन्द्र दवाखाना\",\n  \"date\": \"2026-10-21\",\n  \"total\": 145,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"पेरासिटामोल 500mg\",\n      \"qty\": \"20 गोली\",\n      \"price\": 20\n    },\n    {\n      \"name\": \"मल्टीविटामिन सिरप\",\n      \"qty\": \"1 बोतल\",\n      \"price\": 85\n    },\n    {\n      \"name\": \"बैंड एड पट्टी\",\n      \"qty\": \"10 पिस\",\n      \"price\": 40\n"
+        },
+        {
+          "id": "pharma_mixed_01",
+          "doc_type": "pharmacy",
+          "script": "mixed",
+          "variation": "rotation",
+          "ms": 6662,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": false,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": false,
+            "merchant": true
+          },
+          "fails": [
+            "expiry: expected 2027-08, got null"
+          ],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "pharmacy",
+            "merchant": "National SafeCare Medicals",
+            "date": "2026-10-23",
+            "total": 410,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Azithromycin 500mg",
+                "qty": "5 tabs",
+                "price": 120
+              },
+              {
+                "name": "Ascoriil D Plus Syrup",
+                "qty": "1 bottle",
+                "price": 140
+              },
+              {
+                "name": "Volini Pain Spray",
+                "qty": "1 can",
+                "price": 150
+              }
+            ],
+            "mrp": 435,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"pharmacy\",\n  \"merchant\": \"National SafeCare Medicals\",\n  \"date\": \"2026-10-23\",\n  \"total\": 410,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Azithromycin 500mg\",\n      \"qty\": \"5 tabs\",\n      \"price\": 120\n    },\n    {\n      \"name\": \"Ascoriil D Plus Syrup\",\n      \"qty\": \"1 bottle\",\n      \"price\": 140\n    },\n    {\n      \"name\": \"Volini Pain Spray\",\n      \"qty\": \"1 can\",\n    "
+        },
+        {
+          "id": "pharma_te_01",
+          "doc_type": "pharmacy",
+          "script": "telugu",
+          "variation": "clean",
+          "ms": 7348,
+          "retries": 0,
+          "failure": "no_json",
+          "failure_kind": "no_json",
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "no_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": ""
+        },
+        {
+          "id": "pharma_te_02",
+          "doc_type": "pharmacy",
+          "script": "telugu",
+          "variation": "thermal_faded",
+          "ms": 8533,
+          "retries": 0,
+          "failure": "no_json",
+          "failure_kind": "no_json",
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "no_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": ""
+        },
+        {
+          "id": "product_en_01",
+          "doc_type": "product_label",
+          "script": "english",
+          "variation": "clean",
+          "ms": 7264,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
+            "expected": 1,
+            "got": 1
+          },
+          "got": {
+            "doc_type": "product_label",
+            "merchant": "NaturePure Foods",
+            "date": "2026-09-20",
+            "total": null,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Cold Pressed Groundnut Oil",
+                "qty": "1 Litre",
+                "price": 299
+              }
+            ],
+            "mrp": 299,
+            "expiry": "2027-09-20"
+          },
+          "raw_head": "{\n  \"doc_type\": \"product_label\",\n  \"merchant\": \"NaturePure Foods\",\n  \"date\": \"2026-09-20\",\n  \"total\": null,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Cold Pressed Groundnut Oil\",\n      \"qty\": \"1 Litre\",\n      \"price\": 299\n    }\n  ],\n  \"mrp\": 299,\n  \"expiry\": \"2027-09-20\"\n}"
+        },
+        {
+          "id": "product_en_02",
+          "doc_type": "product_label",
+          "script": "english",
+          "variation": "low_contrast",
+          "ms": 7840,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
+            "expected": 1,
+            "got": 1
+          },
+          "got": {
+            "doc_type": "product_label",
+            "merchant": "AyurGlow Care",
+            "date": "2026-08-15",
+            "total": null,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Pure Herbal Aloe Vera Gel",
+                "qty": "200 g",
+                "price": 199
+              }
+            ],
+            "mrp": 199,
+            "expiry": "2028-08-15"
+          },
+          "raw_head": "{\"doc_type\": \"product_label\", \"merchant\": \"AyurGlow Care\", \"date\": \"2026-08-15\", \"total\": null, \"currency\": \"INR\", \"items\": [{\"name\": \"Pure Herbal Aloe Vera Gel\", \"qty\": \"200 g\", \"price\": 199}], \"mrp\": 199, \"expiry\": \"2028-08-15\"}"
+        },
+        {
+          "id": "product_hi_01",
+          "doc_type": "product_label",
+          "script": "hindi",
+          "variation": "clean",
+          "ms": 11118,
+          "retries": 0,
+          "failure": "no_json",
+          "failure_kind": "no_json",
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "no_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": ""
+        },
+        {
+          "id": "product_hi_02",
+          "doc_type": "product_label",
+          "script": "hindi",
+          "variation": "rotation",
+          "ms": 45002,
+          "retries": 0,
+          "failure": "timeout",
+          "failure_kind": "timeout",
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "timeout"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": null
+        },
+        {
+          "id": "product_mixed_01",
+          "doc_type": "product_label",
+          "script": "mixed",
+          "variation": "blur",
+          "ms": 10744,
+          "retries": 0,
+          "failure": "no_json",
+          "failure_kind": "no_json",
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "no_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": ""
+        },
+        {
+          "id": "product_mixed_02",
+          "doc_type": "product_label",
+          "script": "mixed",
+          "variation": "thermal_faded",
+          "ms": 18076,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
+            "expected": 1,
+            "got": 1
+          },
+          "got": {
+            "doc_type": "product_label",
+            "merchant": "Kisan Shakti",
+            "date": "2026-10-05",
+            "total": null,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Chana Sattu",
+                "qty": "500 g",
+                "price": 110
+              }
+            ],
+            "mrp": 110,
+            "expiry": "2027-04-05"
+          },
+          "raw_head": "{\n  \"doc_type\": \"product_label\",\n  \"merchant\": \"Kisan Shakti\",\n  \"date\": \"2026-10-05\",\n  \"total\": null,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Chana Sattu\",\n      \"qty\": \"500 g\",\n      \"price\": 110\n    }\n  ],\n  \"mrp\": 110,\n  \"expiry\": \"2027-04-05\"\n}"
+        },
+        {
+          "id": "product_te_01",
+          "doc_type": "product_label",
+          "script": "telugu",
+          "variation": "clean",
+          "ms": 10024,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": false,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": false
+          },
+          "fails": [
+            "merchant: expected \"గోదావరి నేచురల్స్\", got \"Sesame Oil\""
+          ],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 1,
+            "expected": 1,
+            "got": 1
+          },
+          "got": {
+            "doc_type": "product_label",
+            "merchant": "Sesame Oil",
+            "date": "2026-09-15",
+            "total": null,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Sesame Oil",
+                "qty": "500 ml",
+                "price": 260
+              }
+            ],
+            "mrp": 260,
+            "expiry": "2027-03-15"
+          },
+          "raw_head": "{\"doc_type\": \"product_label\", \"merchant\": \"Sesame Oil\", \"date\": \"2026-09-15\", \"total\": null, \"currency\": \"INR\", \"items\": [{\"name\": \"Sesame Oil\", \"qty\": \"500 ml\", \"price\": 260}], \"mrp\": 260, \"expiry\": \"2027-03-15\"}"
+        },
+        {
+          "id": "product_te_02",
+          "doc_type": "product_label",
+          "script": "telugu",
+          "variation": "phone_shadow",
+          "ms": 10377,
+          "retries": 0,
+          "failure": "no_json",
+          "failure_kind": "no_json",
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "no_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": ""
+        },
+        {
+          "id": "restaurant_en_01",
+          "doc_type": "restaurant",
+          "script": "english",
+          "variation": "clean",
+          "ms": 45000,
+          "retries": 0,
+          "failure": "timeout",
+          "failure_kind": "timeout",
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "timeout"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 3,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": null
+        },
+        {
+          "id": "restaurant_en_02",
+          "doc_type": "restaurant",
+          "script": "english",
+          "variation": "phone_shadow",
+          "ms": 6844,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "restaurant",
+            "merchant": "Paradise Biryani Hub",
+            "date": "2026-10-21",
+            "total": 682,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Special Chicken Biryani",
+                "qty": "1",
+                "price": 380
+              },
+              {
+                "name": "Butter Naan",
+                "qty": "3",
+                "price": 150
+              },
+              {
+                "name": "Paneer Butter Masala",
+                "qty": "1",
+                "price": 120
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\"doc_type\": \"restaurant\", \"merchant\": \"Paradise Biryani Hub\", \"date\": \"2026-10-21\", \"total\": 682, \"currency\": \"INR\", \"items\": [{\"name\": \"Special Chicken Biryani\", \"qty\": \"1\", \"price\": 380}, {\"name\": \"Butter Naan\", \"qty\": \"3\", \"price\": 150}, {\"name\": \"Paneer Butter Masala\", \"qty\": \"1\", \"price\": 120}], \"mrp\": null, \"expiry\": null}"
+        },
+        {
+          "id": "restaurant_hi_01",
+          "doc_type": "restaurant",
+          "script": "hindi",
+          "variation": "clean",
+          "ms": 5671,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "restaurant",
+            "merchant": "शाकाहारी भोजन वाटिका",
+            "date": "2026-10-15",
+            "total": 399,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "दाल मखनी",
+                "qty": "1",
+                "price": 180
+              },
+              {
+                "name": "तंदूरी रोटी",
+                "qty": "4",
+                "price": 80
+              },
+              {
+                "name": "जीरा राइस",
+                "qty": "1",
+                "price": 120
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\"doc_type\": \"restaurant\", \"merchant\": \"शाकाहारी भोजन वाटिका\", \"date\": \"2026-10-15\", \"total\": 399, \"currency\": \"INR\", \"items\": [{\"name\": \"दाल मखनी\", \"qty\": \"1\", \"price\": 180}, {\"name\": \"तंदूरी रोटी\", \"qty\": \"4\", \"price\": 80}, {\"name\": \"जीरा राइस\", \"qty\": \"1\", \"price\": 120}], \"mrp\": null, \"expiry\": null}"
+        },
+        {
+          "id": "restaurant_hi_02",
+          "doc_type": "restaurant",
+          "script": "hindi",
+          "variation": "low_contrast",
+          "ms": 5883,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": false,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [
+            "items_f1_low: 0.5 (matched 1/2)"
+          ],
+          "items_f1": {
+            "precision": 0.5,
+            "recall": 0.5,
+            "f1": 0.5,
+            "matched": 1,
+            "expected": 2,
+            "got": 2
+          },
+          "got": {
+            "doc_type": "restaurant",
+            "merchant": "दिल्ली स्वाद दावा",
+            "date": "2026-10-20",
+            "total": 294,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "छोले भटूरे",
+                "qty": "2 प्लेट",
+                "price": 180
+              },
+              {
+                "name": "मिस्सी रोटी",
+                "qty": "2 मिलास",
+                "price": 100
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"restaurant\",\n  \"merchant\": \"दिल्ली स्वाद दावा\",\n  \"date\": \"2026-10-20\",\n  \"total\": 294,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"छोले भटूरे\",\n      \"qty\": \"2 प्लेट\",\n      \"price\": 180\n    },\n    {\n      \"name\": \"मिस्सी रोटी\",\n      \"qty\": \"2 मिलास\",\n      \"price\": 100\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\": null\n}"
+        },
+        {
+          "id": "restaurant_mixed_01",
+          "doc_type": "restaurant",
+          "script": "mixed",
+          "variation": "rotation",
+          "ms": 7627,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "restaurant",
+            "merchant": "Anand Bhavan Tiffins",
+            "date": "2026-10-23",
+            "total": 241,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Onion Rava Dosa",
+                "qty": "1",
+                "price": 95
+              },
+              {
+                "name": "Poori Bhajji",
+                "qty": "1",
+                "price": 85
+              },
+              {
+                "name": "Special Tea",
+                "qty": "2",
+                "price": 50
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\"doc_type\": \"restaurant\", \"merchant\": \"Anand Bhavan Tiffins\", \"date\": \"2026-10-23\", \"total\": 241, \"currency\": \"INR\", \"items\": [{\"name\": \"Onion Rava Dosa\", \"qty\": \"1\", \"price\": 95}, {\"name\": \"Poori Bhajji\", \"qty\": \"1\", \"price\": 85}, {\"name\": \"Special Tea\", \"qty\": \"2\", \"price\": 50}], \"mrp\": null, \"expiry\": null}"
+        },
+        {
+          "id": "restaurant_mixed_02",
+          "doc_type": "restaurant",
+          "script": "mixed",
+          "variation": "blur",
+          "ms": 6549,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "restaurant",
+            "merchant": "Punjab Rasoi",
+            "date": "2026-10-24",
+            "total": 462,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Paneer Tikka",
+                "qty": "1",
+                "price": 240
+              },
+              {
+                "name": "Garlic Naan",
+                "qty": "2",
+                "price": 120
+              },
+              {
+                "name": "Sweet Lassi",
+                "qty": "1",
+                "price": 80
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"restaurant\",\n  \"merchant\": \"Punjab Rasoi\",\n  \"date\": \"2026-10-24\",\n  \"total\": 462,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Paneer Tikka\",\n      \"qty\": \"1\",\n      \"price\": 240\n    },\n    {\n      \"name\": \"Garlic Naan\",\n      \"qty\": \"2\",\n      \"price\": 120\n    },\n    {\n      \"name\": \"Sweet Lassi\",\n      \"qty\": \"1\",\n      \"price\": 80\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\""
+        },
+        {
+          "id": "restaurant_te_01",
+          "doc_type": "restaurant",
+          "script": "telugu",
+          "variation": "clean",
+          "ms": 7033,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": false,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": false
+          },
+          "fails": [
+            "merchant: expected \"గోదావరి రుచులు రెస్టారెంట్\", got \"గీతక రుచులు రెస్టారెంట్ Family Restaurant & Pure Vegetarian Tiffins\""
+          ],
+          "items_f1": {
+            "precision": 0.667,
+            "recall": 0.667,
+            "f1": 0.667,
+            "matched": 2,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "restaurant",
+            "merchant": "గీతక రుచులు రెస్టారెంట్ Family Restaurant & Pure Vegetarian Tiffins",
+            "date": "2026-10-18",
+            "total": 472,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "సాలాడ్ ప్లేటు",
+                "qty": "1",
+                "price": 290
+              },
+              {
+                "name": "గోంగూర పచ్చడి అరటి",
+                "qty": "1",
+                "price": 110
+              },
+              {
+                "name": "మజ్జిగ",
+                "qty": "2",
+                "price": 50
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"restaurant\",\n  \"merchant\": \"గీతక రుచులు రెస్టారెంట్ Family Restaurant & Pure Vegetarian Tiffins\",\n  \"date\": \"2026-10-18\",\n  \"total\": 472,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"సాలాడ్ ప్లేటు\",\n      \"qty\": \"1\",\n      \"price\": 290\n    },\n    {\n      \"name\": \"గోంగూర పచ్చడి అరటి\",\n      \"qty\": \"1\",\n      \"price\": 110\n    },\n    {\n      \"name\": \"మజ్జిగ\",\n      \"qty\": \""
+        },
+        {
+          "id": "restaurant_te_02",
+          "doc_type": "restaurant",
+          "script": "telugu",
+          "variation": "thermal_faded",
+          "ms": 8571,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "invalid_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": "{\n  \"doc_type\": \"restaurant\",\n  \"merchant\": \"Family Restaurant & Pure Vegetarian Tiffins\",\n  \"date\": \"2026-10-22\",\n  \"total\": 262,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"అందhra భోజన మెను\",\n      \"qty\": \"2\",\n      \"price\": 220"
+        },
+        {
+          "id": "utility_en_01",
+          "doc_type": "utility",
+          "script": "english",
+          "variation": "clean",
+          "ms": 5056,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 2,
+            "expected": 2,
+            "got": 2
+          },
+          "got": {
+            "doc_type": "utility",
+            "merchant": "TGSPDCL Southern Power",
+            "date": "2026-10-12",
+            "total": 1420,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Energy Consumption Charges",
+                "qty": "1",
+                "price": 1300
+              },
+              {
+                "name": "Customer & Meter Charges",
+                "qty": "1",
+                "price": 120
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\"doc_type\": \"utility\", \"merchant\": \"TGSPDCL Southern Power\", \"date\": \"2026-10-12\", \"total\": 1420, \"currency\": \"INR\", \"items\": [{\"name\": \"Energy Consumption Charges\", \"qty\": \"1\", \"price\": 1300}, {\"name\": \"Customer & Meter Charges\", \"qty\": \"1\", \"price\": 120}], \"mrp\": null, \"expiry\": null}"
+        },
+        {
+          "id": "utility_en_02",
+          "doc_type": "utility",
+          "script": "english",
+          "variation": "phone_shadow",
+          "ms": 6134,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 1,
+            "got": 2
+          },
+          "got": {
+            "doc_type": "utility",
+            "merchant": "HMWSSB Water Supply Board",
+            "date": "2026-10-10",
+            "total": 560,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Energy Consumption Charges",
+                "qty": "1",
+                "price": 440
+              },
+              {
+                "name": "Customer & Meter Charges",
+                "qty": "1",
+                "price": 120
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"utility\",\n  \"merchant\": \"HMWSSB Water Supply Board\",\n  \"date\": \"2026-10-10\",\n  \"total\": 560,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Energy Consumption Charges\",\n      \"qty\": \"1\",\n      \"price\": 440\n    },\n    {\n      \"name\": \"Customer & Meter Charges\",\n      \"qty\": \"1\",\n      \"price\": 120\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\": null\n}"
+        },
+        {
+          "id": "utility_hi_01",
+          "doc_type": "utility",
+          "script": "hindi",
+          "variation": "low_contrast",
+          "ms": 9089,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": false,
+          "json_valid": false,
+          "checks": {
+            "json_valid": false,
+            "total": false,
+            "date": false,
+            "mrp": false,
+            "expiry": false,
+            "merchant": false
+          },
+          "fails": [
+            "invalid_json"
+          ],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 0
+          },
+          "got": null,
+          "raw_head": "{\n  \"doc_type\": \"utility\",\n  \"merchant\": \"मध्य प्रदेश विद्युत वितरण कंपनी\",\n  \"date\": \"2026-10-13\",\n  \"total\": 980,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Energy Consumption Charges\",\n      \"qty\": \"1\",\n      \"price\": 860\n    },\n    {\n      \"name\": \"Customer & Meter Charges\",\n      \"qty\": \"1\",\n      \"price\": 120\n    }\n  ],\n  \"mrp"
+        },
+        {
+          "id": "utility_mixed_01",
+          "doc_type": "utility",
+          "script": "mixed",
+          "variation": "blur",
+          "ms": 4584,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 2
+          },
+          "got": {
+            "doc_type": "utility",
+            "merchant": "BSES Yamuna Power Limited",
+            "date": "2026-10-15",
+            "total": 1650,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Energy Consumption Charges",
+                "qty": "1",
+                "price": 1530
+              },
+              {
+                "name": "Customer & Meter Charges",
+                "qty": "1",
+                "price": 120
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\"doc_type\": \"utility\", \"merchant\": \"BSES Yamuna Power Limited\", \"date\": \"2026-10-15\", \"total\": 1650, \"currency\": \"INR\", \"items\": [{\"name\": \"Energy Consumption Charges\", \"qty\": \"1\", \"price\": 1530}, {\"name\": \"Customer & Meter Charges\", \"qty\": \"1\", \"price\": 120}], \"mrp\": null, \"expiry\": null}"
+        },
+        {
+          "id": "utility_te_01",
+          "doc_type": "utility",
+          "script": "telugu",
+          "variation": "clean",
+          "ms": 8253,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 2
+          },
+          "got": {
+            "doc_type": "utility",
+            "merchant": "TGSPDCL",
+            "date": "2026-10-11",
+            "total": 890,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Energy Consumption Charges",
+                "qty": "1",
+                "price": 770
+              },
+              {
+                "name": "Customer & Meter Charges",
+                "qty": "1",
+                "price": 120
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"utility\",\n  \"merchant\": \"TGSPDCL\",\n  \"date\": \"2026-10-11\",\n  \"total\": 890,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Energy Consumption Charges\",\n      \"qty\": \"1\",\n      \"price\": 770\n    },\n    {\n      \"name\": \"Customer & Meter Charges\",\n      \"qty\": \"1\",\n      \"price\": 120\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\": null\n}"
+        },
+        {
+          "id": "utility_te_02",
+          "doc_type": "utility",
+          "script": "telugu",
+          "variation": "rotation",
+          "ms": 5121,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "matched": 0,
+            "expected": 2,
+            "got": 2
+          },
+          "got": {
+            "doc_type": "utility",
+            "merchant": "TSNPDCL",
+            "date": "2026-10-14",
+            "total": 1150,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Energy Consumption Charges",
+                "qty": "1",
+                "price": 1030
+              },
+              {
+                "name": "Customer & Meter Charges",
+                "qty": "1",
+                "price": 120
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"utility\",\n  \"merchant\": \"TSNPDCL\",\n  \"date\": \"2026-10-14\",\n  \"total\": 1150,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Energy Consumption Charges\",\n      \"qty\": \"1\",\n      \"price\": 1030\n    },\n    {\n      \"name\": \"Customer & Meter Charges\",\n      \"qty\": \"1\",\n      \"price\": 120\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\": null\n}"
+        }
+      ],
+      "summary": {
+        "calls": 40,
+        "json_valid": {
+          "ok": 27,
+          "n": 40,
+          "pct": 67.5
+        },
+        "full_pass": {
+          "ok": 20,
+          "n": 40,
+          "pct": 50
+        },
+        "total": {
+          "ok": 27,
+          "n": 40,
+          "pct": 67.5
+        },
+        "date": {
+          "ok": 27,
+          "n": 40,
+          "pct": 67.5
+        },
+        "mrp": {
+          "ok": 27,
+          "n": 40,
+          "pct": 67.5
+        },
+        "expiry": {
+          "ok": 25,
+          "n": 40,
+          "pct": 62.5
+        },
+        "merchant": {
+          "ok": 23,
+          "n": 40,
+          "pct": 57.5
+        },
+        "avg_items_f1": 0.542,
+        "by_doc_type": {
+          "kirana": {
+            "full_pass": {
+              "ok": 6,
+              "n": 10,
+              "pct": 60
+            },
+            "total": {
+              "ok": 8,
+              "n": 10,
+              "pct": 80
+            },
+            "merchant": {
+              "ok": 6,
+              "n": 10,
+              "pct": 60
+            },
+            "avg_f1": 0.75
+          },
+          "pharmacy": {
+            "full_pass": {
+              "ok": 2,
+              "n": 8,
+              "pct": 25
+            },
+            "total": {
+              "ok": 4,
+              "n": 8,
+              "pct": 50
+            },
+            "merchant": {
+              "ok": 4,
+              "n": 8,
+              "pct": 50
+            },
+            "avg_f1": 0.5
+          },
+          "restaurant": {
+            "full_pass": {
+              "ok": 4,
+              "n": 8,
+              "pct": 50
+            },
+            "total": {
+              "ok": 6,
+              "n": 8,
+              "pct": 75
+            },
+            "merchant": {
+              "ok": 5,
+              "n": 8,
+              "pct": 62.5
+            },
+            "avg_f1": 0.646
+          },
+          "utility": {
+            "full_pass": {
+              "ok": 5,
+              "n": 6,
+              "pct": 83.3
+            },
+            "total": {
+              "ok": 5,
+              "n": 6,
+              "pct": 83.3
+            },
+            "merchant": {
+              "ok": 5,
+              "n": 6,
+              "pct": 83.3
+            },
+            "avg_f1": 0.167
+          },
+          "product_label": {
+            "full_pass": {
+              "ok": 3,
+              "n": 8,
+              "pct": 37.5
+            },
+            "total": {
+              "ok": 4,
+              "n": 8,
+              "pct": 50
+            },
+            "merchant": {
+              "ok": 3,
+              "n": 8,
+              "pct": 37.5
+            },
+            "avg_f1": 0.5
+          }
+        },
+        "by_script": {
+          "telugu": {
+            "full_pass": {
+              "ok": 2,
+              "n": 11,
+              "pct": 18.2
+            },
+            "merchant": {
+              "ok": 2,
+              "n": 11,
+              "pct": 18.2
+            },
+            "avg_f1": 0.242
+          },
+          "hindi": {
+            "full_pass": {
+              "ok": 4,
+              "n": 10,
+              "pct": 40
+            },
+            "merchant": {
+              "ok": 5,
+              "n": 10,
+              "pct": 50
+            },
+            "avg_f1": 0.5
+          },
+          "english": {
+            "full_pass": {
+              "ok": 8,
+              "n": 11,
+              "pct": 72.7
+            },
+            "merchant": {
+              "ok": 9,
+              "n": 11,
+              "pct": 81.8
+            },
+            "avg_f1": 0.727
+          },
+          "mixed": {
+            "full_pass": {
+              "ok": 6,
+              "n": 8,
+              "pct": 75
+            },
+            "merchant": {
+              "ok": 7,
+              "n": 8,
+              "pct": 87.5
+            },
+            "avg_f1": 0.75
+          }
+        },
+        "latency_ms": {
+          "answered": 30,
+          "p50": 6844,
+          "p95": 18076
+        },
+        "failures": {
+          "timeout": 2,
+          "http": 0,
+          "no_json": 8,
+          "threw": 0
+        }
+      },
+      "price": {
+        "text": "$0 (OpenRouter \":free\" variant; rate-limited)",
+        "url": "https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free"
+      }
+    },
+    {
+      "id": "gemini:gemini-3.5-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "status": "measured",
+      "rows": [
+        {
+          "id": "kirana_en_01",
+          "doc_type": "kirana",
+          "script": "english",
+          "variation": "clean",
+          "ms": 1141,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "kirana",
+            "merchant": "Bharat Super Kirana Store",
+            "date": "2026-10-16",
+            "total": 395,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Fortune Sunflower Oil 1L",
+                "qty": "1 pouch",
+                "price": 155
+              },
+              {
+                "name": "Tata Salt 1kg",
+                "qty": "2 pkts",
+                "price": 50
+              },
+              {
+                "name": "Aashirvaad Atta 5kg",
+                "qty": "1 bag",
+                "price": 190
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"Bharat Super Kirana Store\",\n  \"date\": \"2026-10-16\",\n  \"total\": 395,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Fortune Sunflower Oil 1L\",\n      \"qty\": \"1 pouch\",\n      \"price\": 155\n    },\n    {\n      \"name\": \"Tata Salt 1kg\",\n      \"qty\": \"2 pkts\",\n      \"price\": 50\n    },\n    {\n      \"name\": \"Aashirvaad Atta 5kg\",\n      \"qty\": \"1 bag\",\n      \"pr"
+        },
+        {
+          "id": "kirana_en_02",
+          "doc_type": "kirana",
+          "script": "english",
+          "variation": "thermal_faded",
+          "ms": 961,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -445,7 +2219,339 @@
           },
           "got": {
             "doc_type": "kirana",
-            "merchant": "శ్రీ వేంకటేశ్వర కిరాణా జనరల్ స్టోర్స్",
+            "merchant": "New City Provision Store",
+            "date": "2026-10-23",
+            "total": 215,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Brooke Bond Red Label Tea",
+                "qty": "250 g",
+                "price": 135
+              },
+              {
+                "name": "Sugar Medium",
+                "qty": "2 kg",
+                "price": 80
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"New City Provision Store\",\n  \"date\": \"2026-10-23\",\n  \"total\": 215,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Brooke Bond Red Label Tea\",\n      \"qty\": \"250 g\",\n      \"price\": 135\n    },\n    {\n      \"name\": \"Sugar Medium\",\n      \"qty\": \"2 kg\",\n      \"price\": 80\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\": null\n}"
+        },
+        {
+          "id": "kirana_hi_01",
+          "doc_type": "kirana",
+          "script": "hindi",
+          "variation": "clean",
+          "ms": 1348,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "kirana",
+            "merchant": "श्री गणेश किराना स्टोर",
+            "date": "2026-10-15",
+            "total": 530,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "बासमती चावल",
+                "qty": "2 kg",
+                "price": 220
+              },
+              {
+                "name": "अरहर दाल",
+                "qty": "1 kg",
+                "price": 170
+              },
+              {
+                "name": "सरसों का तेल",
+                "qty": "1 L",
+                "price": 140
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"श्री गणेश किराना स्टोर\",\n  \"date\": \"2026-10-15\",\n  \"total\": 530,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"बासमती चावल\",\n      \"qty\": \"2 kg\",\n      \"price\": 220\n    },\n    {\n      \"name\": \"अरहर दाल\",\n      \"qty\": \"1 kg\",\n      \"price\": 170\n    },\n    {\n      \"name\": \"सरसों का तेल\",\n      \"qty\": \"1 L\",\n      \"price\": 140\n    }\n  ],\n  \"mrp\": null"
+        },
+        {
+          "id": "kirana_hi_02",
+          "doc_type": "kirana",
+          "script": "hindi",
+          "variation": "low_contrast",
+          "ms": 967,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 2,
+            "expected": 2,
+            "got": 2
+          },
+          "got": {
+            "doc_type": "kirana",
+            "merchant": "अग्रवाल प्रोविजन स्टोर",
+            "date": "2026-10-19",
+            "total": 275,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "राजमा चित्रा",
+                "qty": "1 kg",
+                "price": 145
+              },
+              {
+                "name": "सफेद चना",
+                "qty": "1 kg",
+                "price": 130
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"अग्रवाल प्रोविजन स्टोर\",\n  \"date\": \"2026-10-19\",\n  \"total\": 275,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"राजमा चित्रा\",\n      \"qty\": \"1 kg\",\n      \"price\": 145\n    },\n    {\n      \"name\": \"सफेद चना\",\n      \"qty\": \"1 kg\",\n      \"price\": 130\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\": null\n}"
+        },
+        {
+          "id": "kirana_hi_03",
+          "doc_type": "kirana",
+          "script": "hindi",
+          "variation": "rotation",
+          "ms": 1190,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "kirana",
+            "merchant": "किसान सेवा किराना भंडार",
+            "date": "2026-10-21",
+            "total": 460,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "सूजी रवा",
+                "qty": "1 kg",
+                "price": 50
+              },
+              {
+                "name": "मैदा",
+                "qty": "1 kg",
+                "price": 45
+              },
+              {
+                "name": "देसी घी",
+                "qty": "500 g",
+                "price": 365
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"किसान सेवा किराना भंडार\",\n  \"date\": \"2026-10-21\",\n  \"total\": 460,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"सूजी रवा\",\n      \"qty\": \"1 kg\",\n      \"price\": 50\n    },\n    {\n      \"name\": \"मैदा\",\n      \"qty\": \"1 kg\",\n      \"price\": 45\n    },\n    {\n      \"name\": \"देसी घी\",\n      \"qty\": \"500 g\",\n      \"price\": 365\n    }\n  ],\n  \"mrp\": null,\n  \"expiry"
+        },
+        {
+          "id": "kirana_mixed_01",
+          "doc_type": "kirana",
+          "script": "mixed",
+          "variation": "rotation",
+          "ms": 1071,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "kirana",
+            "merchant": "Sri Balaji Kirana & జనరల్ స్టోర్స్",
+            "date": "2026-10-17",
+            "total": 540,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Sona Masoori బియ్యం 5kg",
+                "qty": "1 bag",
+                "price": 330
+              },
+              {
+                "name": "Surf Excel వాషింగ్ పౌడర్",
+                "qty": "1 kg",
+                "price": 140
+              },
+              {
+                "name": "Lifebuoy సబ్బు",
+                "qty": "2 pcs",
+                "price": 70
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"Sri Balaji Kirana & జనరల్ స్టోర్స్\",\n  \"date\": \"2026-10-17\",\n  \"total\": 540,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Sona Masoori బియ్యం 5kg\",\n      \"qty\": \"1 bag\",\n      \"price\": 330\n    },\n    {\n      \"name\": \"Surf Excel వాషింగ్ పౌడర్\",\n      \"qty\": \"1 kg\",\n      \"price\": 140\n    },\n    {\n      \"name\": \"Lifebuoy సబ్బు\",\n      \"qty\": \"2 pcs\""
+        },
+        {
+          "id": "kirana_mixed_02",
+          "doc_type": "kirana",
+          "script": "mixed",
+          "variation": "blur",
+          "ms": 1024,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 3,
+            "expected": 3,
+            "got": 3
+          },
+          "got": {
+            "doc_type": "kirana",
+            "merchant": "Shree Ram किराना & Daily Needs",
+            "date": "2026-10-24",
+            "total": 380,
+            "currency": "INR",
+            "items": [
+              {
+                "name": "Good Day बिस्कुट 4-pack",
+                "qty": "1 pkt",
+                "price": 80
+              },
+              {
+                "name": "Maggi Noodles मसाला",
+                "qty": "1 pack",
+                "price": 140
+              },
+              {
+                "name": "Amul Butter बटर 100g",
+                "qty": "2 pcs",
+                "price": 160
+              }
+            ],
+            "mrp": null,
+            "expiry": null
+          },
+          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"Shree Ram किराना & Daily Needs\",\n  \"date\": \"2026-10-24\",\n  \"total\": 380,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Good Day बिस्कुट 4-pack\",\n      \"qty\": \"1 pkt\",\n      \"price\": 80\n    },\n    {\n      \"name\": \"Maggi Noodles मसाला\",\n      \"qty\": \"1 pack\",\n      \"price\": 140\n    },\n    {\n      \"name\": \"Amul Butter बटर 100g\",\n      \"qty\": \"2 pcs\",\n"
+        },
+        {
+          "id": "kirana_te_01",
+          "doc_type": "kirana",
+          "script": "telugu",
+          "variation": "clean",
+          "ms": 1105,
+          "retries": 0,
+          "failure": null,
+          "failure_kind": null,
+          "error": null,
+          "pass": true,
+          "json_valid": true,
+          "checks": {
+            "json_valid": true,
+            "total": true,
+            "date": true,
+            "mrp": true,
+            "expiry": true,
+            "merchant": true
+          },
+          "fails": [],
+          "items_f1": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "matched": 2,
+            "expected": 2,
+            "got": 2
+          },
+          "got": {
+            "doc_type": "kirana",
+            "merchant": "శ్రీ వెంకటేశ్వర కిరాణా జనరల్ స్టోర్స్",
             "date": "2026-10-18",
             "total": 485,
             "currency": "INR",
@@ -464,14 +2570,14 @@
             "mrp": null,
             "expiry": null
           },
-          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"శ్రీ వేంకటేశ్వర కిరాణా జనరల్ స్టోర్స్\",\n  \"date\": \"2026-10-18\",\n  \"total\": 485,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"సోనా మసూరి బియ్యం\",\n      \"qty\": \"5 kg\",\n      \"price\": 320\n    },\n    {\n      \"name\": \"కందిపప్పు\",\n      \"qty\": \"1 kg\",\n      \"price\": 165\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\": null\n}"
+          "raw_head": "{\n  \"doc_type\": \"kirana\",\n  \"merchant\": \"శ్రీ వెంకటేశ్వర కిరాణా జనరల్ స్టోర్స్\",\n  \"date\": \"2026-10-18\",\n  \"total\": 485,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"సోనా మసూరి బియ్యం\",\n      \"qty\": \"5 kg\",\n      \"price\": 320\n    },\n    {\n      \"name\": \"కందిపప్పు\",\n      \"qty\": \"1 kg\",\n      \"price\": 165\n    }\n  ],\n  \"mrp\": null,\n  \"expiry\": null\n}"
         },
         {
           "id": "kirana_te_02",
           "doc_type": "kirana",
           "script": "telugu",
           "variation": "thermal_faded",
-          "ms": 1234,
+          "ms": 1086,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -528,7 +2634,7 @@
           "doc_type": "kirana",
           "script": "telugu",
           "variation": "phone_shadow",
-          "ms": 1709,
+          "ms": 1242,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -590,7 +2696,7 @@
           "doc_type": "pharmacy",
           "script": "english",
           "variation": "clean",
-          "ms": 1391,
+          "ms": 1001,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -649,7 +2755,7 @@
           "doc_type": "pharmacy",
           "script": "english",
           "variation": "rotation",
-          "ms": 1361,
+          "ms": 1078,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -708,7 +2814,7 @@
           "doc_type": "pharmacy",
           "script": "english",
           "variation": "phone_shadow",
-          "ms": 1586,
+          "ms": 1160,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -765,7 +2871,7 @@
           "doc_type": "pharmacy",
           "script": "hindi",
           "variation": "clean",
-          "ms": 2092,
+          "ms": 1152,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -822,7 +2928,7 @@
           "doc_type": "pharmacy",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 1412,
+          "ms": 983,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -879,7 +2985,7 @@
           "doc_type": "pharmacy",
           "script": "mixed",
           "variation": "rotation",
-          "ms": 1680,
+          "ms": 1022,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -936,7 +3042,7 @@
           "doc_type": "pharmacy",
           "script": "telugu",
           "variation": "clean",
-          "ms": 1352,
+          "ms": 1939,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -995,7 +3101,7 @@
           "doc_type": "pharmacy",
           "script": "telugu",
           "variation": "thermal_faded",
-          "ms": 1258,
+          "ms": 1106,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1052,7 +3158,7 @@
           "doc_type": "product_label",
           "script": "english",
           "variation": "clean",
-          "ms": 10351,
+          "ms": 864,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1099,7 +3205,7 @@
           "doc_type": "product_label",
           "script": "english",
           "variation": "low_contrast",
-          "ms": 1414,
+          "ms": 896,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1146,7 +3252,7 @@
           "doc_type": "product_label",
           "script": "hindi",
           "variation": "clean",
-          "ms": 1246,
+          "ms": 966,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1193,7 +3299,7 @@
           "doc_type": "product_label",
           "script": "hindi",
           "variation": "rotation",
-          "ms": 1958,
+          "ms": 1021,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1221,7 +3327,7 @@
             "doc_type": "product_label",
             "merchant": "हिमालय जड़ी-बूटी भंडार",
             "date": "2026-08-25",
-            "total": null,
+            "total": 240,
             "currency": "INR",
             "items": [
               {
@@ -1233,14 +3339,14 @@
             "mrp": 240,
             "expiry": "2028-08-25"
           },
-          "raw_head": "{\n  \"doc_type\": \"product_label\",\n  \"merchant\": \"हिमालय जड़ी-बूटी भंडार\",\n  \"date\": \"2026-08-25\",\n  \"total\": null,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Ashwagandha Powder\",\n      \"qty\": \"250 g\",\n      \"price\": 240\n    }\n  ],\n  \"mrp\": 240,\n  \"expiry\": \"2028-08-25\"\n}"
+          "raw_head": "{\n  \"doc_type\": \"product_label\",\n  \"merchant\": \"हिमालय जड़ी-बूटी भंडार\",\n  \"date\": \"2026-08-25\",\n  \"total\": 240,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Ashwagandha Powder\",\n      \"qty\": \"250 g\",\n      \"price\": 240\n    }\n  ],\n  \"mrp\": 240,\n  \"expiry\": \"2028-08-25\"\n}"
         },
         {
           "id": "product_mixed_01",
           "doc_type": "product_label",
           "script": "mixed",
           "variation": "blur",
-          "ms": 1622,
+          "ms": 1577,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1287,7 +3393,7 @@
           "doc_type": "product_label",
           "script": "mixed",
           "variation": "thermal_faded",
-          "ms": 1287,
+          "ms": 933,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1334,7 +3440,7 @@
           "doc_type": "product_label",
           "script": "telugu",
           "variation": "clean",
-          "ms": 1442,
+          "ms": 958,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1383,7 +3489,7 @@
           "doc_type": "product_label",
           "script": "telugu",
           "variation": "phone_shadow",
-          "ms": 1397,
+          "ms": 1332,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1409,13 +3515,13 @@
           },
           "got": {
             "doc_type": "product_label",
-            "merchant": "శ్రీ వెంకటేశ్వర ఆగ్రో",
+            "merchant": "శ్రీ వేంకటేశ్వర ఆగ్రో",
             "date": "2026-10-01",
             "total": null,
             "currency": "INR",
             "items": [
               {
-                "name": "స్వచ్ఛమైన కొబ్బరి నూనె Coconut Oil",
+                "name": "Coconut Oil",
                 "qty": "1000 ml",
                 "price": 350
               }
@@ -1423,14 +3529,14 @@
             "mrp": 350,
             "expiry": "2027-10-01"
           },
-          "raw_head": "{\n  \"doc_type\": \"product_label\",\n  \"merchant\": \"శ్రీ వెంకటేశ్వర ఆగ్రో\",\n  \"date\": \"2026-10-01\",\n  \"total\": null,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"స్వచ్ఛమైన కొబ్బరి నూనె Coconut Oil\",\n      \"qty\": \"1000 ml\",\n      \"price\": 350\n    }\n  ],\n  \"mrp\": 350,\n  \"expiry\": \"2027-10-01\"\n}"
+          "raw_head": "{\n  \"doc_type\": \"product_label\",\n  \"merchant\": \"శ్రీ వేంకటేశ్వర ఆగ్రో\",\n  \"date\": \"2026-10-01\",\n  \"total\": null,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Coconut Oil\",\n      \"qty\": \"1000 ml\",\n      \"price\": 350\n    }\n  ],\n  \"mrp\": 350,\n  \"expiry\": \"2027-10-01\"\n}"
         },
         {
           "id": "restaurant_en_01",
           "doc_type": "restaurant",
           "script": "english",
           "variation": "clean",
-          "ms": 1525,
+          "ms": 1267,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1487,7 +3593,7 @@
           "doc_type": "restaurant",
           "script": "english",
           "variation": "phone_shadow",
-          "ms": 1257,
+          "ms": 1172,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1544,7 +3650,7 @@
           "doc_type": "restaurant",
           "script": "hindi",
           "variation": "clean",
-          "ms": 1200,
+          "ms": 1062,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1601,7 +3707,7 @@
           "doc_type": "restaurant",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 1297,
+          "ms": 1021,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1653,7 +3759,7 @@
           "doc_type": "restaurant",
           "script": "mixed",
           "variation": "rotation",
-          "ms": 1837,
+          "ms": 1320,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1679,23 +3785,23 @@
           },
           "got": {
             "doc_type": "restaurant",
-            "merchant": "Anand Bhavan Tiffins ఆనంద్ భవన్",
+            "merchant": "Anand Bhavan Tiffins",
             "date": "2026-10-23",
             "total": 241,
             "currency": "INR",
             "items": [
               {
-                "name": "Onion Rava Dosa ఉల్లి రవ్వ దోశ",
+                "name": "Onion Rava Dosa",
                 "qty": "1",
                 "price": 95
               },
               {
-                "name": "Poori Bhaji పూరి కూర",
+                "name": "Poori Bhaji",
                 "qty": "1",
                 "price": 85
               },
               {
-                "name": "Special Tea టీ",
+                "name": "Special Tea",
                 "qty": "2",
                 "price": 50
               }
@@ -1703,14 +3809,14 @@
             "mrp": null,
             "expiry": null
           },
-          "raw_head": "{\n  \"doc_type\": \"restaurant\",\n  \"merchant\": \"Anand Bhavan Tiffins ఆనంద్ భవన్\",\n  \"date\": \"2026-10-23\",\n  \"total\": 241,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Onion Rava Dosa ఉల్లి రవ్వ దోశ\",\n      \"qty\": \"1\",\n      \"price\": 95\n    },\n    {\n      \"name\": \"Poori Bhaji పూరి కూర\",\n      \"qty\": \"1\",\n      \"price\": 85\n    },\n    {\n      \"name\": \"Special Tea టీ\",\n      \"qty\": \"2\",\n      \""
+          "raw_head": "{\n  \"doc_type\": \"restaurant\",\n  \"merchant\": \"Anand Bhavan Tiffins\",\n  \"date\": \"2026-10-23\",\n  \"total\": 241,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"Onion Rava Dosa\",\n      \"qty\": \"1\",\n      \"price\": 95\n    },\n    {\n      \"name\": \"Poori Bhaji\",\n      \"qty\": \"1\",\n      \"price\": 85\n    },\n    {\n      \"name\": \"Special Tea\",\n      \"qty\": \"2\",\n      \"price\": 50\n    }\n  ],\n  \"mrp\": null,\n "
         },
         {
           "id": "restaurant_mixed_02",
           "doc_type": "restaurant",
           "script": "mixed",
           "variation": "blur",
-          "ms": 1395,
+          "ms": 961,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1767,7 +3873,7 @@
           "doc_type": "restaurant",
           "script": "telugu",
           "variation": "clean",
-          "ms": 1348,
+          "ms": 847,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1793,7 +3899,7 @@
           },
           "got": {
             "doc_type": "restaurant",
-            "merchant": "గోదావరి రుచులు రెస్ట్ రెంట",
+            "merchant": "గోదావరి రుచులు రెస్టారెంట్",
             "date": "2026-10-18",
             "total": 472,
             "currency": "INR",
@@ -1817,14 +3923,14 @@
             "mrp": null,
             "expiry": null
           },
-          "raw_head": "{\n  \"doc_type\": \"restaurant\",\n  \"merchant\": \"గోదావరి రుచులు రెస్ట్ రెంట\",\n  \"date\": \"2026-10-18\",\n  \"total\": 472,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"నాటుకోడి పులావ్\",\n      \"qty\": \"1\",\n      \"price\": 290\n    },\n    {\n      \"name\": \"గోంగూర పచ్చడి అన్నం\",\n      \"qty\": \"1\",\n      \"price\": 110\n    },\n    {\n      \"name\": \"మజ్జిగ\",\n      \"qty\": \"2\",\n      \"price\": 50\n    }\n  ],\n  \"mr"
+          "raw_head": "{\n  \"doc_type\": \"restaurant\",\n  \"merchant\": \"గోదావరి రుచులు రెస్టారెంట్\",\n  \"date\": \"2026-10-18\",\n  \"total\": 472,\n  \"currency\": \"INR\",\n  \"items\": [\n    {\n      \"name\": \"నాటుకోడి పులావ్\",\n      \"qty\": \"1\",\n      \"price\": 290\n    },\n    {\n      \"name\": \"గోంగూర పచ్చడి అన్నం\",\n      \"qty\": \"1\",\n      \"price\": 110\n    },\n    {\n      \"name\": \"మజ్జిగ\",\n      \"qty\": \"2\",\n      \"price\": 50\n    }\n  ],\n  \"mr"
         },
         {
           "id": "restaurant_te_02",
           "doc_type": "restaurant",
           "script": "telugu",
           "variation": "thermal_faded",
-          "ms": 1334,
+          "ms": 853,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1876,7 +3982,7 @@
           "doc_type": "utility",
           "script": "english",
           "variation": "clean",
-          "ms": 2086,
+          "ms": 894,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1928,7 +4034,7 @@
           "doc_type": "utility",
           "script": "english",
           "variation": "phone_shadow",
-          "ms": 1438,
+          "ms": 1635,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -1980,7 +4086,7 @@
           "doc_type": "utility",
           "script": "hindi",
           "variation": "low_contrast",
-          "ms": 1640,
+          "ms": 1039,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2032,7 +4138,7 @@
           "doc_type": "utility",
           "script": "mixed",
           "variation": "blur",
-          "ms": 1499,
+          "ms": 1047,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2084,7 +4190,7 @@
           "doc_type": "utility",
           "script": "telugu",
           "variation": "clean",
-          "ms": 1461,
+          "ms": 975,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2136,7 +4242,7 @@
           "doc_type": "utility",
           "script": "telugu",
           "variation": "rotation",
-          "ms": 2771,
+          "ms": 879,
           "retries": 0,
           "failure": null,
           "failure_kind": null,
@@ -2370,8 +4476,8 @@
         },
         "latency_ms": {
           "answered": 40,
-          "p50": 1438,
-          "p95": 2092
+          "p50": 1039,
+          "p95": 1577
         },
         "failures": {
           "timeout": 0,

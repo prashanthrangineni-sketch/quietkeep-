@@ -431,6 +431,13 @@ export function AariaProvider({ children }) {
     prevTurnRef.current = null;   // reported once
     try {
       const workspaceId = await businessWorkspaceId();
+      let phoneLocked = false;
+      if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+        try {
+          const res = await window.Capacitor?.Plugins?.WakeWordPlugin?.isKeyguardLocked();
+          phoneLocked = !!res?.locked;
+        } catch {}
+      }
       const res = await fetch('/api/voice/capture', {
         method: 'POST',
         headers: {
@@ -439,6 +446,9 @@ export function AariaProvider({ children }) {
         },
         body: JSON.stringify({
           transcript: text,
+          phone_locked: extra?.phone_locked !== undefined ? extra.phone_locked : phoneLocked,
+          ...(extra?.confirmed_by ? { confirmed_by: extra.confirmed_by } : {}),
+          ...(extra?.proof ? { proof: extra.proof } : {}),
           source: 'voice',
           language: speechLang(voiceLang),
           ...(getActiveRun() ? { tasks100_run: getActiveRun() } : {}),
@@ -532,6 +542,80 @@ export function AariaProvider({ children }) {
       // (src/lib/action-levels.js) decided "do": a spoken yes on an unlocked
       // phone for a call, read-back for navigation. It is carried out here,
       // after the read-back has been said, never before.
+      // WAKE WORD WHILE PHONE IS LOCKED (CARD 51)
+      if (json.needs_unlock) {
+        say(spoken);
+        setTranscript('');
+        if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+          try {
+            const { requestDismissKeyguardOnPhone } = await import('@/lib/voice-gate');
+            const res = await requestDismissKeyguardOnPhone({ timeoutMs: 30000, language: voiceLang });
+            if (res.unlocked) {
+              askBrain(text, { phone_locked: false });
+              return;
+            } else if (res.say) {
+              say(res.say);
+            }
+          } catch (e) {
+            console.warn('[Aaria] keyguard unlock failed:', e);
+          }
+        }
+        return;
+      }
+
+      // VOICE STEP-UP FOR FINGERPRINT ACTIONS (CARD 51)
+      if (json.needs_biometric) {
+        const reason = json.prompt_reason || "Confirm with fingerprint";
+        try {
+          const { promptBiometric } = await import('@/lib/biometricLock');
+          const bioRes = await promptBiometric(reason);
+          if (bioRes.success) {
+            try {
+              const { supabase } = await import('@/lib/supabase');
+              if (user?.id) {
+                await supabase.from('audit_log').insert({
+                  user_id: user.id,
+                  action: 'action.biometric_confirmed',
+                  service: 'voice_step_up',
+                  details: {
+                    confirmed_by: 'biometric',
+                    prompt_reason: reason,
+                    intent_type: json.auto_exec?.intent_type || json.keep?.intent_type || 'fingerprint_action',
+                  },
+                });
+              }
+            } catch (e) { console.warn('[Aaria] audit log failed:', e); }
+
+            if (json.auto_exec) {
+              const exec = json.auto_exec;
+              const { executeClientAction } = await import('@/lib/intent-executor');
+              executeClientAction({
+                intent_type: exec.intent_type, content: exec.content || '',
+                contact_phone: exec.contact_phone || null, contact_name: exec.contact_name || null,
+              });
+            } else {
+              askBrain(text, { confirmed_by: 'biometric', proof: { biometric: true, pin: true } });
+              return;
+            }
+            say(spoken);
+            setTranscript('');
+            return;
+          } else {
+            const { getCancelledPrompt } = await import('@/lib/voice-gate');
+            const cancelMsg = getCancelledPrompt(voiceLang);
+            say(cancelMsg);
+            setTranscript('');
+            return;
+          }
+        } catch (e) {
+          console.warn('[Aaria] biometric prompt failed:', e);
+          const { getCancelledPrompt } = await import('@/lib/voice-gate');
+          say(getCancelledPrompt(voiceLang));
+          setTranscript('');
+          return;
+        }
+      }
+
       if (json.auto_exec && !json.follow_up) {
         const exec = json.auto_exec;
         const wait = typeof exec.delay_ms === 'number' ? exec.delay_ms : 1000;

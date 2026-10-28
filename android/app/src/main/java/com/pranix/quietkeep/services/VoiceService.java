@@ -441,6 +441,10 @@ public class VoiceService extends Service {
             json.put("session_id", sessionId != null ? sessionId : JSONObject.NULL);
             json.put("is_final", isFinal);
             if (workspaceId != null) json.put("workspace_id", workspaceId);
+            try {
+                android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+                json.put("phone_locked", km != null && km.isKeyguardLocked());
+            } catch (Exception ignored) {}
             body = json.toString();
         } catch (JSONException e) {
             Log.e(TAG, "postCapture: JSON build failed: " + e.getMessage());

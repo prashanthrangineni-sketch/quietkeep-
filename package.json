@@ -11,8 +11,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "^8.0.2",
     "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.3",
     "@capacitor/core": "^6.0.0",
+    "@capacitor/preferences": "^6.0.4",
     "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.1",
@@ -34,6 +37,7 @@
     "eslint-config-next": "15.2.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

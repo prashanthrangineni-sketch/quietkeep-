@@ -1,80 +1,114 @@
 'use client';
 /**
- * src/components/BiometricGate.jsx  —  Step 9: App-level biometric gate
+ * src/components/BiometricGate.jsx — App-level biometric gate (CARD 51)
  *
- * Drop-in client wrapper. Add to layout.jsx around children (APK only).
- * 
- * Usage in layout.jsx (add inside the body):
- *   import BiometricGate from '@/components/BiometricGate';
- *   // Replace: {children}
- *   // With:    <BiometricGate>{children}</BiometricGate>
- *
- * SAFETY:
+ * App lock rules:
+ *   • Locks on cold start (if biometric_enabled)
+ *   • Locks after app has been in background for > 5 minutes (App 'appStateChange')
+ *   • Opt-in, default OFF
  *   • Web/PWA: renders children immediately (no prompt, no block)
- *   • APK: if biometric_enabled=false, renders children immediately
- *   • APK: if biometric_enabled=true, shows lock screen until authenticated
- *   • NEVER modifies Supabase session — only controls UI visibility
- *   • Back button during prompt → stays on lock screen (cannot bypass)
- *   • Deep link → same check runs on mount
+ *   • If plugin is missing at runtime, falls back safely so app still opens
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
-// The public home page carries no private data, so it is never hidden behind
-// the "Verifying…" screen. Without this the HTML the server sends for "/" is
-// only that screen, and Google, link previews and slow phones see nothing.
-// Only the *checking* screen is skipped, and only while the path is exactly
-// "/": the lock screen still shows on "/" if the check fails, and any other
-// path (including /dashboard reached by the signed-in redirect from "/")
-// waits for the check exactly as before.
 const PUBLIC_PATH = '/';
+const BACKGROUND_LOCK_MS = 5 * 60 * 1000; // 5 minutes
 
 export default function BiometricGate({ children }) {
   const [status, setStatus] = useState('checking'); // checking | unlocked | locked
   const pathname = usePathname();
+  const backgroundTimeRef = useRef(null);
 
   const runGate = useCallback(async () => {
     try {
-      const { checkBiometricGate } = await import('@/lib/biometricLock');
+      const { checkBiometricGate, getBiometricEnabled, isBiometricEnabled } = await import('@/lib/biometricLock');
+      const enabled = typeof getBiometricEnabled === 'function' ? await getBiometricEnabled() : isBiometricEnabled();
+      if (!enabled) {
+        setStatus('unlocked');
+        return;
+      }
       const allowed = await checkBiometricGate();
       if (allowed) {
-        // Notify trustState so sensitive intent layer knows biometric was verified
         try {
           const { markBiometricVerified } = await import('@/lib/trustState');
           markBiometricVerified();
         } catch {}
       }
       setStatus(allowed ? 'unlocked' : 'locked');
-    } catch {
-      // If biometricLock fails to load (web build), allow through
+    } catch (e) {
+      // QuietKeep must never break: if the plugin is missing at runtime, the app must still open
+      console.warn('[BiometricGate] runtime fallback:', e);
       setStatus('unlocked');
     }
   }, []);
 
   useEffect(() => {
     // Web/PWA: skip biometric check entirely — render children immediately.
-    // Only Capacitor (native APK) needs the biometric gate.
-    // This avoids the "Verifying..." screen flash on web visitors and
-    // ensures search engines can index the site content.
     if (typeof window !== 'undefined' && !window.Capacitor?.isNativePlatform?.()) {
       setStatus('unlocked');
       return;
     }
 
+    // Cold start check
     runGate();
 
-    // Re-check on app resume (visibilitychange fires when app comes to foreground)
-    function onResume() {
-      if (document.visibilityState === 'visible') {
-        runGate();
+    // App state listener via Capacitor App plugin (appStateChange)
+    let appStateHandle = null;
+
+    import('@capacitor/app')
+      .then(({ App }) => {
+        return App.addListener('appStateChange', async ({ isActive }) => {
+          if (!isActive) {
+            // App went to background
+            backgroundTimeRef.current = Date.now();
+          } else {
+            // App resumed to foreground
+            if (backgroundTimeRef.current) {
+              const elapsed = Date.now() - backgroundTimeRef.current;
+              backgroundTimeRef.current = null;
+              if (elapsed >= BACKGROUND_LOCK_MS) {
+                const { getBiometricEnabled, isBiometricEnabled } = await import('@/lib/biometricLock');
+                const enabled = typeof getBiometricEnabled === 'function' ? await getBiometricEnabled() : isBiometricEnabled();
+                if (enabled) {
+                  setStatus('checking');
+                  runGate();
+                }
+              }
+            }
+          }
+        });
+      })
+      .then(handle => {
+        appStateHandle = handle;
+      })
+      .catch(() => {
+        // Fallback to visibilitychange if @capacitor/app is not available
+        function onVisibilityChange() {
+          if (document.visibilityState === 'hidden') {
+            backgroundTimeRef.current = Date.now();
+          } else if (document.visibilityState === 'visible') {
+            if (backgroundTimeRef.current) {
+              const elapsed = Date.now() - backgroundTimeRef.current;
+              backgroundTimeRef.current = null;
+              if (elapsed >= BACKGROUND_LOCK_MS) {
+                runGate();
+              }
+            }
+          }
+        }
+        document.addEventListener('visibilitychange', onVisibilityChange);
+      });
+
+    return () => {
+      if (appStateHandle && typeof appStateHandle.remove === 'function') {
+        appStateHandle.remove();
       }
-    }
-    document.addEventListener('visibilitychange', onResume);
-    return () => document.removeEventListener('visibilitychange', onResume);
+    };
   }, [runGate]);
 
-  // Checking: render a minimal loading state (avoid flash)
+  // Checking: render minimal loading state
   if (status === 'checking' && pathname !== PUBLIC_PATH) {
     return (
       <div style={{
@@ -104,7 +138,7 @@ export default function BiometricGate({ children }) {
           QuietKeep is Locked
         </p>
         <p style={{ color: 'var(--muted, #64748b)', fontSize: 13, textAlign: 'center', maxWidth: 260 }}>
-          Use your fingerprint to unlock
+          Use your fingerprint or device PIN to unlock
         </p>
         <button
           onClick={runGate}
@@ -120,6 +154,6 @@ export default function BiometricGate({ children }) {
     );
   }
 
-  // Unlocked (or "/" while checking): render children normally
+  // Unlocked: render children normally
   return children;
 }

@@ -44,7 +44,8 @@ import {
 } from '@/lib/decision-protocol' // v16: Phase 8 protocol adoption
 import { buildMemoryContext } from '@/lib/style-engine' // v15: Memory Context
 import { cleanListenEvidence } from '@/lib/listen-stream'
-import { decide, DECISION } from '@/lib/action-levels' // item 2: the safety check before every action
+import { decide, DECISION } from '@/lib/action-levels'
+import { decideVoiceGate, isPrivateRead, formatBiometricPromptReason, getUnlockPrompt, getCancelledPrompt } from '@/lib/voice-gate' // item 2: the safety check before every action
 import { recordStep } from '@/lib/step-log' // AG-AARIA-37: 100-task step recorder
 import {
   NO_KEEP_INTENTS, BRAIN_TYPE, DELETE_ASKED, DELETE_ANSWERED,
@@ -136,6 +137,9 @@ export async function POST(request) {
   // Drive Mode or a ride is running; otherwise null, and the gate in
   // decide() does nothing (unknown speed is never assumed to be driving).
   const speedKmh = cleanSpeedKmh(body.speed_kmh)
+  const phoneLocked = body.phone_locked === true || (source === 'android_service' && body.phone_locked !== false && body.phone_locked != null)
+  const proof = body.proof || {}
+  if (body.confirmed_by === 'biometric' || body.biometric === true) proof.biometric = true
 
   // How long the PREVIOUS turn's reply took to reach the phone, and whether a
   // thinking sound filled the wait (plan item 10). The dock can only know
@@ -184,6 +188,20 @@ export async function POST(request) {
   // that lands, and it is deliberately the only place it is done.
   const rawText = collapseRepeats(transcript.trim())
   const text    = stripWakePhrase(rawText) || rawText
+  // Private data read on locked phone guard (CARD 51)
+  if (phoneLocked && isPrivateRead(null, text)) {
+    const unlockPrompt = getUnlockPrompt(language)
+    return NextResponse.json({
+      tts_response: unlockPrompt,
+      needs_unlock: true,
+      assistant: { reply: unlockPrompt },
+      safety: {
+        level: 'read_back',
+        decision: 'ask_unlock',
+        reason: 'private_read_on_locked_phone',
+      },
+    }, { status: 200 })
+  }
   const turnStartTime = new Date().toISOString()
   // Only the phone turns a run on (it sends tasks100_run). Validate it; ignore anything odd.
   const rawRun = body?.tasks100_run
@@ -686,11 +704,13 @@ export async function POST(request) {
         .eq('action', 'action.spoken_yes')
         .gte('created_at', new Date(Date.now() - 3_600_000).toISOString())
         .then((r) => ({ count: r.error ? null : (r.count ?? 0) }))
-      nowSafety = decide(
-        { type: 'contact', contactSaved: !!openQuestion.contact_phone },
-        { spokenYes: true, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
-        { doneThisHour, speedKmh },
-      )
+      nowSafety = decideVoiceGate({
+        action: { type: 'contact', contactSaved: !!openQuestion.contact_phone },
+        text,
+        phoneLocked,
+        proof: { spokenYes: true, unlocked: !phoneLocked, pin: proof.biometric || proof.pin || false, biometric: proof.biometric || false, ownerVoice: null },
+        context: { doneThisHour, speedKmh, language },
+      })
       nowSafety.unlock_proof = ['voice', 'text'].includes(source) ? 'app_in_foreground' : null
       logStep({
         heardText: text,
@@ -1762,11 +1782,13 @@ export async function POST(request) {
   // queued here with a 2.6-second cancel window; the queue had processed one
   // row ever, which failed. That path is gone.)
   const safety = isAutoEligible
-    ? decide(
-        { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
-        { spokenYes: false, unlocked: ['voice', 'text'].includes(source), pin: false, ownerVoice: null },
-        { doneThisHour: 0, speedKmh },   // read-back is uncapped; anything capped is refused here anyway (no yes yet)
-      )
+    ? decideVoiceGate({
+        action: { type: parsed.type, contactSaved: parsed.type === 'contact' ? !!keep.contact_phone : null },
+        text,
+        phoneLocked,
+        proof: { spokenYes: false, unlocked: !phoneLocked, pin: proof.biometric || proof.pin || false, biometric: proof.biometric || false, ownerVoice: null },
+        context: { doneThisHour: 0, speedKmh, language },
+      })
     : null
   if (safety && safety.decision !== DECISION.DO) {
     console.log('[safety] held auto-exec:', parsed.type, safety.level, safety.reason)
@@ -1915,6 +1937,10 @@ export async function POST(request) {
     entities:          parsed.entities,
     aaria,             // SOT P1: Aaria's read of utterances the regex missed (null otherwise)
     auto_exec,
+    needs_biometric: !!(safety?.needsBiometric || nowSafety?.needsBiometric),
+    prompt_reason: (safety?.promptReason || nowSafety?.promptReason) || null,
+    needs_unlock: !!(safety?.needsUnlock || nowSafety?.needsUnlock),
+    confirmed_by: (safety?.confirmed_by || nowSafety?.confirmed_by) || (body.confirmed_by || null),
     safety,            // item 2: what the level table decided for this turn (null when nothing was automatic)
     ...(lastStepRecord ? { step_record: lastStepRecord } : {}),
     // v2: geo intelligence fields

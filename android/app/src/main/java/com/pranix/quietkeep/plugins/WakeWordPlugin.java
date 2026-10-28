@@ -1,5 +1,7 @@
 package com.pranix.quietkeep.plugins;
 
+import android.app.KeyguardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
@@ -108,5 +110,81 @@ public class WakeWordPlugin extends Plugin {
         JSObject res = new JSObject();
         res.put("available", false);
         call.resolve(res);
+    }
+
+    @PluginMethod
+    public void isKeyguardLocked(PluginCall call) {
+        JSObject res = new JSObject();
+        try {
+            KeyguardManager km = (KeyguardManager) getContext().getSystemService(Context.KEYGUARD_SERVICE);
+            boolean locked = km != null && km.isKeyguardLocked();
+            res.put("locked", locked);
+            call.resolve(res);
+        } catch (Exception e) {
+            Log.e(TAG, "isKeyguardLocked error: " + e.getMessage(), e);
+            res.put("locked", false);
+            call.resolve(res);
+        }
+    }
+
+    @PluginMethod
+    public void requestDismissKeyguard(PluginCall call) {
+        JSObject res = new JSObject();
+        try {
+            KeyguardManager km = (KeyguardManager) getContext().getSystemService(Context.KEYGUARD_SERVICE);
+            if (km == null || !km.isKeyguardLocked()) {
+                res.put("success", true);
+                res.put("reason", "not_locked");
+                call.resolve(res);
+                return;
+            }
+            if (getActivity() == null) {
+                res.put("success", false);
+                res.put("reason", "no_activity");
+                call.resolve(res);
+                return;
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getActivity().runOnUiThread(() -> {
+                    km.requestDismissKeyguard(getActivity(), new KeyguardManager.KeyguardDismissCallback() {
+                        @Override
+                        public void onDismissError() {
+                            Log.w(TAG, "requestDismissKeyguard: onDismissError");
+                            JSObject r = new JSObject();
+                            r.put("success", false);
+                            r.put("reason", "error");
+                            call.resolve(r);
+                        }
+
+                        @Override
+                        public void onDismissSucceeded() {
+                            Log.d(TAG, "requestDismissKeyguard: onDismissSucceeded");
+                            JSObject r = new JSObject();
+                            r.put("success", true);
+                            r.put("reason", "unlocked");
+                            call.resolve(r);
+                        }
+
+                        @Override
+                        public void onDismissCancelled() {
+                            Log.d(TAG, "requestDismissKeyguard: onDismissCancelled");
+                            JSObject r = new JSObject();
+                            r.put("success", false);
+                            r.put("reason", "cancelled");
+                            call.resolve(r);
+                        }
+                    });
+                });
+            } else {
+                res.put("success", false);
+                res.put("reason", "unsupported_sdk");
+                call.resolve(res);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "requestDismissKeyguard failed: " + e.getMessage(), e);
+            res.put("success", false);
+            res.put("reason", "exception: " + e.getMessage());
+            call.resolve(res);
+        }
     }
 }

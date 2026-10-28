@@ -196,6 +196,7 @@ async function callOnce(provider, model, fixture, key) {
       },
     ],
     temperature: 0.1,
+    max_tokens: 1500,
   }
 
   const ctrl = new AbortController()
@@ -239,12 +240,17 @@ async function callOnce(provider, model, fixture, key) {
   }
 }
 
+const DAILY_LIMIT = /(per[- ]day|per day|daily)/i
+
 async function call(provider, model, fixture, key) {
   let r
   let retries = 0
   for (;;) {
     r = await callOnce(provider, model, fixture, key)
     if (r.status !== 429 || retries >= 2) break
+    // A daily quota will not come back in 15 s: retrying only burns the run's
+    // time budget (26 Oct: 283 x 2 retries ran a whole run out of time).
+    if (DAILY_LIMIT.test(r.error || '')) { r.dailyLimit = true; break }
     retries++
     await sleep(Math.min(60, r.retryAfter || 15) * 1000)
   }
@@ -279,6 +285,9 @@ async function runModel(id) {
     if (n > 0 && gap > 0) await sleep(gap)
 
     const r = await call(provider, model, f, key)
+    if (r.dailyLimit) {
+      return { id, provider, model, status: `not measured - provider daily limit reached (after ${n} answers)`, note: String(r.error || '').slice(0, 200), rows: [] }
+    }
     if (n === 0 && r.status && r.status >= 400 && r.status < 500 && r.status !== 429 && GONE.test(r.error || '')) {
       return {
         id,
@@ -320,6 +329,7 @@ async function runModel(id) {
       fails: scoreResult.fails,
       items_f1: scoreResult.items_f1,
       got: scoreResult.got,
+      raw_head: typeof r.raw === 'string' ? r.raw.slice(0, 400) : null,
     })
 
     if (!asJson && !outPath) {

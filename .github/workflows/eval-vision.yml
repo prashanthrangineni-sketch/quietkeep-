@@ -19,6 +19,8 @@
 name: Evaluate vision models
 
 on:
+  push:
+    branches: [eval/nvidia-pictures]   # measurement branch only; never merged
   workflow_dispatch:
     inputs:
       models:
@@ -51,7 +53,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           SHAKTI_API_KEY: ${{ secrets.SHAKTI_API_KEY }}
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          MODELS_INPUT: ${{ inputs.models }}
+          MODELS_INPUT: ${{ inputs.models || 'openrouter:nvidia/nemotron-3.5-super-vl:free,gemini:gemini-3.5-flash-lite' }}
         run: |
           MODELS="${MODELS_INPUT:-openrouter:nvidia/nemotron-3.5-super-vl:free,gemini:gemini-3.5-flash-lite}"
           args=()

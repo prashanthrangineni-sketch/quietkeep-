@@ -197,17 +197,19 @@ async function callOnce(provider, model, c, key) {
     const res = await fetch(p.url, {
       method: 'POST',
       headers: p.headers(key, model),
-      body: JSON.stringify(buildRequestBody({ model: p.bodyModel ? p.bodyModel(model) : model, prompt, stream: true })),
+      body: JSON.stringify(bodyFor(p, model, prompt)),
       signal: ctrl.signal,
     })
     if (!res.ok) {
       const errText = await res.text().catch(() => '')
       return { ms: Date.now() - t0, failure: `http_${res.status}`, status: res.status, error: redact(errText), retryAfter: Number(res.headers.get('retry-after')) || null }
     }
-    const raw = res.body ? await readUntilJsonComplete(res.body, ctrl) : ''
+    const reasoning = isReasoningModel(model)
+    const whole = res.body ? (reasoning ? await readWholeStream(res.body) : await readUntilJsonComplete(res.body, ctrl)) : ''
+    const raw = reasoning ? finalJsonOf(whole) : whole
     const ms = Date.now() - t0
     const { result, failure } = parseBrainResponse(raw, { clean, nowISO: NOW.toISOString(), language: c.language, model })
-    return { ms, failure: failure || null, result: result || null, rawIntent: rawIntentOf(raw) }
+    return { ms, failure: failure || null, result: result || null, rawIntent: rawIntentOf(raw), rawHead: failure ? redact(whole).slice(0, 300) : null }
   } catch (err) {
     const ms = Date.now() - t0
     if (err?.name === 'AbortError') return { ms, failure: 'timeout' }
@@ -215,6 +217,81 @@ async function callOnce(provider, model, c, key) {
   } finally {
     clearTimeout(timer)
   }
+}
+
+// ── reasoning models (measurement only) ────────────────────────────────────
+// Reasoning models (GPT OSS, Nemotron) think out loud before answering. The
+// production reader stops at the FIRST closed {...} in the stream, which for
+// these models is often a brace inside their thinking, so 26-28 Oct runs
+// filed 175/283 (GPT OSS) and 264/283 (Nemotron) answers as "no_json" - a
+// reading failure, not an understanding failure. For these models only, this
+// script reads the whole stream, drops the thinking, and hands the LAST JSON
+// object that has an "intent" to the same production parser. Production does
+// not call these models; if one ever wins, production needs this reader too,
+// and the report says so.
+const REASONING = /(gpt-oss|nemotron|deepseek-r1|qwq|reasoning|thinking)/i
+export const isReasoningModel = (model) => REASONING.test(String(model || ''))
+
+// Production allows 450 tokens; a reasoning model spends those thinking and
+// never reaches the JSON. Measurement-only: 2000 for reasoning models.
+function bodyFor(p, model, prompt) {
+  const body = buildRequestBody({ model: p.bodyModel ? p.bodyModel(model) : model, prompt, stream: true })
+  if (isReasoningModel(model)) body.max_tokens = 2000
+  return body
+}
+
+async function readWholeStream(body) {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let sse = '', out = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    sse += decoder.decode(value, { stream: true })
+    let nl
+    while ((nl = sse.indexOf('\n')) !== -1) {
+      const line = sse.slice(0, nl).trim()
+      sse = sse.slice(nl + 1)
+      if (!line.startsWith('data:')) continue
+      const payload = line.slice(5).trim()
+      if (!payload || payload === '[DONE]') continue
+      try { out += JSON.parse(payload)?.choices?.[0]?.delta?.content || '' } catch { /* skip */ }
+    }
+  }
+  return out
+}
+
+// Every balanced {...} in the text, in order (string-aware).
+function jsonObjectsIn(text) {
+  const found = []
+  let depth = 0, start = -1, inString = false, escaped = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (inString) {
+      if (escaped) escaped = false
+      else if (ch === '\\') escaped = true
+      else if (ch === '"') inString = false
+      continue
+    }
+    if (ch === '"') { if (depth > 0) inString = true; continue }
+    if (ch === '{') { if (depth === 0) start = i; depth++ }
+    else if (ch === '}' && depth > 0) { depth--; if (depth === 0) found.push(text.slice(start, i + 1)) }
+  }
+  return found
+}
+
+export function finalJsonOf(whole) {
+  let text = String(whole || '')
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, ' ')
+  // gpt-oss "harmony" channels: keep only the final channel when present.
+  const fin = text.lastIndexOf('<|channel|>final<|message|>')
+  if (fin !== -1) text = text.slice(fin + '<|channel|>final<|message|>'.length)
+  text = text.replace(/```json|```/g, ' ')
+  const objs = jsonObjectsIn(text)
+  for (let i = objs.length - 1; i >= 0; i--) {
+    try { const o = JSON.parse(objs[i]); if (o && typeof o === 'object' && o.intent) return objs[i] } catch { /* next */ }
+  }
+  return objs.length ? objs[objs.length - 1] : text
 }
 
 // The intent word the model actually wrote, before the parser maps anything
@@ -352,7 +429,7 @@ async function runModel(id) {
     rows.push({
       id: c.id, group: c.group, gap: isGap(c) ? c.expect.intent.slice('unsupported:'.length) : null,
       ms: r.ms, retries: r.retries, failure: r.failure || null, failure_kind: kindOf(r.failure), error: r.error || null,
-      intent: got?.intent ?? null, raw_intent: r.rawIntent ?? null, confidence: got?.confidence ?? null,
+      intent: got?.intent ?? null, raw_intent: r.rawIntent ?? null, raw_head: r.rawHead ?? null, confidence: got?.confidence ?? null,
       person: got?.entities?.person ?? null, time: got?.entities?.datetimeISO ?? null,
       amount: got?.entities?.amount ?? null, direction: got?.entities?.direction ?? null,
       expected_intent: c.expect?.intent ?? null,
@@ -448,7 +525,7 @@ function gapList(models) {
 function markdown(report) {
   const L = []
   L.push('# Understanding brain - measured model table', '')
-  L.push(`Measured ${report.measured_at} (IST clock given to every model). ${report.cases.total} cases: ${report.cases.scored} scored, ${report.cases.gap} on the gap list. Same prompt, request body and parser as production (src/lib/aaria-llm.js) for every model; timeout ${report.timeout_ms} ms; streamed, read until the JSON closes.`, '')
+  L.push(`Measured ${report.measured_at} (IST clock given to every model). ${report.cases.total} cases: ${report.cases.scored} scored, ${report.cases.gap} on the gap list. Same prompt, request body and parser as production (src/lib/aaria-llm.js) for every model; timeout ${report.timeout_ms} ms; streamed, read until the JSON closes. Reasoning models (GPT OSS, Nemotron) are the one exception: room for 2000 tokens, the whole answer read, thinking dropped, the last JSON with an intent parsed by the same production parser - production would need that reader too before using one.`, '')
   L.push(`Generated by scripts/eval-understanding.mjs${report.run_url ? ` in ${report.run_url}` : ''}. Every new case is synthetic (written, not spoken).`, '')
   L.push('## Correct intent', '')
   L.push(`| Model | Status | Intent overall | ${GROUPS.map(([, l]) => l).join(' | ')} |`)

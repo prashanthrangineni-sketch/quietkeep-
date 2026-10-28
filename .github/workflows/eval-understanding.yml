@@ -25,6 +25,8 @@ on:
         description: 'Comma-separated provider:model list (blank = the standard set)'
         required: false
         default: ''
+  push:
+    branches: [eval/reasoning-measure]   # measurement branch only; never merged
 
 permissions:
   contents: write   # to commit the measurement files back to this branch
@@ -53,7 +55,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           SHAKTI_API_KEY: ${{ secrets.SHAKTI_API_KEY }}
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          MODELS_INPUT: ${{ inputs.models }}
+          MODELS_INPUT: ${{ inputs.models || 'shakti:gpt-oss-120b,openrouter:nvidia/nemotron-3.5-super-vl:free' }}
         run: |
           # The standard set. sarvam-105b-conversations is production's model
           # and the baseline; the OpenRouter models are src/lib/llm.js

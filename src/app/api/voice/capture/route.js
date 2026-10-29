@@ -279,7 +279,7 @@ export async function POST(request) {
   // again; write nothing, do nothing. Answer turns and unmeasured turns pass
   // (see src/lib/fragment-guard.js). Placed before the idempotency key and
   // every write, like the noise check above.
-  if (isFragment({ listen: listenEvidence, answering: body.answering === true })) {
+  if (isFragment({ listen: listenEvidence, answering: body.answering === true, text })) {
     supabase.from('audit_log').insert({
       user_id: user.id,
       action:  'transcript_rejected_as_fragment',

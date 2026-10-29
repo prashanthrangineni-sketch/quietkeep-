@@ -129,7 +129,7 @@ export function cleanListenEvidence(raw) {
   const out = {};
   if (['engine', 'phone', 'none'].includes(raw.path)) out.path = raw.path;
   if (['nemotron', 'sarvam'].includes(raw.engine)) out.engine = raw.engine;
-  for (const k of ['firstWordsMs', 'finaliseMs', 'keyterms', 'heardMs', 'speechMs', 'peak', 'floor', 'chars', 'micLiveMs']) {
+  for (const k of ['firstWordsMs', 'finaliseMs', 'keyterms', 'heardMs', 'speechMs', 'liveSpeechMs', 'peak', 'floor', 'chars', 'micLiveMs']) {
     const v = raw[k];
     if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.round(v * 10000) / 10000;
   }
@@ -261,13 +261,24 @@ export function createFramer(frameSamples = FRAME_SAMPLES) {
  * seen the detector says "not speech" - which only delays the start of the
  * silence wait, it can never end a turn early.
  */
-export function createLoudness({ minLevel = 0.005, factor = 2.5, windowFrames = 30 } = {}) {
+//
+// COUNTING THE VOICE AFTER THE FACT. (29 October 2026)
+// The live answer above is right for "has the person stopped?", but it cannot
+// count the words said BEFORE the first quiet frame: until a gap has been seen,
+// the voice is its own room level. "call Surya", said as soon as the
+// microphone opened, was counted as 0.2 s of speech in a 1.2 s turn, and the
+// short-command guard asked again. At the end of the turn the whole turn's
+// quietest frame is known, so every frame is counted again against it, and the
+// larger of the two counts is the one reported.
+export function createLoudness({ minLevel = 0.005, factor = 2.5, windowFrames = 30, keepFrames = 600 } = {}) {
   const recent = [];
+  const all = [];
   let peak = 0;
   return {
     isSpeech(level) {
       recent.push(level);
       if (recent.length > windowFrames) recent.shift();
+      if (all.length < keepFrames) all.push(level);
       if (level > peak) peak = level;
       let floor = Infinity;
       for (const v of recent) if (v < floor) floor = v;
@@ -275,6 +286,16 @@ export function createLoudness({ minLevel = 0.005, factor = 2.5, windowFrames = 
     },
     floor() { let f = Infinity; for (const v of recent) if (v < f) f = v; return recent.length ? f : 0; },
     peak() { return peak; },
+    /** Frames that were speech, judged against the whole turn's quietest frame. */
+    speechFramesInHindsight() {
+      if (!all.length) return 0;
+      let f = Infinity;
+      for (const v of all) if (v < f) f = v;
+      const bar = Math.max(minLevel, f * factor);
+      let n = 0;
+      for (const v of all) if (v > bar) n++;
+      return n;
+    },
   };
 }
 
@@ -381,7 +402,8 @@ export function startListenStream({
 
   function succeed(text) {
     if (ended) return;
-    if (frames > 0 && speechFrames < MIN_SPEECH_FRAMES) {
+    const counted = Math.max(speechFrames, loud.speechFramesInHindsight());
+    if (frames > 0 && counted < MIN_SPEECH_FRAMES) {
       ended = true;
       clearAll(); releaseAudio(); closeSocket();
       rejectFn(new ListenStreamError('nothing heard', { fallback: false }));
@@ -398,7 +420,8 @@ export function startListenStream({
       // Evidence for the next "it cut me off": how long we listened, how much
       // of it counted as speech, how loud, and what ended the turn.
       heardMs: frames * 100,
-      speechMs: speechFrames * 100,
+      speechMs: counted * 100,
+      liveSpeechMs: speechFrames * 100,
       peak: Math.round(loud.peak() * 1000) / 1000,
       floor: Math.round(loud.floor() * 10000) / 10000,
       stopReason,

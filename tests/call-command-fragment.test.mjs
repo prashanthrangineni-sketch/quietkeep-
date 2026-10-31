@@ -160,5 +160,32 @@ function makeWorld() {
   check('a silent turn still ends as "nothing heard"', !r.ok && r.e && r.e.reason === 'nothing heard', JSON.stringify(r));
 }
 
+// ── the "speak now" buzz (31 Oct): a loud blip at mic open, then quiet, then
+// the person speaks. The turn must wait for the person, not close on the buzz.
+{
+  const w = makeWorld();
+  const sent = [];
+  const s = startListenStream({ lang: 'en-IN', silenceMs: 1200, deps: { ...w.deps, WebSocket: class extends w.deps.WebSocket { send(d) { sent.push(d); } } } });
+  const res = s.result.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }));
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.engine({ event: 'ready' });
+  const stopped = () => sent.some((d) => typeof d === 'string' && d.indexOf('"stop"') >= 0);
+  w.frame(0.6); w.clock.advance(100);          // the buzz
+  w.frame(0.2); w.clock.advance(100);          // its tail
+  let early = false;
+  for (let i = 0; i < 14; i++) { w.frame(0.0004); w.clock.advance(100); if (stopped()) early = true; }   // 1.4 s before he starts
+  for (let i = 0; i < 9; i++) { w.frame(i === 4 ? 0.05 : 0.2); w.clock.advance(100); if (stopped()) early = true; }   // "call Surya"
+  let stopAfterMs = null;
+  for (let i = 1; i <= 40; i++) {
+    w.frame(0.0004); w.clock.advance(100);
+    if (stopped()) { stopAfterMs = i * 100; w.engine({ event: 'done', text: 'call Surya' }); break; }
+  }
+  w.clock.advance(3000);
+  const r = await res;
+  check('the buzz at mic open does not close the turn before the person speaks', !early);
+  check('…the turn closes after the person stops', stopAfterMs !== null && stopAfterMs <= 1500, 'stopAfterMs=' + stopAfterMs);
+  check('…and the words come back', r.ok && r.v.text === 'call Surya', JSON.stringify(r.e && r.e.reason));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

@@ -53,6 +53,7 @@ export const FRAME_SAMPLES = 1600;   // 100 ms at 16 kHz
 export const READY_TIMEOUT_MS   = 4000;
 export const DONE_TIMEOUT_MS    = 5000;
 export const NOTHING_HEARD_MS   = 8000;  // tapped the mic and said nothing
+export const BUZZ_FRAMES       = 3;     // the first 300 ms after the mic opens: the "speak now" buzz, not the person
 export const ENGINE_HOLD_MS     = 1000;  // new words from the engine count only this soon after a voice
 export const MAX_KEYTERMS       = 40;
 
@@ -287,13 +288,13 @@ export function createLoudness({ minLevel = 0.005, factor = 2.5, windowFrames = 
     floor() { let f = Infinity; for (const v of recent) if (v < f) f = v; return recent.length ? f : 0; },
     peak() { return peak; },
     /** Frames that were speech, judged against the whole turn's quietest frame. */
-    speechFramesInHindsight() {
+    speechFramesInHindsight(skip = 0) {
       if (!all.length) return 0;
       let f = Infinity;
       for (const v of all) if (v < f) f = v;
       const bar = Math.max(minLevel, f * factor);
       let n = 0;
-      for (const v of all) if (v > bar) n++;
+      for (let i = skip; i < all.length; i++) if (all[i] > bar) n++;
       return n;
     },
   };
@@ -505,7 +506,14 @@ export function startListenStream({
     // hear anything". As soon as the first quiet frame arrives, look back:
     // if the turn so far holds real voice, the person has spoken - start the
     // silence wait now so the turn ends and the words come back.
-    else if (!speechSeen && loud.speechFramesInHindsight() >= MIN_SPEECH_FRAMES) { lastLoudAt = now(); speechNow(); }
+    // THE BUZZ IS NOT THE PERSON. (31 October 2026, the same day)
+    // The phone buzzes the moment the microphone opens ("speak now", onLive in
+    // aaria.jsx) and the microphone hears it. The look-back above took that
+    // buzz for speech: the engine log showed turns of only 1.0-1.7 s with a
+    // loud start (peak 0.46-0.73) and one stray word back ("What", "Yeah."),
+    // because the silence wait started before the founder had begun. The
+    // first BUZZ_FRAMES (300 ms) never count as the person speaking here.
+    else if (!speechSeen && frames > BUZZ_FRAMES && loud.speechFramesInHindsight(BUZZ_FRAMES) >= MIN_SPEECH_FRAMES) { lastLoudAt = now(); speechNow(); }
     if (ready) send(pcm); else pending.push(pcm);
   }
 

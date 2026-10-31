@@ -26,6 +26,7 @@ for (const name of ['nativeVoiceMayHoldMic', 'pauseNativeVoiceForTurn', 'resumeN
   check('voice.ts exports ' + name, new RegExp('export (async )?function ' + name + '\\(').test(voice));
 }
 check('a restart after the turn is in wake-word mode', /startNativeVoice\(\{ authToken: '', languageCode: lang, alwaysOn: true \}\)/.test(voice));
+check('a service that is not recording is not asked again (no endless retry)', /isNativeVoiceRunning\(\)\)\) \{\s*\/\/[^\n]*\n\s*try \{ localStorage\.removeItem\('qk_voice_active'\)/.test(voice));
 check('pausing waits for the service to let go of the microphone', /stopService'\);[^]*?setTimeout\(r, 300\)/.test(voice));
 
 const start = aaria.indexOf('const startListening = useCallback(');

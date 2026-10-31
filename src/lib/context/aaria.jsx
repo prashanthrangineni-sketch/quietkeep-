@@ -47,6 +47,7 @@ import {
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported, claimMic, releaseMic } from '@/lib/aaria-hotword';
 import { createMicHold } from '@/lib/mic-hold';
+import { nativeVoiceMayHoldMic, pauseNativeVoiceForTurn, resumeNativeVoiceSoon, keepNativeVoicePaused } from '@/lib/capacitor/voice';
 import { checkForNotices } from '@/lib/aaria-watch';
 import { isSpeaking, looksLikeSelfEcho } from '@/lib/barge-in';
 import { lastKnownPosition } from '@/lib/geo';
@@ -271,7 +272,7 @@ export function AariaProvider({ children }) {
   const speakUntilRef  = useRef(0);
   const micHold = useMemo(() => createMicHold({
     claim: claimMic,
-    release: releaseMic,
+    release: () => { releaseMic(); resumeNativeVoiceSoon(); },
     isBusy: () => listeningRef.current
       || submittingRef.current
       || brainBusyRef.current > 0
@@ -1010,6 +1011,14 @@ export function AariaProvider({ children }) {
       startBrowserListening();
       return;
     }
+    // The Always-On service records on its own; while it does, this microphone
+    // hears silence. Stop it for this turn first (it comes back when the turn
+    // is over - see micHold above).
+    keepNativeVoicePaused();
+    if (nativeVoiceMayHoldMic()) {
+      pauseNativeVoiceForTurn().then(() => startListening(), () => startListening());
+      return;
+    }
 
     if (!hotwordRef.current) micHold.hold();   // see startBrowserListening
     try { hotwordRef.current?.suspend(); } catch {}
@@ -1062,10 +1071,12 @@ export function AariaProvider({ children }) {
         setStatus((st) => (st === 'listening' ? 'idle' : st));
         if (text) { setTranscript(text); submit(text); }
         if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);
+        resumeNativeVoiceSoon(20000);   // a fallback; micHold's release brings it back sooner
       },
       (err) => {
         if (recognitionRef.current?.stop === session.stop) recognitionRef.current = null;
         listeningRef.current = false;
+        resumeNativeVoiceSoon(20000);
         setInterim('');
         const info = { path: err?.fallback ? 'phone' : 'none', reason: err?.reason || 'unknown' };
         recordLastListen(info);

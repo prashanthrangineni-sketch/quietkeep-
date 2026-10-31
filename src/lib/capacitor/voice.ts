@@ -206,6 +206,9 @@ export interface VoiceServiceOptions {
   alwaysOn?:    boolean;
 }
 
+const LS_VOICE_LANG = 'qk_voice_lang';
+const LS_VOICE_ALWAYS_ON = 'qk_voice_always_on';
+
 export async function startNativeVoice(opts: VoiceServiceOptions): Promise<boolean> {
   if (!isAndroid()) return false;
   const hasMic = await checkMicPermission();
@@ -220,7 +223,11 @@ export async function startNativeVoice(opts: VoiceServiceOptions): Promise<boole
       language_code: opts.languageCode ?? 'en-IN',
       always_on:     opts.alwaysOn     ?? false,  // Phase 9B
     });
-    if (typeof localStorage !== 'undefined') localStorage.setItem('qk_voice_active', 'true');
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('qk_voice_active', 'true');
+      localStorage.setItem(LS_VOICE_LANG, opts.languageCode ?? 'en-IN');
+      localStorage.setItem(LS_VOICE_ALWAYS_ON, String(opts.alwaysOn ?? false));
+    }
     return true;
   } catch (e: any) { console.error('[QK] startNativeVoice failed:', e?.message); return false; }
 }
@@ -237,6 +244,57 @@ export async function isNativeVoiceRunning(): Promise<boolean> {
     const r = await callPlugin('VoicePlugin', 'isRunning');
     return r?.running === true && r?.capturing === true;
   } catch { return false; }
+}
+
+// ── Sharing the microphone with Aaria's dock (31 Oct 2026) ───────────────────
+// The Always-On service records with its own AudioRecord. While it does, the
+// page's microphone gets silence, so a tap on Aaria's dock heard nothing
+// ("I did not hear anything"). The dock now stops the service for its turn and
+// starts it again when the turn is over. The service keeps its sign-in in its
+// own storage, so it is restarted without a token.
+let pausedForTurn = false;
+let resumeTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** True when the Always-On service may be holding the microphone. Synchronous. */
+export function nativeVoiceMayHoldMic(): boolean {
+  if (!isAndroid() || pausedForTurn) return false;
+  try { return typeof localStorage !== 'undefined' && localStorage.getItem('qk_voice_active') === 'true'; }
+  catch { return false; }
+}
+
+/** Keeps the service stopped (a new turn started before it came back). */
+export function keepNativeVoicePaused(): void {
+  if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
+}
+
+/** Stops the Always-On service for one dock turn, and waits until the microphone is free. */
+export async function pauseNativeVoiceForTurn(): Promise<void> {
+  keepNativeVoicePaused();
+  if (pausedForTurn || !isAndroid()) return;
+  if (!(await isNativeVoiceRunning())) {
+    // Not recording: forget the flag, so the next turn does not ask again.
+    try { localStorage.removeItem('qk_voice_active'); } catch {}
+    return;
+  }
+  pausedForTurn = true;
+  try { await callPlugin('VoicePlugin', 'stopService'); } catch {}
+  await new Promise((r) => setTimeout(r, 300));
+}
+
+/** Starts the Always-On service again after the dock turn, unless another turn starts first. */
+export function resumeNativeVoiceSoon(ms = 1500): void {
+  if (!pausedForTurn) return;
+  keepNativeVoicePaused();
+  resumeTimer = setTimeout(async () => {
+    resumeTimer = null;
+    if (!pausedForTurn) return;
+    pausedForTurn = false;
+    let lang = 'en-IN';
+    try { lang = localStorage.getItem(LS_VOICE_LANG) || lang; } catch {}
+    // Always-On listens for the wake word only. Sending every sound it hears as a
+    // keep created junk keeps from room noise.
+    await startNativeVoice({ authToken: '', languageCode: lang, alwaysOn: true });
+  }, ms);
 }
 
 export function isNativeVoiceAvailable(): boolean { return isAndroid(); }

@@ -271,7 +271,11 @@ export function keepNativeVoicePaused(): void {
 export async function pauseNativeVoiceForTurn(): Promise<void> {
   keepNativeVoicePaused();
   if (pausedForTurn || !isAndroid()) return;
-  if (!(await isNativeVoiceRunning())) return;
+  if (!(await isNativeVoiceRunning())) {
+    // Not recording: forget the flag, so the next turn does not ask again.
+    try { localStorage.removeItem('qk_voice_active'); } catch {}
+    return;
+  }
   pausedForTurn = true;
   try { await callPlugin('VoicePlugin', 'stopService'); } catch {}
   await new Promise((r) => setTimeout(r, 300));

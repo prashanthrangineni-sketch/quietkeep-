@@ -284,7 +284,7 @@ export async function POST(request) {
       user_id: user.id,
       action:  'transcript_rejected_as_fragment',
       service: 'voice_capture',
-      details: { speech_ms: measuredSpeechMs(listenEvidence), heard_ms: listenEvidence?.heardMs ?? null, sample: text.slice(0, 120), source, language },
+      details: { speech_ms: measuredSpeechMs(listenEvidence), heard_ms: listenEvidence?.heardMs ?? null, sample: text.slice(0, 120), source, language, answering: body.answering === true, listen: listenEvidence },
     }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) })
     return NextResponse.json({
       ok: false,

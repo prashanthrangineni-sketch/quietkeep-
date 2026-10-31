@@ -535,7 +535,7 @@ export default function Dashboard() {
     if (!hasMic) { showToast('⚠ Microphone permission denied — enable in Settings → Apps → QuietKeep → Permissions'); return; }
     await warmUpWebViewMic();
     await requestNotificationPermission();
-    const started = await startNativeVoice({ authToken: accessToken, serverUrl: 'https://quietkeep.com', mode: 'personal', workspaceId: null, languageCode: voiceLang || 'en-IN' });
+    const started = await startNativeVoice({ authToken: accessToken, serverUrl: 'https://quietkeep.com', mode: 'personal', workspaceId: null, languageCode: voiceLang || 'en-IN', alwaysOn: true });
     if (!started) { showToast('⚠ Could not start voice service — check mic permission in Settings'); console.error('[QK Always-On] startNativeVoice returned false'); return; }
     setAlwaysOnStatus('starting'); showToast('Starting always-on voice…');
     setTimeout(async () => {

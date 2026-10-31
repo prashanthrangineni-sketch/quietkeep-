@@ -497,6 +497,15 @@ export function startListenStream({
     if (frames === 0) { micLiveMs = Math.round(now() - t0); try { onLive(); } catch {} }
     frames++;
     if (loud.isSpeech(rms(frame))) { speechFrames++; lastLoudAt = now(); speechNow(); }
+    // SPOKEN THE MOMENT THE MIC OPENED. (31 October 2026)
+    // "call Surya" said straight away, with no quiet moment before it, is
+    // never judged as speech by the live check above (the voice is its own
+    // room level), so the "has he stopped?" wait never started, the engine
+    // was never told to finish, and after 8 s the person heard "I did not
+    // hear anything". As soon as the first quiet frame arrives, look back:
+    // if the turn so far holds real voice, the person has spoken - start the
+    // silence wait now so the turn ends and the words come back.
+    else if (!speechSeen && loud.speechFramesInHindsight() >= MIN_SPEECH_FRAMES) { lastLoudAt = now(); speechNow(); }
     if (ready) send(pcm); else pending.push(pcm);
   }
 

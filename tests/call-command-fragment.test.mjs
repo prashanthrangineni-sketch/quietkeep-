@@ -126,5 +126,39 @@ function makeWorld() {
   check('the capture guard lets this turn through', r.ok && !isFragment({ listen, text: r.v.text }));
 }
 
+// ── "I did not hear anything" (31 Oct): voice from the first frame, then quiet,
+// and the engine answers only after it is told the person stopped ──────────
+{
+  const w = makeWorld();
+  const sent = [];
+  const s = startListenStream({ lang: 'te-IN', silenceMs: 1200, deps: { ...w.deps, WebSocket: class extends w.deps.WebSocket { send(d) { sent.push(d); } } } });
+  const res = s.result.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }));
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.engine({ event: 'ready' });
+  const stopped = () => sent.some((d) => typeof d === 'string' && d.indexOf('"stop"') >= 0);
+  for (let i = 0; i < 10; i++) { w.frame(0.2); w.clock.advance(100); }
+  let stopAfterMs = null;
+  for (let i = 1; i <= 90; i++) {
+    w.frame(0.0003); w.clock.advance(100);
+    if (stopped()) { stopAfterMs = i * 100; w.engine({ event: 'done', text: 'call Surya' }); break; }
+  }
+  w.clock.advance(3000);
+  const r = await res;
+  check('a command said the moment the mic opens ends the turn (not 8 s of waiting)', stopAfterMs !== null && stopAfterMs <= 1500, 'stopAfterMs=' + stopAfterMs);
+  check('…and the words come back instead of "I did not hear anything"', r.ok && r.v.text === 'call Surya', JSON.stringify(r.e && r.e.reason));
+  check('…with the whole second of voice counted', r.ok && r.v.speechMs === 1000, r.ok && 'speechMs=' + r.v.speechMs);
+}
+{
+  // A silent turn still says "nothing heard" - the look-back never invents speech.
+  const w = makeWorld();
+  const s = startListenStream({ lang: 'te-IN', silenceMs: 1200, deps: w.deps });
+  const res = s.result.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }));
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.engine({ event: 'ready' });
+  for (let i = 0; i < 90; i++) { w.frame(0.0003); w.clock.advance(100); }
+  const r = await res;
+  check('a silent turn still ends as "nothing heard"', !r.ok && r.e && r.e.reason === 'nothing heard', JSON.stringify(r));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

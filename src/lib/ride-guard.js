@@ -30,7 +30,7 @@ import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
 import { createAnomalyWatcher } from '@/lib/anomaly-watch';
 import { createOvertakeWatcher, createRoadAheadProvider } from '@/lib/overtake-advisor';
-import { createClipRecorder, saveLastRideClips } from '@/lib/ride-clips';
+import { createClipRecorder, saveLastRideClips, uploadRideClips } from '@/lib/ride-clips';
 
 const COUNTDOWN_SECONDS = 30;
 const CANCEL_WORDS = [
@@ -725,7 +725,14 @@ export function startRideGuard({ getAccessToken, onState, destination, knownStop
       recentFixes = [];
       reportRideDistance();
       clipRecorder.stop();
-      saveLastRideClips(clipRecorder.getClips());
+      const finishedClips = clipRecorder.getClips();
+      saveLastRideClips(finishedClips);
+      // Upload so labels can be saved and the false-alarm page can count them.
+      if (finishedClips.length > 0) {
+        supabase.auth.getUser()
+          .then(({ data }) => uploadRideClips({ db: supabase, userId: data?.user?.id, clips: finishedClips }))
+          .catch(() => {});
+      }
       onState?.('stopped', {});
     },
     feedSpeed(kmh, fix) {

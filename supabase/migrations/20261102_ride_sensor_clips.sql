@@ -47,5 +47,8 @@ create policy "ride_sensor_clips_owner_update" on public.ride_sensor_clips
 
 -- Limit column-level privileges for authenticated users so updates are restricted to label and outcome.
 revoke all on public.ride_sensor_clips from anon;
+-- Supabase grants every column to authenticated by default; take UPDATE back
+-- first, otherwise the column grant below would restrict nothing.
+revoke update on public.ride_sensor_clips from authenticated;
 grant select, insert on public.ride_sensor_clips to authenticated;
 grant update (label, outcome) on public.ride_sensor_clips to authenticated;

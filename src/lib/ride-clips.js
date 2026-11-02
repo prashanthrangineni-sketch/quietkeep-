@@ -275,6 +275,41 @@ export function createClipRecorder(options = {}) {
   };
 }
 
+/**
+ * Upload a ride's finished clips to public.ride_sensor_clips (owner-only rows).
+ * Runs as the signed-in user, so row-level rules keep each rider's clips private.
+ * A duplicate id (already uploaded) counts as done. Never throws.
+ * @returns {Promise<{ uploaded: number, failed: number, error?: string }>}
+ */
+export async function uploadRideClips({ db, userId, clips } = {}) {
+  const result = { uploaded: 0, failed: 0 };
+  if (!db || !userId || !Array.isArray(clips) || clips.length === 0) return result;
+  const rows = clips
+    .filter(c => c && c.id && ALLOWED_KINDS.includes(c.kind))
+    .map(c => ({
+      id: c.id,
+      owner: userId,
+      session_id: c.session_id || null,
+      kind: c.kind,
+      outcome: ALLOWED_OUTCOMES.includes(c.outcome) ? c.outcome : 'pending',
+      label: ALLOWED_LABELS.includes(c.label) ? c.label : null,
+      // speed and acceleration only; never coordinates
+      samples: (c.samples || []).map(s => ({ at: s.at, g: s.g, kmh: s.kmh ?? null })),
+      phone_model: c.phone_model || null,
+      started_at: c.startedAt || new Date().toISOString(),
+    }));
+  for (const row of rows) {
+    try {
+      const { error } = await db.from('ride_sensor_clips').insert(row);
+      if (error && error.code !== '23505') { result.failed++; result.error = error.message || String(error); }
+      else result.uploaded++;
+    } catch (e) {
+      result.failed++; result.error = String(e?.message || e);
+    }
+  }
+  return result;
+}
+
 export function saveLastRideClips(clips, storage = null) {
   const store = storage || (typeof window !== 'undefined' ? window.localStorage : null);
   if (!store) return;

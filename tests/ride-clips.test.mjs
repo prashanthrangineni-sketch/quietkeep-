@@ -393,5 +393,25 @@ eq('ALLOWED_LABELS contains bump, fall, nothing', ALLOWED_LABELS, ['bump', 'fall
   eq('persisted clip has updated label', reloaded[0].label, 'bump');
 }
 
+// ── Upload to ride_sensor_clips (Claude review fix) ──
+{
+  const { uploadRideClips } = await import('../src/lib/ride-clips.js');
+  const inserted = [];
+  const db = { from: (t) => ({ insert: async (row) => { inserted.push({ t, row }); return { error: inserted.length === 2 ? { code: '23505', message: 'dup' } : null }; } }) };
+  const clips = [
+    { id: 'a1', kind: 'suspected', outcome: 'cancelled_ok', label: null, samples: [{ at: 1, g: 2.1, kmh: 30, lat: 17.4 }], phone_model: 'X', startedAt: '2026-11-02T10:00:00.000Z' },
+    { id: 'a2', kind: 'normal_sample', outcome: 'pending', label: 'nothing', samples: [], phone_model: 'X', startedAt: '2026-11-02T10:10:00.000Z' },
+    { id: 'a3', kind: 'bogus', samples: [] },
+  ];
+  const r = await uploadRideClips({ db, userId: 'u1', clips });
+  eq('upload: two valid clips inserted, bogus kind skipped', inserted.length, 2);
+  eq('upload: duplicate counts as uploaded', r.uploaded, 2);
+  eq('upload: table name', inserted[0].t, 'ride_sensor_clips');
+  eq('upload: owner set', inserted[0].row.owner, 'u1');
+  eq('upload: no coordinates in samples', JSON.stringify(inserted[0].row.samples).includes('lat'), false);
+  const none = await uploadRideClips({ db, userId: null, clips });
+  eq('upload: signed out uploads nothing', none.uploaded, 0);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

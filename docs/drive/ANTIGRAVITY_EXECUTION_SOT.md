@@ -119,6 +119,60 @@ Add, in the same style as section F / A2: the indicator listening (`IndicatorEar
 
 ---
 
+### Run 2 — Execution pack 2 Nov 2026 (cards AG-D1 … AG-D4)
+
+Founder Office execution pack, cards 6, 15, 16, 17 (owner: Drive thread). Picked by the same rule as above (first card whose branch is missing on origin). Extra rules for run 2, on top of sections 1–2:
+
+- **R1.** One card = one fresh Antigravity conversation, opened in `C:\Users\ADMIN\Pranix\repos\quietkeep-` (never pranix-aaria or any other folder).
+- **R2.** New branch, pull request; never merge, never deploy to production, never touch live data — tests and scratch data only.
+- **R3.** No secrets in Antigravity; anything needing a key stops and names the missing key.
+- **R4.** Evidence goes to `C:\PranixEvidence\<card-id>\`: the self-check output as `selfcheck.txt`, screenshots if any, and a short `RESULT.md` (what was built, tests and their real result, anything undone). Claude reads it before believing "done".
+- **R5.** Stop only if a rule would be broken; otherwise run to the end.
+- **R6.** Finish with: the pull request (or compare) link, tests run and their result, anything left undone.
+
+#### AG-D1 — One-tap ride (DRV-14)
+**Branch:** `ag/AG-D1-one-tap-ride`
+**Allowed files:** edit `src/app/drive/page.jsx` (the Drive Mode start/stop effect and its existing GPS watch only); create `src/lib/ride-session.js`, `tests/ride-session.test.mjs`, `docs/drive/pr-bodies/AG-D1.md`.
+**Why:** on the 17–19 Oct drives only the black box ran; crash check-in, braking map, hazards, tiredness, indicator, overtaking and anomaly notes run only after a separate "Driving → Start ride" tap, so nothing else was recorded.
+1. `src/lib/ride-session.js` (pure, injectable `db`, `clock`, `guard` so it is testable):
+   - `openRideSession({ db, userId, clock })`: first ends any of the user's `driving_sessions` rows with `ended_at` null that started more than 12 h ago (set `ended_at` = now and `duration_seconds` = null, because the real length is unknown), then reuses an open row started within 12 h, else inserts a new row. Returns `{ id }`. Only the real columns `user_id`, `started_at`, `ended_at`, `duration_seconds` (see the comment in `src/app/driving/page.jsx` about rejected columns).
+   - `closeRideSession({ db, id, clock, startedAt })`: sets `ended_at` and `duration_seconds`; returns `{ ok, error }` and never throws.
+2. `src/app/drive/page.jsx`, in the existing Drive Mode effect only:
+   - on entry: `openRideSession(...)`, then `startRideGuard({ getAccessToken, onState })` from `src/lib/ride-guard.js` (the guard already stops any previous one). `getAccessToken` reads the current session token at call time (as `src/app/driving/page.jsx` does with a ref).
+   - in the existing `watchPosition` callback: also call `feedRideSpeed(kmh, { lat, lng, accuracy, headingDeg })` exactly as `src/app/driving/page.jsx` does (heading null when not a number).
+   - on exit (the effect cleanup): `stopRideGuard()` and `closeRideSession(...)`; also close the session on `pagehide`.
+   - Nothing else on the page changes. Do NOT edit `src/lib/ride-guard.js` or `src/app/driving/page.jsx`.
+3. Tests `tests/ride-session.test.mjs` with a fake `db`: new session inserted; open session < 12 h reused; stale session > 12 h ended then a new one inserted; close sets ended_at and duration; a db error returns `{ ok:false }` and never throws; only allowed columns are ever written.
+**Done when:** the self-check passes and `RESULT.md` shows the new test output; Claude then runs a simulated ride (fake GPS feed) and confirms the guard starts and a session row opens and closes.
+
+#### AG-D2 — Ride recorder for labelled clips (DRV-15)
+**Branch:** `ag/AG-D2-ride-clips`
+**Allowed files:** create `src/lib/ride-clips.js`, `tests/ride-clips.test.mjs`, `supabase/migrations/20261102_ride_sensor_clips.sql`, `docs/drive/pr-bodies/AG-D2.md`; edit `src/app/drive/page.jsx` (one opt-in switch in the Setup overlay + one "Label last ride" card), `src/lib/ride-guard.js` (wire-in only: feed the recorder from the existing `onMotion` and speed feed, and hand it the detector's state changes — change no thresholds, no SOS logic).
+1. `src/lib/ride-clips.js` (pure, injectable clock): `createClipRecorder({ clock, windowMs = 10000, rateHz = 50 })` keeps a rolling buffer of `{ at, g, kmh }`; `onCandidate(kind, detail)` freezes the 10 s around the event (5 s before, 5 s after) into a clip `{ kind: 'suspected'|'crash'|'normal_sample', samples, startedAt, outcome: 'pending' }`; one `normal_sample` clip at a random time per 10 riding minutes; at most 30 clips per ride; `setOutcome(id, 'cancelled_ok'|'sent'|'drill')`; `label(id, 'bump'|'fall'|'nothing')`.
+2. Opt-in switch (default OFF) in Drive Setup: "Help improve crash detection — keep short motion clips from my rides (no audio, no video)". Saved in localStorage `qk_ride_clips_opt_in`. Nothing is recorded when OFF.
+3. Migration FILE only (never apply): `public.ride_sensor_clips` (id uuid pk, owner uuid → auth.users on delete cascade, session_id uuid null, kind text check in ('suspected','crash','normal_sample'), outcome text, label text check in ('bump','fall','nothing') null, samples jsonb, phone_model text, started_at timestamptz, created_at timestamptz default now()); RLS on; policies owner select / insert / update (label and outcome only) with `auth.uid() = owner`; no delete policy.
+4. "Label last ride" card on the Drive page: lists the last ride's unlabelled clips (time, kind, peak g) with three buttons Bump / Fall / Nothing.
+5. Tests: buffer window maths, freeze 5 s + 5 s, normal-sample rate, 30-clip cap, opt-out records nothing, labels and outcomes validated, no location coordinates stored in samples (speed only).
+**Done when:** 10 simulated candidate events are saved and labelled in the test, self-check passes.
+
+#### AG-D3 — Drop-and-fall test screen (DRV-16)
+**Branch:** `ag/AG-D3-drop-test`
+**Allowed files:** create `src/lib/drop-test.js`, `tests/drop-test.test.mjs`, `docs/drive/drop-test-protocol.md`, `docs/drive/pr-bodies/AG-D3.md`; edit `src/app/drive/proof/page.jsx` (one new "Drop and fall test" section only).
+1. `src/lib/drop-test.js` (pure): runs `createCrashDetector` from `src/lib/crash-detect.js` (do NOT edit it) on a recorded motion trace with a **simulated riding speed** of 25 km/h before the event and 0 after (staged tests happen at a standstill), and returns `{ detected, state, peakG, msToDetect }`.
+2. Proof screen section: pick a trial type — `cushion_drop_1m`, `pocket_fall`, `bag_drop`, `mount_knock`, `normal_handling` (expected: detected for the first three, NOT detected for the last two); "Start trial" records 15 s of `devicemotion`, runs the evaluator, shows the result and saves it to `drive_proof_runs` (existing table) with `step = 'drop_test:<type>'`, `result` pass/fail against the expectation, `evidence` = { detected, peakG, msToDetect, phone_model }. Drill only: never messages anybody, never starts SOS.
+3. A running tally on the screen: per trial type, caught / total and false alarms / total.
+4. `docs/drive/drop-test-protocol.md`: safe staging (soft surface, never at speed, never from a moving vehicle), 20 trials per type per phone, what counts as pass.
+5. Tests: synthetic traces for each type give the expected verdict; a trace with no stillness after impact is not a crash; results never claim pass on missing data.
+**Done when:** the test screen records results (simulated traces in tests), self-check passes.
+
+#### AG-D4 — False-alarm page (DRV-17)
+**Branch:** `ag/AG-D4-false-alarm-page`
+**Allowed files:** create `src/app/drive/stats/page.jsx`, `src/lib/false-alarm-stats.js`, `tests/false-alarm-stats.test.mjs`, `docs/drive/pr-bodies/AG-D4.md`.
+1. `src/lib/false-alarm-stats.js` (pure): from rows of `driving_sessions` (riding hours = sum of durations, open sessions ignored), `blackbox_events` (confirmed vs not), `ride_sensor_clips` (crash/suspected clips with outcome `cancelled_ok` or label `bump`/`nothing` = false alarm; label `fall` or outcome `sent` without cancel = true event) and `drive_proof_runs` (`drop_test:*`) compute per phone model: riding hours, false alarms per 1,000 riding hours, check-ins cancelled, staged falls caught / total. Fewer than 10 riding hours → show "not enough riding yet", never a rate.
+2. `/drive/stats` page (opened by URL only, owner's own rows via the existing supabase client, read-only): one table per phone model plus totals, and the date range covered.
+3. Tests with fixture rows: rates, the 10-hour floor, open sessions ignored, missing tables (AG-D2 not merged yet) handled as "no data", never a crash.
+**Done when:** the page reads real recorded rides (Claude checks against the live tables after merge), self-check passes.
+
 ## 4. Not in this run (do NOT start these)
 - **DRV-05 hazard feed (Mappls)** and the Mappls provider for AG-01 — wait for the founder's Mappls account.
 - **DRV-13 camera co-pilot** — founder decision: after the road tests.

@@ -81,8 +81,10 @@ function scriptShare(text, lang) {
 function score(c, answer) {
   const refused = /NOT_IN_NOTES/i.test(answer)
   if (c.none) return { ok: refused, refused }
-  const low = answer.toLowerCase()
-  const factsOk = c.must.every((g) => g.some((w) => low.includes(w.toLowerCase())))
+  // Normalise unusual spaces (models write "Bahadur\u202fShah", "3\u202fA").
+  const low = answer.replace(/[\u00a0\u2000-\u200b\u202f\u205f]/g, ' ').toLowerCase()
+  const has = (w) => w === 'amp' ? /amp|\d\s*a\b/.test(low) : low.includes(w.toLowerCase())
+  const factsOk = c.must.every((g) => g.some(has))
   return { ok: factsOk && !refused, refused, sameLang: scriptShare(answer, c.lang) >= 0.6 }
 }
 

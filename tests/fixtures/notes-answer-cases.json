@@ -1,0 +1,268 @@
+[
+ {
+  "id": "en-photo",
+  "lang": "en",
+  "notes": "Photosynthesis is the process by which green plants make their own food. It takes place in the chloroplasts of leaf cells. Plants use carbon dioxide from the air, water from the soil and energy from sunlight. Chlorophyll, the green pigment, absorbs the sunlight. Glucose is produced and oxygen is released as a by-product.",
+  "q": "Which gas is released during photosynthesis?",
+  "must": [
+   [
+    "oxygen"
+   ]
+  ]
+ },
+ {
+  "id": "en-photo-where",
+  "lang": "en",
+  "notes": "Photosynthesis is the process by which green plants make their own food. It takes place in the chloroplasts of leaf cells. Plants use carbon dioxide from the air, water from the soil and energy from sunlight. Chlorophyll, the green pigment, absorbs the sunlight. Glucose is produced and oxygen is released as a by-product.",
+  "q": "In which part of the leaf cell does photosynthesis happen?",
+  "must": [
+   [
+    "chloroplast"
+   ]
+  ]
+ },
+ {
+  "id": "en-ohm",
+  "lang": "en",
+  "notes": "Ohm's law states that the current flowing through a conductor is directly proportional to the potential difference across its ends, provided the temperature remains constant. It is written as V = IR, where V is the potential difference in volts, I is the current in amperes and R is the resistance in ohms.",
+  "q": "If the potential difference is 12 volts and the resistance is 4 ohms, what is the current?",
+  "must": [
+   [
+    "3"
+   ],
+   [
+    "amp"
+   ]
+  ]
+ },
+ {
+  "id": "en-1857",
+  "lang": "en",
+  "notes": "The Revolt of 1857 began at Meerut on 10 May 1857, when sepoys rose against their British officers. The rebels marched to Delhi and declared the Mughal emperor Bahadur Shah Zafar as their leader. Important centres of the revolt included Kanpur, Lucknow and Jhansi, where Rani Lakshmibai fought the British.",
+  "q": "Where did the Revolt of 1857 begin?",
+  "must": [
+   [
+    "meerut"
+   ]
+  ]
+ },
+ {
+  "id": "en-1857-leader",
+  "lang": "en",
+  "notes": "The Revolt of 1857 began at Meerut on 10 May 1857, when sepoys rose against their British officers. The rebels marched to Delhi and declared the Mughal emperor Bahadur Shah Zafar as their leader. Important centres of the revolt included Kanpur, Lucknow and Jhansi, where Rani Lakshmibai fought the British.",
+  "q": "Whom did the rebels declare as their leader in Delhi?",
+  "must": [
+   [
+    "bahadur shah"
+   ]
+  ]
+ },
+ {
+  "id": "en-soil",
+  "lang": "en",
+  "notes": "Black soil is also called regur soil. It is formed from volcanic rocks of the Deccan plateau. It holds moisture very well and is ideal for growing cotton. It is found mainly in Maharashtra, Gujarat and parts of Madhya Pradesh.",
+  "q": "Which crop grows best in black soil?",
+  "must": [
+   [
+    "cotton"
+   ]
+  ]
+ },
+ {
+  "id": "hi-photo",
+  "lang": "hi",
+  "notes": "प्रकाश संश्लेषण वह प्रक्रिया है जिसके द्वारा हरे पौधे अपना भोजन स्वयं बनाते हैं। यह पत्तियों की कोशिकाओं में हरितलवक (क्लोरोप्लास्ट) में होती है। पौधे हवा से कार्बन डाइऑक्साइड, मिट्टी से पानी और सूर्य के प्रकाश से ऊर्जा लेते हैं। इस प्रक्रिया में ग्लूकोज बनता है और ऑक्सीजन गैस बाहर निकलती है।",
+  "q": "प्रकाश संश्लेषण में कौन सी गैस बाहर निकलती है?",
+  "must": [
+   [
+    "ऑक्सीजन",
+    "oxygen"
+   ]
+  ]
+ },
+ {
+  "id": "hi-ohm",
+  "lang": "hi",
+  "notes": "ओम का नियम कहता है कि यदि तापमान स्थिर रहे तो किसी चालक में बहने वाली धारा उसके सिरों के बीच विभवांतर के समानुपाती होती है। इसे V = IR लिखा जाता है, जहाँ V वोल्ट में विभवांतर, I एम्पियर में धारा और R ओम में प्रतिरोध है।",
+  "q": "यदि विभवांतर 10 वोल्ट और प्रतिरोध 5 ओम हो तो धारा कितनी होगी?",
+  "must": [
+   [
+    "2"
+   ],
+   [
+    "एम्पियर",
+    "ऐम्पियर",
+    "ampere",
+    "amp"
+   ]
+  ]
+ },
+ {
+  "id": "hi-1857",
+  "lang": "hi",
+  "notes": "1857 का विद्रोह 10 मई 1857 को मेरठ से शुरू हुआ, जब सिपाहियों ने अपने अंग्रेज़ अधिकारियों के विरुद्ध विद्रोह किया। विद्रोही दिल्ली पहुँचे और मुग़ल बादशाह बहादुर शाह ज़फ़र को अपना नेता घोषित किया। झाँसी में रानी लक्ष्मीबाई ने अंग्रेज़ों से युद्ध किया।",
+  "q": "1857 का विद्रोह कहाँ से शुरू हुआ?",
+  "must": [
+   [
+    "मेरठ",
+    "meerut"
+   ]
+  ]
+ },
+ {
+  "id": "hi-1857-jhansi",
+  "lang": "hi",
+  "notes": "1857 का विद्रोह 10 मई 1857 को मेरठ से शुरू हुआ, जब सिपाहियों ने अपने अंग्रेज़ अधिकारियों के विरुद्ध विद्रोह किया। विद्रोही दिल्ली पहुँचे और मुग़ल बादशाह बहादुर शाह ज़फ़र को अपना नेता घोषित किया। झाँसी में रानी लक्ष्मीबाई ने अंग्रेज़ों से युद्ध किया।",
+  "q": "झाँसी में अंग्रेज़ों से किसने युद्ध किया?",
+  "must": [
+   [
+    "लक्ष्मीबाई",
+    "लक्ष्मी बाई",
+    "lakshmibai"
+   ]
+  ]
+ },
+ {
+  "id": "hi-soil",
+  "lang": "hi",
+  "notes": "काली मिट्टी को रेगुर मिट्टी भी कहते हैं। यह दक्कन के पठार की ज्वालामुखी चट्टानों से बनी है। यह नमी को अच्छी तरह रोककर रखती है और कपास की खेती के लिए सबसे उपयुक्त है।",
+  "q": "काली मिट्टी में कौन सी फसल सबसे अच्छी उगती है?",
+  "must": [
+   [
+    "कपास",
+    "cotton"
+   ]
+  ]
+ },
+ {
+  "id": "hi-water",
+  "lang": "hi",
+  "notes": "जल चक्र में सूर्य की गर्मी से समुद्र, नदियों और झीलों का पानी वाष्प बनकर ऊपर उठता है, इसे वाष्पीकरण कहते हैं। ऊपर ठंडी हवा में वाष्प छोटी बूँदों में बदलकर बादल बनाती है, इसे संघनन कहते हैं। फिर पानी वर्षा के रूप में धरती पर लौटता है।",
+  "q": "पानी के वाष्प बनकर ऊपर उठने को क्या कहते हैं?",
+  "must": [
+   [
+    "वाष्पीकरण",
+    "evaporation"
+   ]
+  ]
+ },
+ {
+  "id": "te-photo",
+  "lang": "te",
+  "notes": "కిరణజన్య సంయోగక్రియ ద్వారా ఆకుపచ్చని మొక్కలు తమ ఆహారాన్ని తామే తయారు చేసుకుంటాయి. ఇది ఆకు కణాల్లోని హరితరేణువుల (క్లోరోప్లాస్ట్) లో జరుగుతుంది. మొక్కలు గాలి నుండి కార్బన్ డయాక్సైడ్, నేల నుండి నీరు, సూర్యకాంతి నుండి శక్తిని తీసుకుంటాయి. ఈ ప్రక్రియలో గ్లూకోజ్ తయారవుతుంది, ఆక్సిజన్ విడుదల అవుతుంది.",
+  "q": "కిరణజన్య సంయోగక్రియలో ఏ వాయువు విడుదల అవుతుంది?",
+  "must": [
+   [
+    "ఆక్సిజన్",
+    "ఆమ్లజని",
+    "oxygen"
+   ]
+  ]
+ },
+ {
+  "id": "te-ohm",
+  "lang": "te",
+  "notes": "ఓమ్ నియమం ప్రకారం, ఉష్ణోగ్రత స్థిరంగా ఉంటే, ఒక వాహకం గుండా ప్రవహించే విద్యుత్ ప్రవాహం దాని చివరల మధ్య పొటెన్షియల్ భేదానికి అనులోమానుపాతంలో ఉంటుంది. దీనిని V = IR అని రాస్తారు. V వోల్ట్లలో పొటెన్షియల్ భేదం, I ఆంపియర్లలో విద్యుత్ ప్రవాహం, R ఓమ్లలో నిరోధం.",
+  "q": "పొటెన్షియల్ భేదం 9 వోల్ట్లు, నిరోధం 3 ఓమ్లు అయితే విద్యుత్ ప్రవాహం ఎంత?",
+  "must": [
+   [
+    "3"
+   ],
+   [
+    "ఆంపియర్",
+    "ampere",
+    "amp"
+   ]
+  ]
+ },
+ {
+  "id": "te-1857",
+  "lang": "te",
+  "notes": "1857 తిరుగుబాటు 1857 మే 10న మీరట్‌లో ప్రారంభమైంది. సిపాయిలు తమ బ్రిటిష్ అధికారులపై తిరగబడ్డారు. తిరుగుబాటుదారులు ఢిల్లీకి వెళ్లి మొఘల్ చక్రవర్తి బహదూర్ షా జఫర్‌ను తమ నాయకుడిగా ప్రకటించారు. ఝాన్సీలో రాణి లక్ష్మీబాయి బ్రిటిష్ వారితో పోరాడింది.",
+  "q": "1857 తిరుగుబాటు ఎక్కడ ప్రారంభమైంది?",
+  "must": [
+   [
+    "మీరట్",
+    "meerut"
+   ]
+  ]
+ },
+ {
+  "id": "te-1857-leader",
+  "lang": "te",
+  "notes": "1857 తిరుగుబాటు 1857 మే 10న మీరట్‌లో ప్రారంభమైంది. సిపాయిలు తమ బ్రిటిష్ అధికారులపై తిరగబడ్డారు. తిరుగుబాటుదారులు ఢిల్లీకి వెళ్లి మొఘల్ చక్రవర్తి బహదూర్ షా జఫర్‌ను తమ నాయకుడిగా ప్రకటించారు. ఝాన్సీలో రాణి లక్ష్మీబాయి బ్రిటిష్ వారితో పోరాడింది.",
+  "q": "ఢిల్లీలో తిరుగుబాటుదారులు ఎవరిని నాయకుడిగా ప్రకటించారు?",
+  "must": [
+   [
+    "బహదూర్",
+    "bahadur"
+   ]
+  ]
+ },
+ {
+  "id": "te-soil",
+  "lang": "te",
+  "notes": "నల్లరేగడి నేలను రేగుర్ నేల అని కూడా అంటారు. ఇది దక్కన్ పీఠభూమిలోని అగ్నిపర్వత శిలల నుండి ఏర్పడింది. ఇది తేమను బాగా నిలుపుకుంటుంది, పత్తి పంటకు చాలా అనుకూలం.",
+  "q": "నల్లరేగడి నేలలో ఏ పంట బాగా పండుతుంది?",
+  "must": [
+   [
+    "పత్తి",
+    "cotton"
+   ]
+  ]
+ },
+ {
+  "id": "te-water",
+  "lang": "te",
+  "notes": "జలచక్రంలో సూర్యుని వేడికి సముద్రాలు, నదులు, సరస్సుల నీరు ఆవిరిగా మారి పైకి వెళ్తుంది, దీనిని బాష్పీభవనం అంటారు. పైన చల్లని గాలిలో ఆవిరి చిన్న నీటి బిందువులుగా మారి మేఘాలు ఏర్పడతాయి, దీనిని సాంద్రీకరణం అంటారు. తర్వాత నీరు వర్షం రూపంలో భూమికి తిరిగి వస్తుంది.",
+  "q": "నీరు ఆవిరిగా మారి పైకి వెళ్లడాన్ని ఏమంటారు?",
+  "must": [
+   [
+    "బాష్పీభవనం",
+    "evaporation"
+   ]
+  ]
+ },
+ {
+  "id": "en-none-1",
+  "lang": "en",
+  "notes": "Black soil is also called regur soil. It is formed from volcanic rocks of the Deccan plateau. It holds moisture very well and is ideal for growing cotton.",
+  "q": "Who was the first Prime Minister of India?",
+  "none": true
+ },
+ {
+  "id": "en-none-2",
+  "lang": "en",
+  "notes": "Ohm's law states that the current flowing through a conductor is directly proportional to the potential difference across its ends, provided the temperature remains constant. It is written as V = IR.",
+  "q": "What is the formula for electric power?",
+  "none": true
+ },
+ {
+  "id": "hi-none-1",
+  "lang": "hi",
+  "notes": "काली मिट्टी को रेगुर मिट्टी भी कहते हैं। यह कपास की खेती के लिए सबसे उपयुक्त है।",
+  "q": "भारत की राजधानी क्या है?",
+  "none": true
+ },
+ {
+  "id": "hi-none-2",
+  "lang": "hi",
+  "notes": "1857 का विद्रोह 10 मई 1857 को मेरठ से शुरू हुआ।",
+  "q": "1857 के विद्रोह में अंग्रेज़ सेनापति कौन था?",
+  "none": true
+ },
+ {
+  "id": "te-none-1",
+  "lang": "te",
+  "notes": "నల్లరేగడి నేల పత్తి పంటకు చాలా అనుకూలం.",
+  "q": "తెలంగాణ రాజధాని ఏది?",
+  "none": true
+ },
+ {
+  "id": "te-none-2",
+  "lang": "te",
+  "notes": "జలచక్రంలో సూర్యుని వేడికి నీరు ఆవిరిగా మారి పైకి వెళ్తుంది, దీనిని బాష్పీభవనం అంటారు.",
+  "q": "ఒక సంవత్సరంలో భారతదేశంలో సగటు వర్షపాతం ఎంత?",
+  "none": true
+ }
+]

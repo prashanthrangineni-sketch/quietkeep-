@@ -1,0 +1,55 @@
+# Measure notes-grounded answers (EdGridAI doubt-solver pattern).
+# Measurement only: scripts/eval-notes-answers.mjs on 24 synthetic cases;
+# commits measurements/notes-answers-latest.{md,json} back to the branch.
+# workflow_dispatch only (paid calls). Never wired into any app.
+name: Evaluate notes-grounded answers
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: 'Comma-separated provider:model list (blank = the standard set)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: eval-notes-answers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run the evaluation
+        env:
+          SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SHAKTI_API_KEY: ${{ secrets.SHAKTI_API_KEY }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MODELS_INPUT: ${{ inputs.models }}
+        run: |
+          MODELS="${MODELS_INPUT:-sarvam:sarvam-105b-conversations,gemini:gemini-3.5-flash-lite,shakti:gpt-oss-120b,shakti:llama-4-maverick,shakti:gemma-3-27b,shakti:qwen2.5-vl-72b}"
+          args=()
+          IFS=',' read -ra list <<< "$MODELS"
+          for m in "${list[@]}"; do m="$(echo "$m" | xargs)"; [ -n "$m" ] && args+=(--model "$m"); done
+          node scripts/eval-notes-answers.mjs "${args[@]}" --out measurements/notes-answers-latest
+      - name: Commit the measurements to ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add measurements/notes-answers-latest.md measurements/notes-answers-latest.json
+          if git diff --cached --quiet; then echo "No change."; exit 0; fi
+          git commit -m "measurements: notes-grounded answers (run ${{ github.run_id }})"
+          for i in 1 2 3; do
+            git pull --rebase origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}" && exit 0
+            sleep $((i * 5))
+          done
+          exit 1

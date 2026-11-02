@@ -1,7 +1,8 @@
 'use client';
 import useAndroidBack from '@/lib/useAndroidBack';
 import BackButton from '@/components/BackButton';
-import { nearestHospitalNow } from '@/lib/ride-guard';
+import { nearestHospitalNow, startRideGuard, stopRideGuard, feedRideSpeed } from '@/lib/ride-guard';
+import { openRideSession, closeRideSession } from '@/lib/ride-session';
 import { useAuth } from '@/lib/context/auth';
 import { speak, cancelSpeech } from '@/components/VoiceTalkback';
 // src/app/drive/page.jsx — Drive Mode UI (voice-first, big-button layout)
@@ -75,12 +76,56 @@ export default function DriveModePage() {
   const keepIdxRef = useRef(0);
   const keepsRef = useRef([]);
   const callTimerRef = useRef(null);
+  const tokenRef = useRef(accessToken);
+  tokenRef.current = accessToken;
   keepIdxRef.current = keepIdx;
   keepsRef.current = keeps;
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) return;
+
+    let currentSessionId = null;
+    let currentSessionStartedAt = null;
+    let unmounted = false;
+
+    openRideSession({ db: supabase, userId: user.id }).then((res) => {
+      if (unmounted) {
+        if (res?.id) {
+          closeRideSession({
+            db: supabase,
+            id: res.id,
+            startedAt: res.startedAt,
+          });
+        }
+        return;
+      }
+      if (res?.id) {
+        currentSessionId = res.id;
+        currentSessionStartedAt = res.startedAt || new Date().toISOString();
+      }
+    });
+
+    startRideGuard({
+      getAccessToken: () => tokenRef.current,
+      onState: () => {},
+    });
+
+    const handlePageHide = () => {
+      if (currentSessionId) {
+        closeRideSession({
+          db: supabase,
+          id: currentSessionId,
+          startedAt: currentSessionStartedAt,
+        });
+        currentSessionId = null;
+        currentSessionStartedAt = null;
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pagehide', handlePageHide);
+    }
+
     supabase.from('keeps')
         .select('content,contact_name,contact_phone')
         .eq('user_id', user.id)
@@ -137,11 +182,33 @@ export default function DriveModePage() {
           }
           prevFix = { lat: c.latitude, lng: c.longitude, t: pos.timestamp };
           if (kmh != null) setDriveSpeed(kmh);
+          feedRideSpeed(kmh, {
+            lat: c.latitude,
+            lng: c.longitude,
+            accuracy: c.accuracy ?? null,
+            headingDeg: typeof c.heading === 'number' && !isNaN(c.heading)
+              ? c.heading
+              : null,
+          });
         }, () => {}, { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 });
       } catch { speedWatch = null; }
     }
 
     return () => {
+      unmounted = true;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pagehide', handlePageHide);
+      }
+      stopRideGuard();
+      if (currentSessionId) {
+        closeRideSession({
+          db: supabase,
+          id: currentSessionId,
+          startedAt: currentSessionStartedAt,
+        });
+        currentSessionId = null;
+        currentSessionStartedAt = null;
+      }
       clearInterval(t);
       if ('speechSynthesis' in window) cancelSpeech();
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }

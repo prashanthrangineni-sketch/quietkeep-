@@ -54,6 +54,10 @@ import { lastKnownPosition } from '@/lib/geo';
 import { isSosUtterance, triggerSOS } from '@/lib/sos';
 import { getActiveRun, recordStep } from '@/lib/step-log';
 import { getDriveSpeedKmh } from '@/lib/drive-speed'; // DRV-02 speed gate
+import { understand as sharedBrainUnderstand, decide as sharedBrainDecide } from '@/lib/brain'; // AG-I3 shared brain v0
+
+// AG-I3: Shared brain v0 flag gate (default off: existing path unchanged byte-for-byte in behaviour)
+const USE_SHARED_BRAIN = process.env.NEXT_PUBLIC_SHARED_BRAIN === '1';
 
 const AariaContext = createContext(null);
 
@@ -438,6 +442,31 @@ export function AariaProvider({ children }) {
           const res = await window.Capacitor?.Plugins?.WakeWordPlugin?.isKeyguardLocked();
           phoneLocked = !!res?.locked;
         } catch {}
+      }
+      // AG-I3: When NEXT_PUBLIC_SHARED_BRAIN=1, invoke shared brain understand & decide
+      if (USE_SHARED_BRAIN) {
+        try {
+          const understood = await sharedBrainUnderstand(text, {
+            language: speechLang(voiceLang),
+            pageLabel: here || null,
+            workspaceMode: workspaceId ? 'business' : 'personal',
+          });
+          const decision = sharedBrainDecide(understood, {
+            proof: {
+              unlocked: !(extra?.phone_locked !== undefined ? extra.phone_locked : phoneLocked),
+              spokenYes: extra?.confirmed_by === 'spoken_yes',
+              pin: !!(extra?.proof?.pin || extra?.proof?.biometric),
+              biometric: !!extra?.proof?.biometric,
+            },
+            context: {
+              speedKmh: getDriveSpeedKmh(),
+              language: speechLang(voiceLang),
+            },
+          });
+          console.log('[Aaria] shared brain v0:', understood.intent, decision.level, decision.action);
+        } catch (sbErr) {
+          console.warn('[Aaria] shared brain v0 error:', sbErr);
+        }
       }
       const res = await fetch('/api/voice/capture', {
         method: 'POST',

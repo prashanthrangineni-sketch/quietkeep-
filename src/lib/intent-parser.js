@@ -23,24 +23,183 @@
 // here. This suppresses the wrong capture; it does NOT yet extract the right
 // name from Telugu word order, which needs a separate pattern for
 // "<name> ki/ko <verb>" and is deliberately out of scope for this fix.
-const NAME_STOPWORDS = 'at|to|me|on|by|in|the|about|for|from|regarding|re|and|a|an|tomorrow|today|tonight|next|this|that|him|her|them|us'
-  // Telugu verbs/particles seen in our own production transcripts
-  + '|cheyali|cheyyali|cheyyi|cheyi|chey|chesi|cheseyi|chestha|pettu|ivvu|kottu|gurthu|maatladali|matladali'
-  // Hindi verbs/particles
-  + '|karo|karna|kar|karke|kardo|karenge|bolo|bol|bhejo|dena|dedo|diye|milna'
-  // Case markers and postpositions - never part of a name
-  + '|ki|ko|se|ka|ke|nunchi|nundi|kosam|gurinchi'
-  // English words mis-transcribed into the name slot in real transcripts
-  + '|safe|save';
+const NAME_STOPWORDS = 'at|to|me|on|by|in|the|about|for|from|regarding|re|and|a|an|tomorrow|today|tonight|next|this|that|him|her|them|us|now'
+  + '|please|pls|dayachesi|kripya'
+  + '|cheyali|cheyyali|cheyyi|cheyi|chey|chesi|cheseyi|chestha|pettu|ivvu|kottu|gurthu|maatladali|matladali|maatladu|matladu|pampu|pampinchu'
+  + '|karo|karna|kar|karke|kardo|karenge|bolo|bol|bhejo|bhej|dena|dedo|diye|milna|lagao|lagaao|lagado|baat'
+  + '|ki|ko|se|ka|ke|ku|tho|nunchi|nundi|kosam|gurinchi'
+  + '|garu|gari|ji|bhai'
+  + '|safe|save|call|phone|dial|message|email|invoice|contact';
+
+const INDIC_STOP_WORDS = [
+  'కాల్', 'ఫోన్', 'మెసేజ్', 'చెయ్యి', 'చేయి', 'చెయ్', 'చేయండి', 'చెయ్యండి', 'చేయాలి', 'చెయ్యాలి',
+  'పెట్టు', 'ఇవ్వు', 'కొట్టు', 'పంపు', 'పంపించు', 'మాట్లాడు', 'మాట్లాడాలి', 'గారు', 'గారి', 'గారికి',
+  'కి', 'కు', 'తో', 'కోసం', 'గురించి',
+  'कॉल', 'काल', 'फोन', 'फ़ोन', 'मैसेज', 'करो', 'कर', 'करदो', 'करना', 'करेंगे', 'लगाओ', 'लगादो',
+  'भेजो', 'भेज', 'देना', 'देदो', 'बोलो', 'बोल', 'बात', 'जी', 'भाई', 'को', 'से', 'का', 'के'
+];
+
+const STOP_NAME_SET = new Set(NAME_STOPWORDS.split('|').map(s => s.toLowerCase()));
+const INDIC_STOP_SET = new Set(INDIC_STOP_WORDS);
+
+const DE_VOWELS = {
+  '\u0905': 'a', '\u0906': 'aa', '\u0907': 'i', '\u0908': 'ee', '\u0909': 'u', '\u090A': 'oo',
+  '\u090F': 'e', '\u0910': 'ai', '\u0913': 'o', '\u0914': 'au', '\u090B': 'ri'
+};
+const DE_MATRAS = {
+  '\u093E': 'aa', '\u093F': 'i', '\u0940': 'ee', '\u0941': 'u', '\u0942': 'oo',
+  '\u0943': 'ri', '\u0947': 'e', '\u0948': 'ai', '\u094B': 'o', '\u094C': 'au'
+};
+const DE_CONSONANTS = {
+  '\u0915': 'k', '\u0916': 'kh', '\u0917': 'g', '\u0918': 'gh', '\u0919': 'n',
+  '\u091A': 'ch', '\u091B': 'chh', '\u091C': 'j', '\u091D': 'jh', '\u091E': 'n',
+  '\u091F': 't', '\u0920': 'th', '\u0921': 'd', '\u0922': 'dh', '\u0923': 'n',
+  '\u0924': 't', '\u0925': 'th', '\u0926': 'd', '\u0927': 'dh', '\u0928': 'n',
+  '\u092A': 'p', '\u092B': 'ph', '\u092C': 'b', '\u092D': 'bh', '\u092E': 'm',
+  '\u092F': 'y', '\u0930': 'r', '\u0932': 'l', '\u0933': 'l', '\u0935': 'v',
+  '\u0936': 'sh', '\u0937': 'sh', '\u0938': 's', '\u0939': 'h'
+};
+
+const TE_VOWELS = {
+  '\u0C05': 'a', '\u0C06': 'aa', '\u0C07': 'i', '\u0C08': 'ee', '\u0C09': 'u', '\u0C0A': 'oo',
+  '\u0C0E': 'e', '\u0C0F': 'e', '\u0C10': 'ai', '\u0C12': 'o', '\u0C13': 'o', '\u0C14': 'au', '\u0C0B': 'ri'
+};
+const TE_MATRAS = {
+  '\u0C3E': 'aa', '\u0C3F': 'i', '\u0C40': 'ee', '\u0C41': 'u', '\u0C42': 'oo',
+  '\u0C43': 'ri', '\u0C46': 'e', '\u0C47': 'e', '\u0C48': 'ai', '\u0C4A': 'o', '\u0C4B': 'o', '\u0C4C': 'au'
+};
+const TE_CONSONANTS = {
+  '\u0C15': 'k', '\u0C16': 'kh', '\u0C17': 'g', '\u0C18': 'gh', '\u0C19': 'n',
+  '\u0C1A': 'ch', '\u0C1B': 'chh', '\u0C1C': 'j', '\u0C1D': 'jh', '\u0C1E': 'n',
+  '\u0C1F': 't', '\u0C20': 'th', '\u0C21': 'd', '\u0C22': 'dh', '\u0C23': 'n',
+  '\u0C24': 't', '\u0C25': 'th', '\u0C26': 'd', '\u0C27': 'dh', '\u0C28': 'n',
+  '\u0C2A': 'p', '\u0C2B': 'ph', '\u0C2C': 'b', '\u0C2D': 'bh', '\u0C2E': 'm',
+  '\u0C2F': 'y', '\u0C30': 'r', '\u0C31': 'r', '\u0C32': 'l', '\u0C33': 'l', '\u0C35': 'v',
+  '\u0C36': 'sh', '\u0C37': 'sh', '\u0C38': 's', '\u0C39': 'h'
+};
+
+function transliterateIndic(str) {
+  if (!/[\u0900-\u097F\u0C00-\u0C7F]/.test(str)) {
+    return toTitleCase(str);
+  }
+  let res = '';
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (DE_VOWELS[c]) res += DE_VOWELS[c];
+    else if (DE_MATRAS[c]) res += DE_MATRAS[c];
+    else if (DE_CONSONANTS[c]) {
+      const next = str[i + 1];
+      if (next === '\u094D') {
+        res += DE_CONSONANTS[c];
+        i++;
+      } else if (DE_MATRAS[next]) {
+        res += DE_CONSONANTS[c];
+      } else {
+        const isEnd = (i === str.length - 1 || str[i + 1] === ' ');
+        const afterVirama = (i > 0 && str[i - 1] === '\u094D');
+        res += DE_CONSONANTS[c] + (!isEnd || afterVirama ? 'a' : '');
+      }
+    } else if (TE_VOWELS[c]) res += TE_VOWELS[c];
+    else if (TE_MATRAS[c]) res += TE_MATRAS[c];
+    else if (TE_CONSONANTS[c]) {
+      const next = str[i + 1];
+      if (next === '\u0C4D') {
+        res += TE_CONSONANTS[c];
+        i++;
+      } else if (TE_MATRAS[next]) {
+        res += TE_CONSONANTS[c];
+      } else {
+        res += TE_CONSONANTS[c] + 'a';
+      }
+    } else if (c === '\u0902' || c === '\u0901' || c === '\u0C02' || c === '\u0C01') {
+      res += 'n';
+    } else {
+      res += c;
+    }
+  }
+  return res
+    .replace(/aa/g, 'a')
+    .replace(/ee/g, 'i')
+    .replace(/oo/g, 'u')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function cleanCandidateName(raw) {
+  if (!raw) return null;
+  let s = raw.trim();
+  // Strip honorifics
+  s = s.replace(/\s+\b(?:garu|ji|gari|bhai)\b/gi, '');
+  s = s.replace(/^\b(?:garu|ji|gari|bhai)\b/gi, '');
+  s = s.replace(/\s*(?:గారు|గారికి|గారి)\s*/g, '');
+  s = s.replace(/\s*(?:जी|भाई)\s*/g, '');
+  // Strip case suffixes attached directly
+  s = s.replace(/([\u0C00-\u0C7F]{2,})(?:గారికి|గారు|కి|కు|తో)$/, '$1');
+  s = s.replace(/([\u0900-\u097F]{2,})(?:जी|को|से)$/, '$1');
+  s = s.trim();
+  if (!s) return null;
+
+  const words = s.split(/\s+/);
+  if (words.length > 2) return null;
+  for (const w of words) {
+    const lw = w.toLowerCase();
+    if (STOP_NAME_SET.has(lw) || INDIC_STOP_SET.has(w)) return null;
+  }
+  return transliterateIndic(s).trim();
+}
+
+function extractContactName(text) {
+  if (!text) return null;
+  const stripped = stripWakePhrase(text);
+
+  // Unicode word boundary for Indic & ASCII
+  const WB = '(?=$|[^\\p{L}\\p{M}\\p{N}])';
+
+  // Disallow Indic particles / stopwords as name tokens
+  const indicStopDisallowed = INDIC_STOP_WORDS.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const tokenLookahead = `(?!(?:${NAME_STOPWORDS})\\b)(?!(?:${indicStopDisallowed})${WB})`;
+  const sovToken = `${tokenLookahead}[A-Za-z\\u0C00-\\u0C7F\\u0900-\\u097F]+`;
+
+  // Pattern 1: Indic SOV
+  // [Name] (garu|ji)? (ki|ko|se|tho|to|ku|కి|కు|తో|కోసం|గురించి|को|से) (call|phone|message|cheyyi|karo|lagao|bhejo|maatladali|మాట్లాడు|చెయ్యి|करो)...
+  const sovRegex = new RegExp(
+    `^(${sovToken}(?:\\s+${sovToken})?)(?:\\s+(?:garu|ji|gari|bhai|గారు|గారి|గారికి|जी|भाई))?\\s*(?:ki|ko|se|tho|to|ku|కి|కు|తో|కోసం|గురించి|को|से)?\\s+(?:call|phone|dial|message|msg|baat|cheyyi|cheyi|cheyali|cheyyali|pettu|pampu|pampinchu|maatladali|matladali|maatladu|matladu|karo|kar|kardo|karna|lagao|lagaao|lagado|bhejo|bhej|కాల్|ఫోన్|మెసేజ్|చెయ్యి|చేయి|చేయాలి|చెయ్యాలి|పెట్టు|పంపు|పంపించు|మాట్లాడు|మాట్లాడాలి|कॉल|काल|फोन|फ़ोन|मैसेज|करो|कर|लगाओ|भेजो|बात)${WB}`,
+    'iu'
+  );
+  const sovMatch = stripped.match(sovRegex);
+  if (sovMatch?.[1]) {
+    const c = cleanCandidateName(sovMatch[1]);
+    if (c) return c;
+  }
+
+  // Pattern 2: English SVO
+  // (call|phone|dial|ring|contact|tell|meet|remind|message|email|invoice to) [Name]
+  const svoRegex = new RegExp(
+    `(?:call|phone|dial|contact|tell|meet|remind|message|email|invoice to)\\s+(${sovToken}(?:\\s+${sovToken})?)`,
+    'iu'
+  );
+  const svoMatch = stripped.match(svoRegex);
+  if (svoMatch?.[1]) {
+    const c = cleanCandidateName(svoMatch[1]);
+    if (c) return c;
+  }
+
+  // Pattern 3: Indic verb first: (call cheyyi|call karo|కాల్ చెయ్యి|कॉल करो) [Name]
+  const verbFirstRegex = new RegExp(
+    `(?:call\\s+(?:cheyyi|cheyi|chey|karo|kar)|కాల్\\s*(?:చెయ్యి|చేయి)|कॉल\\s*(?:करो|कर))\\s+(${sovToken}(?:\\s+${sovToken})?)`,
+    'iu'
+  );
+  const verbFirstMatch = stripped.match(verbFirstRegex);
+  if (verbFirstMatch?.[1]) {
+    const c = cleanCandidateName(verbFirstMatch[1]);
+    if (c) return c;
+  }
+
+  return null;
+}
 
 const NAME_PATTERNS = [
   new RegExp(
-    // W14: bare "for" removed as a trigger. It almost never introduces a person
-    // and routinely introduces a commodity: "Paid 1850 for petrol at Shell"
-    // captured "petrol" as a contact name. "invoice to" is kept because it is
-    // unambiguous, and "remind"/"message" already cover the reminder cases that
-    // "for" was catching.
-    '(?:call|contact|tell|meet|remind|message|email|invoice to)\\s+' +
+    '(?:call|phone|dial|contact|tell|meet|remind|message|email|invoice to)\\s+' +
     `((?!(?:${NAME_STOPWORDS})\\b)[A-Za-z][a-zA-Z]+` +
     `(?:\\s+(?!(?:${NAME_STOPWORDS})\\b)[A-Za-z][a-zA-Z]+)?)`,
     'i'
@@ -173,9 +332,14 @@ export { parseRegionalAmount };
 
 function extractEntities(text) {
   const entities = { names: [], dates: [], times: [] };
-  for (const p of NAME_PATTERNS) {
-    const m = text.match(p);
-    if (m?.[1]) entities.names.push(toTitleCase(m[1].trim()));
+  const contactName = extractContactName(text);
+  if (contactName) {
+    entities.names.push(contactName);
+  } else {
+    for (const p of NAME_PATTERNS) {
+      const m = text.match(p);
+      if (m?.[1]) entities.names.push(toTitleCase(m[1].trim()));
+    }
   }
   for (const { re } of DATE_PATTERNS) {
     const m = text.match(re);
@@ -229,7 +393,7 @@ function classifyIntent(lower) {
   if (/gurtu pettuko|remind cheyyi|gurthu/.test(lower))                 return { type: 'reminder',   conf: 0.86 };
   if (/rasuko|rasanu|note cheyyi|rayi/.test(lower))                     return { type: 'note',       conf: 0.84 };
   if (/kharchu chesanu|kharchu|income vacchindi|dabbu/.test(lower))     return { type: 'expense',    conf: 0.85 };
-  if (/call cheyyi|phone cheyyi|message pampinchu/.test(lower))         return { type: 'contact',    conf: 0.83 };
+  if (/call cheyyi|call cheyali|call cheyi|phone cheyyi|phone cheyi|message pampinchu|message pampu|matladali|maatladali|matladu|maatladu|కాల్|ఫోన్|మెసేజ్\s*(?:పంపు|పంపించు)|మాట్లాడు|మాట్లాడాలి/.test(lower)) return { type: 'contact', conf: 0.83 };
   if (/teeseyi|delete cheyyi|cancel cheyyi/.test(lower))               return { type: 'task',       conf: 0.80 };
   if (/chupinchu|kanipinchu|show cheyyi/.test(lower))                   return { type: 'note',       conf: 0.70 };
 
@@ -237,7 +401,7 @@ function classifyIntent(lower) {
   if (/yaad dilao|yaad karo|remind karo|bhool mat/.test(lower))         return { type: 'reminder',   conf: 0.86 };
   if (/likh|note kar|yaad rakh/.test(lower))                            return { type: 'note',       conf: 0.84 };
   if (/kharch|paisa|rupay|rupees|kharcha kiya/.test(lower))             return { type: 'expense',    conf: 0.85 };
-  if (/call kar|phone kar|message bhej/.test(lower))                    return { type: 'contact',    conf: 0.83 };
+  if (/call kar|phone kar|message bhej|call lagao|call kardo|baat kar|कॉल|फ़ोन|फोन|मैसेज\s*भेज|बात\s*कर/.test(lower)) return { type: 'contact', conf: 0.83 };
   if (/hata do|delete kar|cancel kar/.test(lower))                      return { type: 'task',       conf: 0.80 };
 
   // ── Hinglish patterns (code-switched Hindi-English) ───────────────

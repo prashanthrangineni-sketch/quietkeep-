@@ -1,0 +1,1705 @@
+{
+  "measured_at": "2026-11-02T12:02:32.750Z",
+  "run_url": "https://github.com/prashanthrangineni-sketch/quietkeep-/actions/runs/41441460189",
+  "cases": 24,
+  "models": [
+    {
+      "id": "sarvam:sarvam-105b-conversations",
+      "status": "measured",
+      "summary": {
+        "answered_right": "100% (18/18)",
+        "by_lang": {
+          "en": "100% (6/6)",
+          "hi": "100% (6/6)",
+          "te": "100% (6/6)"
+        },
+        "same_language": "100% (18/18)",
+        "said_not_in_notes": "100% (6/6)",
+        "wrongly_refused": 0,
+        "errors": 0,
+        "median_ms": 401
+      },
+      "rows": [
+        {
+          "id": "en-photo",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1025,
+          "error": null,
+          "answer": "Oxygen is released as a by-product during photosynthesis. This gas comes from the water used in the process."
+        },
+        {
+          "id": "en-photo-where",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 526,
+          "error": null,
+          "answer": "Photosynthesis takes place in the chloroplasts of leaf cells. The green pigment chlorophyll absorbs the sunlight there."
+        },
+        {
+          "id": "en-ohm",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 520,
+          "error": null,
+          "answer": "Using Ohm's law, the current is 3 amperes. This is found by rearranging the formula to I = V/R."
+        },
+        {
+          "id": "en-1857",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 398,
+          "error": null,
+          "answer": "The Revolt of 1857 began at Meerut on 10 May 1857. Sepoys rose against their British officers to start the uprising."
+        },
+        {
+          "id": "en-1857-leader",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 408,
+          "error": null,
+          "answer": "The rebels declared the Mughal emperor Bahadur Shah Zafar as their leader in Delhi. They marched there from Meerut to make this declaration."
+        },
+        {
+          "id": "en-soil",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 440,
+          "error": null,
+          "answer": "Black soil is ideal for growing cotton. It holds moisture very well."
+        },
+        {
+          "id": "hi-photo",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 347,
+          "error": null,
+          "answer": "प्रकाश संश्लेषण के दौरान ऑक्सीजन गैस बाहर निकलती है। यह प्रक्रिया पत्तियों की कोशिकाओं में होती है।"
+        },
+        {
+          "id": "hi-ohm",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 414,
+          "error": null,
+          "answer": "ओम के नियम V = IR के अनुसार, धारा 2 एम्पियर होगी। इसकी गणना I = V/R से की जाती है।"
+        },
+        {
+          "id": "hi-1857",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 395,
+          "error": null,
+          "answer": "1857 का विद्रोह 10 मई 1857 को मेरठ से शुरू हुआ था। विद्रोही वहाँ से दिल्ली पहुँचे थे।"
+        },
+        {
+          "id": "hi-1857-jhansi",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 381,
+          "error": null,
+          "answer": "झाँसी में रानी लक्ष्मीबाई ने अंग्रेज़ों से युद्ध किया। यह जानकारी कक्षा के नोट्स में दी गई है।"
+        },
+        {
+          "id": "hi-soil",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 453,
+          "error": null,
+          "answer": "कपास की खेती के लिए काली मिट्टी सबसे उपयुक्त है। यह नमी को अच्छी तरह रोककर रखती है।"
+        },
+        {
+          "id": "hi-water",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 370,
+          "error": null,
+          "answer": "पानी के वाष्प बनकर ऊपर उठने को वाष्पीकरण कहते हैं। यह जल चक्र की पहली प्रक्रिया है।"
+        },
+        {
+          "id": "te-photo",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 450,
+          "error": null,
+          "answer": "కిరణజన్య సంయోగక్రియలో ఆక్సిజన్ వాయువు విడుదల అవుతుంది. ఇది ఆకు కణాల్లోని క్లోరోప్లాస్ట్‌లో జరుగుతుంది."
+        },
+        {
+          "id": "te-ohm",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 487,
+          "error": null,
+          "answer": "ఓమ్ నియమం ప్రకారం, విద్యుత్ ప్రవాహం V/R కి సమానం. కాబట్టి, 9 వోల్ట్లు మరియు 3 ఓమ్లు ఉంటే, విద్యుత్ ప్రవాహం 3 ఆంపియర్లు అవుతుంది."
+        },
+        {
+          "id": "te-1857",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 359,
+          "error": null,
+          "answer": "1857 తిరుగుబాటు మే 10న మీరట్‌లో ప్రారంభమైంది. ఆ తిరుగుబాటులో సిపాయిలు తమ బ్రిటిష్ అధికారులపై తిరగబడ్డారు."
+        },
+        {
+          "id": "te-1857-leader",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 401,
+          "error": null,
+          "answer": "ఢిల్లీలో తిరుగుబాటుదారులు మొఘల్ చక్రవర్తి బహదూర్ షా జఫర్‌ను తమ నాయకుడిగా ప్రకటించారు. ఇది తరగతి నోట్స్ లో స్పష్టంగా ఉంది."
+        },
+        {
+          "id": "te-soil",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 458,
+          "error": null,
+          "answer": "నల్లరేగడి నేలలో పత్తి పంట బాగా పండుతుంది. ఇది తేమను బాగా నిలుపుకుంటుంది."
+        },
+        {
+          "id": "te-water",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 376,
+          "error": null,
+          "answer": "సముద్రాలు, నదులు, సరస్సుల నీరు ఆవిరిగా మారి పైకి వెళ్లడాన్ని బాష్పీభవనం అంటారు. ఇది జలచక్రంలో మొదటి దశ."
+        },
+        {
+          "id": "en-none-1",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 415,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "en-none-2",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 378,
+          "error": null,
+          "answer": "The class notes do not provide the formula for electric power. NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-1",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 392,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-2",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 388,
+          "error": null,
+          "answer": "नोट्स में इस जानकारी का उल्लेख नहीं है। NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-1",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 321,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-2",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 340,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        }
+      ]
+    },
+    {
+      "id": "gemini:gemini-3.5-flash-lite",
+      "status": "measured",
+      "summary": {
+        "answered_right": "83.3% (15/18)",
+        "by_lang": {
+          "en": "83.3% (5/6)",
+          "hi": "83.3% (5/6)",
+          "te": "83.3% (5/6)"
+        },
+        "same_language": "88.9% (16/18)",
+        "said_not_in_notes": "100% (6/6)",
+        "wrongly_refused": 2,
+        "errors": 1,
+        "median_ms": 37516
+      },
+      "rows": [
+        {
+          "id": "en-photo",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 44867,
+          "error": null,
+          "answer": "Oxygen is released as a by-product during photosynthesis."
+        },
+        {
+          "id": "en-photo-where",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 34523,
+          "error": null,
+          "answer": "Photosynthesis takes place in the chloroplasts of leaf cells."
+        },
+        {
+          "id": "en-ohm",
+          "lang": "en",
+          "none": false,
+          "ok": false,
+          "refused": true,
+          "same_lang": true,
+          "ms": 49833,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "en-1857",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 53334,
+          "error": null,
+          "answer": "The Revolt of 1857 began at Meerut on 10 May 1857."
+        },
+        {
+          "id": "en-1857-leader",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 38198,
+          "error": null,
+          "answer": "The rebels declared the Mughal emperor Bahadur Shah Zafar as their leader."
+        },
+        {
+          "id": "en-soil",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 46689,
+          "error": null,
+          "answer": "Cotton grows best in black soil because it holds moisture very well."
+        },
+        {
+          "id": "hi-photo",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 36010,
+          "error": null,
+          "answer": "इस प्रक्रिया में ऑक्सीजन गैस बाहर निकलती है।"
+        },
+        {
+          "id": "hi-ohm",
+          "lang": "hi",
+          "none": false,
+          "ok": false,
+          "refused": true,
+          "same_lang": false,
+          "ms": 44404,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-1857",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 34795,
+          "error": null,
+          "answer": "1857 का विद्रोह 10 मई 1857 को मेरठ से शुरू हुआ था।"
+        },
+        {
+          "id": "hi-1857-jhansi",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 36814,
+          "error": null,
+          "answer": "झाँसी में रानी लक्ष्मीबाई ने अंग्रेज़ों से युद्ध किया।"
+        },
+        {
+          "id": "hi-soil",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 46731,
+          "error": null,
+          "answer": "काली मिट्टी में कपास की खेती सबसे अच्छी होती है। यह कपास की खेती के लिए सबसे उपयुक्त है।"
+        },
+        {
+          "id": "hi-water",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 57391,
+          "error": null,
+          "answer": "पानी के वाष्प बनकर ऊपर उठने को वाष्पीकरण कहते हैं।"
+        },
+        {
+          "id": "te-photo",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 43552,
+          "error": null,
+          "answer": "ఈ ప్రక్రియలో ఆక్సిజన్ విడుదల అవుతుంది."
+        },
+        {
+          "id": "te-ohm",
+          "lang": "te",
+          "none": false,
+          "ok": false,
+          "refused": null,
+          "same_lang": null,
+          "ms": 511,
+          "error": "http_503: [{\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\n    \"status\": \"UNAVAILABLE\"\n  }\n}\n]",
+          "answer": ""
+        },
+        {
+          "id": "te-1857",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 29096,
+          "error": null,
+          "answer": "1857 తిరుగుబాటు మే 10న మీరట్‌లో ప్రారంభమైంది."
+        },
+        {
+          "id": "te-1857-leader",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 37516,
+          "error": null,
+          "answer": "ఢిల్లీలో తిరుగుబాటుదారులు మొఘల్ చక్రవర్తి బహదూర్ షా జఫర్‌ను తమ నాయకుడిగా ప్రకటించారు."
+        },
+        {
+          "id": "te-soil",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 25872,
+          "error": null,
+          "answer": "నల్లరేగడి నేలలో పత్తి పంట చాలా అనుకూలంగా ఉంటుంది."
+        },
+        {
+          "id": "te-water",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 20344,
+          "error": null,
+          "answer": "దీనిని బాష్పీభవనం అంటారు."
+        },
+        {
+          "id": "en-none-1",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 44702,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "en-none-2",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 34975,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-1",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 34198,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-2",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 44254,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-1",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 879,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-2",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 1814,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        }
+      ]
+    },
+    {
+      "id": "shakti:gpt-oss-120b",
+      "status": "measured",
+      "summary": {
+        "answered_right": "88.9% (16/18)",
+        "by_lang": {
+          "en": "66.7% (4/6)",
+          "hi": "100% (6/6)",
+          "te": "100% (6/6)"
+        },
+        "same_language": "100% (18/18)",
+        "said_not_in_notes": "100% (6/6)",
+        "wrongly_refused": 0,
+        "errors": 0,
+        "median_ms": 834
+      },
+      "rows": [
+        {
+          "id": "en-photo",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1926,
+          "error": null,
+          "answer": "Oxygen is released as a by‑product of photosynthesis."
+        },
+        {
+          "id": "en-photo-where",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 579,
+          "error": null,
+          "answer": "Photosynthesis occurs in the chloroplasts of leaf cells."
+        },
+        {
+          "id": "en-ohm",
+          "lang": "en",
+          "none": false,
+          "ok": false,
+          "refused": false,
+          "same_lang": true,
+          "ms": 572,
+          "error": null,
+          "answer": "The current I = V / R = 12 V ÷ 4 Ω = 3 A."
+        },
+        {
+          "id": "en-1857",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 598,
+          "error": null,
+          "answer": "It began at Meerut."
+        },
+        {
+          "id": "en-1857-leader",
+          "lang": "en",
+          "none": false,
+          "ok": false,
+          "refused": false,
+          "same_lang": true,
+          "ms": 660,
+          "error": null,
+          "answer": "They declared the Mughal emperor Bahadur Shah Zafar as their leader."
+        },
+        {
+          "id": "en-soil",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 535,
+          "error": null,
+          "answer": "Cotton grows best in black soil."
+        },
+        {
+          "id": "hi-photo",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 674,
+          "error": null,
+          "answer": "ऑक्सीजन गैस बाहर निकलती है।"
+        },
+        {
+          "id": "hi-ohm",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 737,
+          "error": null,
+          "answer": "धारा I = V/R = 10 वोल्ट ÷ 5 ओम = 2 एम्पियर होगी।"
+        },
+        {
+          "id": "hi-1857",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 755,
+          "error": null,
+          "answer": "1857 का विद्रोह मेरठ से शुरू हुआ।"
+        },
+        {
+          "id": "hi-1857-jhansi",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 920,
+          "error": null,
+          "answer": "झाँसी में रानी लक्ष्मीबाई ने अंग्रेज़ों से युद्ध किया।"
+        },
+        {
+          "id": "hi-soil",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1010,
+          "error": null,
+          "answer": "काली मिट्टी में कपास की खेती सबसे अच्छी होती है।"
+        },
+        {
+          "id": "hi-water",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1228,
+          "error": null,
+          "answer": "पानी के वाष्प बनकर ऊपर उठने को **वाष्पीकरण** कहते हैं।"
+        },
+        {
+          "id": "te-photo",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 865,
+          "error": null,
+          "answer": "ఆక్సిజన్ విడుదల అవుతుంది."
+        },
+        {
+          "id": "te-ohm",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1006,
+          "error": null,
+          "answer": "విద్యుత్ ప్రవాహం I = 9 వోల్ట్ ÷ 3 ఓమ్ = 3 ఆంపియర్."
+        },
+        {
+          "id": "te-1857",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 834,
+          "error": null,
+          "answer": "1857 తిరుగుబాటు మీరట్‌లో ప్రారంభమైంది."
+        },
+        {
+          "id": "te-1857-leader",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1436,
+          "error": null,
+          "answer": "మొఘల్ చక్రవర్తి బహదూర్ షా జఫర్‌ను నాయకుడిగా ప్రకటించారు."
+        },
+        {
+          "id": "te-soil",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1787,
+          "error": null,
+          "answer": "పత్తి పంట నల్లరేగడి నేలలో బాగా పండుతుంది."
+        },
+        {
+          "id": "te-water",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1394,
+          "error": null,
+          "answer": "దీనిని బాష్పీభవనం అంటారు."
+        },
+        {
+          "id": "en-none-1",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 476,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "en-none-2",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 534,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-1",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 911,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-2",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 632,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-1",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 904,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-2",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 593,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        }
+      ]
+    },
+    {
+      "id": "shakti:llama-4-maverick",
+      "status": "measured",
+      "summary": {
+        "answered_right": "100% (18/18)",
+        "by_lang": {
+          "en": "100% (6/6)",
+          "hi": "100% (6/6)",
+          "te": "100% (6/6)"
+        },
+        "same_language": "100% (18/18)",
+        "said_not_in_notes": "100% (6/6)",
+        "wrongly_refused": 0,
+        "errors": 0,
+        "median_ms": 1066
+      },
+      "rows": [
+        {
+          "id": "en-photo",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1889,
+          "error": null,
+          "answer": "Oxygen is released as a by-product during photosynthesis."
+        },
+        {
+          "id": "en-photo-where",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1060,
+          "error": null,
+          "answer": "Photosynthesis takes place in the chloroplasts of leaf cells. Chloroplasts are the site of photosynthesis."
+        },
+        {
+          "id": "en-ohm",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1126,
+          "error": null,
+          "answer": "To find the current, we use the formula V = IR. So, I = V/R = 12/4 = 3 amperes."
+        },
+        {
+          "id": "en-1857",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1121,
+          "error": null,
+          "answer": "The Revolt of 1857 began at Meerut on 10 May 1857."
+        },
+        {
+          "id": "en-1857-leader",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1088,
+          "error": null,
+          "answer": "The rebels declared the Mughal emperor Bahadur Shah Zafar as their leader in Delhi."
+        },
+        {
+          "id": "en-soil",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 934,
+          "error": null,
+          "answer": "Cotton grows best in black soil. It is ideal for growing cotton."
+        },
+        {
+          "id": "hi-photo",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1438,
+          "error": null,
+          "answer": "प्रकाश संश्लेषण में ऑक्सीजन गैस बाहर निकलती है। यह प्रक्रिया हरितलवक में होती है।"
+        },
+        {
+          "id": "hi-ohm",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1746,
+          "error": null,
+          "answer": "ओम के नियम V = IR का उपयोग करके, हमें I = V/R = 10/5 = 2 एम्पियर मिलता है। धारा 2 एम्पियर होगी।"
+        },
+        {
+          "id": "hi-1857",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1066,
+          "error": null,
+          "answer": "1857 का विद्रोह मेरठ से शुरू हुआ था। यह 10 मई 1857 को हुआ था।"
+        },
+        {
+          "id": "hi-1857-jhansi",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 963,
+          "error": null,
+          "answer": "रानी लक्ष्मीबाई ने झाँसी में अंग्रेज़ों से युद्ध किया।"
+        },
+        {
+          "id": "hi-soil",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1028,
+          "error": null,
+          "answer": "कपास की फसल काली मिट्टी में सबसे अच्छी उगती है। यह मिट्टी कपास की खेती के लिए सबसे उपयुक्त है।"
+        },
+        {
+          "id": "hi-water",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1010,
+          "error": null,
+          "answer": "पानी के वाष्प बनकर ऊपर उठने की प्रक्रिया को वाष्पीकरण कहते हैं। यह जल चक्र का एक महत्वपूर्ण चरण है।"
+        },
+        {
+          "id": "te-photo",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 922,
+          "error": null,
+          "answer": "కిరణజన్య సంయోగక్రియలో ఆక్సిజన్ విడుదల అవుతుంది."
+        },
+        {
+          "id": "te-ohm",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1261,
+          "error": null,
+          "answer": "V = IR సూత్రాన్ని ఉపయోగించి, I = V/R = 9/3 = 3 ఆంపియర్లు. విద్యుత్ ప్రవాహం 3 ఆంపియర్లు."
+        },
+        {
+          "id": "te-1857",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1573,
+          "error": null,
+          "answer": "1857 తిరుగుబాటు మీరట్‌లో ప్రారంభమైంది. సిపాయిలు తమ బ్రిటిష్ అధికారులపై తిరగబడ్డారు."
+        },
+        {
+          "id": "te-1857-leader",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1168,
+          "error": null,
+          "answer": "మొఘల్ చక్రవర్తి బహదూర్ షా జఫర్‌ను ఢిల్లీలో తిరుగుబాటుదారులు నాయకుడిగా ప్రకటించారు."
+        },
+        {
+          "id": "te-soil",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1154,
+          "error": null,
+          "answer": "నల్లరేగడి నేలలో పత్తి పంట బాగా పండుతుంది. ఇది పత్తి పంటకు చాలా అనుకూలం."
+        },
+        {
+          "id": "te-water",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1138,
+          "error": null,
+          "answer": "దానిని బాష్పీభవనం అంటారు. ఇది జలచక్రంలో మొదటి దశ."
+        },
+        {
+          "id": "en-none-1",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 822,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "en-none-2",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 746,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-1",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 701,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-2",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 864,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-1",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 865,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-2",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 751,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        }
+      ]
+    },
+    {
+      "id": "shakti:gemma-3-27b",
+      "status": "measured",
+      "summary": {
+        "answered_right": "100% (18/18)",
+        "by_lang": {
+          "en": "100% (6/6)",
+          "hi": "100% (6/6)",
+          "te": "100% (6/6)"
+        },
+        "same_language": "100% (18/18)",
+        "said_not_in_notes": "100% (6/6)",
+        "wrongly_refused": 0,
+        "errors": 0,
+        "median_ms": 628
+      },
+      "rows": [
+        {
+          "id": "en-photo",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1562,
+          "error": null,
+          "answer": "According to the notes, oxygen is released as a by-product during photosynthesis. This happens when plants use carbon dioxide, water, and sunlight to make glucose."
+        },
+        {
+          "id": "en-photo-where",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 567,
+          "error": null,
+          "answer": "Photosynthesis takes place in the chloroplasts of leaf cells. These chloroplasts use carbon dioxide, water, and sunlight to create food for the plant."
+        },
+        {
+          "id": "en-ohm",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 748,
+          "error": null,
+          "answer": "According to Ohm's Law (V = IR), we can find the current by rearranging the formula to I = V/R. Therefore, the current is 12 volts / 4 ohms = 3 amperes."
+        },
+        {
+          "id": "en-1857",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 866,
+          "error": null,
+          "answer": "The Revolt of 1857 began at Meerut on 10 May 1857, when sepoys rose against their British officers. It started with sepoys rebelling against their officers in Meerut."
+        },
+        {
+          "id": "en-1857-leader",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 786,
+          "error": null,
+          "answer": "The rebels declared the Mughal emperor Bahadur Shah Zafar as their leader in Delhi. This happened after the revolt began at Meerut and the rebels marched to Delhi."
+        },
+        {
+          "id": "en-soil",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 685,
+          "error": null,
+          "answer": "According to the notes, black soil is ideal for growing cotton. It holds moisture very well, making it suitable for this crop."
+        },
+        {
+          "id": "hi-photo",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 486,
+          "error": null,
+          "answer": "प्रकाश संश्लेषण की प्रक्रिया में ऑक्सीजन गैस बाहर निकलती है। यह हरे पौधों द्वारा अपना भोजन बनाने के दौरान होता है।"
+        },
+        {
+          "id": "hi-ohm",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1149,
+          "error": null,
+          "answer": "ओम के नियम के अनुसार, V = IR, इसलिए धारा (I) = V/R = 10 वोल्ट / 5 ओम = 2 एम्पियर होगी। इस प्रकार, धारा 2 एम्पियर है।"
+        },
+        {
+          "id": "hi-1857",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 601,
+          "error": null,
+          "answer": "1857 का विद्रोह 10 मई 1857 को मेरठ से शुरू हुआ। सिपाहियों ने अपने अंग्रेज़ अधिकारियों के विरुद्ध वहीं विद्रोह किया था।"
+        },
+        {
+          "id": "hi-1857-jhansi",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 464,
+          "error": null,
+          "answer": "झाँसी में रानी लक्ष्मीबाई ने अंग्रेज़ों से युद्ध किया। यह जानकारी आपके नोट्स में दी गई है।"
+        },
+        {
+          "id": "hi-soil",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 722,
+          "error": null,
+          "answer": "कपास की खेती के लिए काली मिट्टी सबसे उपयुक्त है। यह मिट्टी नमी को अच्छी तरह रोककर रखती है, जिससे कपास की फसल अच्छी तरह से उगती है।"
+        },
+        {
+          "id": "hi-water",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 551,
+          "error": null,
+          "answer": "जल चक्र में पानी के वाष्प बनकर ऊपर उठने को वाष्पीकरण कहते हैं। यह सूर्य की गर्मी से होता है।"
+        },
+        {
+          "id": "te-photo",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 600,
+          "error": null,
+          "answer": "కిరణజన్య సంయోగక్రియలో ఆక్సిజన్ వాయువు విడుదల అవుతుంది. ఇది ఆకు కణాల్లో జరిగే ప్రక్రియలో తయారవుతుంది."
+        },
+        {
+          "id": "te-ohm",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 836,
+          "error": null,
+          "answer": "విద్యుత్ ప్రవాహం కనుగొనడానికి, V = IR సూత్రాన్ని ఉపయోగించాలి. ఇక్కడ V = 9 వోల్ట్లు, R = 3 ఓమ్లు కాబట్టి, I = V/R = 9/3 = 3 ఆంపియర్లు."
+        },
+        {
+          "id": "te-1857",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 628,
+          "error": null,
+          "answer": "1857 తిరుగుబాటు మీరట్‌లో మే 10న ప్రారంభమైంది. సిపాయిలు బ్రిటిష్ అధికారులపై తిరగబడ్డారు అని నోట్స్‌లో ఉంది."
+        },
+        {
+          "id": "te-1857-leader",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 732,
+          "error": null,
+          "answer": "తిరుగుబాటుదారులు ఢిల్లీకి వెళ్లి మొఘల్ చక్రవర్తి బహదూర్ షా జఫర్‌ను తమ నాయకుడిగా ప్రకటించారు. ఇది 1857 తిరుగుబాటులో ఒక ముఖ్యమైన సంఘటన."
+        },
+        {
+          "id": "te-soil",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 949,
+          "error": null,
+          "answer": "పత్తి పంట నల్లరేగడి నేలలో చాలా అనుకూలంగా పెరుగుతుంది. ఈ నేల తేమను బాగా నిలుపుకుంటుంది కాబట్టి పత్తి పంటకు ఇది అనువైనది."
+        },
+        {
+          "id": "te-water",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 725,
+          "error": null,
+          "answer": "జలచక్రంలో సూర్యుని వేడికి నీరు ఆవిరిగా మారి పైకి వెళ్లడాన్ని బాష్పీభవనం అంటారు. ఇది సముద్రాలు, నదులు, సరస్సుల నుండి జరుగుతుంది."
+        },
+        {
+          "id": "en-none-1",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 304,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "en-none-2",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 348,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-1",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 321,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-2",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 321,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-1",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 308,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-2",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 320,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        }
+      ]
+    },
+    {
+      "id": "shakti:qwen2.5-vl-72b",
+      "status": "measured",
+      "summary": {
+        "answered_right": "94.4% (17/18)",
+        "by_lang": {
+          "en": "100% (6/6)",
+          "hi": "100% (6/6)",
+          "te": "83.3% (5/6)"
+        },
+        "same_language": "100% (18/18)",
+        "said_not_in_notes": "100% (6/6)",
+        "wrongly_refused": 0,
+        "errors": 0,
+        "median_ms": 1736
+      },
+      "rows": [
+        {
+          "id": "en-photo",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 2252,
+          "error": null,
+          "answer": "Oxygen is released as a by-product during photosynthesis."
+        },
+        {
+          "id": "en-photo-where",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 988,
+          "error": null,
+          "answer": "Photosynthesis happens in the chloroplasts of leaf cells."
+        },
+        {
+          "id": "en-ohm",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1293,
+          "error": null,
+          "answer": "The current can be calculated using Ohm's law: I = V/R. Therefore, the current is 3 amperes."
+        },
+        {
+          "id": "en-1857",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1353,
+          "error": null,
+          "answer": "The Revolt of 1857 began at Meerut on 10 May 1857."
+        },
+        {
+          "id": "en-1857-leader",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1207,
+          "error": null,
+          "answer": "The rebels declared the Mughal emperor Bahadur Shah Zafar as their leader."
+        },
+        {
+          "id": "en-soil",
+          "lang": "en",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1389,
+          "error": null,
+          "answer": "Cotton grows best in black soil. This soil holds moisture very well, making it ideal for cotton cultivation."
+        },
+        {
+          "id": "hi-photo",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1738,
+          "error": null,
+          "answer": "प्रकाश संश्लेषण में ऑक्सीजन गैस बाहर निकलती है।"
+        },
+        {
+          "id": "hi-ohm",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1860,
+          "error": null,
+          "answer": "V = IR का उपयोग करके, धारा I = V/R = 10/5 = 2 एम्पियर होगी।"
+        },
+        {
+          "id": "hi-1857",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 2540,
+          "error": null,
+          "answer": "1857 का विद्रोह 10 मई 1857 को मेरठ से शुरू हुआ। सिपाहियों ने अपने अंग्रेज़ अधिकारियों के विरुद्ध विद्रोह किया।"
+        },
+        {
+          "id": "hi-1857-jhansi",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1656,
+          "error": null,
+          "answer": "झाँसी में रानी लक्ष्मीबाई ने अंग्रेज़ों से युद्ध किया।"
+        },
+        {
+          "id": "hi-soil",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1736,
+          "error": null,
+          "answer": "कपास की खेती काली मिट्टी के लिए सबसे उपयुक्त है।"
+        },
+        {
+          "id": "hi-water",
+          "lang": "hi",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1877,
+          "error": null,
+          "answer": "इसे वाष्पीकरण कहते हैं।"
+        },
+        {
+          "id": "te-photo",
+          "lang": "te",
+          "none": false,
+          "ok": false,
+          "refused": false,
+          "same_lang": true,
+          "ms": 2678,
+          "error": null,
+          "answer": "ఒక్సిజన్ వాయువు కిరణజన్య సంయోగక్రియలో విడుదల అవుతుంది."
+        },
+        {
+          "id": "te-ohm",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 2898,
+          "error": null,
+          "answer": "ఓమ్ నియమం ప్రకారం, విద్యుత్ ప్రవాహం I = V/R. కాబట్టి, విద్యుత్ ప్రవాహం 3 ఆంపియర్లు."
+        },
+        {
+          "id": "te-1857",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 2127,
+          "error": null,
+          "answer": "1857 తిరుగుబాటు 1857 మే 10న మీరట్‌లో ప్రారంభమైంది."
+        },
+        {
+          "id": "te-1857-leader",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 4699,
+          "error": null,
+          "answer": "తిరుగుబాటుదారులు ఢిల్లీకి వెళ్ళి మొఘల్ చక్రవర్తి బహదూర్ షా జఫర్‌ను తమ నాయకుడిగా ప్రకటించారు."
+        },
+        {
+          "id": "te-soil",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 1651,
+          "error": null,
+          "answer": "పత్తి పంటకు చాలా అనుకూలం."
+        },
+        {
+          "id": "te-water",
+          "lang": "te",
+          "none": false,
+          "ok": true,
+          "refused": false,
+          "same_lang": true,
+          "ms": 2778,
+          "error": null,
+          "answer": "బాష్పీభవనం అని అంటారు. జలచక్రంలో సూర్యుని వేడి దీనిని కారణంగా ఉంటుంది."
+        },
+        {
+          "id": "en-none-1",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 914,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "en-none-2",
+          "lang": "en",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 944,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-1",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 1394,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "hi-none-2",
+          "lang": "hi",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 896,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-1",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 2829,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        },
+        {
+          "id": "te-none-2",
+          "lang": "te",
+          "none": true,
+          "ok": true,
+          "refused": true,
+          "same_lang": null,
+          "ms": 823,
+          "error": null,
+          "answer": "NOT_IN_NOTES"
+        }
+      ]
+    }
+  ]
+}

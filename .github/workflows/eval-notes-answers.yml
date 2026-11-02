@@ -11,6 +11,8 @@ on:
         description: 'Comma-separated provider:model list (blank = the standard set)'
         required: false
         default: ''
+  push:
+    branches: [eval/notes-answers-measure]   # measurement branch only; never merged
 
 permissions:
   contents: write

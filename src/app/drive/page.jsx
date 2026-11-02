@@ -28,6 +28,7 @@ import { ObdSimulator } from '@/lib/obd/simulator';
 import { startObdFeed } from '@/lib/obd/blackbox-feed';
 import { setActiveReader } from '@/lib/obd/active-reader';
 import { setDriveSpeed, clearDriveSpeed } from '@/lib/drive-speed';
+import { loadLastRideClips, labelLastRideClip } from '@/lib/ride-clips';
 
 // drivespeak: thin wrapper — onEnd callback for sequential speech+action
 function drivespeak(text, onEnd) {
@@ -59,6 +60,10 @@ export default function DriveModePage() {
   const [devTapCount, setDevTapCount] = useState(0);
   const [records, setRecords] = useState([]);
   const [shareToast, setShareToast] = useState(null);
+
+  // Ride sensor clips (AG-D2 / DRV-15) state
+  const [clipsOptIn, setClipsOptIn] = useState(false);
+  const [unlabelledClips, setUnlabelledClips] = useState([]);
 
   // Car reader (OBD-II, DRV-06) state
   const [obdSimulated, setObdSimulated] = useState(false);
@@ -111,6 +116,10 @@ export default function DriveModePage() {
     setTestMode(testM);
     setObdSimulated(obdSim);
     setIndicatorMode(indMode);
+    const cOpt = typeof window !== 'undefined' && localStorage.getItem('qk_ride_clips_opt_in') === 'true';
+    setClipsOptIn(cOpt);
+    const storedClips = loadLastRideClips();
+    setUnlabelledClips(storedClips.filter(c => c.label === null));
     startBlackbox({ audioOptIn: optIn, testMode: testM });
     listBlackboxRecords().then(r => setRecords(r.records || []));
     // Upload sealed records now and on every reconnect (DRV-01 step 7)
@@ -251,6 +260,19 @@ export default function DriveModePage() {
       drivespeak('Could not read vehicle data.');
     } finally {
       setObdReading(false);
+    }
+  }
+
+  async function handleLabelClip(clipId, labelVal) {
+    labelLastRideClip(clipId, labelVal);
+    setUnlabelledClips(prev => prev.filter(c => c.id !== clipId));
+    if (user) {
+      try {
+        await supabase
+          .from('ride_sensor_clips')
+          .update({ label: labelVal })
+          .eq('id', clipId);
+      } catch {}
     }
   }
 
@@ -601,6 +623,71 @@ export default function DriveModePage() {
         </button>
       </div>
 
+      {/* Label last ride card (AG-D2 / DRV-15) */}
+      {unlabelledClips.length > 0 && (
+        <div style={{
+          margin: '0 16px 16px', padding: 14, borderRadius: 16,
+          background: 'var(--card-bg, #1e293b)', border: '1px solid #6366f140',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 16 }}>🏷️</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Label last ride</span>
+            </div>
+            <span style={{ fontSize: 11, color: '#818cf8', fontWeight: 600 }}>
+              {unlabelledClips.length} unlabelled clip{unlabelledClips.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {unlabelledClips.map((c) => {
+              const peak = (c.peakG || (c.samples?.length ? Math.max(...c.samples.map(s => s.g || 0)) : 0)).toFixed(1);
+              const time = c.startedAt ? new Date(c.startedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Recent';
+              return (
+                <div key={c.id} style={{
+                  background: 'rgba(255,255,255,0.04)', padding: '8px 10px', borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 6
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                    <span style={{ color: 'var(--text)', fontWeight: 600 }}>{time}</span>
+                    <span style={{ color: '#94a3b8' }}>Kind: <span style={{ color: '#a5b4fc', textTransform: 'capitalize' }}>{c.kind.replace('_', ' ')}</span></span>
+                    <span style={{ color: '#94a3b8' }}>Peak: <span style={{ color: '#facc15', fontWeight: 700 }}>{peak} g</span></span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => handleLabelClip(c.id, 'bump')}
+                      style={{
+                        flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #f59e0b', color: '#fbbf24', cursor: 'pointer'
+                      }}
+                    >
+                      Bump
+                    </button>
+                    <button
+                      onClick={() => handleLabelClip(c.id, 'fall')}
+                      style={{
+                        flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#f87171', cursor: 'pointer'
+                      }}
+                    >
+                      Fall
+                    </button>
+                    <button
+                      onClick={() => handleLabelClip(c.id, 'nothing')}
+                      style={{
+                        flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: 'rgba(148, 163, 184, 0.2)', border: '1px solid #94a3b8', color: '#cbd5e1', cursor: 'pointer'
+                      }}
+                    >
+                      Nothing
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Setup & Black Box Records Overlay */}
       {showSetup && (
         <div style={{
@@ -660,6 +747,32 @@ export default function DriveModePage() {
             </div>
             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
               Default: OFF · Records are sealed on the phone with the Android Keystore. Audio recording itself arrives in a later update — today only your choice is saved.
+            </div>
+          </div>
+
+          {/* Ride sensor clips opt-in switch (AG-D2 / DRV-15) */}
+          <div style={{
+            background: 'var(--card-bg, #1e293b)', padding: 16, borderRadius: 14,
+            border: '1px solid var(--border, #334155)', marginBottom: 16
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <label htmlFor="ride-clips-opt-in" style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text)', cursor: 'pointer' }}>
+                Help improve crash detection — keep short motion clips from my rides (no audio, no video)
+              </label>
+              <input
+                id="ride-clips-opt-in"
+                type="checkbox"
+                checked={clipsOptIn}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setClipsOptIn(checked);
+                  if (typeof window !== 'undefined') localStorage.setItem('qk_ride_clips_opt_in', checked ? 'true' : 'false');
+                }}
+                style={{ width: 22, height: 22, cursor: 'pointer', accentColor: '#6366f1', flexShrink: 0 }}
+              />
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
+              Default: OFF · Captures 10-second motion clips around suspected events or normal riding samples for false-alarm analysis.
             </div>
           </div>
 

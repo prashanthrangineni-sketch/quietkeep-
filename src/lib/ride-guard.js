@@ -30,6 +30,7 @@ import { supabase } from '@/lib/supabase';
 import { speak } from '@/components/VoiceTalkback';
 import { createAnomalyWatcher } from '@/lib/anomaly-watch';
 import { createOvertakeWatcher, createRoadAheadProvider } from '@/lib/overtake-advisor';
+import { createClipRecorder, saveLastRideClips, uploadRideClips } from '@/lib/ride-clips';
 
 const COUNTDOWN_SECONDS = 30;
 const CANCEL_WORDS = [
@@ -175,6 +176,29 @@ export function startRideGuard({ getAccessToken, onState, destination, knownStop
     knownStops,
     onAnomaly: (anomaly) => onState?.('anomaly', anomaly),
   });
+
+  let clipsOptIn = false;
+  try {
+    clipsOptIn = typeof window !== 'undefined' && localStorage.getItem('qk_ride_clips_opt_in') === 'true';
+  } catch {}
+  const clipRecorder = createClipRecorder({
+    enabled: clipsOptIn,
+    onClipCreated: (clip) => onState?.('clip_recorded', { id: clip.id, kind: clip.kind, peakG: clip.peakG }),
+  });
+  let activeClipId = null;
+
+  function bindDetectorListeners(d) {
+    d.onChange?.((state, detail) => {
+      if (state === 'suspected') {
+        const clip = clipRecorder.onCandidate('suspected', { at: now(), ...detail });
+        if (clip) activeClipId = clip.id;
+      } else if (state === 'crash') {
+        const clip = clipRecorder.onCandidate('crash', { at: now(), ...detail });
+        if (clip) activeClipId = clip.id;
+      }
+    });
+  }
+  bindDetectorListeners(detector);
   const ui = makeOverlay();
   let overlayShown = false;
   let countdownTimer = null;
@@ -280,10 +304,15 @@ export function startRideGuard({ getAccessToken, onState, destination, knownStop
 
   function cancel(reason) {
     hide();
+    if (activeClipId) {
+      clipRecorder.setOutcome(activeClipId, 'cancelled_ok');
+      activeClipId = null;
+    }
     // A cancelled crash leaves the detector in its 'crash' state, which would
     // make it deaf for the rest of the ride. Start it afresh so the next fall
     // is still caught, and give the sensors a moment before arming again.
     detector = createCrashDetector();
+    bindDetectorListeners(detector);
     armedAt = now();
     lastCrash = null;
     onState?.('dismissed', { reason });
@@ -291,6 +320,9 @@ export function startRideGuard({ getAccessToken, onState, destination, knownStop
   }
 
   async function send({ test = false } = {}) {
+    if (activeClipId) {
+      clipRecorder.setOutcome(activeClipId, test ? 'drill' : 'sent');
+    }
     const token = getAccessToken?.();
     const payload = {
       test,
@@ -500,6 +532,10 @@ export function startRideGuard({ getAccessToken, onState, destination, knownStop
 
   function trigger(detail = {}) {
     if (overlayShown) return;
+    if (detail.manual) {
+      const clip = clipRecorder.onCandidate('suspected', { at: now(), manual: true });
+      if (clip) activeClipId = clip.id;
+    }
     lastCrash = detail;
     secondsLeft = COUNTDOWN_SECONDS;
     ui.title.textContent = detail.manual ? 'Asking for help' : 'Are you okay?';
@@ -537,6 +573,7 @@ export function startRideGuard({ getAccessToken, onState, destination, knownStop
     if (!a || a.x == null) return;
     const g = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) / 9.80665;
     anomalyWatcher.feedMotion({ g, at: now() });
+    clipRecorder.feedMotion({ g, at: now() });
     const state = detector.feedMotion({ magnitudeG: g, at: now() });
     if (state === 'crash' && !overlayShown && now() - armedAt > 4000) {
       trigger(detector.lastCrashDetail?.() || { impactG: g, speedBeforeKmh: null });
@@ -687,6 +724,15 @@ export function startRideGuard({ getAccessToken, onState, destination, knownStop
       overtakeWatcher.reset();
       recentFixes = [];
       reportRideDistance();
+      clipRecorder.stop();
+      const finishedClips = clipRecorder.getClips();
+      saveLastRideClips(finishedClips);
+      // Upload so labels can be saved and the false-alarm page can count them.
+      if (finishedClips.length > 0) {
+        supabase.auth.getUser()
+          .then(({ data }) => uploadRideClips({ db: supabase, userId: data?.user?.id, clips: finishedClips }))
+          .catch(() => {});
+      }
       onState?.('stopped', {});
     },
     feedSpeed(kmh, fix) {
@@ -705,6 +751,7 @@ export function startRideGuard({ getAccessToken, onState, destination, knownStop
       else if (fix && typeof fix.heading === 'number') lastHeadingDeg = fix.heading;
       if (typeof kmh === 'number') {
         currentSpeedKmh = kmh;
+        clipRecorder.feedSpeed({ kmh, at: now() });
         detector.feedSpeed({ kmh, at: now() });
         noteBraking(kmh);
         checkForHazardAhead(kmh);
@@ -727,6 +774,12 @@ export function startRideGuard({ getAccessToken, onState, destination, knownStop
       lastCrash = { impactG: 3.2, speedBeforeKmh: null, test: true };
       speak('This is a test. Nobody will be contacted.');
       send({ test: true });
+    },
+    getClipRecorder() {
+      return clipRecorder;
+    },
+    getClips() {
+      return clipRecorder.getClips();
     },
   };
   return guard;

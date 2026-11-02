@@ -22,6 +22,15 @@ import {
   fetchProofRuns,
 } from '@/lib/proof-kit';
 import { listBlackboxRecords } from '@/lib/blackbox';
+import {
+  DROP_TRIAL_TYPES,
+  TRIAL_TYPE_KEYS,
+  runDropTest,
+  evaluateTrialResult,
+  computeDropTestTally,
+  generateDropTrace,
+  getPhoneModel,
+} from '@/lib/drop-test';
 
 export default function DriveProofPage() {
   const { user } = useAuth();
@@ -31,6 +40,16 @@ export default function DriveProofPage() {
   const [copied, setCopied] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [proofRunsHistory, setProofRunsHistory] = useState([]);
+
+  // AG-D3 Drop-and-Fall Test state
+  const [selectedTrialType, setSelectedTrialType] = useState('cushion_drop_1m');
+  const [dropTestRunning, setDropTestRunning] = useState(false);
+  const [trialSecondsLeft, setTrialSecondsLeft] = useState(15);
+  const [latestDropSampleCount, setLatestDropSampleCount] = useState(0);
+  const [latestDropCurrentG, setLatestDropCurrentG] = useState(1.0);
+  const [latestTrialResult, setLatestTrialResult] = useState(null);
+  const [dropNote, setDropNote] = useState('');
 
   // Load existing proof runs for user on mount
   useEffect(() => {
@@ -41,6 +60,7 @@ export default function DriveProofPage() {
       }
       try {
         const rows = await fetchProofRuns(supabase);
+        setProofRunsHistory(rows || []);
         const initialResults = {};
         const initialNotes = {};
         // Rows are sorted by created_at desc; keep latest for each step
@@ -90,11 +110,129 @@ export default function DriveProofPage() {
       });
       if (res.saved) {
         setSaveStatus(`Saved ${stepId} (${outcome})`);
+        if (res.record) {
+          setProofRunsHistory(prev => [res.record, ...prev]);
+        }
         setTimeout(() => setSaveStatus(''), 3000);
       } else {
         setSaveStatus(`Warning: could not save (${res.reason})`);
       }
     }
+  }
+
+  async function runDropTrial(isSimulated = false) {
+    if (dropTestRunning) return;
+    setDropTestRunning(true);
+    setTrialSecondsLeft(15);
+    setLatestDropSampleCount(0);
+    setLatestTrialResult(null);
+
+    const collectedSamples = [];
+    let motionHandler = null;
+
+    if (!isSimulated && typeof window !== 'undefined' && window.DeviceMotionEvent) {
+      if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        try {
+          const perm = await DeviceMotionEvent.requestPermission();
+          if (perm !== 'granted') {
+            console.warn('[drop-test] DeviceMotion permission not granted');
+          }
+        } catch (e) {
+          console.warn('[drop-test] Permission error:', e);
+        }
+      }
+
+      motionHandler = (event) => {
+        const acc = event.accelerationIncludingGravity;
+        if (!acc) return;
+        const x = acc.x || 0, y = acc.y || 0, z = acc.z || 0;
+        const g = Math.sqrt(x * x + y * y + z * z) / 9.81;
+        const at = Date.now();
+        collectedSamples.push({ at, magnitudeG: g });
+        setLatestDropCurrentG(Math.round(g * 100) / 100);
+        setLatestDropSampleCount(collectedSamples.length);
+      };
+
+      try {
+        window.addEventListener('devicemotion', motionHandler);
+      } catch (err) {
+        console.warn('[drop-test] Failed to add listener:', err);
+      }
+    }
+
+    // Run 15-second countdown
+    let seconds = 15;
+    const interval = setInterval(() => {
+      seconds -= 1;
+      setTrialSecondsLeft(Math.max(0, seconds));
+      if (seconds <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    // Wait full 15 seconds
+    await new Promise((resolve) => setTimeout(resolve, 15000));
+    clearInterval(interval);
+
+    if (motionHandler && typeof window !== 'undefined') {
+      try {
+        window.removeEventListener('devicemotion', motionHandler);
+      } catch {}
+    }
+
+    // Determine trace to evaluate: simulated trace if requested or if 0 samples recorded on desktop
+    let traceToEval = collectedSamples;
+    const wasSimulated = isSimulated || collectedSamples.length === 0;
+    if (wasSimulated) {
+      traceToEval = generateDropTrace(selectedTrialType);
+    }
+
+    const evalResult = runDropTest(traceToEval);
+    const verdict = evaluateTrialResult(selectedTrialType, evalResult);
+    const outcome = verdict.pass ? 'pass' : 'fail';
+    const phone_model = getPhoneModel();
+
+    const evidence = {
+      detected: evalResult.detected,
+      peakG: evalResult.peakG,
+      msToDetect: evalResult.msToDetect,
+      phone_model,
+      sampleCount: traceToEval.length,
+      simulated: wasSimulated,
+    };
+
+    const trialStep = `drop_test:${selectedTrialType}`;
+    const explicitNote = dropNote || (wasSimulated ? 'Simulated trace trial' : 'Field trial');
+
+    setLatestTrialResult({
+      trialType: selectedTrialType,
+      outcome,
+      verdict,
+      evalResult,
+      evidence,
+      note: explicitNote,
+    });
+
+    if (user) {
+      setSaveStatus(`Saving ${trialStep}...`);
+      const res = await saveProofResult(supabase, {
+        step: trialStep,
+        result: outcome,
+        evidence,
+        note: explicitNote,
+      });
+      if (res.saved) {
+        setSaveStatus(`Saved ${trialStep} (${outcome})`);
+        if (res.record) {
+          setProofRunsHistory((prev) => [res.record, ...prev]);
+        }
+        setTimeout(() => setSaveStatus(''), 3000);
+      } else {
+        setSaveStatus(`Warning: could not save (${res.reason})`);
+      }
+    }
+
+    setDropTestRunning(false);
   }
 
   async function runAutoStep(step) {
@@ -451,6 +589,297 @@ export default function DriveProofPage() {
           );
         })}
       </div>
+
+      {/* ── Drop and Fall Test Section (AG-D3 / DRV-16) ───────────────────── */}
+      {(() => {
+        const dropTally = computeDropTestTally(proofRunsHistory);
+        const selectedDef = DROP_TRIAL_TYPES[selectedTrialType] || DROP_TRIAL_TYPES.cushion_drop_1m;
+
+        return (
+          <div style={{
+            marginTop: '36px',
+            backgroundColor: '#0f172a',
+            border: '1px solid #1e293b',
+            borderRadius: '12px',
+            padding: '20px',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+              <div>
+                <span style={{
+                  display: 'inline-block',
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  fontWeight: 700,
+                  color: '#f59e0b',
+                  backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  marginBottom: '4px',
+                }}>
+                  Field Verification · DRV-16 / AG-D3
+                </span>
+                <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '2px 0 4px', color: '#f8fafc' }}>
+                  Drop and Fall Test
+                </h2>
+                <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
+                  Staged drop & false-alarm verification with simulated riding speed (25 km/h before, 0 after).
+                  <span style={{ color: '#38bdf8', marginLeft: '6px' }}>Drill only: never starts SOS or calls contacts.</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Trial Type Selector */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#cbd5e1', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Select Trial Type
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
+                {TRIAL_TYPE_KEYS.map((k) => {
+                  const def = DROP_TRIAL_TYPES[k];
+                  const isSelected = selectedTrialType === k;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      disabled={dropTestRunning}
+                      onClick={() => setSelectedTrialType(k)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: isSelected ? '2px solid #38bdf8' : '1px solid #334155',
+                        backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.15)' : '#020617',
+                        color: isSelected ? '#ffffff' : '#94a3b8',
+                        cursor: dropTestRunning ? 'default' : 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '2px' }}>
+                        {def.name}
+                      </div>
+                      <div style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: def.expected ? '#34d399' : '#f59e0b',
+                      }}>
+                        {def.expected ? '● Expect: Detected' : '○ Expect: Ignored'}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
+                {selectedDef.description}
+              </div>
+            </div>
+
+            {/* Trial Run Controls */}
+            <div style={{
+              backgroundColor: '#020617',
+              border: '1px solid #1e293b',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '20px',
+            }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  disabled={dropTestRunning}
+                  onClick={() => runDropTrial(false)}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: dropTestRunning ? '#475569' : '#10b981',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: dropTestRunning ? 'default' : 'pointer',
+                  }}
+                >
+                  {dropTestRunning ? `⏳ Recording... ${trialSecondsLeft}s` : '▶ Start 15s Trial'}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={dropTestRunning}
+                  onClick={() => runDropTrial(true)}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#1e293b',
+                    color: '#94a3b8',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: dropTestRunning ? 'default' : 'pointer',
+                  }}
+                >
+                  🧪 Run Simulated Trace
+                </button>
+
+                {dropTestRunning && (
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#cbd5e1' }}>
+                    <span>Samples: <strong>{latestDropSampleCount}</strong></span>
+                    <span>Current G: <strong>{latestDropCurrentG}g</strong></span>
+                  </div>
+                )}
+              </div>
+
+              {/* Note input */}
+              <div style={{ marginTop: '12px' }}>
+                <input
+                  type="text"
+                  placeholder="Trial note (e.g. drop angle, surface description, case type)..."
+                  value={dropNote}
+                  onChange={(e) => setDropNote(e.target.value)}
+                  disabled={dropTestRunning}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    backgroundColor: '#090d16',
+                    border: '1px solid #334155',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    color: '#f8fafc',
+                    fontSize: '12px',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Latest Result Display */}
+            {latestTrialResult && (
+              <div style={{
+                marginBottom: '20px',
+                padding: '14px',
+                borderRadius: '8px',
+                backgroundColor: latestTrialResult.outcome === 'pass' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                border: `1px solid ${latestTrialResult.outcome === 'pass' ? '#059669' : '#dc2626'}`,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 800, fontSize: '15px', color: latestTrialResult.outcome === 'pass' ? '#10b981' : '#ef4444' }}>
+                    {latestTrialResult.outcome === 'pass' ? '✓ TRIAL PASSED' : '✕ TRIAL FAILED'}
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                    step: drop_test:{latestTrialResult.trialType}
+                  </span>
+                </div>
+                <div style={{ fontSize: '13px', color: '#e2e8f0', marginBottom: '8px' }}>
+                  {latestTrialResult.verdict.reason === 'ok'
+                    ? (latestTrialResult.verdict.expected ? 'Expected crash detected and verified with stillness aftermath.' : 'Correctly ignored without false alarm.')
+                    : (latestTrialResult.verdict.expected ? 'Missed crash detection (impact < 3.2g or stillness < 8s).' : 'False alarm: motion was incorrectly classified as crash.')}
+                </div>
+                <div style={{
+                  backgroundColor: '#020617',
+                  border: '1px solid #1e293b',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  color: '#94a3b8',
+                }}>
+                  <span style={{ color: '#38bdf8' }}>evidence: </span>
+                  {JSON.stringify(latestTrialResult.evidence)}
+                </div>
+              </div>
+            )}
+
+            {/* Running Tally Section */}
+            <div style={{ marginTop: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
+                  Running Tallies & Metrics
+                </h3>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  {dropTally.summary.totalTrials} total trials logged
+                </span>
+              </div>
+
+              {/* Summary KPIs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', marginBottom: '14px' }}>
+                <div style={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Staged Falls Caught
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#34d399', margin: '2px 0' }}>
+                    {dropTally.summary.stagedFallsCaught} / {dropTally.summary.stagedFallsTotal}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    Catch Rate: {Math.round(dropTally.summary.stagedFallsCaughtRate * 100)}% (target ≥ 90%)
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>
+                    False Alarms
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: dropTally.summary.falseAlarmsTotal === 0 ? '#34d399' : '#ef4444', margin: '2px 0' }}>
+                    {dropTally.summary.falseAlarmsTotal} / {dropTally.summary.nonCrashTrialsTotal}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    False Rate: {Math.round(dropTally.summary.falseAlarmRate * 100)}% (target 0%)
+                  </div>
+                </div>
+              </div>
+
+              {/* Tally Breakdown Table */}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: '12px',
+                  textAlign: 'left',
+                  backgroundColor: '#020617',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  border: '1px solid #1e293b',
+                }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#090d16', borderBottom: '1px solid #1e293b', color: '#94a3b8' }}>
+                      <th style={{ padding: '10px 12px' }}>Trial Type</th>
+                      <th style={{ padding: '10px 12px' }}>Expected</th>
+                      <th style={{ padding: '10px 12px' }}>Caught / Total</th>
+                      <th style={{ padding: '10px 12px' }}>False Alarms / Total</th>
+                      <th style={{ padding: '10px 12px' }}>Pass / Total</th>
+                      <th style={{ padding: '10px 12px' }}>Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TRIAL_TYPE_KEYS.map((typeKey) => {
+                      const item = dropTally.byType[typeKey];
+                      return (
+                        <tr key={typeKey} style={{ borderBottom: '1px solid #1e293b' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: 600, color: '#f8fafc' }}>
+                            {item.name}
+                          </td>
+                          <td style={{ padding: '8px 12px', color: item.expected ? '#34d399' : '#f59e0b' }}>
+                            {item.expected ? 'Detected' : 'Ignored'}
+                          </td>
+                          <td style={{ padding: '8px 12px', color: '#e2e8f0', fontFamily: 'monospace' }}>
+                            {item.caught} / {item.total}
+                          </td>
+                          <td style={{ padding: '8px 12px', color: item.falseAlarms > 0 ? '#ef4444' : '#94a3b8', fontFamily: 'monospace' }}>
+                            {item.falseAlarms} / {item.total}
+                          </td>
+                          <td style={{ padding: '8px 12px', color: item.pass === item.total && item.total > 0 ? '#10b981' : '#e2e8f0', fontFamily: 'monospace' }}>
+                            {item.pass} / {item.total}
+                          </td>
+                          <td style={{ padding: '8px 12px', fontWeight: 700, color: item.passRate >= 0.9 ? '#10b981' : (item.total === 0 ? '#64748b' : '#ef4444') }}>
+                            {item.total > 0 ? `${Math.round(item.passRate * 100)}%` : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Summary Footer */}
       <div style={{ marginTop: '32px', textAlign: 'center' }}>

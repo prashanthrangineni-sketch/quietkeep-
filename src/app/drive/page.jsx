@@ -30,6 +30,7 @@ import { startObdFeed } from '@/lib/obd/blackbox-feed';
 import { setActiveReader } from '@/lib/obd/active-reader';
 import { setDriveSpeed, clearDriveSpeed } from '@/lib/drive-speed';
 import { loadLastRideClips, labelLastRideClip } from '@/lib/ride-clips';
+import { createRideNotes } from '@/lib/ride-notes';
 
 // drivespeak: thin wrapper — onEnd callback for sequential speech+action
 function drivespeak(text, onEnd) {
@@ -66,6 +67,10 @@ export default function DriveModePage() {
   const [clipsOptIn, setClipsOptIn] = useState(false);
   const [unlabelledClips, setUnlabelledClips] = useState([]);
 
+  // Ride notes (AG-06)
+  const rideNotesRef = useRef(null);
+  const [rideNotes, setRideNotes] = useState([]);
+
   // Car reader (OBD-II, DRV-06) state
   const [obdSimulated, setObdSimulated] = useState(false);
   const [obdStatus, setObdStatus] = useState('Disconnected');
@@ -90,6 +95,13 @@ export default function DriveModePage() {
     if (authLoading) return;
     if (!user) return;
 
+    if (!rideNotesRef.current) {
+      rideNotesRef.current = createRideNotes();
+    } else {
+      rideNotesRef.current.clear();
+    }
+    setRideNotes(rideNotesRef.current.list());
+
     let currentSessionId = null;
     let currentSessionStartedAt = null;
     let unmounted = false;
@@ -113,7 +125,12 @@ export default function DriveModePage() {
 
     startRideGuard({
       getAccessToken: () => tokenRef.current,
-      onState: () => {},
+      onState: (state, detail) => {
+        if (rideNotesRef.current) {
+          rideNotesRef.current.add(state, detail);
+          setRideNotes(rideNotesRef.current.list());
+        }
+      },
     });
 
     const handlePageHide = () => {
@@ -1060,6 +1077,52 @@ export default function DriveModePage() {
               </div>
             </div>
           )}
+
+          {/* Ride notes card (AG-06) */}
+          <div style={{ marginTop: 8, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>Ride notes</h3>
+              {rideNotes.length > 0 && (
+                <span style={{ fontSize: 11, color: '#818cf8', fontWeight: 600 }}>
+                  {rideNotes.length} note{rideNotes.length === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+
+            {rideNotes.length === 0 ? (
+              <div style={{
+                padding: 24, textAlign: 'center', color: '#64748b', fontSize: 13,
+                background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px dashed #334155'
+              }}>
+                Nothing noted on this ride.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {rideNotes.map((note, i) => {
+                  const d = note.at ? new Date(note.at) : null;
+                  const time = d && !isNaN(d.getTime())
+                    ? `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+                    : '';
+                  return (
+                    <div key={i} style={{
+                      background: 'var(--card-bg, #1e293b)', padding: 12, borderRadius: 12,
+                      border: '1px solid var(--border, #334155)', display: 'flex',
+                      alignItems: 'flex-start', gap: 10
+                    }}>
+                      {time && (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#818cf8', flexShrink: 0, paddingTop: 1 }}>
+                          {time}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.4 }}>
+                        {note.text}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Last records list */}
           <div style={{ marginTop: 8 }}>

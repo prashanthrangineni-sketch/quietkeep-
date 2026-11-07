@@ -11,6 +11,17 @@ import { availableWakeModes, getWakeMode, setWakeMode, getWakeWord } from '@/lib
 import { isWebHotwordEnabled, setWebHotwordEnabled, isHotwordSupported } from '@/lib/aaria-hotword';
 import { listenStreamWanted, setListenStreamWanted, readLastListen, nemotronWanted, setNemotronWanted } from '@/lib/listen-stream';
 import { getActiveRun, startRun, stopRun, getSteps, clearSteps, exportSteps } from '@/lib/step-log';
+import {
+  getTasksList,
+  substituteContactNames,
+  getSavedIndex,
+  saveIndex,
+  getSavedContacts,
+  saveContacts,
+  formatProgress,
+  computeRunSummary,
+  STANDARD_CONTACT_KEYS,
+} from '@/lib/tasks100-guided';
 import { CLONED_VOICE_CONSENT_TEXTS } from '@/lib/cloned-voice-safeguards';
 
 const P = '#6366f1';
@@ -54,18 +65,114 @@ export default function VoiceSettings() {
   const [streamOn, setStreamOn] = useState(true);
   const [nemoOn, setNemoOn] = useState(false);
   const [lastListen, setLastListen] = useState(null);
+  const tasks = getTasksList();
   const [activeRun, setActiveRun] = useState(null);
   const [taskIdInput, setTaskIdInput] = useState('');
   const [stepCount, setStepCount] = useState(0);
   const [copyFeedback, setCopyFeedback] = useState('');
+  const [guidedIndex, setGuidedIndex] = useState(0);
+  const [savedIndex, setSavedIndex] = useState(0);
+  const [contactsMap, setContactsMap] = useState({});
+  const [manualMode, setManualMode] = useState(false);
 
   useEffect(() => {
     try {
       const run = getActiveRun();
       setActiveRun(run);
       setStepCount(getSteps().length);
+      const sIndex = getSavedIndex(tasks.length);
+      setSavedIndex(sIndex);
+      if (run && run.task_id) {
+        const found = tasks.findIndex((t) => t.id === run.task_id);
+        if (found !== -1) {
+          setGuidedIndex(found);
+        } else {
+          setManualMode(true);
+        }
+      } else {
+        setGuidedIndex(sIndex < tasks.length ? sIndex : 0);
+      }
+      setContactsMap(getSavedContacts());
     } catch {}
   }, []);
+
+  // Poll local steps count so phone updates live when Aaria finishes a turn
+  useEffect(() => {
+    const timer = setInterval(() => {
+      try {
+        setStepCount(getSteps().length);
+      } catch {}
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  function handleStartGuided(index = 0) {
+    const clamped = Math.max(0, Math.min(index, tasks.length - 1));
+    const task = tasks[clamped];
+    if (!task) return;
+    setGuidedIndex(clamped);
+    setSavedIndex(clamped);
+    saveIndex(clamped);
+    const run = startRun(task.id);
+    setActiveRun(run);
+    setStepCount(getSteps().length);
+    setManualMode(false);
+  }
+
+  function handleResumeGuided() {
+    const sIndex = getSavedIndex(tasks.length);
+    const resumeIdx = sIndex >= tasks.length ? 0 : sIndex;
+    handleStartGuided(resumeIdx);
+  }
+
+  function handleNextGuided() {
+    if (guidedIndex < tasks.length - 1) {
+      const nextIdx = guidedIndex + 1;
+      handleStartGuided(nextIdx);
+    } else {
+      const endIdx = tasks.length;
+      setGuidedIndex(endIdx);
+      setSavedIndex(endIdx);
+      saveIndex(endIdx);
+      stopRun();
+      setActiveRun(null);
+      setStepCount(getSteps().length);
+    }
+  }
+
+  function handleBackGuided() {
+    if (guidedIndex > 0) {
+      const prevIdx = guidedIndex - 1;
+      handleStartGuided(prevIdx);
+    }
+  }
+
+  function handleSkipGuided() {
+    if (guidedIndex < tasks.length - 1) {
+      const nextIdx = guidedIndex + 1;
+      handleStartGuided(nextIdx);
+    } else {
+      const endIdx = tasks.length;
+      setGuidedIndex(endIdx);
+      setSavedIndex(endIdx);
+      saveIndex(endIdx);
+      stopRun();
+      setActiveRun(null);
+      setStepCount(getSteps().length);
+    }
+  }
+
+  function handleStopGuided() {
+    stopRun();
+    setActiveRun(null);
+    setStepCount(getSteps().length);
+  }
+
+  function handleContactChange(key, value) {
+    const updated = { ...contactsMap, [key]: value };
+    setContactsMap(updated);
+    saveContacts(updated);
+  }
 
   function handleStartRun() {
     if (!taskIdInput.trim()) return;
@@ -699,7 +806,150 @@ export default function VoiceSettings() {
               On-device recorder for the 100-task evaluation run. Records step timestamps, transcribed text, action levels, and decisions locally. Off by default. Nothing is sent to any server.
             </p>
 
-            {activeRun ? (
+            {/* Run state rendering */}
+            {isCompleted ? (
+              <div style={{ marginBottom: 14, padding: 14, background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 12 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: '#166534', marginBottom: 4 }}>
+                  🎉 100-Task Run Complete!
+                </div>
+                <p style={{ margin: '0 0 10px', fontSize: 13, color: '#15803d' }}>
+                  All 100 evaluation tasks have been stepped through.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12, fontSize: 12, background: '#fff', padding: 10, borderRadius: 8, border: '1px solid #bbf7d0' }}>
+                  <div><b>Total Tasks:</b> 100</div>
+                  <div><b>Measured:</b> {summary.measuredCount} / 100</div>
+                  <div><b>Total Steps:</b> {summary.totalSteps}</div>
+                  <div><b>Unmeasured / Skipped:</b> {summary.unmeasuredCount}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleStartGuided(0)}
+                  style={{ ...pill, width: '100%', textAlign: 'center', fontWeight: 700 }}
+                >
+                  ↺ Restart from Task 1
+                </button>
+              </div>
+            ) : isGuidedActive && currentTask ? (
+              <div style={{ marginBottom: 14, padding: 14, background: '#ffffff', border: '2px solid #818cf8', borderRadius: 14, boxShadow: '0 4px 14px rgba(99,102,241,.12)' }}>
+                {/* Progress Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#4338ca' }}>
+                    {formatProgress(guidedIndex, tasks.length)}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>
+                    {currentTaskSteps} step{currentTaskSteps === 1 ? '' : 's'} recorded
+                  </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden', marginBottom: 14 }}>
+                  <div
+                    style={{
+                      width: `${((guidedIndex + 1) / tasks.length) * 100}%`,
+                      height: '100%',
+                      background: P,
+                      transition: 'width .2s ease-out',
+                    }}
+                  />
+                </div>
+
+                {/* Task ID and Badges */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 17, fontWeight: 800, color: '#1e1b4b', background: '#eef2ff', padding: '3px 8px', borderRadius: 6, border: '1px solid #c7d2fe' }}>
+                    {currentTask.id}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 7px', borderRadius: 6, background: '#f1f5f9', color: '#475569', textTransform: 'uppercase' }}>
+                    {currentTask.lang}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 7px', borderRadius: 6, background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0' }}>
+                    {currentTask.category}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '3px 7px',
+                      borderRadius: 6,
+                      background: currentTask.risk === 'high' ? '#fee2e2' : currentTask.risk === 'medium' ? '#fef3c7' : '#ecfdf5',
+                      color: currentTask.risk === 'high' ? '#991b1b' : currentTask.risk === 'medium' ? '#92400e' : '#065f46',
+                    }}
+                  >
+                    {currentTask.risk} risk
+                  </span>
+                </div>
+
+                {/* Big Plain Letters Utterance */}
+                <div
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 700,
+                    lineHeight: 1.35,
+                    color: '#0f172a',
+                    padding: '14px 16px',
+                    background: '#f8fafc',
+                    border: '1.5px solid #cbd5e1',
+                    borderRadius: 12,
+                    marginBottom: 10,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {substituteContactNames(currentTask.say, contactsMap)}
+                </div>
+
+                {/* Note / instruction if present */}
+                {(currentTask.note || currentTask.wrong_if) && (
+                  <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic', marginBottom: 14, background: '#f1f5f9', padding: '6px 10px', borderRadius: 6 }}>
+                    ℹ️ {currentTask.note || currentTask.wrong_if}
+                  </div>
+                )}
+
+                {/* Navigation Buttons */}
+                <button
+                  type="button"
+                  onClick={handleNextGuided}
+                  style={{
+                    ...btn,
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: 15,
+                    fontWeight: 800,
+                    marginBottom: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  Next Task →
+                </button>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={handleBackGuided}
+                    disabled={guidedIndex === 0}
+                    style={{ ...pill, flex: 1, opacity: guidedIndex === 0 ? 0.35 : 1, textAlign: 'center' }}
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSkipGuided}
+                    style={{ ...pill, flex: 1, textAlign: 'center' }}
+                  >
+                    Skip ↷
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStopGuided}
+                    style={{ ...pill, flex: 1, textAlign: 'center', color: '#dc2626' }}
+                  >
+                    Pause
+                  </button>
+                </div>
+              </div>
+            ) : activeRun ? (
+              /* Manual mode active run */
               <div style={{ marginBottom: 12, padding: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8 }}>
                 <p style={{ margin: 0, fontSize: 13, color: '#166534', fontWeight: 600 }}>
                   Active Task ID: <span style={{ fontFamily: 'monospace' }}>{activeRun.task_id}</span>
@@ -716,26 +966,109 @@ export default function VoiceSettings() {
                 </button>
               </div>
             ) : (
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                  Start 100-Task Run
-                </label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="text"
-                    placeholder="Enter task ID (e.g. task-01)"
-                    value={taskIdInput}
-                    onChange={(e) => setTaskIdInput(e.target.value)}
-                    style={{ ...inp, padding: '8px 12px', fontSize: 13, flex: 1 }}
-                  />
+              /* Idle / start guided run */
+              <div style={{ marginBottom: 14 }}>
+                {savedIndex > 0 && savedIndex < tasks.length ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleResumeGuided}
+                      style={{
+                        ...btn,
+                        width: '100%',
+                        padding: '12px 16px',
+                        fontSize: 15,
+                        fontWeight: 800,
+                        background: '#16a34a',
+                        marginBottom: 8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      ▶ Resume where I stopped ({formatProgress(savedIndex, tasks.length)})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStartGuided(0)}
+                      style={{ ...pill, width: '100%', marginBottom: 12, textAlign: 'center' }}
+                    >
+                      Start from Beginning (Task 1 of 100)
+                    </button>
+                  </>
+                ) : (
                   <button
                     type="button"
-                    onClick={handleStartRun}
-                    style={{ ...btn, padding: '8px 14px', fontSize: 13 }}
+                    onClick={() => handleStartGuided(0)}
+                    style={{
+                      ...btn,
+                      width: '100%',
+                      padding: '12px 16px',
+                      fontSize: 15,
+                      fontWeight: 800,
+                      marginBottom: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
                   >
-                    Start Run
+                    ▶ Start Guided 100-Task Run
                   </button>
-                </div>
+                )}
+
+                {/* Names used in the tasks */}
+                <details style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 10, marginBottom: 12 }}>
+                  <summary style={{ fontSize: 13, fontWeight: 700, color: '#334155', cursor: 'pointer' }}>
+                    ⚙️ Names used in the tasks {Object.values(contactsMap).some((v, i) => v && v !== STANDARD_CONTACT_KEYS[i]?.defaultVal) ? '(Customized)' : ''}
+                  </summary>
+                  <p style={{ margin: '8px 0 10px', fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
+                    Tasks that call or message a person must use ONE exact name. Type the exact name saved in your phone (e.g. Mom → Amma). Defaults stay as in the task list until set.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {STANDARD_CONTACT_KEYS.map((item) => (
+                      <div key={item.key}>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 2 }}>
+                          {item.label}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={item.defaultVal}
+                          value={contactsMap[item.key] ?? ''}
+                          onChange={(e) => handleContactChange(item.key, e.target.value)}
+                          style={{ ...inp, padding: '6px 8px', fontSize: 12 }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </details>
+
+                {/* Manual fallback mode */}
+                <details style={{ marginBottom: 8 }}>
+                  <summary style={{ fontSize: 12, color: '#64748b', cursor: 'pointer' }}>
+                    Manual Mode: enter individual task ID by hand
+                  </summary>
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      placeholder="Enter task ID (e.g. en-rem-01)"
+                      value={taskIdInput}
+                      onChange={(e) => setTaskIdInput(e.target.value)}
+                      style={{ ...inp, padding: '8px 12px', fontSize: 13, flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleStartRun();
+                        setManualMode(true);
+                      }}
+                      style={{ ...btn, padding: '8px 14px', fontSize: 13 }}
+                    >
+                      Start Run
+                    </button>
+                  </div>
+                </details>
               </div>
             )}
 

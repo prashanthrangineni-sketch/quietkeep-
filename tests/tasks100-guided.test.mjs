@@ -61,16 +61,28 @@ check('All 100 task IDs are unique', uniqueIds.size === 100, `got ${uniqueIds.si
 
 // Verify against local copy of make_tasks100.py in pranix-aaria
 const pyCmd = `python -c "import sys, json; sys.path.append(r'C:\\Users\\ADMIN\\pranix-aaria\\scripts\\measure'); import make_tasks100; json.dump([t['id'] for t in make_tasks100.T], sys.stdout)"`;
-let aariaIds = [];
-try {
-  aariaIds = JSON.parse(execSync(pyCmd, { encoding: 'utf-8' }));
-} catch (e) {
-  console.error('Failed to query make_tasks100.py:', e);
-}
+// Always: compare against the committed reference list (works on GitHub too).
+const fixture = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'tests', 'fixtures', 'tasks100-ids.json'), 'utf-8'));
+const refIds = fixture.ids;
+check('Reference list has 100 unique IDs', refIds.length === 100 && new Set(refIds).size === 100, `got ${refIds.length}`);
+check('Every task ID and order matches the committed reference list',
+  tasks.length === refIds.length && tasks.every((t, i) => t.id === refIds[i]));
 
-check('make_tasks100.py loaded 100 reference IDs', aariaIds.length === 100);
-const idsMatch = tasks.every((t, i) => t.id === aariaIds[i]);
-check('Every single task ID and order exactly matches make_tasks100.py', idsMatch);
+// Only on the founder's laptop, where the engine repo exists: also check live.
+const aariaDir = 'C:\\Users\\ADMIN\\pranix-aaria\\scripts\\measure';
+if (fs.existsSync(aariaDir)) {
+  let aariaIds = [];
+  try {
+    aariaIds = JSON.parse(execSync(pyCmd, { encoding: 'utf-8' }));
+  } catch (e) {
+    console.error('Failed to query make_tasks100.py:', e);
+  }
+  check('make_tasks100.py loaded 100 reference IDs', aariaIds.length === 100);
+  check('Every single task ID and order exactly matches make_tasks100.py',
+    tasks.every((t, i) => t.id === aariaIds[i]));
+} else {
+  console.log('SKIP  live check against make_tasks100.py (pranix-aaria folder not on this machine; committed reference list used instead)');
+}
 
 // Check self-documenting generation note
 check('JSON contains generation note mentioning commit',

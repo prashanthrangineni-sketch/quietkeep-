@@ -1,12 +1,12 @@
 // src/lib/teach-voice.js
 // Logic, local storage, and plugin bridge for "Teach Aaria your voice".
-// Privacy guarantee: All recordings and enrollment are purely on-device.
-// Zero network calls are made. Clips are saved locally ONLY when consent is enabled.
+// Privacy guarantee: All enrollment processing is purely on-device.
+// Zero network calls are made. Heard text is saved locally ONLY when consent is enabled.
 
 export const DEFAULT_SAMPLES_COUNT = 5;
 export const CONSENT_STORAGE_KEY = 'qk_teach_voice_keep_recordings';
 export const CLIPS_STORAGE_KEY = 'qk_teach_voice_clips';
-export const CONSENT_SWITCH_LABEL = 'Keep my recordings on this phone to help Aaria learn my voice';
+export const CONSENT_SWITCH_LABEL = 'Keep what Aaria heard on this phone to help it learn my voice';
 
 function getStorage(customStorage) {
   if (customStorage) return customStorage;

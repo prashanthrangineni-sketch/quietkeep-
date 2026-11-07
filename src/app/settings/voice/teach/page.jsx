@@ -331,10 +331,16 @@ export default function TeachVoicePage() {
                   </div>
                 )}
 
+                {resultData?.wakeNameWeak && (
+                  <div style={{ margin: '0 auto 14px', padding: '10px 14px', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 10, fontSize: 13, color: '#92400e', maxWidth: 380, textAlign: 'center' }}>
+                    Aaria found this name hard to tell apart. A longer or more distinct name may work better.
+                  </div>
+                )}
+
                 <div style={{ margin: '14px 0 18px', fontSize: 13, color: consent ? '#166534' : '#64748b' }}>
                   {consent
-                    ? `✓ Recordings are kept locally on this phone (${savedClipsCount || totalSamples} clips saved).`
-                    : '🔒 Recordings were discarded immediately (consent switch was off).'}
+                    ? `Kept on this phone: what Aaria heard each time (${savedClipsCount || totalSamples} tries).`
+                    : 'Nothing was kept (the switch was off).'}
                 </div>
 
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
@@ -412,11 +418,9 @@ export default function TeachVoicePage() {
                   <b style={{ fontSize: 14, color: '#1e293b' }}>
                     {CONSENT_SWITCH_LABEL}
                   </b>
-                  <small style={{ display: 'block', color: '#64748b', fontSize: 12, lineHeight: 1.5, marginTop: 4 }}>
-                    When enabled, audio clips of your spoken wake name are stored securely on this phone to help improve on-device recognition.
-                    When disabled, recordings are deleted as soon as enrollment finishes.
-                    Nothing is ever uploaded — no network calls are ever made.
-                  </small>
+                  <p style={{ color: '#64748b', fontSize: 12, lineHeight: 1.5, margin: '4px 0 0' }}>
+                    When on, the words Aaria heard on each try are kept on this phone to help it recognise you. The sound itself is not kept. When off, nothing is kept after teaching finishes. Nothing is ever uploaded.
+                  </p>
                 </div>
 
                 <button
@@ -444,7 +448,7 @@ export default function TeachVoicePage() {
               {consent && (
                 <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 12, color: '#166534', fontWeight: 600 }}>
-                    ✓ Storing clips locally on this device ({savedClipsCount} saved)
+                    ✓ Storing what Aaria heard locally on this device ({savedClipsCount} saved)
                   </span>
                   {savedClipsCount > 0 && (
                     <button
@@ -452,7 +456,7 @@ export default function TeachVoicePage() {
                       onClick={() => handleConsentToggle(false)}
                       style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0 }}
                     >
-                      Delete stored clips
+                      Delete stored entries
                     </button>
                   )}
                 </div>

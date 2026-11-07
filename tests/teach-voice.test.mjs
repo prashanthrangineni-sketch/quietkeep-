@@ -308,9 +308,33 @@ test('Settings Voice page links directly to /settings/voice/teach', () => {
 });
 
 test('exact consent label is present in both teach-voice.js and page.jsx', () => {
-  assert.equal(CONSENT_SWITCH_LABEL, 'Keep my recordings on this phone to help Aaria learn my voice');
+  assert.equal(CONSENT_SWITCH_LABEL, 'Keep what Aaria heard on this phone to help it learn my voice');
 
   const teachPagePath = path.resolve('src/app/settings/voice/teach/page.jsx');
   const pageContent = fs.readFileSync(teachPagePath, 'utf8');
   assert.match(pageContent, /CONSENT_SWITCH_LABEL/, 'teach page uses exact consent switch label');
+});
+
+test('page.jsx does NOT contain the words "audio clips"', () => {
+  const teachPagePath = path.resolve('src/app/settings/voice/teach/page.jsx');
+  const pageContent = fs.readFileSync(teachPagePath, 'utf8');
+  assert.equal(pageContent.toLowerCase().includes('audio clips'), false, 'page.jsx must not contain "audio clips"');
+});
+
+test('page.jsx contains the exact review-fix copy for done messages, explainer, and weak name warning', () => {
+  const teachPagePath = path.resolve('src/app/settings/voice/teach/page.jsx');
+  const pageContent = fs.readFileSync(teachPagePath, 'utf8');
+
+  assert.match(pageContent, /Kept on this phone: what Aaria heard each time/, 'has done message with consent ON');
+  assert.match(pageContent, /Nothing was kept \(the switch was off\)\./, 'has done message with consent OFF');
+  assert.match(
+    pageContent,
+    /When on, the words Aaria heard on each try are kept on this phone to help it recognise you\. The sound itself is not kept\. When off, nothing is kept after teaching finishes\. Nothing is ever uploaded\./,
+    'has exact explainer paragraph'
+  );
+  assert.match(
+    pageContent,
+    /Aaria found this name hard to tell apart\. A longer or more distinct name may work better\./,
+    'has weak wake name warning line'
+  );
 });

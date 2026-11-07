@@ -270,14 +270,16 @@ export async function matchContactByName(supabase, userId, name) {
   // Venus. Fetch everyone sharing any word of the name, then let
   // rankContactsForName decide: one contact with every word is a match;
   // anything else is a question, never a guess.
-  const words = nameTokens(name).filter((w) => /^[\p{L}\p{M}]+$/u.test(w)).slice(0, 3);
+  // 7 Nov 2026 (AG-V6): search with the stripped, both-script forms too, so
+  // "అశోక్కి" fetches a contact saved as "Ashok".
+  const words = contactSearchWords(name);
   if (!words.length) return null;
   const { data: near } = await supabase
     .from('contacts')
     .select('id,name,phone,email,relation,avatar_emoji')
     .eq('user_id', userId)
     .or(words.map((w) => `name.ilike.%${w}%`).join(','))
-    .limit(60);
+    .limit(120);
   return rankContactsForName(name, near || []);
 }
 

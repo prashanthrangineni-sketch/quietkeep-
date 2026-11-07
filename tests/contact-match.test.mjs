@@ -119,3 +119,88 @@ test('"Venu Nz" with two Venu Nz narrows to those two; a unique or useless answe
   assert.deepEqual(narrowContacts('Menukonda', SIX_VENUS), [])
   assert.deepEqual(narrowContacts('umbrella', SIX_VENUS), [])
 })
+
+// ── Card AG-V6 — Telugu contact names that actually match ───────────────────
+
+test('"అశోక్కి", "అశోక్ కి", "అశోక్ గారికి" → contact "Ashok" (single) when only one Ashok exists; → ask when "Ashok Kumar" and "Ashok Reddy" both exist', () => {
+  const singleBook = [{ id: 101, name: 'Ashok', phone: '+919876543210' }]
+  assert.equal(rankContactsForName('అశోక్కి', singleBook)?.single?.name, 'Ashok')
+  assert.equal(rankContactsForName('అశోక్ కి', singleBook)?.single?.name, 'Ashok')
+  assert.equal(rankContactsForName('అశోక్ గారికి', singleBook)?.single?.name, 'Ashok')
+
+  const multiBook = [
+    { id: 102, name: 'Ashok Kumar', phone: '+919876543211' },
+    { id: 103, name: 'Ashok Reddy', phone: '+919876543212' },
+  ]
+  const r1 = rankContactsForName('అశోక్కి', multiBook)
+  assert.equal(r1.ambiguous, true)
+  assert.equal(r1.multiple.length, 2)
+
+  const r2 = rankContactsForName('అశోక్ కి', multiBook)
+  assert.equal(r2.ambiguous, true)
+  assert.equal(r2.multiple.length, 2)
+
+  const r3 = rankContactsForName('అశోక్ గారికి', multiBook)
+  assert.equal(r3.ambiguous, true)
+  assert.equal(r3.multiple.length, 2)
+})
+
+test('"రమేష్ అన్నకి" → "Ramesh Anna" or "Ramesh" (single if unique)', () => {
+  const withAnna = [{ id: 201, name: 'Ramesh Anna', phone: '+919876543220' }]
+  assert.equal(rankContactsForName('రమేష్ అన్నకి', withAnna)?.single?.name, 'Ramesh Anna')
+
+  const withoutAnna = [{ id: 202, name: 'Ramesh', phone: '+919876543221' }]
+  assert.equal(rankContactsForName('రమేష్ అన్నకి', withoutAnna)?.single?.name, 'Ramesh')
+
+  const both = [
+    { id: 201, name: 'Ramesh Anna', phone: '+919876543220' },
+    { id: 202, name: 'Ramesh', phone: '+919876543221' },
+  ]
+  const rBoth = rankContactsForName('రమేష్ అన్నకి', both)
+  assert.equal(rBoth.ambiguous, true)
+  assert.equal(rBoth.multiple.length, 2)
+})
+
+test('Latin spoken "ashok ki" → "Ashok"', () => {
+  const book = [{ id: 301, name: 'Ashok', phone: '+919876543230' }]
+  assert.equal(rankContactsForName('ashok ki', book)?.single?.name, 'Ashok')
+})
+
+test('One-letter slip finds the contact only when unique; never auto-picks between two near names', () => {
+  // Unique one-letter slip in Latin
+  const singleLatin = [{ id: 401, name: 'Ashok', phone: '+919876543240' }]
+  assert.equal(rankContactsForName('Ashol', singleLatin)?.single?.name, 'Ashok')
+
+  // Two near names in Latin: never auto-picks
+  const twoLatin = [
+    { id: 401, name: 'Ashok', phone: '+919876543240' },
+    { id: 402, name: 'Ashor', phone: '+919876543241' },
+  ]
+  const rTwo = rankContactsForName('Ashol', twoLatin)
+  assert.equal(rTwo.ambiguous, true)
+  assert.equal(rTwo.multiple.length, 2)
+
+  // Unique one-letter slip in Telugu (క్యాన్సల్ for క్యాన్సిల్)
+  const singleTelugu = [{ id: 403, name: 'క్యాన్సిల్', phone: '+919876543242' }]
+  assert.equal(rankContactsForName('క్యాన్సల్', singleTelugu)?.single?.name, 'క్యాన్సిల్')
+
+  // Two near names in Telugu: never auto-picks
+  const twoTelugu = [
+    { id: 403, name: 'క్యాన్సిల్', phone: '+919876543242' },
+    { id: 404, name: 'క్యాన్సుల్', phone: '+919876543243' },
+  ]
+  const rTwoTe = rankContactsForName('క్యాన్సల్', twoTelugu)
+  assert.equal(rTwoTe.ambiguous, true)
+  assert.equal(rTwoTe.multiple.length, 2)
+
+  // Tokens with fewer than 4 letters must NOT match via one-letter tolerance
+  const threeLetter = [{ id: 405, name: 'Ram', phone: '+919876543244' }]
+  assert.equal(rankContactsForName('Raj', threeLetter), null)
+})
+
+test('Telugu contact saved in Telugu script matched from Latin spoken query', () => {
+  const teluguSaved = [{ id: 501, name: 'అశోక్', phone: '+919876543250' }]
+  assert.equal(rankContactsForName('Ashok', teluguSaved)?.single?.name, 'అశోక్')
+  assert.equal(rankContactsForName('ashok ki', teluguSaved)?.single?.name, 'అశోక్')
+})
+

@@ -169,7 +169,11 @@ test('Latin spoken "ashok ki" → "Ashok"', () => {
 test('One-letter slip finds the contact only when unique; never auto-picks between two near names', () => {
   // Unique one-letter slip in Latin
   const singleLatin = [{ id: 401, name: 'Ashok', phone: '+919876543240' }]
-  assert.equal(rankContactsForName('Ashol', singleLatin)?.single?.name, 'Ashok')
+  const rSlip = rankContactsForName('Ashol', singleLatin)
+  assert.equal(rSlip?.single, undefined)          // never dialled on a guess
+  assert.equal(rSlip?.ambiguous, true)
+  assert.equal(rSlip?.fuzzy, true)
+  assert.equal(rSlip?.multiple?.[0]?.name, 'Ashok') // offered as the one choice
 
   // Two near names in Latin: never auto-picks
   const twoLatin = [

@@ -316,6 +316,34 @@ export function tokenFuzzy(spoken, contactTok) {
  * never an automatic pick: dialling "Venu Reddy" because the user said
  * "Venu Yadav" would be worse than asking.
  */
+/**
+ * Words to SEARCH the contacts table with, so the database hands
+ * rankContactsForName the right people to choose from. Without this, a
+ * Telugu-script "అశోక్కి" never finds a contact saved as "Ashok": the
+ * database search runs on the raw spoken word and returns nobody.
+ * Returns base tokens (endings stripped), their other-script spelling, the
+ * vowel-normalised Latin form, and a 4-letter Latin prefix for longer names
+ * (so a one-letter slip like "Ashol" still fetches "Ashok" to be offered).
+ * Letters only - safe to place inside a database filter.
+ */
+export function contactSearchWords(spokenName, max = 8) {
+  const { baseTokens } = parseSpokenTokens(spokenName)
+  const out = []
+  const add = (w) => {
+    const s = String(w || '').toLowerCase().normalize('NFC')
+    if (s.length >= 2 && /^[\p{L}\p{M}]+$/u.test(s) && !out.includes(s)) out.push(s)
+  }
+  for (const t of baseTokens) {
+    add(t)
+    const lat = isTelugu(t) ? teluguToLatin(t) : t
+    add(lat)
+    add(normVowels(lat))
+    if (!isTelugu(t)) add(latinToTelugu(t))
+    if (lat.length >= 5) add(lat.slice(0, 4))
+  }
+  return out.slice(0, max)
+}
+
 export function rankContactsForName(spokenName, contacts) {
   const { baseTokens, optionalTokens } = parseSpokenTokens(spokenName)
   const list = (contacts || []).filter((c) => c && c.name)

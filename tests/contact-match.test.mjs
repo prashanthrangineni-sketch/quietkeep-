@@ -4,7 +4,33 @@
 
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { rankContactsForName, pickContactFromAnswer, nameTokens } from '../src/lib/contact-match.js'
+import { rankContactsForName, pickContactFromAnswer, nameTokens, contactSearchWords } from '../src/lib/contact-match.js'
+
+// Same filter the database applies in matchContactByName: name ILIKE %word%.
+function dbNear(words, book) {
+  return book.filter((c) => words.some((w) => String(c.name).toLowerCase().includes(w)))
+}
+
+test('Database search words fetch an English-saved contact for Telugu speech (end to end)', () => {
+  const book = [
+    { id: 901, name: 'Ashok', phone: '+919000000901' },
+    { id: 902, name: 'Ramesh Anna', phone: '+919000000902' },
+    { id: 903, name: 'Suresh', phone: '+919000000903' },
+  ]
+  for (const spoken of ['అశోక్కి', 'అశోక్ కి', 'అశోక్ గారికి']) {
+    const words = contactSearchWords(spoken)
+    assert.ok(words.every((w) => /^[\p{L}\p{M}]+$/u.test(w)), 'letters only')
+    const near = dbNear(words, book)
+    assert.ok(near.some((c) => c.name === 'Ashok'), `${spoken} must fetch Ashok, got ${JSON.stringify(words)}`)
+    assert.equal(rankContactsForName(spoken, near)?.single?.name, 'Ashok')
+  }
+  const r = rankContactsForName('రమేష్ అన్నకి', dbNear(contactSearchWords('రమేష్ అన్నకి'), book))
+  assert.equal(r?.single?.name, 'Ramesh Anna')
+  // A one-letter slip is still fetched so it can be OFFERED (never dialled).
+  const slip = rankContactsForName('Ashol', dbNear(contactSearchWords('Ashol'), book))
+  assert.equal(slip?.single, undefined)
+  assert.equal(slip?.multiple?.[0]?.name, 'Ashok')
+})
 import { computeFollowUp } from '../src/lib/intent-executor.js'
 import { readAnswer } from '../src/lib/follow-up-answer.js'
 

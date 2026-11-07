@@ -647,6 +647,35 @@ export default function VoiceSettings() {
             </p>
           )}
 
+          {/* Teach Aaria your voice */}
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ minWidth: 0 }}>
+                <b style={{ fontSize: 14 }}>Teach Aaria your voice</b>
+                <small style={{ display: 'block', color: '#64748b', fontSize: 12, lineHeight: 1.5 }}>
+                  Say your wake name a few times so Aaria learns how you speak.
+                </small>
+              </div>
+              <Link
+                href="/settings/voice/teach"
+                style={{
+                  ...pill,
+                  flex: 'none',
+                  textDecoration: 'none',
+                  background: '#f8fafc',
+                  color: P,
+                  borderColor: '#e2e8f0',
+                  padding: '8px 14px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textAlign: 'center',
+                }}
+              >
+                Teach →
+              </Link>
+            </div>
+          </div>
+
           {/* Browser wake word — the propped-up counter phone.
               Kept separate from the modes above because it is a genuinely
               different promise: it works only while this tab is open and in

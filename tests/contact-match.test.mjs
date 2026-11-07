@@ -186,7 +186,10 @@ test('One-letter slip finds the contact only when unique; never auto-picks betwe
 
   // Unique one-letter slip in Telugu (క్యాన్సల్ for క్యాన్సిల్)
   const singleTelugu = [{ id: 403, name: 'క్యాన్సిల్', phone: '+919876543242' }]
-  assert.equal(rankContactsForName('క్యాన్సల్', singleTelugu)?.single?.name, 'క్యాన్సిల్')
+  const rSlipTe = rankContactsForName('క్యాన్సల్', singleTelugu)
+  assert.equal(rSlipTe?.single, undefined)
+  assert.equal(rSlipTe?.ambiguous, true)
+  assert.equal(rSlipTe?.multiple?.[0]?.name, 'క్యాన్సిల్')
 
   // Two near names in Telugu: never auto-picks
   const twoTelugu = [

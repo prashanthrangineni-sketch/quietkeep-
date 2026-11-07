@@ -363,7 +363,10 @@ export function rankContactsForName(spokenName, contacts) {
   }).filter((s) => s.isFuzzyFull)
 
   if (fuzzyScored.length === 1) {
-    return { single: fuzzyScored[0].c }
+    // A one-letter guess is never dialled on its own: offer it as the only
+    // choice so Aaria asks ("Which Ashol? Ashok? Say the name, or tap it.").
+    // Calling the wrong person is worse than one extra question.
+    return { multiple: [fuzzyScored[0].c], ambiguous: true, fuzzy: true }
   }
   if (fuzzyScored.length > 1) {
     return { multiple: fuzzyScored.slice(0, MAX_CANDIDATES).map((s) => s.c), ambiguous: true }

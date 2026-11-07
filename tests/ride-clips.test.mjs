@@ -180,7 +180,7 @@ eq('ALLOWED_LABELS contains bump, fall, nothing', ALLOWED_LABELS, ['bump', 'fall
 // ── 5. 30-Clip Cap Per Ride ───────────────────────────────────────────────────
 {
   let now = 1000;
-  const recorder = createClipRecorder({ clock: () => now, enabled: true });
+  const recorder = createClipRecorder({ clock: () => now, enabled: true, random: () => 0.5 });
 
   // Trigger 35 candidate events
   for (let i = 1; i <= 35; i++) {

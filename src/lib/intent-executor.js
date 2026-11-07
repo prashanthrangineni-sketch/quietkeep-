@@ -10,7 +10,7 @@
 // exists inside the Next build; the unit suite loads these modules under plain
 // Node, where it does not resolve and the import throws before any test runs.
 import { collapseRepeats } from './transcript-clean.js'
-import { nameTokens, rankContactsForName } from './contact-match.js'
+import { nameTokens, rankContactsForName, contactSearchWords } from './contact-match.js'
 
 // ── TIME PARSING ──────────────────────────────────────────────────────────────
 // Speech-to-text emits "10 a.m." / "5 P.M." with full stops and inconsistent
@@ -270,14 +270,16 @@ export async function matchContactByName(supabase, userId, name) {
   // Venus. Fetch everyone sharing any word of the name, then let
   // rankContactsForName decide: one contact with every word is a match;
   // anything else is a question, never a guess.
-  const words = nameTokens(name).filter((w) => /^[\p{L}\p{M}]+$/u.test(w)).slice(0, 3);
+  // 7 Nov 2026 (AG-V6): search with the stripped, both-script forms too, so
+  // "అశోక్కి" fetches a contact saved as "Ashok".
+  const words = contactSearchWords(name);
   if (!words.length) return null;
   const { data: near } = await supabase
     .from('contacts')
     .select('id,name,phone,email,relation,avatar_emoji')
     .eq('user_id', userId)
     .or(words.map((w) => `name.ilike.%${w}%`).join(','))
-    .limit(60);
+    .limit(120);
   return rankContactsForName(name, near || []);
 }
 

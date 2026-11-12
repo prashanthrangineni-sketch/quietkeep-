@@ -75,6 +75,31 @@ function createQueryBuilder(table) {
     gt(col, val) { filters.push(r => r[col] !== undefined && r[col] > val); return builder; },
     lt(col, val) { filters.push(r => r[col] !== undefined && r[col] < val); return builder; },
     in(col, vals) { filters.push(r => vals.includes(r[col])); return builder; },
+    not(col, op, val) {
+      if (op === 'is' && val === null) {
+        filters.push(r => r[col] != null);
+      } else if (op === 'eq') {
+        filters.push(r => r[col] !== val);
+      } else if (op === 'in') {
+        filters.push(r => !val.includes(r[col]));
+      } else {
+        filters.push(r => r[col] !== val);
+      }
+      return builder;
+    },
+    is(col, val) {
+      if (val === null) filters.push(r => r[col] == null);
+      else filters.push(r => r[col] === val);
+      return builder;
+    },
+    like(col, pattern) {
+      filters.push(r => typeof r[col] === 'string' && r[col].includes(String(pattern).replace(/%/g, '')));
+      return builder;
+    },
+    ilike(col, pattern) {
+      filters.push(r => typeof r[col] === 'string' && r[col].toLowerCase().includes(String(pattern).replace(/%/g, '').toLowerCase()));
+      return builder;
+    },
     order(col, opts = {}) { orderCol = col; orderAsc = opts.ascending !== false; return builder; },
     limit(n) { limitVal = n; return builder; },
     range() { return builder; },

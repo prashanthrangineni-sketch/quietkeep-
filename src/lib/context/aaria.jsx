@@ -184,7 +184,14 @@ export function AariaProvider({ children }) {
         // rather than being lost in silence.
         await speakMissedReminders({
           supabase, userId: user.id,
-          speak: (t, o) => { holdForSpeech(t, { queue: true }); return speak(t, o); },
+          speak: (t, o) => {
+            holdForSpeech(t, { queue: true });
+            return speak(t, {
+              useAaria: true,
+              ...(voiceLang ? { lang: voiceLang } : {}),
+              ...o,
+            });
+          },
           prefix: MISSED_PREFIX[String(voiceLang || 'en').split('-')[0]] || MISSED_PREFIX.en,
         });
       } catch {
@@ -225,11 +232,15 @@ export function AariaProvider({ children }) {
       const msg = event.data;
       if (!msg || msg.type !== 'REMINDER_DUE' || !msg.text) return;
       holdForSpeech(msg.text);
-      speak(String(msg.text), { priority: 'high' });
+      speak(String(msg.text), {
+        priority: 'high',
+        useAaria: true,
+        ...(voiceLang ? { lang: voiceLang } : {}),
+      });
     }
     navigator.serviceWorker.addEventListener('message', onWorkerMessage);
     return () => navigator.serviceWorker.removeEventListener('message', onWorkerMessage);
-  }, []);
+  }, [holdForSpeech, voiceLang]);
 
   // 'idle' | 'listening' | 'thinking' | 'speaking'
   const [status, setStatus] = useState('idle');
@@ -1259,7 +1270,16 @@ export function AariaProvider({ children }) {
         const where = keep?.location_name || 'your place';
         const what = String(keep?.content || keep?.subject || '').slice(0, 120);
         const line = what ? `You're at ${where}. ${what}` : `You're at ${where}.`;
-        if (silent) { holdForSpeech(line); try { speak(line, { priority: 'high' }); } catch { } }
+        if (silent) {
+          holdForSpeech(line);
+          try {
+            speak(line, {
+              priority: 'high',
+              useAaria: true,
+              ...(voiceLang ? { lang: voiceLang } : {}),
+            });
+          } catch { }
+        }
         else { setOpen(true); say(line); }
       }, () => tokenRef.current);
     }).catch(() => { });
@@ -1267,7 +1287,7 @@ export function AariaProvider({ children }) {
       stopped = true;
       import('@/lib/geo').then(({ stopGeoFencing }) => stopGeoFencing()).catch(() => { });
     };
-  }, [signedIn, silent, say]);
+  }, [signedIn, silent, say, voiceLang]);
 
   // Opening the panel is consent to hear it. Speaking it here — and only here —
   // is what keeps rule 1 in aaria-watch.js true.

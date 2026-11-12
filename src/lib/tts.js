@@ -89,7 +89,15 @@ export async function speakAaria(text, { lang = 'hi-IN', authToken = null, quali
     clonedVoice: Boolean(json?.cloned_voice),
     voiceName: json?.voice_name || '',
     lang,
+    codec: json?.codec || '',
   };
+  if (typeof console !== 'undefined') {
+    console.log('[QK TTS] aaria ok', {
+      lang,
+      provider: json?.provider || 'aaria',
+      speaker: json?.speaker || (json?.cloned_voice ? 'own-voice' : 'engine-default'),
+    });
+  }
   if (json?.audio) { await playAudioBuffer(base64ToArrayBuffer(json.audio), meta); return; }
   if (json?.audio_url) { await playAudioUrl(json.audio_url, false, meta); return; }
   throw new Error(`Aaria unavailable: ${json?.reason || 'no_audio'}`);
@@ -97,7 +105,8 @@ export async function speakAaria(text, { lang = 'hi-IN', authToken = null, quali
 
 // ── Playback with interrupt support ─────────────────────────────────────────
 export function playAudioBuffer(buffer, meta = {}) {
-  const blob = new Blob([buffer], { type: 'audio/mpeg' });
+  const mime = meta?.codec === 'wav' ? 'audio/wav' : 'audio/mpeg';
+  const blob = new Blob([buffer], { type: mime });
   return playAudioUrl(URL.createObjectURL(blob), true, meta);
 }
 

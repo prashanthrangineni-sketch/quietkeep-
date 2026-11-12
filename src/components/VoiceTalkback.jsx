@@ -13,7 +13,7 @@ import {
   beginSpeech, endSpeech, isCurrent, bargeIn, setSpokenText,
   registerStopper, BARGE_IN_REASON,
 } from '@/lib/barge-in';
-import { shouldUseAaria } from '@/lib/aaria-audio';
+import { shouldUseAaria, resolveSpeechLang } from '@/lib/aaria-audio';
 import { DEFAULT_WAKE_WORD, readWakeWord, acceptedWakeWords, displayWakeWord } from '@/lib/assistant-name';
 
 // ── Aaria's voice ───────────────────────────────────────────────────────────
@@ -182,17 +182,25 @@ export function speak(text, options = {}) {
   // between asking Aaria to speak and the audio arriving, the user may
   // already have interrupted. Any failure falls through to the paths below,
   // so the worst case is exactly the behaviour we had before.
-  const activeLangForAaria = options.lang || getCurrentLang();
+  const activeLangForAaria = resolveSpeechLang({
+    text,
+    lang: options.lang,
+    storedLang: getCurrentLang(),
+  });
   if (shouldUseAaria(activeLangForAaria, !!_authToken, aariaMode())) {
+    console.log('[QK TTS] request aaria', { lang: activeLangForAaria, purpose: options.purpose || 'general' });
     import('@/lib/tts')
       .then(({ speakAaria }) => {
         if (!isCurrent(token)) throw new Error('interrupted');
         return speakAaria(text, { lang: activeLangForAaria, authToken: _authToken, purpose: options.purpose || "general" });
       })
       .then(() => endSpeech(token))
-      .catch(() => {
+      .catch((err) => {
         // Aaria unreachable, asleep, or interrupted. Only speak again if this
         // utterance is still the current one.
+        if (err?.message !== 'interrupted') {
+          console.warn('[QK TTS] aaria fallback:', err?.message || String(err));
+        }
         if (isCurrent(token)) speakFallback();
         else endSpeech(token);
       });
@@ -209,7 +217,11 @@ export function speak(text, options = {}) {
   // addJavascriptInterface(new TTSBridge(this), "AndroidTTS").
   // Calls TTSManager.getInstance().speak() — queue-based, lifecycle-safe.
   if (typeof window.__QK_TTS__ === 'function') {
+    console.log('[QK TTS] fallback native', { lang: activeLangForAaria });
     try {
+      if (typeof window.__QK_SET_LANG__ === 'function') {
+        window.__QK_SET_LANG__(activeLangForAaria);
+      }
       // Phase 4: pass priority so TTSBridge can route to FLUSH or ADD.
       // Low priority appends; high priority interrupts stale speech.
       // TTSManager.speak() currently uses QUEUE_FLUSH for live calls —

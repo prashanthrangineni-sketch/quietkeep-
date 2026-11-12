@@ -380,7 +380,7 @@ export function AariaProvider({ children }) {
   }, [signedIn, silent, voiceLang]);
 
   // ── speaking ───────────────────────────────────────────────────────────────
-  const say = useCallback((text) => {
+  const say = useCallback((text, { lang } = {}) => {
     if (!text) return;
     setReply(String(text));
     setStatus('speaking');
@@ -388,13 +388,19 @@ export function AariaProvider({ children }) {
     // "finished speaking" signal, so the microphone is not called free before
     // this has passed (same estimate the follow-up loop waits on).
     holdForSpeech(text);
-    try { speak(String(text), { priority: 'high' }); } catch {}
+    const spokenLang = lang || voiceLang || undefined;
+    try {
+      speak(String(text), {
+        priority: 'high',
+        ...(spokenLang ? { lang: spokenLang } : {}),
+      });
+    } catch {}
     // No reliable end-of-speech event across the native bridge and the browser,
     // so fall back to idle on a timer proportional to length. Worst case the
     // orb stops pulsing slightly early — cosmetic, never functional.
     const ms = Math.min(9000, 1200 + String(text).length * 55);
     setTimeout(() => setStatus((s) => (s === 'speaking' ? 'idle' : s)), ms);
-  }, [holdForSpeech]);
+  }, [holdForSpeech, voiceLang]);
 
   const stopAll = useCallback(() => {
     if (followUpTimer.current) { clearInterval(followUpTimer.current); followUpTimer.current = null; }
@@ -560,7 +566,8 @@ export function AariaProvider({ children }) {
           if (said) spoken = said;
         } catch (e) { console.warn('[Aaria] drive action failed:', e); }
       }
-      say(spoken);
+      const replyLang = json.assistant?.language || voiceLang;
+      say(spoken, { lang: replyLang });
       setTranscript('');
       setChoices(Array.isArray(json.choices) && json.choices.length ? json.choices : null);
 
@@ -574,7 +581,7 @@ export function AariaProvider({ children }) {
       // after the read-back has been said, never before.
       // WAKE WORD WHILE PHONE IS LOCKED (CARD 51)
       if (json.needs_unlock) {
-        say(spoken);
+        say(spoken, { lang: replyLang });
         setTranscript('');
         if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
           try {
@@ -627,7 +634,8 @@ export function AariaProvider({ children }) {
               askBrain(text, { confirmed_by: 'biometric', proof: { biometric: true, pin: true } });
               return;
             }
-            say(spoken);
+            const replyLang = json.assistant?.language || voiceLang;
+      say(spoken, { lang: replyLang });
             setTranscript('');
             return;
           } else {

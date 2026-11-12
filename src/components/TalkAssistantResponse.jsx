@@ -4,6 +4,8 @@
  * Shows text bubble + optional TTS in matched language.
  */
 import { useEffect, useState } from 'react';
+import { speak as speakWithAaria } from '@/components/VoiceTalkback';
+import { resolveSpeechLang } from '@/lib/aaria-audio';
 
 const RESPONSES = {
   'en-IN': {
@@ -54,18 +56,13 @@ function getResponse(language, type, params = {}) {
 }
 
 function speakTTS(text, language) {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  if (typeof window === 'undefined') return;
   try {
     const enabled = localStorage.getItem('qk_voice_talkback');
     if (enabled === 'false') return;
   } catch {}
-  const utter = new SpeechSynthesisUtterance(text);
-  const langMap = { 'en-IN': 'en-IN', 'hi-IN': 'hi-IN', 'te-IN': 'te-IN', 'ta-IN': 'ta-IN' };
-  utter.lang = langMap[language] || 'en-IN';
-  utter.rate = 0.95;
-  utter.pitch = 1.0;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utter);
+  const resolvedLang = resolveSpeechLang({ text, lang: language });
+  speakWithAaria(text, { lang: resolvedLang });
 }
 
 export default function TalkAssistantResponse({ type, language, params, show, onDismiss }) {

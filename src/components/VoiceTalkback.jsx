@@ -187,7 +187,7 @@ export function speak(text, options = {}) {
     lang: options.lang,
     storedLang: getCurrentLang(),
   });
-  if (shouldUseAaria(activeLangForAaria, !!_authToken, aariaMode())) {
+  if (shouldUseAaria(activeLangForAaria, !!_authToken, aariaMode(), !!options.useAaria)) {
     console.log('[QK TTS] request aaria', { lang: activeLangForAaria, purpose: options.purpose || 'general' });
     import('@/lib/tts')
       .then(({ speakAaria }) => {

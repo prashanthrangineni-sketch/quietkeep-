@@ -62,6 +62,7 @@ import { cleanSpeedKmh } from '@/lib/drive-speed' // DRV-02 speed gate: the phon
 import { waitUntilStoppedLine, speakWhileMoving } from '@/lib/moving-lines'
 
 export async function POST(request) {
+  try {
   const authHeader = request.headers.get('Authorization') || ''
   const accessToken = authHeader.replace(/^Bearer\s+/i, '').trim()
   if (!accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -1085,6 +1086,7 @@ export async function POST(request) {
     // it gets backwards. The outer gate (>= 0.55) is the real guard, and if
     // Sarvam is down llmAssist is null and the regex result stands untouched.
     const brainWins = llmAssist.confidence >= 0.55
+    const llmEntities = llmAssist.entities && typeof llmAssist.entities === 'object' ? llmAssist.entities : {}
     if (brainWins) {
       parsed = {
         ...parsed,
@@ -1092,20 +1094,20 @@ export async function POST(request) {
         confidence: llmAssist.confidence,
         entities: {
           ...(parsed.entities || {}),
-          names: llmAssist.entities.person
-            ? [llmAssist.entities.person]
+          names: llmEntities.person
+            ? [llmEntities.person]
             : (parsed.entities?.names || []),
-          amount: llmAssist.entities.amount ?? parsed.entities?.amount ?? null,
-          direction: llmAssist.entities.direction ?? null,
-          item: llmAssist.entities.item ?? null,
+          amount: llmEntities.amount ?? parsed.entities?.amount ?? null,
+          direction: llmEntities.direction ?? null,
+          item: llmEntities.item ?? null,
         },
       }
     }
 
     // Absolute time from the brain wins — it resolves "రేపు ఉదయం" / "कल सुबह"
     // that computeReminderAt() cannot see.
-    if (llmAssist.entities.datetimeISO) {
-      const dt = new Date(llmAssist.entities.datetimeISO)
+    if (llmEntities.datetimeISO) {
+      const dt = new Date(llmEntities.datetimeISO)
       if (!isNaN(dt.getTime()) && dt.getTime() > Date.now() - 60000) {
         reminderAt = dt
         // Write the resolved time back into entities. computeFollowUp() and
@@ -1164,7 +1166,7 @@ export async function POST(request) {
     parsed.geo = { detected: true, location_name: brainPlace, type: 'place', source: 'brain' }
     if (!['reminder', 'task'].includes(parsed.type)) parsed.type = 'reminder'
     // No clock time unless the user said one.
-    if (!llmAssist.entities.datetimeISO) reminderAt = null
+    if (!llmAssist.entities?.datetimeISO) reminderAt = null
     // "Chintal Kunta" is somewhere to be, not someone to call.
     const p = brainPlace.toLowerCase()
     parsed.entities = parsed.entities || {}
@@ -1211,8 +1213,8 @@ export async function POST(request) {
       }
     } else {
       ;[matchedContact, allContacts] = await Promise.all([
-        matchContactByName(supabase, user.id, nameEntity),
-        findAllMatchingContacts(supabase, user.id, nameEntity),
+        matchContactByName(supabase, user.id, nameEntity).catch(() => null),
+        findAllMatchingContacts(supabase, user.id, nameEntity).catch(() => []),
       ])
     }
   }
@@ -1547,7 +1549,7 @@ export async function POST(request) {
       reminderAt,
       content:    text,
       domainType: workspace_id ? 'business' : 'personal',
-    })
+    }).catch(() => null)
 
     try {
       const { data: rem } = await supabase
@@ -1595,7 +1597,7 @@ export async function POST(request) {
   supabase.rpc('queue_keep_for_evaluation', {
     p_keep_id: keep.id, p_user_id: user.id,
     p_trigger: 'event', p_reason: 'voice_capture', p_priority: parsed.confidence,
-  }).then(() => {})
+  }).then(() => {}, () => {})
 
   supabase.from('behaviour_signals').insert({
     user_id:      user.id,
@@ -1956,4 +1958,11 @@ export async function POST(request) {
       customer_matched: !!bizPayload.customer,
     } : null,
   }, { status: 201 })
+  } catch (err) {
+    console.error('[voice/capture] unhandled error:', err)
+    return NextResponse.json(
+      { error: 'Voice capture failed', detail: err?.message || 'Internal error' },
+      { status: 500 }
+    )
+  }
 }

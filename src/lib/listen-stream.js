@@ -50,7 +50,8 @@ export const ENGINE_HEALTH_URL = 'https://pranix-aaria.onrender.com/api/health';
 
 export const TARGET_RATE   = 16000;
 export const FRAME_SAMPLES = 1600;   // 100 ms at 16 kHz
-export const READY_TIMEOUT_MS   = 4000;
+export const READY_TIMEOUT_MS   = 7000;
+export const RETRY_DELAY_MS     = 800;
 export const DONE_TIMEOUT_MS    = 5000;
 export const NOTHING_HEARD_MS   = 8000;  // tapped the mic and said nothing
 export const BUZZ_FRAMES       = 3;     // the first 300 ms after the mic opens: the "speak now" buzz, not the person
@@ -103,6 +104,29 @@ export function setNemotronWanted(on, storage) {
 export function engineFor(lang, wantNemotron) {
   const short = String(lang || '').split('-')[0].toLowerCase();
   return wantNemotron && short === 'en' ? 'nemotron' : undefined;
+}
+
+const INDIC_FALLBACK_LOCALES = {
+  te: 'te-IN', hi: 'hi-IN', ta: 'ta-IN', kn: 'kn-IN',
+  ml: 'ml-IN', bn: 'bn-IN', gu: 'gu-IN', mr: 'mr-IN',
+};
+
+/**
+ * Pick the browser SpeechRecognition fallback language without forcing en-IN
+ * when the user may speak another language. Explicit non-English choice wins;
+ * otherwise returns '' so the device recognizer uses auto/system default.
+ */
+export function resolveFallbackListenLang({ voiceLang = '', browserLang = '' } = {}) {
+  const normalize = (v) => {
+    const raw = String(v || '').trim();
+    if (!raw || /^(auto|unknown)$/i.test(raw)) return '';
+    return INDIC_FALLBACK_LOCALES[raw.toLowerCase()] || raw;
+  };
+  const chosen = normalize(voiceLang);
+  if (chosen && !/^en\b/i.test(chosen)) return chosen;
+  const browser = normalize(browserLang);
+  if (browser && !/^en\b/i.test(browser)) return browser;
+  return '';
 }
 
 /** What happened on the last turn - shown in Voice settings so a phone test has evidence. */
@@ -517,66 +541,107 @@ export function startListenStream({
     if (ready) send(pcm); else pending.push(pcm);
   }
 
-  // ── socket ──
-  try {
-    ws = new WS(url);
-    ws.binaryType = 'arraybuffer';
-  } catch (e) {
-    fail('could not open the socket');
-    return { result, stop: () => {}, abort: () => {} };
+  // ── socket (with pre-ready warm + retry) ──
+  const maxConnectRetries = Number.isFinite(deps.maxConnectRetries) ? deps.maxConnectRetries : 2;
+  const retryDelayMs = Number.isFinite(deps.retryDelayMs) ? deps.retryDelayMs : RETRY_DELAY_MS;
+  let connectRetries = 0;
+
+  const wireLang = () => {
+    const raw = String(lang || '').trim().toLowerCase();
+    if (!raw || raw === 'auto' || raw === 'unknown') return 'auto';
+    return raw.split('-')[0];
+  };
+
+  function retryOrFail(reason) {
+    if (ended || stopSent) return;
+    if (!ready && connectRetries < maxConnectRetries) {
+      if (timers.retry) return;
+      connectRetries++;
+      warmEngine(deps.fetch);
+      try {
+        if (ws) {
+          ws.onopen = null; ws.onerror = null; ws.onclose = null; ws.onmessage = null;
+        }
+      } catch {}
+      timers.retry = setT(() => {
+        timers.retry = null;
+        if (!ended && !stopSent && !ready) openSocket();
+      }, retryDelayMs);
+      return;
+    }
+    fail(reason);
+  }
+
+  function openSocket() {
+    try {
+      ws = new WS(url);
+      ws.binaryType = 'arraybuffer';
+    } catch (e) {
+      retryOrFail('could not open the socket');
+      return;
+    }
+
+    ws.onopen = () => {
+      send(JSON.stringify({
+        event: 'start',
+        lang: wireLang(),
+        endpointing: 'manual',
+        ...(terms.length ? { keyterms: terms } : {}),
+        ...(engine ? { engine } : {}),
+      }));
+    };
+    ws.onerror = () => {
+      if (ended || stopSent) return;
+      if (!ready) retryOrFail('socket error');
+      else fail('socket error');
+    };
+    ws.onclose = () => {
+      if (ended) return;
+      const text = heardText();
+      if (text) succeed(text);
+      else if (!ready && !stopSent) retryOrFail('socket closed');
+      else fail('socket closed');
+    };
+    ws.onmessage = (m) => {
+      let msg;
+      try { msg = JSON.parse(typeof m.data === 'string' ? m.data : ''); } catch { return; }
+      const ev = msg?.event;
+      if (ev === 'ready') {
+        ready = true;
+        engineUsed = msg.engine === 'nemotron' ? 'nemotron' : 'sarvam';
+        clear('ready');
+        clear('retry');
+        while (pending.length) send(pending.shift());
+      } else if (ev === 'partial') {
+        const t = (msg.text || '').trim();
+        if (t) {
+          if (firstWordsMs === null) firstWordsMs = Math.round(now() - t0);
+          const isNewText = t !== lastPartial;
+          lastPartial = t;
+          onPartial((finals.join(' ') + ' ' + t).trim());
+          if (!stopSent && engineHeardFreshVoice(isNewText)) speechNow();
+        }
+      } else if (ev === 'final') {
+        const t = (msg.text || '').trim();
+        if (t) {
+          if (firstWordsMs === null) firstWordsMs = Math.round(now() - t0);
+          finals.push(t);
+          lastPartial = '';
+          onPartial(finals.join(' '));
+          if (!stopSent && engineHeardFreshVoice(true)) speechNow();
+        }
+      } else if (ev === 'done') {
+        const t = (msg.text || '').trim() || heardText();
+        if (t) succeed(t); else fail('engine heard nothing', { fallback: false });
+      } else if (ev === 'error' && msg.fatal !== false) {
+        fail(`engine: ${String(msg.detail || 'error').slice(0, 120)}`);
+      }
+    };
   }
 
   timers.ready = setT(() => { if (!ready) fail('engine not ready in time'); }, READY_TIMEOUT_MS);
-
-  ws.onopen = () => {
-    send(JSON.stringify({
-      event: 'start',
-      lang: String(lang || 'en').split('-')[0].toLowerCase(),
-      endpointing: 'manual',
-      ...(terms.length ? { keyterms: terms } : {}),
-      ...(engine ? { engine } : {}),
-    }));
-  };
-  ws.onerror = () => { if (!ended && !stopSent) fail('socket error'); };
-  ws.onclose = () => {
-    if (ended) return;
-    const text = heardText();
-    if (text) succeed(text); else fail('socket closed');
-  };
-  ws.onmessage = (m) => {
-    let msg;
-    try { msg = JSON.parse(typeof m.data === 'string' ? m.data : ''); } catch { return; }
-    const ev = msg?.event;
-    if (ev === 'ready') {
-      ready = true;
-      engineUsed = msg.engine === 'nemotron' ? 'nemotron' : 'sarvam';
-      clear('ready');
-      while (pending.length) send(pending.shift());
-    } else if (ev === 'partial') {
-      const t = (msg.text || '').trim();
-      if (t) {
-        if (firstWordsMs === null) firstWordsMs = Math.round(now() - t0);
-        const isNewText = t !== lastPartial;
-        lastPartial = t;
-        onPartial((finals.join(' ') + ' ' + t).trim());
-        if (!stopSent && engineHeardFreshVoice(isNewText)) speechNow();
-      }
-    } else if (ev === 'final') {
-      const t = (msg.text || '').trim();
-      if (t) {
-        if (firstWordsMs === null) firstWordsMs = Math.round(now() - t0);
-        finals.push(t);
-        lastPartial = '';
-        onPartial(finals.join(' '));
-        if (!stopSent && engineHeardFreshVoice(true)) speechNow();
-      }
-    } else if (ev === 'done') {
-      const t = (msg.text || '').trim() || heardText();
-      if (t) succeed(t); else fail('engine heard nothing', { fallback: false });
-    } else if (ev === 'error' && msg.fatal !== false) {
-      fail(`engine: ${String(msg.detail || 'error').slice(0, 120)}`);
-    }
-  };
+  openSocket();
+  if (ended) return { result, stop: () => {}, abort: () => {} };
 
   // ── microphone ──
   (async () => {

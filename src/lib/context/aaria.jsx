@@ -42,7 +42,7 @@ import { createFillerPlayer } from '@/lib/fillers';
 import { endpointSilenceMsFor, MAX_LISTEN_MS } from '@/lib/endpointing';
 import {
   startListenStream, listenStreamWanted, streamingSupported, keepEngineWarm, recordLastListen,
-  nemotronWanted, engineFor,
+  nemotronWanted, engineFor, resolveFallbackListenLang,
 } from '@/lib/listen-stream';
 import { onWake, initWakeEngine, getWakeWord } from '@/lib/wake-word-engine';
 import { startWebHotword, isWebHotwordEnabled, isHotwordSupported, claimMic, releaseMic } from '@/lib/aaria-hotword';
@@ -108,7 +108,7 @@ function speechLang(lang) {
 
 export function AariaProvider({ children }) {
   const pathname = usePathname();
-  const router   = useRouter();
+  const router = useRouter();
   const { user, accessToken } = useAuth();
   const { voiceLang } = useLanguage();
 
@@ -149,7 +149,7 @@ export function AariaProvider({ children }) {
       try {
         const { supabase } = await import('@/lib/supabase');
         const { armVoiceReminders, speakMissedReminders, canSpeakWhenClosed,
-                retireExpiredReminders, reportLastAlarm } =
+          retireExpiredReminders, reportLastAlarm } =
           await import('@/lib/reminder-voice');
         if (cancelled) return;
 
@@ -167,9 +167,9 @@ export function AariaProvider({ children }) {
         // has something to fall back to when no page is open to speak. The
         // native alarm needs none, so this prompt never appears in the app.
         if (!canSpeakWhenClosed()
-            && typeof Notification !== 'undefined'
-            && Notification.permission === 'default') {
-          try { await Notification.requestPermission(); } catch {}
+          && typeof Notification !== 'undefined'
+          && Notification.permission === 'default') {
+          try { await Notification.requestPermission(); } catch { }
         }
 
         const armed = await armVoiceReminders({ supabase, userId: user.id });
@@ -178,7 +178,7 @@ export function AariaProvider({ children }) {
 
         // What the phone did the last time an alarm fired - so "it spoke but
         // did not call" can be answered from a record instead of a guess.
-        reportLastAlarm({ supabase, userId: user.id }).catch(() => {});
+        reportLastAlarm({ supabase, userId: user.id }).catch(() => { });
 
         // Anything that came due while the phone was in a bag is read out now,
         // rather than being lost in silence.
@@ -204,8 +204,8 @@ export function AariaProvider({ children }) {
       try {
         const { supabase } = await import('@/lib/supabase');
         const { reportLastAlarm } = await import('@/lib/reminder-voice');
-        reportLastAlarm({ supabase, userId: user.id }).catch(() => {});
-      } catch {}
+        reportLastAlarm({ supabase, userId: user.id }).catch(() => { });
+      } catch { }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
@@ -232,48 +232,48 @@ export function AariaProvider({ children }) {
   }, []);
 
   // 'idle' | 'listening' | 'thinking' | 'speaking'
-  const [status,     setStatus]     = useState('idle');
-  const [open,       setOpen]       = useState(false);
-  const [interim,    setInterim]    = useState('');
+  const [status, setStatus] = useState('idle');
+  const [open, setOpen] = useState(false);
+  const [interim, setInterim] = useState('');
   const [transcript, setTranscript] = useState('');
-  const [reply,      setReply]      = useState(null);
-  const [error,      setError]      = useState('');
-  const [wakeInfo,   setWakeInfo]   = useState(null);
-  const [notice,     setNotice]     = useState(null);   // {text, count} or null
+  const [reply, setReply] = useState(null);
+  const [error, setError] = useState('');
+  const [wakeInfo, setWakeInfo] = useState(null);
+  const [notice, setNotice] = useState(null);   // {text, count} or null
   // Which listener heard the last turn - shown in the dock so "did Aaria hear
   // me, or the phone?" has an answer on screen, not in a settings page.
-  const [heardBy,    setHeardBy]    = useState(null);   // {path, finaliseMs} or null
+  const [heardBy, setHeardBy] = useState(null);   // {path, finaliseMs} or null
   // Is the microphone actually open yet? Opening it takes a few hundred
   // milliseconds after the tap, and the screen used to say "Listening" at
   // once - so the first word was spoken into a closed microphone ("Remind me
   // to buy milk" arrived as "Money to buy milk", 3 October 2026).
-  const [micLive,    setMicLive]    = useState(false);
+  const [micLive, setMicLive] = useState(false);
   // "Which Venu?" - the people Aaria is asking about, shown as buttons.
-  const [choices,    setChoices]    = useState(null);
+  const [choices, setChoices] = useState(null);
   const choicesRef = useRef(null);
   useEffect(() => { choicesRef.current = choices; }, [choices]);
-  const lastListenRef   = useRef(null);  // sent with the next capture call
-  const startListenRef  = useRef(null);  // startListening, for the follow-up loop
-  const followUpTurns   = useRef(0);     // automatic re-listens in a row
-  const followUpTimer   = useRef(null);
-  const autoTurnRef     = useRef(false); // this turn was opened by Aaria, not a tap
+  const lastListenRef = useRef(null);  // sent with the next capture call
+  const startListenRef = useRef(null);  // startListening, for the follow-up loop
+  const followUpTurns = useRef(0);     // automatic re-listens in a row
+  const followUpTimer = useRef(null);
+  const autoTurnRef = useRef(false); // this turn was opened by Aaria, not a tap
 
   const recognitionRef = useRef(null);
-  const listeningRef   = useRef(false);
-  const submittingRef  = useRef(false);
+  const listeningRef = useRef(false);
+  const submittingRef = useRef(false);
   // The web hotword holds a second, permanently-open recogniser. Exactly one
   // recogniser may be live at a time or the browser wedges the microphone until
   // reload, so every start/stop below suspends and resumes this handle. All the
   // arbitration lives in this file on purpose — split across two components it
   // would drift within a week.
-  const hotwordRef     = useRef(null);
+  const hotwordRef = useRef(null);
   const [hotwordOn, setHotwordOn] = useState(false);
   // "The microphone is taken" / "free again", for the phone-side listener
   // (src/lib/mic-hold.js has the why). Taken when Aaria opens the microphone;
   // free only when the whole turn is over - not listening, no call to the
   // brain in flight, nothing being spoken, no answer awaited.
-  const brainBusyRef   = useRef(0);
-  const speakUntilRef  = useRef(0);
+  const brainBusyRef = useRef(0);
+  const speakUntilRef = useRef(0);
   const micHold = useMemo(() => createMicHold({
     claim: claimMic,
     release: () => { releaseMic(); resumeNativeVoiceSoon(); },
@@ -303,9 +303,9 @@ export function AariaProvider({ children }) {
   // would leave the callback calling a stale version — the exact bug that
   // silently broke 28 pages in this codebase since April. A ref gives the
   // current function without making the effect depend on it.
-  const submitRef      = useRef(null);
+  const submitRef = useRef(null);
 
-  const silent   = isSilent(pathname);
+  const silent = isSilent(pathname);
   const signedIn = !!user && !!accessToken;
 
   // WHICH BUSINESS, ON A BUSINESS SCREEN. (15 Oct 2026)
@@ -328,7 +328,7 @@ export function AariaProvider({ children }) {
       return ws?.id || null;
     } catch { return null; }
   }, [user?.id, pathname]);
-  const here     = useMemo(() => pageLabel(pathname), [pathname]);
+  const here = useMemo(() => pageLabel(pathname), [pathname]);
 
   // ── thinking sounds (plan item 10, step 15) ────────────────────────────────
   // While the brain works, a short "okay" / "సరే" after 700 ms of silence -
@@ -337,7 +337,7 @@ export function AariaProvider({ children }) {
   // never waits on the network at the moment it is needed.
   const fillerTokenRef = useRef(null);
   fillerTokenRef.current = accessToken;
-  const fillerRef   = useRef(null);
+  const fillerRef = useRef(null);
   const prevTurnRef = useRef(null);   // last turn's timing, sent with the next one
   if (fillerRef.current === null && typeof window !== 'undefined') {
     fillerRef.current = createFillerPlayer({
@@ -364,10 +364,10 @@ export function AariaProvider({ children }) {
         // Registered as the active audio, so anything that interrupts speech
         // (a tap, the real reply) stops the filler too.
         window.__qkActiveAudio = audio;
-        audio.play().catch(() => {});
+        audio.play().catch(() => { });
         return {
           stop: () => {
-            try { audio.pause(); audio.currentTime = 0; } catch {}
+            try { audio.pause(); audio.currentTime = 0; } catch { }
             if (window.__qkActiveAudio === audio) window.__qkActiveAudio = null;
           },
         };
@@ -392,9 +392,10 @@ export function AariaProvider({ children }) {
     try {
       speak(String(text), {
         priority: 'high',
+        useAaria: true,
         ...(spokenLang ? { lang: spokenLang } : {}),
       });
-    } catch {}
+    } catch { }
     // No reliable end-of-speech event across the native bridge and the browser,
     // so fall back to idle on a timer proportional to length. Worst case the
     // orb stops pulsing slightly early — cosmetic, never functional.
@@ -407,10 +408,10 @@ export function AariaProvider({ children }) {
     followUpTurns.current = 0;
     listeningRef.current = false;
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
+      try { recognitionRef.current.stop(); } catch { }
       recognitionRef.current = null;
     }
-    try { cancelSpeech(); } catch {}
+    try { cancelSpeech(); } catch { }
     speakUntilRef.current = 0;   // stopped by hand: nothing more will be said
     setInterim('');
     setStatus('idle');
@@ -447,7 +448,7 @@ export function AariaProvider({ children }) {
         try {
           const res = await window.Capacitor?.Plugins?.WakeWordPlugin?.isKeyguardLocked();
           phoneLocked = !!res?.locked;
-        } catch {}
+        } catch { }
       }
       // AG-I3: When NEXT_PUBLIC_SHARED_BRAIN=1, invoke shared brain understand & decide
       if (USE_SHARED_BRAIN) {
@@ -516,7 +517,7 @@ export function AariaProvider({ children }) {
       const json = await res.json().catch(() => null);
       if (json?.step_record) {
         // The phone counts the steps, so drop the server's number.
-        try { recordStep({ ...json.step_record, step: undefined }); } catch {}
+        try { recordStep({ ...json.step_record, step: undefined }); } catch { }
       }
       endFiller();   // the reply is here: the thinking sound stops now
       if (!res.ok || !json) {
@@ -635,7 +636,7 @@ export function AariaProvider({ children }) {
               return;
             }
             const replyLang = json.assistant?.language || voiceLang;
-      say(spoken, { lang: replyLang });
+            say(spoken, { lang: replyLang });
             setTranscript('');
             return;
           } else {
@@ -718,7 +719,7 @@ export function AariaProvider({ children }) {
           const { armVoiceReminders } = await import('@/lib/reminder-voice');
           armVoiceReminders({ supabase, userId: user?.id })
             .then((r) => console.log('[Aaria] armed after capture:', r))
-            .catch(() => {});
+            .catch(() => { });
         } catch { /* arming is best-effort; the keep is already saved */ }
       }
     } catch {
@@ -738,11 +739,11 @@ export function AariaProvider({ children }) {
     if (listeningRef.current && recognitionRef.current) {
       // Close the automatic listening turn without submitting it.
       autoTurnRef.current = false;
-      try { recognitionRef.current.abort?.(); } catch {}
+      try { recognitionRef.current.abort?.(); } catch { }
       recognitionRef.current = null;
       listeningRef.current = false;
     }
-    try { cancelSpeech(); } catch {}
+    try { cancelSpeech(); } catch { }
     setChoices(null);
     setInterim('');
     setTranscript(choice.label || choice.name);
@@ -777,12 +778,12 @@ export function AariaProvider({ children }) {
               asked_confirmation: true,
               result: 'sos_triggered',
             });
-          } catch {}
+          } catch { }
         }
         const r = await triggerSOS('dock', { navigate: (p) => router.push(p) });
-        if (r.path === 'native' && r.started)      say('SOS. Ten seconds to cancel.');
-        else if (r.path === 'native')              say('SOS is already running.');
-        else                                       say('Opening Emergency. Hold the red button.');
+        if (r.path === 'native' && r.started) say('SOS. Ten seconds to cancel.');
+        else if (r.path === 'native') say('SOS is already running.');
+        else say('Opening Emergency. Hold the red button.');
         setTranscript(''); setInterim(''); setOpen(false);
         return;
       }
@@ -790,15 +791,15 @@ export function AariaProvider({ children }) {
       // LAYER 1 — reflex.
       const action = routeUtterance(text, { wakeWord: getWakeWord() });
 
-      if (action?.kind === 'stop')  { stopAll(); return; }
-      if (action?.kind === 'help')  { say(helpText(here)); return; }
-      if (action?.kind === 'back')  { router.back(); setOpen(false); return; }
+      if (action?.kind === 'stop') { stopAll(); return; }
+      if (action?.kind === 'help') { say(helpText(here)); return; }
+      if (action?.kind === 'back') { router.back(); setOpen(false); return; }
 
       if (action?.kind === 'theme') {
         try {
           document.documentElement.setAttribute('data-theme', action.value);
           localStorage.setItem('qk_theme', action.value);
-        } catch {}
+        } catch { }
         say(action.spoken);
         return;
       }
@@ -827,7 +828,7 @@ export function AariaProvider({ children }) {
 
   // ── listening, path B: the phone's own recogniser (browser SpeechRecognition)
   // The fallback since step 11 part 3. Unchanged otherwise.
-  const startBrowserListening = useCallback(() => {
+  const startBrowserListening = useCallback(({ preserveError = false } = {}) => {
     if (typeof window === 'undefined') return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -843,9 +844,9 @@ export function AariaProvider({ children }) {
     // it and comes back on "free". The web hotword is handled directly here,
     // as it always was, so it is not also sent the signal.
     if (!hotwordRef.current) micHold.hold();
-    try { hotwordRef.current?.suspend(); } catch {}
-    try { cancelSpeech(); } catch {}
-    setError('');
+    try { hotwordRef.current?.suspend(); } catch { }
+    try { cancelSpeech(); } catch { }
+    if (!preserveError) setError('');
     setTranscript('');
     setInterim('');
     setReply(null);
@@ -866,11 +867,15 @@ export function AariaProvider({ children }) {
     // src/lib/endpointing.js, where it is a per-language dial we can tune
     // against real recordings. Finals accumulate across pauses instead of each
     // one ending the turn.
-    rec.continuous     = true;
+    rec.continuous = true;
     rec.interimResults = true;
-    rec.lang           = speechLang(voiceLang);
+    const fallbackLang = resolveFallbackListenLang({
+      voiceLang,
+      browserLang: typeof navigator !== 'undefined' ? navigator.language : '',
+    });
+    if (fallbackLang) rec.lang = fallbackLang;
 
-    const silenceMs = endpointSilenceMsFor(rec.lang);
+    const silenceMs = endpointSilenceMsFor(fallbackLang || speechLang(voiceLang));
     let heard = '';          // finals accumulated across pauses
     let lastPartial = '';
     let silenceTimer = null;
@@ -889,7 +894,7 @@ export function AariaProvider({ children }) {
       finished = true;
       clearTimers();
       const text = (heard + ' ' + lastPartial).trim();
-      try { rec.stop(); } catch {}
+      try { rec.stop(); } catch { }
       if (text) {
         setInterim('');
         setTranscript(text);
@@ -980,7 +985,7 @@ export function AariaProvider({ children }) {
       if (Array.isArray(cached) && cached.length && !namesRef.current.names.length) {
         namesRef.current = { names: cached.slice(0, 40), at: 0 };
       }
-    } catch {}
+    } catch { }
   }, []);
   const refreshNames = useCallback(async () => {
     if (!accessToken) return namesRef.current.names;
@@ -996,9 +1001,9 @@ export function AariaProvider({ children }) {
       const json = await res.json().catch(() => null);
       if (Array.isArray(json?.names)) {
         namesRef.current = { names: json.names, at: Date.now() };
-        try { localStorage.setItem('qk_spoken_names', JSON.stringify(json.names.slice(0, 40))); } catch {}
+        try { localStorage.setItem('qk_spoken_names', JSON.stringify(json.names.slice(0, 40))); } catch { }
       }
-    } catch {}
+    } catch { }
     return namesRef.current.names;
   }, [accessToken]);
 
@@ -1023,7 +1028,7 @@ export function AariaProvider({ children }) {
       if (json?.pass && Number(json.expires_at) > Date.now()) {
         passRef.current = { pass: json.pass, expiresAt: Number(json.expires_at) };
       }
-    } catch {}
+    } catch { }
     return passRef.current.pass;
   }, [accessToken]);
   const currentPass = () => (passRef.current.pass && passRef.current.expiresAt > Date.now() + 15000 ? passRef.current.pass : null);
@@ -1058,8 +1063,8 @@ export function AariaProvider({ children }) {
     }
 
     if (!hotwordRef.current) micHold.hold();   // see startBrowserListening
-    try { hotwordRef.current?.suspend(); } catch {}
-    try { cancelSpeech(); } catch {}
+    try { hotwordRef.current?.suspend(); } catch { }
+    try { cancelSpeech(); } catch { }
     setError('');
     setTranscript('');
     setInterim('');
@@ -1076,9 +1081,9 @@ export function AariaProvider({ children }) {
 
     const lang = speechLang(voiceLang);
     const session = startListenStream({
-      lang,
+      lang: 'auto',
       pass: currentPass(),
-      engine: engineFor(lang, nemotronWanted()),
+      engine: engineFor('auto', nemotronWanted()),
       // Listening for "which one?" - the names on offer go first, so the
       // recogniser leans toward the answers that are actually possible.
       keyterms: answerTurn && Array.isArray(choicesRef.current)
@@ -1091,7 +1096,7 @@ export function AariaProvider({ children }) {
       // buzz, so the person knows when to start speaking.
       onLive: () => {
         setMicLive(true);
-        try { navigator.vibrate?.(35); } catch {}
+        try { navigator.vibrate?.(35); } catch { }
       },
     });
     // stopAll() calls .stop() on whatever is here: for this path that means
@@ -1126,8 +1131,12 @@ export function AariaProvider({ children }) {
         }
         if (err?.fallback) {
           lastListenRef.current = info; setHeardBy(info);
-          startBrowserListening();
-          if (err.lostSpeech) setError('Say that again, please.');
+          setError(
+            err.lostSpeech
+              ? 'Aaria engine took too long — please say that again (using phone mic).'
+              : 'Aaria engine unavailable — using phone mic fallback.'
+          );
+          startBrowserListening({ preserveError: true });
           return;
         }
         setStatus((st) => (st === 'listening' ? 'idle' : st));
@@ -1148,7 +1157,7 @@ export function AariaProvider({ children }) {
   useEffect(() => {
     if (silent || !signedIn) return;
     let info = null;
-    try { info = initWakeEngine(); } catch {}
+    try { info = initWakeEngine(); } catch { }
     setWakeInfo(info);
     // A wake that already carries the command ("Hey Aaria, remind me...") is
     // acted on directly, through the same door the web hotword uses for a
@@ -1162,7 +1171,7 @@ export function AariaProvider({ children }) {
         setOpen(true); setTranscript(text); submitRef.current?.(text);
       } else startListening();
     });
-    return () => { try { off(); } catch {} };
+    return () => { try { off(); } catch { } };
   }, [silent, signedIn, startListening, micHold]);
 
   // Keep the ref pointing at the current submit, every render.
@@ -1203,7 +1212,7 @@ export function AariaProvider({ children }) {
     hotwordRef.current = handle;
     setHotwordOn(!!handle);
     return () => {
-      try { handle?.stop(); } catch {}
+      try { handle?.stop(); } catch { }
       hotwordRef.current = null;
       setHotwordOn(false);
     };
@@ -1220,7 +1229,7 @@ export function AariaProvider({ children }) {
     const run = () => {
       checkForNotices(accessToken)
         .then((n) => { if (alive && n) setNotice(n); })
-        .catch(() => {});
+        .catch(() => { });
     };
 
     const onFocus = () => { if (!document.hidden) run(); };
@@ -1248,15 +1257,15 @@ export function AariaProvider({ children }) {
       if (stopped) return;
       startGeoFencing((keep) => {
         const where = keep?.location_name || 'your place';
-        const what  = String(keep?.content || keep?.subject || '').slice(0, 120);
-        const line  = what ? `You're at ${where}. ${what}` : `You're at ${where}.`;
-        if (silent) { holdForSpeech(line); try { speak(line, { priority: 'high' }); } catch {} }
+        const what = String(keep?.content || keep?.subject || '').slice(0, 120);
+        const line = what ? `You're at ${where}. ${what}` : `You're at ${where}.`;
+        if (silent) { holdForSpeech(line); try { speak(line, { priority: 'high' }); } catch { } }
         else { setOpen(true); say(line); }
       }, () => tokenRef.current);
-    }).catch(() => {});
+    }).catch(() => { });
     return () => {
       stopped = true;
-      import('@/lib/geo').then(({ stopGeoFencing }) => stopGeoFencing()).catch(() => {});
+      import('@/lib/geo').then(({ stopGeoFencing }) => stopGeoFencing()).catch(() => { });
     };
   }, [signedIn, silent, say]);
 
@@ -1288,7 +1297,7 @@ export function AariaProvider({ children }) {
 
   // Leaving a page should never leave a hot microphone behind it.
   useEffect(() => () => {
-    if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
+    if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch { } }
   }, [pathname]);
 
   const value = useMemo(() => ({
@@ -1297,7 +1306,7 @@ export function AariaProvider({ children }) {
     submit, say, stopAll, startListening, toggleListening,
     setError, setReply,
   }), [status, open, interim, transcript, reply, error, wakeInfo, hotwordOn, notice, heardBy, micLive, choices, choose,
-       here, silent, signedIn, submit, say, stopAll, startListening, toggleListening]);
+    here, silent, signedIn, submit, say, stopAll, startListening, toggleListening]);
 
   return <AariaContext.Provider value={value}>{children}</AariaContext.Provider>;
 }
@@ -1308,12 +1317,12 @@ export function useAaria() {
   // outside the provider should degrade, not white-screen.
   if (!ctx) {
     return {
-      status: 'idle', open: false, setOpen: () => {}, interim: '', transcript: '',
+      status: 'idle', open: false, setOpen: () => { }, interim: '', transcript: '',
       reply: null, error: '', wakeInfo: null, hotwordOn: false, notice: null,
       here: null, silent: true, signedIn: false,
-      submit: async () => {}, say: () => {}, stopAll: () => {},
-      startListening: () => {}, toggleListening: () => {},
-      setError: () => {}, setReply: () => {},
+      submit: async () => { }, say: () => { }, stopAll: () => { },
+      startListening: () => { }, toggleListening: () => { },
+      setError: () => { }, setReply: () => { },
     };
   }
   return ctx;

@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { extractAudio } from '@/lib/aaria-audio';
 import { engineHeaders } from '@/lib/aaria-pass';
 import { decideTtsVoice, hasAllClonedVoiceConsents } from '@/lib/cloned-voice-safeguards';
+import { buildAariaSpeakPayload, normalizeTtsLang } from '@/lib/tts-request';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,11 +26,6 @@ function bearer(req) {
   );
 }
 
-function normalizeLang(lang) {
-  if (!lang) return 'en';
-  return String(lang).trim();
-}
-
 export async function POST(req) {
   const sb = bearer(req);
   if (!sb) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -42,7 +38,7 @@ export async function POST(req) {
   const text = (body.text || '').toString().trim().slice(0, 1500);
   if (!text) return NextResponse.json({ error: 'text required' }, { status: 400 });
 
-  const lang = normalizeLang(body.lang);
+  const lang = normalizeTtsLang(body.lang);
   const rawPurpose = String(body.purpose || 'general').trim().toLowerCase();
   const purpose = rawPurpose || 'general';
 
@@ -86,17 +82,14 @@ export async function POST(req) {
   const choseClonedVoice = Boolean(voiceId);
 
   try {
-    const payload = {
+    const payload = buildAariaSpeakPayload({
       text,
       lang,
-      product: 'QuietKeep',
-      quality_tier: body.quality_tier || 'standard',
+      qualityTier: body.quality_tier || 'standard',
       purpose,
-      user_id: user.id,
-    };
-    if (voiceId) {
-      payload.voice_id = voiceId;
-    }
+      userId: user.id,
+      voiceId,
+    });
 
     const res = await fetch(`${AARIA_BASE_URL}/api/voice/speak`, {
       method: 'POST',
@@ -128,6 +121,7 @@ export async function POST(req) {
       audio_url,
       codec: data?.codec || data?.output_audio_codec || 'mp3',
       provider: data?.engine_used || data?.provider || 'aaria',
+      speaker: choseClonedVoice ? (consentRecord?.voice_name || 'own-voice') : (data?.speaker_used || null),
       lang,
       visual_companion: data?.visual_companion ?? null,
       cloned_voice: choseClonedVoice,

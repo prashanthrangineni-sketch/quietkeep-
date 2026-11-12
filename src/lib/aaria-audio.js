@@ -85,9 +85,61 @@ export function extractAudio(d) {
 // Set localStorage qk_voice_aaria to "all" to include English, or "off" to
 // disable Aaria's voice entirely. Default is Indic only.
 
+const INDIC_LOCALE_DEFAULTS = {
+  te: 'te-IN',
+  hi: 'hi-IN',
+  ta: 'ta-IN',
+  kn: 'kn-IN',
+  ml: 'ml-IN',
+  bn: 'bn-IN',
+  gu: 'gu-IN',
+  mr: 'mr-IN',
+};
+
+const INDIC_SCRIPT_RANGES = [
+  [/[\u0C00-\u0C7F]/, 'te-IN'], // Telugu
+  [/[\u0900-\u097F]/, 'hi-IN'], // Devanagari (Hindi / Marathi)
+  [/[\u0B80-\u0BFF]/, 'ta-IN'], // Tamil
+  [/[\u0C80-\u0CFF]/, 'kn-IN'], // Kannada
+  [/[\u0D00-\u0D7F]/, 'ml-IN'], // Malayalam
+  [/[\u0980-\u09FF]/, 'bn-IN'], // Bengali
+  [/[\u0A80-\u0AFF]/, 'gu-IN'], // Gujarati
+];
+
 export function isIndicLang(lang) {
   if (!lang) return false;
-  return !/^en/i.test(String(lang).trim());
+  return !/^en\b/i.test(String(lang).trim());
+}
+
+/** Normalize bare Indic language tags (e.g. "te" -> "te-IN") while preserving full BCP-47 tags. */
+export function normalizeSpeechLang(lang) {
+  if (!lang) return '';
+  const trimmed = String(lang).trim();
+  const bare = trimmed.toLowerCase();
+  return INDIC_LOCALE_DEFAULTS[bare] || trimmed;
+}
+
+/** Detect an Indic BCP-47 locale from Unicode script characters in text, or null if none. */
+export function detectIndicScriptLang(text) {
+  if (!text) return null;
+  const s = String(text);
+  for (const [pattern, locale] of INDIC_SCRIPT_RANGES) {
+    if (pattern.test(s)) return locale;
+  }
+  return null;
+}
+
+/**
+ * Resolve the effective TTS language for an utterance so Indic replies (such as
+ * Telugu text or assistant.language="te") still route through Aaria even when
+ * stored device settings default to English.
+ */
+export function resolveSpeechLang({ text = '', lang = null, storedLang = null } = {}) {
+  if (isIndicLang(lang)) return normalizeSpeechLang(lang);
+  const scriptLang = detectIndicScriptLang(text);
+  if (scriptLang) return scriptLang;
+  if (isIndicLang(storedLang)) return normalizeSpeechLang(storedLang);
+  return normalizeSpeechLang(lang || storedLang || 'en-IN') || 'en-IN';
 }
 
 /**

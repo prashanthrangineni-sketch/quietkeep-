@@ -815,7 +815,7 @@ export default function Dashboard() {
       if (saved) {
         setIntents(prev => [saved, ...prev]);
         learnFromCapture({ supabase, userId: user.id, intentType: saved.intent_type || 'note', transcript: content.trim(), language: voiceLang || 'en-IN', confidence: saved.confidence || 0, locationName: saved.location_name });
-        if (data.tts_response) speak(data.tts_response); else VoiceResponses.keepSaved(content);
+        if (data.tts_response) speak(data.tts_response, { lang: data.assistant?.language || voiceLang }); else VoiceResponses.keepSaved(content);
         if (data.follow_up) setFollowUpData(data.follow_up);
         if (data.needs_followup && data.clarification && !data.follow_up) setClarificationData({ question: data.clarification, human_type: data.human_type, confidence: data.keep?.confidence });
         if (data.sub_keeps?.length > 0) { const labels = data.sub_keeps.map(k => k.intent_type).join(', '); setSubKeepsToast(`✓ ${data.sub_keeps.length + 1} keeps saved: ${labels}`); setTimeout(() => setSubKeepsToast(null), 4000); }

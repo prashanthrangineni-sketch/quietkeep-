@@ -71,7 +71,7 @@ check('timing: absurd numbers are null, not stored', cleanTurnTiming({ reply_ms:
 const dock = readFileSync(new URL('../src/lib/context/aaria.jsx', import.meta.url), 'utf8');
 const ask = dock.slice(dock.indexOf('const askBrain'), dock.indexOf('const choose = useCallback'));
 check('dock starts a filler turn in askBrain', /fillerRef\.current\?\.begin\(/.test(ask));
-const endAt = ask.search(/endFiller\(\)/); const sayAt = ask.indexOf('say(spoken)');
+const endAt = ask.search(/endFiller\(\)/); const sayAt = ask.search(/\bsay\(spoken[,)]/);
 check('dock stops the filler before speaking the reply', endAt > 0 && sayAt > 0 && endAt < sayAt);
 check('dock also stops it on any failure (finally)', /finally\s*\{[^}]*endFiller\(\)/.test(ask));
 check('dock sends the previous turn\'s timing', /prev_turn:/.test(dock));

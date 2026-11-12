@@ -156,6 +156,10 @@ export async function POST(request) {
     }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) })
   }
 
+  let nowExec = null
+  let nowSafety = null
+  let nowTts = null
+
   if (!transcript || !transcript.trim()) {
     return NextResponse.json({ error: 'transcript is required' }, { status: 400 })
   }
@@ -694,9 +698,9 @@ export async function POST(request) {
     // ('voice' / 'text' sources) is the unlock proof we have today. When it
     // says do, the response carries auto_exec and the phone dials; when it
     // does not, the reply says why in plain words and nothing is claimed.
-    let nowExec = null
-    let nowSafety = null
-    let nowTts = answerConfirmation(answer, openQuestion)
+    nowExec = null
+    nowSafety = null
+    nowTts = answerConfirmation(answer, openQuestion)
     if (answer.kind === 'now') {
       const { count: doneThisHour } = await supabase
         .from('audit_log')

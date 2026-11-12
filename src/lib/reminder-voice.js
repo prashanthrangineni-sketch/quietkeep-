@@ -302,7 +302,7 @@ export async function speakMissedReminders({ supabase, userId, speak, prefix = '
     if (!toSay.length) return 0;
 
     for (const r of toSay) {
-      speak(`${prefix}${prefix ? ' ' : ''}${r.text}`, { priority: 'low' });
+      speak(`${prefix}${prefix ? ' ' : ''}${r.text}`, { priority: 'low', useAaria: true });
     }
     rememberSpoken(toSay.map((r) => r.id));
 

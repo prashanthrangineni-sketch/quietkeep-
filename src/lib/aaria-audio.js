@@ -146,10 +146,11 @@ export function resolveSpeechLang({ text = '', lang = null, storedLang = null } 
  * @param {string} lang       BCP-47 tag, e.g. 'te-IN'
  * @param {boolean} hasToken  whether we have a signed-in user's token
  * @param {string} [mode]     'indic' (default) | 'all' | 'off'
+ * @param {boolean} [forceAaria] true for conversational Aaria replies
  */
-export function shouldUseAaria(lang, hasToken, mode = 'indic') {
+export function shouldUseAaria(lang, hasToken, mode = 'indic', forceAaria = false) {
   if (!hasToken) return false;          // the proxy requires a signed-in user
   if (mode === 'off') return false;
-  if (mode === 'all') return true;
+  if (mode === 'all' || forceAaria) return true;
   return isIndicLang(lang);
 }

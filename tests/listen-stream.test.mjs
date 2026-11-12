@@ -271,7 +271,7 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   const s = startListenStream({ lang: 'en', silenceMs: 900, deps: w.deps });
   const res = outcome(s.result);
   await new Promise((r) => setTimeout(r, 5)); await flush();
-  w.hush(); w.hush(); w.hush(); w.speak();
+  w.hush(); w.hush(); w.hush(); w.speak(); w.speak();
   w.clock.advance(READY_TIMEOUT_MS + 1);
   const r = await res;
   check('words were lost → fall back and say "say that again"', !r.ok && r.e.fallback === true && r.e.lostSpeech === true);
@@ -387,6 +387,51 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   startListenStream({ lang: 'en', silenceMs: 900, deps: w.deps });
   await new Promise((r) => setTimeout(r, 5)); await flush();
   check('without the switch the start message has no engine field', !('engine' in (w.json()[0] || {})));
+}
+
+// ── auto language + pre-ready socket retry (T6b) ────────────────────────────
+{
+  const w = makeWorld();
+  startListenStream({ lang: 'auto', silenceMs: 900, deps: w.deps });
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  check('lang "auto" is preserved in start message (not coerced to en)', w.json()[0]?.lang === 'auto', JSON.stringify(w.json()[0]));
+}
+{
+  let warmed = 0;
+  const w = makeWorld();
+  const s = startListenStream({
+    lang: 'auto',
+    silenceMs: 900,
+    deps: { ...w.deps, retryDelayMs: 50, maxConnectRetries: 2, fetch: () => { warmed++; return Promise.resolve(); } },
+  });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.hush(); w.hush(); w.hush(); w.speak(); w.speak();
+  w.closeSocket(); // first socket closes before "ready"
+  w.clock.advance(60);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.engine({ event: 'ready', engine: 'sarvam' });
+  w.engine({ event: 'final', text: 'ఈరోజు పనులు ఏమున్నాయి' });
+  w.clock.advance(950);
+  w.engine({ event: 'done', text: 'ఈరోజు పనులు ఏమున్నాయి' });
+  const r = await res;
+  check('pre-ready socket close warms engine and retries successfully', r.ok && warmed >= 1 && r.v?.text === 'ఈరోజు పనులు ఏమున్నాయి', JSON.stringify(r));
+}
+{
+  const w = makeWorld();
+  const s = startListenStream({
+    lang: 'auto',
+    silenceMs: 900,
+    deps: { ...w.deps, retryDelayMs: 50, maxConnectRetries: 1, fetch: () => Promise.resolve() },
+  });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.closeSocket();
+  w.clock.advance(60);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  w.closeSocket();
+  const r = await res;
+  check('exhausted pre-ready retries fall back cleanly', !r.ok && r.e?.fallback === true, JSON.stringify(r));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -3,8 +3,12 @@
  * SAFE FOR WEB BUILD — zero static @capacitor imports.
  * Uses window.Capacitor runtime access only (injected by native webview).
  *
- * Personal mode: sends app_active / app_foreground / device_context signals
+ * Sends app_active and device_context (battery level, charging, screen on).
  * Business mode: same signals, engine routes by domain_type
+ *
+ * 13 Nov 2026: the name of the app on screen is no longer read or sent.
+ * Nothing in the product used it. Do not call Perception.getForegroundApp
+ * from here again; tests/perception-no-app-name.test.mjs fails if it returns.
  */
 
 function getCapacitorPlugin(name: string): any {
@@ -18,7 +22,7 @@ function isNativePlatform(): boolean {
 }
 
 let _intervalId: ReturnType<typeof setInterval> | null = null;
-let _lastApp = '';
+let _sentActive = false;
 
 export async function startPerceptionLoop(
   authToken: string,
@@ -32,6 +36,7 @@ export async function startPerceptionLoop(
 
 export function stopPerceptionLoop(): void {
   if (_intervalId) { clearInterval(_intervalId); _intervalId = null; }
+  _sentActive = false;
 }
 
 async function _poll(authToken: string, serverUrl: string): Promise<void> {
@@ -44,14 +49,13 @@ async function _poll(authToken: string, serverUrl: string): Promise<void> {
 async function _pollNative(authToken: string, serverUrl: string): Promise<void> {
   const P = getCapacitorPlugin('Perception');
   if (!P) return;
-  try {
-    const app = await P.getForegroundApp?.();
-    if (app?.app_name && app.app_name !== _lastApp) {
-      _lastApp = app.app_name;
-      await _send(authToken, serverUrl, 'app_foreground',
-        { app: app.app_name, package: app.package_name });
-    }
-  } catch {}
+  // Once per start: tell the server QuietKeep was opened, with no details, so
+  // reminders that are due get checked. This replaces the old signal that
+  // carried the name of the app on screen.
+  if (!_sentActive) {
+    _sentActive = true;
+    try { await _send(authToken, serverUrl, 'app_active', {}); } catch {}
+  }
   try {
     const ctx = await P.getActivityContext?.();
     if (ctx) await _send(authToken, serverUrl, 'device_context',

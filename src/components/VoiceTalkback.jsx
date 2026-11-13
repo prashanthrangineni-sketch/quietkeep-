@@ -32,23 +32,6 @@ export function setSpeechAuthToken(token) {
   _authToken = token || null;
 }
 
-export function getSpeechAuthToken() {
-  if (_authToken) return _authToken;
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = localStorage.getItem('qk-auth-token');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.access_token) {
-          _authToken = parsed.access_token;
-          return _authToken;
-        }
-      }
-    } catch {}
-  }
-  return null;
-}
-
 function aariaMode() {
   try { return localStorage.getItem('qk_voice_aaria') || 'indic'; } catch { return 'indic'; }
 }
@@ -167,11 +150,6 @@ export function speak(text, options = {}) {
   if (typeof window === 'undefined') return;
   if (!text || !String(text).trim()) return;
 
-  const currentToken = getSpeechAuthToken();
-  if (options.useAaria === undefined) {
-    options.useAaria = !!currentToken;
-  }
-
   const priority = options.priority ?? 'high';
 
   // Phase 4: dedup — skip if same text was just spoken
@@ -209,7 +187,6 @@ export function speak(text, options = {}) {
     lang: options.lang,
     storedLang: getCurrentLang(),
   });
-  _authToken = _authToken || currentToken;
   if (shouldUseAaria(activeLangForAaria, !!_authToken, aariaMode(), !!options.useAaria)) {
     console.log('[QK TTS] request aaria', { lang: activeLangForAaria, purpose: options.purpose || 'general' });
     import('@/lib/tts')
@@ -475,7 +452,7 @@ export function greetOnLogin(user, keepCount, reminderCount) {
       counts.reminderCount ? words.reminders(counts.reminderCount) :
       counts.keepCount     ? words.keeps(counts.keepCount) :
       words.nothing;
-    speak(`${hello} ${detail}`.trim(), { rate: 0.88, lang, useAaria: true });
+    speak(`${hello} ${detail}`.trim(), { rate: 0.88, lang });
   }
 
   const supplied = {
@@ -502,7 +479,7 @@ export function greetOnReturn(reminderCount = 0, briefReady = false) {
   if (tod === 'morning' && briefReady) parts.push('Your brief is ready.');
   if (reminderCount > 0) parts.push(`${reminderCount} reminder${reminderCount > 1 ? 's' : ''} today.`);
   if (parts.length === 0) parts.push('Welcome back.');
-  speak(parts.join(' '), { rate: 0.9, lang: getCurrentLang(), useAaria: true });
+  speak(parts.join(' '), { rate: 0.9 });
 }
 
 // C. Call from NavbarClient handleSignOut BEFORE router.push
@@ -517,7 +494,7 @@ export function farewellOnLogout(user) {
     `All saved. ${tod === 'morning' ? 'Have a great day.' : tod === 'evening' ? 'Good evening.' : 'See you later.'}`,
   ];
   const msg = farewells[Math.floor(Math.random() * farewells.length)];
-  speak(msg, { rate: 0.88, lang: getCurrentLang(), useAaria: true });
+  speak(msg, { rate: 0.88 });
 }
 
 // ── Contextual voice responses ────────────────────────────────────

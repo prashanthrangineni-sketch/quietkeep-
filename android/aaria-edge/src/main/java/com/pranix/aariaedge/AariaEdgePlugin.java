@@ -292,9 +292,11 @@ public class AariaEdgePlugin extends Plugin {
                                         ev.put("id", wakeWordDetector.id());
                                         // Only with the second listener on: which listener heard the name.
                                         WakeWordDetector usedDetector = wakeWordDetector;
+                                        String heardByForLog = usedDetector.id();
                                         if (usedDetector instanceof EitherWakeWord) {
                                             String heardBy = ((EitherWakeWord) usedDetector).heardBy();
                                             if (heardBy != null) ev.put("heardBy", heardBy);
+                                            heardByForLog = heardBy;
                                         }
                                         ev.put("score", score);
                                         ev.put("t", t);
@@ -310,6 +312,9 @@ public class AariaEdgePlugin extends Plugin {
                                             }
                                         }
                                         if (!sendIfStillOn(offCountWhenHeard, "wakeWord", ev)) return;
+                                        // One log line per wake the app was told of: time, score, who heard it, command or not.
+                                        // Never audio, never the spoken words.
+                                        WakeLog.wake(t, score, heardByForLog, hasCommand);
                                         playChime();
                                         lastWakeWordTime = System.currentTimeMillis();
 

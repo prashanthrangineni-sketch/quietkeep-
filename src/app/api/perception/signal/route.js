@@ -19,6 +19,9 @@ const VALID_SIGNALS = [
 'screen_on','screen_off','idle_detected','charging_started',
 ];
 
+// Fields that would carry the name of another app. Never saved.
+const APP_NAME_FIELDS = ['app', 'app_name', 'package', 'package_name'];
+
 // Compute user state from IST clock as fallback when no model exists
 function getClockBasedState(signal_type) {
   // Passive signals that clearly indicate inactive state
@@ -95,20 +98,30 @@ export async function POST(request) {
     }, { status: 400 });
   }
 
-  // Write passive signal (weight=0.5, non-blocking)
-  const { error: signalErr } = await supabase.rpc('ingest_passive_signal', {
-    p_user_id: user.id,
-    p_signal_type: signal_type,
-    p_metadata: {
-      ...payload,
-      source: 'perception_layer',
-      received_at: new Date().toISOString(),
-    },
-  });
+  // 13 Nov 2026: the name of the app on screen is never stored.
+  //  - 'app_foreground' (the old signal that carried it) is accepted, so an
+  //    older copy of the app does not see an error, but nothing is written.
+  //  - App-name fields are removed from every other signal before saving.
+  // tests/perception-no-app-name.test.mjs fails if either rule is removed.
+  const safePayload = (payload && typeof payload === 'object' && !Array.isArray(payload)) ? { ...payload } : {};
+  for (const key of APP_NAME_FIELDS) delete safePayload[key];
 
-  if (signalErr) {
-    console.error('[perception/signal]', signalErr.message);
-    return NextResponse.json({ error: signalErr.message }, { status: 500 });
+  if (signal_type !== 'app_foreground') {
+    // Write passive signal (weight=0.5, non-blocking)
+    const { error: signalErr } = await supabase.rpc('ingest_passive_signal', {
+      p_user_id: user.id,
+      p_signal_type: signal_type,
+      p_metadata: {
+        ...safePayload,
+        source: 'perception_layer',
+        received_at: new Date().toISOString(),
+      },
+    });
+
+    if (signalErr) {
+      console.error('[perception/signal]', signalErr.message);
+      return NextResponse.json({ error: signalErr.message }, { status: 500 });
+    }
   }
 
   // If signal implies user is active, trigger evaluation queue

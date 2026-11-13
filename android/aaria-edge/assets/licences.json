@@ -1,0 +1,67 @@
+[
+  {
+    "name": "Moonshine (English speech recognition, Base, int8)",
+    "use": "English on-phone speech recognition (downloaded model)",
+    "source": "https://github.com/moonshine-ai/moonshine",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2024 Useful Sensors",
+    "notice_from": "LICENSE file shipped with the model (sherpa-onnx-moonshine-base-en-int8.tar.bz2, served as en__LICENSE); the Moonshine repository states all English models are MIT"
+  },
+  {
+    "name": "AI4Bharat IndicConformer (Hindi speech recognition, int8)",
+    "use": "Hindi on-phone speech recognition (downloaded model); also the stored switch-back model for Telugu",
+    "source": "https://github.com/AI4Bharat/IndicConformerASR",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2023 AI4Bharat",
+    "notice_from": "Repository README (\"IndicConformer is released under the MIT license\") and the Hugging Face model card (license: mit)"
+  },
+  {
+    "name": "Koyal te-120M (Telugu speech recognition, int8)",
+    "use": "Telugu on-phone speech recognition (downloaded model; live on phones since 28 Oct 2026)",
+    "source": "https://huggingface.co/adalat-ai/koyal-te-120m-1.0",
+    "license": "CC-BY-4.0",
+    "copyright": "Adalat AI",
+    "attribution": "Koyal te-120M by Adalat AI (https://huggingface.co/adalat-ai/koyal-te-120m-1.0), licensed under CC-BY-4.0. Converted by Pranix to ONNX and quantised to int8. Encoder from AI4Bharat MahaDhwani, MIT.",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/legalcode",
+    "includes": [
+      {
+        "name": "AI4Bharat MahaDhwani (acoustic encoder)",
+        "license": "MIT",
+        "copyright": "Copyright (c) 2023-2024 AI4Bharat"
+      }
+    ],
+    "notice_from": "LICENSE file shipped with the model (te-koyal__LICENSE-koyal-te-120m.txt in release models-2026-10)"
+  },
+  {
+    "name": "Silero VAD",
+    "use": "Speech detection (bundled: silero_vad.onnx)",
+    "source": "https://github.com/snakers4/silero-vad",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2020-present Silero Team",
+    "notice_from": "Repository LICENSE file"
+  },
+  {
+    "name": "sherpa-onnx 1.13.8",
+    "use": "On-phone speech engine (bundled Android library sherpa-onnx-1.13.8.aar)",
+    "source": "https://github.com/k2-fsa/sherpa-onnx",
+    "license": "Apache-2.0",
+    "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "notice_from": "Repository LICENSE file (Apache License 2.0; the project has no NOTICE file)"
+  },
+  {
+    "name": "ONNX Runtime",
+    "use": "Model runtime inside the sherpa-onnx Android library (libonnxruntime.so)",
+    "source": "https://github.com/microsoft/onnxruntime",
+    "license": "MIT",
+    "copyright": "Copyright (c) Microsoft Corporation",
+    "notice_from": "Repository LICENSE file"
+  },
+  {
+    "name": "sherpa-onnx English keyword spotter (zipformer, GigaSpeech, 3.3M, 2024-01-01)",
+    "use": "Second wake listener, off by default (bundled into assets/kws at build time)",
+    "source": "https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2",
+    "license": "Apache-2.0",
+    "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "notice_from": "README.md inside the model archive (license: Apache License 2.0)"
+  }
+]

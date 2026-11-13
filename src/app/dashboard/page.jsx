@@ -736,19 +736,6 @@ export default function Dashboard() {
         if (!wakeResult.triggered) { setContent(''); return; }
         commandText = wakeResult.command || content.trim();
       }
-      if (/\bunlock\b|\bpasscode\b|\bvoice\s+pin\b/i.test(commandText)) {
-        try {
-          const { validateVoicePin, isVoicePinEnabled } = await import('@/lib/voiceUnlock');
-          if (isVoicePinEnabled()) {
-            const result = validateVoicePin(commandText);
-            if (result.success) { markVoiceVerified(); speak('Voice PIN accepted. You are verified.'); }
-            else if (result.reason === 'locked_out') speak(`Too many attempts. Try again in ${result.lockoutSeconds} seconds.`);
-            else if (result.reason === 'incorrect') speak(`Incorrect PIN. ${result.attemptsRemaining} attempt${result.attemptsRemaining !== 1 ? 's' : ''} remaining.`);
-            else if (result.reason === 'no_digits') speak('Please say your PIN number clearly. For example: Aaria unlock 1 2 3 4.');
-            setContent(''); setSaving(false); savingRef.current = false; return;
-          }
-        } catch {}
-      }
       const continuation = tryResolveContinuation(commandText);
       if (continuation.isContinuation && continuation.intentType) {
         speak('Refining that.'); resolveVoiceCommand(continuation.command || commandText, { supabase, user, accessToken, router, speak }).catch(() => {});

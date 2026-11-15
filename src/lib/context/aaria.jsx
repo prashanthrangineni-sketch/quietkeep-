@@ -240,7 +240,7 @@ export function AariaProvider({ children }) {
     }
     navigator.serviceWorker.addEventListener('message', onWorkerMessage);
     return () => navigator.serviceWorker.removeEventListener('message', onWorkerMessage);
-  }, [holdForSpeech, voiceLang]);
+  }, [voiceLang]);
 
   // 'idle' | 'listening' | 'thinking' | 'speaking'
   const [status, setStatus] = useState('idle');

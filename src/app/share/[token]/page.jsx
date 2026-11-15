@@ -13,18 +13,14 @@ export default function SharePage({ params }) {
     const token = params?.token;
     if (!token) { setError('Invalid link — no token found.'); setLoading(false); return; }
 
-    const { data: tokenRow, error: tokenErr } = await supabase
-      .from('share_tokens')
-      .select('*')
-      .eq('token', token)
-      .eq('is_active', true)
-      .single();
+    // 15 Nov 2026 (privacy 3.7): the share_tokens table is never read from the
+    // browser. get_share_by_token returns one link, only for its exact code,
+    // and counts the view itself. tests/share-link-lookup.test.mjs guards this.
+    const { data: tokenRows, error: tokenErr } = await supabase.rpc('get_share_by_token', { p_token: token });
+    const tokenRow = Array.isArray(tokenRows) ? tokenRows[0] : null;
 
     if (tokenErr || !tokenRow) { setError('This link is invalid or has been deactivated.'); setLoading(false); return; }
     if (new Date(tokenRow.expires_at) < new Date()) { setError('This share link has expired. Ask the sender to share a new one.'); setLoading(false); return; }
-
-    // Increment view count silently
-    supabase.from('share_tokens').update({ view_count: (tokenRow.view_count || 0) + 1 }).eq('id', tokenRow.id).then(() => {});
 
     if (tokenRow.share_type === 'keep') {
       const { data: keep } = await supabase

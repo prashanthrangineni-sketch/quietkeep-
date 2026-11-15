@@ -10,6 +10,7 @@
 // - Shows visible tag "AI voice of <name>" while custom voice is speaking.
 
 import { resolveVoicePlayback, setCustomVoiceSpeaking } from './cloned-voice-safeguards.js';
+import { speechStarted, speechEnded } from './avatar/speech-signal.js';
 
 const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1';
 const DEFAULT_VOICES = {
@@ -129,6 +130,27 @@ export function playAudioUrl(url, revoke = false, { clonedVoice = false, voiceNa
       window.__qkActiveAudio = null;
       setCustomVoiceSpeaking(false);
     };
+    // 4.1: say when the sound REALLY starts and stops (src/lib/avatar/
+    // speech-signal.js). 'playing' is the first audible frame, not the moment
+    // play() was asked for; 'pause' is how an interruption shows up, because
+    // interruptTTS() pauses the element and never lets it reach 'ended'.
+    let signalId = null;
+    const signalEnd = (reason) => {
+      if (signalId !== null) { speechEnded(signalId, reason); signalId = null; }
+    };
+    if (typeof audio.addEventListener === 'function') {
+      audio.addEventListener('playing', () => {
+        if (signalId !== null) return;
+        const secs = Number(audio.duration);
+        signalId = speechStarted({
+          source: 'aaria',
+          durationMs: Number.isFinite(secs) && secs > 0 ? secs * 1000 : null,
+        });
+      });
+      audio.addEventListener('ended', () => signalEnd('ended'));
+      audio.addEventListener('pause', () => signalEnd(audio.ended ? 'ended' : 'interrupted'));
+      audio.addEventListener('error', () => signalEnd('error'));
+    }
     audio.onended = () => { cleanup(); resolve(); };
     audio.onerror = () => { cleanup(); reject(new Error('Playback failed')); };
     try {

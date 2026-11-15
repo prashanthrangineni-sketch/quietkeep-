@@ -55,6 +55,7 @@ import { isSosUtterance, triggerSOS } from '@/lib/sos';
 import { getActiveRun, recordStep } from '@/lib/step-log';
 import { getDriveSpeedKmh } from '@/lib/drive-speed'; // DRV-02 speed gate
 import { understand as sharedBrainUnderstand, decide as sharedBrainDecide } from '@/lib/brain'; // AG-I3 shared brain v0
+import { createSpeakingTracker } from '@/lib/avatar/speech-signal'; // 4.1 real speaking state
 
 // AG-I3: Shared brain v0 flag gate (default off: existing path unchanged byte-for-byte in behaviour)
 const USE_SHARED_BRAIN = process.env.NEXT_PUBLIC_SHARED_BRAIN === '1';
@@ -391,15 +392,47 @@ export function AariaProvider({ children }) {
   }, [signedIn, silent, voiceLang]);
 
   // ── speaking ───────────────────────────────────────────────────────────────
+  // 4.1: "Speaking" follows the sound, not a guess. The places that make the
+  // sound announce its real start and end (src/lib/avatar/speech-signal.js);
+  // this tracker turns that into the dock's state. Until the first sound the
+  // dock says "Thinking" - the voice is still being fetched - and two safety
+  // nets (no sound in 6 s; no end 2 s after the sound's own length) mean the
+  // state can never stick. The system voice cannot report its end, so for that
+  // one path the end is still an estimate.
+  const sayThinkingRef = useRef(false);   // the "Thinking" on screen was set by say()
+  const speakingTracker = useMemo(() => createSpeakingTracker({
+    onSpeaking: (e) => {
+      sayThinkingRef.current = false;
+      setStatus((s) => (s === 'listening' ? s : 'speaking'));
+      try { console.log('[Aaria] speaking: sound started', { source: e.source, estimated: e.estimated }); } catch { }
+    },
+    onIdle: (reason) => {
+      // Clears "Speaking", and the "Thinking" that say() itself put up - never
+      // a "Thinking" that belongs to a new question being worked on.
+      const ownThinking = sayThinkingRef.current;
+      sayThinkingRef.current = false;
+      setStatus((s) => (s === 'speaking' || (s === 'thinking' && ownThinking) ? 'idle' : s));
+      try { console.log('[Aaria] speaking: ended', { reason }); } catch { }
+    },
+  }), []);
+  useEffect(() => () => { speakingTracker.dispose(); }, [speakingTracker]);
+  // A new listening turn: whatever reply was awaited is no longer awaited.
+  useEffect(() => {
+    if (status === 'listening') { sayThinkingRef.current = false; speakingTracker.cancel(); }
+  }, [status, speakingTracker]);
+
   const say = useCallback((text, { lang } = {}) => {
     if (!text) return;
     setReply(String(text));
-    setStatus('speaking');
-    // How long she will be talking, at least - there is no dependable
-    // "finished speaking" signal, so the microphone is not called free before
-    // this has passed (same estimate the follow-up loop waits on).
+    // Not "speaking" yet: that is set by the first real sound. A reply that is
+    // already audible stays "speaking" until the new one takes over.
+    sayThinkingRef.current = true;
+    setStatus((s) => (s === 'speaking' ? s : 'thinking'));
+    // How long she will be talking, at least - the microphone is not called
+    // free before this has passed (same estimate the follow-up loop waits on).
     holdForSpeech(text);
     const spokenLang = lang || voiceLang || undefined;
+    speakingTracker.expect();   // BEFORE speak(): a skipped reply reports at once
     try {
       speak(String(text), {
         priority: 'high',
@@ -407,12 +440,7 @@ export function AariaProvider({ children }) {
         ...(spokenLang ? { lang: spokenLang } : {}),
       });
     } catch { }
-    // No reliable end-of-speech event across the native bridge and the browser,
-    // so fall back to idle on a timer proportional to length. Worst case the
-    // orb stops pulsing slightly early — cosmetic, never functional.
-    const ms = Math.min(9000, 1200 + String(text).length * 55);
-    setTimeout(() => setStatus((s) => (s === 'speaking' ? 'idle' : s)), ms);
-  }, [holdForSpeech, voiceLang]);
+  }, [holdForSpeech, voiceLang, speakingTracker]);
 
   const stopAll = useCallback(() => {
     if (followUpTimer.current) { clearInterval(followUpTimer.current); followUpTimer.current = null; }

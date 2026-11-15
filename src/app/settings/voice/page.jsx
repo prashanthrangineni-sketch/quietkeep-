@@ -75,6 +75,15 @@ export default function VoiceSettings() {
   const [contactsMap, setContactsMap] = useState({});
   const [manualMode, setManualMode] = useState(false);
 
+  const currentTask = tasks[guidedIndex];
+  const isCompleted = guidedIndex >= tasks.length;
+  const isGuidedActive = !!activeRun && !manualMode;
+  const recordedSteps = getSteps();
+  const currentTaskSteps = currentTask
+    ? recordedSteps.filter((s) => s?.task_id === currentTask.id).length
+    : 0;
+  const summary = computeRunSummary(tasks, recordedSteps);
+
   useEffect(() => {
     try {
       const run = getActiveRun();

@@ -28,7 +28,10 @@ import {
   computeFollowUp,
   buildExecutionTTS,
   extractDestination,
+  isNavigationRequest,
 } from '@/lib/intent-executor'
+import { detectSpokenLanguage } from '@/lib/spoken-language'
+import { isQueryUtterance, resolveAppQuery } from '@/lib/app-queries'
 import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation, isRepeatOfOpenQuestion, isPendingQuestion, isUnmatchedAnswer, askAgain } from '@/lib/follow-up-answer'
 import { contactChoices, spokenContactQuestion, narrowContacts } from '@/lib/contact-match'
 import { whyBrainRun, describeUnderstanding } from '@/lib/understanding-record'
@@ -291,12 +294,18 @@ export async function POST(request) {
       service: 'voice_capture',
       details: { speech_ms: measuredSpeechMs(listenEvidence), heard_ms: listenEvidence?.heardMs ?? null, sample: text.slice(0, 120), source, language, answering: body.answering === true, listen: listenEvidence },
     }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) })
+    const spokenLang = detectSpokenLanguage(text, language);
+    const fragmentReply = caughtPartReply(spokenLang);
     return NextResponse.json({
       ok: false,
       not_saved: true,
       reason: 'speech_fragment',
       speech_ms: measuredSpeechMs(listenEvidence),
-      tts_response: caughtPartReply(language),
+      tts_response: fragmentReply,
+      assistant: {
+        language: spokenLang,
+        reply: fragmentReply,
+      },
     })
   }
 
@@ -852,6 +861,37 @@ export async function POST(request) {
     decision: brainDecision, llmAssist, latencyMs: brainLatencyMs, failure: brainFailure, threshold: 0.55,
   })
 
+  // ── APP DATA & CONNECTOR QUERIES: ANSWER, NEVER FILE AS NOTES ─────────────
+  // "Ee roju weather ela undi?", "నా ఫోన్లో ఏ పత్రాలు సేవ్ చేయబడి ఉన్నాయి?", etc.
+  if (isQueryUtterance(text, llmAssist?.intent)) {
+    const queryResult = await resolveAppQuery({
+      text,
+      language: llmAssist?.language || language,
+      supabase,
+      userId: user.id,
+      llmAssist,
+    });
+    if (queryResult.handled) {
+      supabase.from('audit_log').insert({
+        user_id: user.id,
+        action: 'voice.query_answered',
+        service: 'voice_capture',
+        details: { query_type: queryResult.queryType, heard: text.slice(0, 120), source, language, tts: queryResult.tts },
+      }).then(({ error }) => { if (error) console.error('[capture] audit_log failed:', error.message) });
+      return NextResponse.json({
+        ok: true,
+        not_saved: true,
+        reason: 'query',
+        query_type: queryResult.queryType,
+        tts_response: queryResult.tts,
+        assistant: {
+          language: queryResult.language,
+          reply: queryResult.tts,
+        },
+      }, { status: 200 });
+    }
+  }
+
   // ── CONFIRM / DELETE / PAY / NONE: REPLY, SAVE NOTHING ────────────────────
   // src/lib/brain-turn.js has the rules; src/lib/action-levels.js the levels.
   if (llmAssist && llmAssist.confidence >= 0.55 && NO_KEEP_INTENTS.has(llmAssist.intent)) {
@@ -1156,17 +1196,29 @@ export async function POST(request) {
     }
   }
 
-  // ── A PLACE THE BRAIN HEARD ───────────────────────────────────────────────
-  //
-  // The geo detector below is the English regex in intent-parser. On 1 Oct
-  // 2026 "remind me to pick up beer when I reach Chintal Kunta" arrived as
-  // Telugu letters (speech-to-text was set to Telugu), the regex saw no
-  // "when I reach", and the reminder was saved as an alarm 30-60 minutes out
-  // with no location - while Aaria read the moment he spoke back as the time.
-  // The brain reads any language and script; when it names a place, that is
-  // the trigger.
-  const brainPlace = (llmAssist && llmAssist.confidence >= 0.55) ? llmAssist.entities?.place : null
-  if (brainPlace && !parsed.geo?.detected) {
+  // ── A NAVIGATION OR PLACE THE BRAIN HEARD ───────────────────────────────
+  const isNav = parsed.type === 'navigation' || llmAssist?.intent === 'navigation' || isNavigationRequest(text);
+  if (isNav) {
+    parsed.type = 'navigation';
+    parsed.confidence = Math.max(parsed.confidence || 0, 0.9);
+    reminderAt = null;
+  }
+
+  // Did the user ask to CALL this person, as opposed to merely naming them?
+  parsed.wants_call = /\b(call|ring|dial|phone)\b|కాల్|ఫోన్|कॉल|काल|फ़ोन|फोन/i.test(text);
+  if ((parsed.type === 'contact' || parsed.wants_call) && !llmAssist?.entities?.datetimeISO && !parsed.entities?.times?.length && !parsed.entities?.dates?.length) {
+    reminderAt = null;
+  }
+
+  const brainPlace = (llmAssist && llmAssist.confidence >= 0.55) ? (llmAssist.entities?.place || llmAssist.entities?.item) : null
+  if (isNav) {
+    const dest = brainPlace || extractDestination(text);
+    if (dest) {
+      parsed.geo = { detected: true, location_name: dest, type: 'place', source: 'navigation' };
+      parsed.entities = parsed.entities || {};
+      parsed.entities.place = dest;
+    }
+  } else if (brainPlace && !parsed.geo?.detected) {
     parsed.geo = { detected: true, location_name: brainPlace, type: 'place', source: 'brain' }
     if (!['reminder', 'task'].includes(parsed.type)) parsed.type = 'reminder'
     // No clock time unless the user said one.
@@ -1676,7 +1728,19 @@ export async function POST(request) {
   if (bizPayload?.tts_response) tts_response = bizPayload.tts_response;
   // Feature 7: Contextual TalkBack — mentions both location and keep content
   const keepSnippet = text.length > 40 ? text.slice(0, 40) + '…' : text;
-  if (parsed.route?.detected && routeData?.destLoc) {
+  if (['navigation', 'trip'].includes(parsed.type) || ['navigation', 'trip'].includes(keep.intent_type)) {
+    const dest = (llmAssist?.intent === 'navigation' && (llmAssist?.entities?.place || llmAssist?.entities?.item))
+      || extractDestination(text)
+      || (geoData?.location_name || 'destination');
+    const spokenLang = detectSpokenLanguage(text, language);
+    if (spokenLang === 'te') {
+      tts_response = `${dest} కి నావిగేషన్ సెట్ చేస్తున్నాను.`;
+    } else if (spokenLang === 'hi') {
+      tts_response = `${dest} के लिए नेविगेशन सेट कर रही हूँ।`;
+    } else {
+      tts_response = `Setting navigation to ${dest}.`;
+    }
+  } else if (parsed.route?.detected && routeData?.destLoc) {
     tts_response = `Got it. When you're near ${routeData.destLoc.name}, I'll remind you: ${keepSnippet}`;
   } else if (geoData?.geo_trigger_enabled && brainPlace && llmAssist?.reply) {
     // The brain already said "I'll remind you when you reach Chintal Kunta"
@@ -1823,8 +1887,9 @@ export async function POST(request) {
   if (isAutoEligible) {
     // v10: Extract navigation destination for Maps Intent in VoiceService
     const navQuery = (['navigation', 'trip'].includes(keep.intent_type))
-      ? ((llmAssist?.intent === 'navigation' && llmAssist?.entities?.item)
-          || extractDestination(keep.content || '')).slice(0, 120)
+      ? ((llmAssist?.intent === 'navigation' && (llmAssist?.entities?.place || llmAssist?.entities?.item))
+          || extractDestination(keep.content || '')
+          || extractDestination(text)).slice(0, 120)
       : null
 
     auto_exec = {

@@ -348,19 +348,20 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
       };
     }
 
-    // Name found, phone available, and no time said → offer call vs remind
+    // Name found, phone available, and no time said → read back to confirm call
     if (name && contactResult?.single?.phone && !timeAlreadyGiven) {
+      const contactName = contactResult.single.name || name;
       return {
-        follow_up:   `Call ${name} now or set a reminder?`,
+        follow_up:   `Call ${contactName} now or set a reminder?`,
         action_hint: 'call_or_remind',
         contact:     contactResult.single,
       };
     }
 
     // Name found, no phone in contacts
-    if (name && contactResult === null) {
+    if (name && (contactResult === null || !contactResult?.single?.phone)) {
       return {
-        follow_up:      `"${name}" isn't in your contacts. Add a number to call them, or I'll save this as a reminder.`,
+        follow_up:      `"${name}" isn't in your contacts.`,
         action_hint:    'add_contact',
         suggested_name: name,
       };
@@ -447,7 +448,7 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
 // "take me to Charminar please", "how do I get to Golconda fort",
 // "Charminar ki vellali". Found 21 Sep 2026: only the first worked on the main
 // mic, none worked in Drive mode, and nothing understood "set location to".
-const NAV_REQUEST = /\b(?:navigat\w*|directions?|route to|take me|drive me|go to|get me to|set (?:the |my )?(?:location|destination)|destination|show (?:me )?(?:the )?(?:way|route)|way to|how (?:do i|to|can i) (?:get|reach|go))\b|\s(?:ki|ku|ko|ka)\s+(?:vell\w*|dari\w*|jana\w*|jaana\w*|le chalo|rasta\w*|chalo)\b/i;
+const NAV_REQUEST = /\b(?:navigat\w*|directions?|route to|take me|drive me|go to|get me to|set (?:the |my )?(?:location|destination)|destination|show (?:me )?(?:the )?(?:way|route)|way to|how (?:do i|to|can i) (?:get|reach|go))\b|\s(?:ki|ku|ko|ka)\s+(?:location\s+set\w*|set\s+location\w*|vell\w*|dari\w*|jana\w*|jaana\w*|le chalo|rasta\w*|chalo)\b/i;
 
 export function isNavigationRequest(text) {
   const s = String(text || '');
@@ -456,7 +457,7 @@ export function isNavigationRequest(text) {
 
 export function extractDestination(text) {
   let s = String(text || '').trim().replace(/[.?!,]+$/, '');
-  const roman = s.match(/^(.+?)\s+(?:ki|ku|ko|ka)\s+(?:vell\w*|dari\w*|jana\w*|jaana\w*|le chalo|rasta\w*|chalo)\b/i);
+  const roman = s.match(/^(.+?)\s+(?:ki|ku|ko|ka)\s+(?:location\s+set\w*|set\s+location\w*|vell\w*|dari\w*|jana\w*|jaana\w*|le chalo|rasta\w*|chalo)\b/i);
   if (roman) {
     s = roman[1];
   } else {
@@ -489,7 +490,7 @@ export function executeClientAction(intent) {
 
     case 'contact': {
       if (phone) {
-        window.location.href = `tel:${phone}`;
+        if (typeof window !== 'undefined') window.location.href = `tel:${phone}`;
         return { executed: true, action_taken: `Calling ${name || phone}` };
       }
       // No phone — open WhatsApp with name pre-filled if possible
@@ -502,15 +503,15 @@ export function executeClientAction(intent) {
       const end   = new Date(start.getTime() + 3_600_000);
       const fmt   = (d) => d.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
       const url   = `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(content)}&dates=${fmt(start)}/${fmt(end)}`;
-      window.open(url, '_blank');
+      if (typeof window !== 'undefined' && window.open) window.open(url, '_blank');
       return { executed: true, action_taken: 'Opened Google Calendar' };
     }
 
     case 'trip':
     case 'navigation': {
-      // Extract destination from content
-      const query = extractDestination(content) || content;
-      window.open(navigationUrl(query), '_blank');
+      // Extract destination from content or navigation_query
+      const query = intent.navigation_query || extractDestination(content) || content;
+      if (typeof window !== 'undefined' && window.open) window.open(navigationUrl(query), '_blank');
       return { executed: true, action_taken: `Opened Maps: ${query.slice(0, 40)}` };
     }
 

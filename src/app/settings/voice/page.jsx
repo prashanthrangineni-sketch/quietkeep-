@@ -844,6 +844,28 @@ export default function VoiceSettings() {
             <span style={{ ...knob, transform: prefs.voice_input_enabled ? 'translateX(20px)' : 'translateX(0)' }} />
           </button>
         </div>
+
+        {/* Conversation mode */}
+        <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <b style={{ fontSize: 14 }}>💬 Keep listening after each reply</b>
+            <small style={{ display: 'block', color: '#64748b', fontSize: 12 }}>
+              Keep the microphone open after Aaria speaks so you can give another command without tapping again.
+            </small>
+          </div>
+          <button
+            aria-label="Toggle keep listening after each reply"
+            onClick={() => {
+              const next = !prefs.conversation_mode;
+              try { localStorage.setItem('qk_conversation_mode', String(next)); } catch {}
+              try { window.dispatchEvent(new CustomEvent('qk_conversation_mode_changed', { detail: next })); } catch {}
+              save({ conversation_mode: next });
+            }}
+            style={{ ...toggle, background: prefs.conversation_mode ? P : '#cbd5e1', flexShrink: 0 }}
+          >
+            <span style={{ ...knob, transform: prefs.conversation_mode ? 'translateX(20px)' : 'translateX(0)' }} />
+          </button>
+        </div>
         {/* Developer / 100-Task Step Log */}
         <details style={{ ...card, padding: 14 }}>
           <summary style={{ fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer', outline: 'none' }}>

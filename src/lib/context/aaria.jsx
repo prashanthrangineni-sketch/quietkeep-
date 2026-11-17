@@ -326,6 +326,7 @@ export function AariaProvider({ children }) {
   }, []);
 
   const startConversationMode = useCallback(() => {
+    autoTurnRef.current = false;
     silentTurnsRef.current = 0;
     conversationActiveRef.current = true;
     setConversationActive(true);
@@ -681,6 +682,14 @@ export function AariaProvider({ children }) {
         reportOutcome(outcomeFromCapture(null, false));
         return;
       }
+      if (json.ignored) {
+        setTranscript('');
+        setInterim('');
+        setStatus('idle');
+        handleSilence();
+        return;
+      }
+      silentTurnsRef.current = 0;
       let spoken = json.tts_response || json.assistant?.reply || 'Saved.';
 
       // DRIVE MODE ACTIONS (hand-off DRV-03, 17 Oct 2026). Present only when
@@ -899,7 +908,7 @@ export function AariaProvider({ children }) {
       endFiller();   // a network failure must not leave it playing
       brainBusyRef.current = Math.max(0, brainBusyRef.current - 1);
     }
-  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id, silent, businessWorkspaceId, checkPhoneLocked]);
+  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id, silent, businessWorkspaceId, checkPhoneLocked, handleSilence]);
 
   // A tap on one of the offered names. Exact - the id goes with it, so two
   // contacts with the same name can be told apart.
@@ -996,7 +1005,8 @@ export function AariaProvider({ children }) {
       // never files a short non-answer as a brand-new keep (3 October 2026:
       // "Which Vinay?" - "Surya Exactly." was saved as a note and became a
       // second question about six Suryas).
-      await askBrain(text, auto ? { answering: true } : null);
+      // CARD T23: Every turn the app opened by itself sends auto_turn: true.
+      await askBrain(text, auto ? { answering: true, auto_turn: true } : null);
     } finally {
       submittingRef.current = false;
     }
@@ -1136,7 +1146,7 @@ export function AariaProvider({ children }) {
         finished = true;
         const text = (heard + ' ' + lastPartial).trim();
         if (text) {
-          silentTurnsRef.current = 0;
+          if (!autoTurnRef.current) silentTurnsRef.current = 0;
           setTranscript(text);
           submit(text);
         } else {
@@ -1299,7 +1309,7 @@ export function AariaProvider({ children }) {
         setInterim('');
         setStatus((st) => (st === 'listening' ? 'idle' : st));
         if (text) {
-          silentTurnsRef.current = 0;
+          if (!autoTurnRef.current) silentTurnsRef.current = 0;
           setTranscript(text);
           submit(text);
         } else {
@@ -1342,7 +1352,10 @@ export function AariaProvider({ children }) {
 
   const toggleListening = useCallback(() => {
     if (listeningRef.current || status === 'speaking' || conversationActiveRef.current) stopAll();
-    else startListening();
+    else {
+      autoTurnRef.current = false;
+      startListening();
+    }
   }, [status, stopAll, startListening]);
 
   // ── wake engine: booted ONCE, app-wide ─────────────────────────────────────

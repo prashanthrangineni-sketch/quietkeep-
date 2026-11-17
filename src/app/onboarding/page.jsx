@@ -32,6 +32,7 @@ const PERSONAS = [
 const STEPS = [
   { id: 'details', title: 'Welcome to QuietKeep!', subtitle: 'Tell us a bit about yourself to get started.' },
   { id: 'language', title: 'Preferred Language', subtitle: 'Choose your assistant voice & UI language.' },
+  { id: 'voice', title: 'Choose Aaria’s Voice', subtitle: 'Pick how Aaria sounds in every language (female or male).' },
   { id: 'persona', title: 'How do you use QuietKeep?', subtitle: "We'll personalise your experience." },
   { id: 'calendar', title: 'Pick your calendar tradition', subtitle: 'Your daily brief will show relevant events.' },
   { id: 'keep', title: 'Add your first keep', subtitle: 'A keep is anything you want to remember.' },
@@ -45,12 +46,34 @@ export default function OnboardingPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [language, setLanguage] = useState('en-IN');
+  const [voiceChoice, setVoiceChoice] = useState('aaria_f'); // default = female
   const [calendar, setCalendar] = useState('gregorian');
   const [persona, setPersona] = useState('professional');
   const [referralCode, setReferralCode] = useState('');
   const [firstKeep, setFirstKeep] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  function playSample(choice) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    try { window.speechSynthesis.cancel(); } catch {}
+    const sampleText = choice === 'aaria_m'
+      ? 'Hello! I am Aaria, your male voice assistant.'
+      : 'Hello! I am Aaria, your female voice assistant.';
+    const utt = new SpeechSynthesisUtterance(sampleText);
+    utt.lang = language || 'en-IN';
+    const voices = window.speechSynthesis.getVoices() || [];
+    if (choice === 'aaria_m') {
+      const maleVoice = voices.find(v => /male|david|mark|george|ravi|arjun|tarun/i.test(v.name));
+      if (maleVoice) utt.voice = maleVoice;
+      else utt.pitch = 0.8;
+    } else {
+      const femaleVoice = voices.find(v => /female|zira|susan|hazel|heera|kavitha|priya|ananya/i.test(v.name));
+      if (femaleVoice) utt.voice = femaleVoice;
+      else utt.pitch = 1.1;
+    }
+    try { window.speechSynthesis.speak(utt); } catch {}
+  }
 
   useEffect(() => {
     if (authLoading) return;
@@ -139,6 +162,23 @@ export default function OnboardingPage() {
       // so by here it is usually already stored. Re-assert it anyway in case
       // that first write failed while the user was offline.
       await saveConsent(consentData);
+
+      // Save user voice preference (FOUNDER DECISION 17 Nov: chosen during onboarding, default female)
+      try {
+        await supabase.from('user_settings').upsert({
+          user_id: user.id,
+          voice_language: language,
+          preferred_language: language,
+          settings: {
+            voice_choice: voiceChoice || 'aaria_f',
+            voice_provider: 'preset',
+            preset_voice: voiceChoice === 'aaria_m' ? 'aaria_m' : 'aaria_f',
+          },
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      } catch (voicePrefErr) {
+        console.error('[onboarding] voice preference save failed', voicePrefErr);
+      }
 
       if (referralCode.trim()) {
         try { safeFetch('/api/referral').catch(()=>{}); } catch {}
@@ -265,8 +305,48 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 2: Persona */}
+        {/* Step 2: Voice Choice */}
         {step === 2 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[
+              { value: 'aaria_f', label: 'Aaria (female)', desc: 'Natural female voice in every language (default)' },
+              { value: 'aaria_m', label: 'Aaria (male)', desc: 'Natural male voice in every language (Tarun in Telugu)' },
+            ].map(v => (
+              <div
+                key={v.value}
+                onClick={() => setVoiceChoice(v.value)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '16px', borderRadius: '12px', cursor: 'pointer',
+                  border: `1px solid ${voiceChoice === v.value ? '#7c3aed' : 'var(--border)'}`,
+                  background: voiceChoice === v.value ? 'rgba(124, 58, 237, 0.15)' : 'var(--surface)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: '600', color: voiceChoice === v.value ? '#a855f7' : 'var(--text)' }}>{v.label}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-subtle)', marginTop: '2px' }}>{v.desc}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); playSample(v.value); }}
+                    style={{
+                      padding: '6px 12px', fontSize: '12px', borderRadius: '8px',
+                      border: '1px solid #7c3aed', background: 'transparent',
+                      color: '#a855f7', cursor: 'pointer',
+                    }}
+                  >
+                    ▶ Listen
+                  </button>
+                  {voiceChoice === v.value && <span style={{ color: '#a855f7', fontSize: '18px', fontWeight: 'bold' }}>✓</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Step 3: Persona */}
+        {step === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {PERSONAS.map(p => (
               <button key={p.value} onClick={() => setPersona(p.value)}
@@ -288,8 +368,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 3: Calendar */}
-        {step === 3 && (
+        {/* Step 4: Calendar */}
+        {step === 4 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {CALENDARS.map(cal => (
               <button
@@ -314,8 +394,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 4: First keep */}
-        {step === 4 && (
+        {/* Step 5: First keep */}
+        {step === 5 && (
           <>
             <textarea
               value={firstKeep}
@@ -352,7 +432,7 @@ export default function OnboardingPage() {
             {saving ? 'Setting up your space…' : step < STEPS.length - 1 ? 'Continue →' : "Let's go →"}
           </button>
 
-          {step === 4 && !saving && (
+          {step === 5 && !saving && (
             <button
               onClick={skipKeep}
               style={{ width: '100%', background: 'transparent', color: 'var(--text-subtle)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', fontSize: '14px', cursor: 'pointer', minHeight: '48px' }}

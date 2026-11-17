@@ -10,6 +10,7 @@ import { extractAudio } from '@/lib/aaria-audio';
 import { engineHeaders } from '@/lib/aaria-pass';
 import { decideTtsVoice, hasAllClonedVoiceConsents } from '@/lib/cloned-voice-safeguards';
 import { buildAariaSpeakPayload, normalizeTtsLang } from '@/lib/tts-request';
+import { getSpeakerForChoice } from '@/lib/speaker-map';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,10 @@ export async function POST(req) {
   const voiceId = consentRecordValid ? candidateVoiceId : null;
   const choseClonedVoice = Boolean(voiceId);
 
+  const voiceChoice = userSettings?.settings?.voice_choice ||
+    (userSettings?.settings?.preset_voice === 'aaria_m' ? 'aaria_m' : 'aaria_f');
+  const chosenSpeaker = choseClonedVoice ? null : getSpeakerForChoice(voiceChoice, lang);
+
   try {
     const payload = buildAariaSpeakPayload({
       text,
@@ -89,6 +94,7 @@ export async function POST(req) {
       purpose,
       userId: user.id,
       voiceId,
+      speaker: chosenSpeaker,
     });
 
     const res = await fetch(`${AARIA_BASE_URL}/api/voice/speak`, {
@@ -121,7 +127,7 @@ export async function POST(req) {
       audio_url,
       codec: data?.codec || data?.output_audio_codec || 'mp3',
       provider: data?.engine_used || data?.provider || 'aaria',
-      speaker: choseClonedVoice ? (consentRecord?.voice_name || 'own-voice') : (data?.speaker_used || null),
+      speaker: choseClonedVoice ? (consentRecord?.voice_name || 'own-voice') : (chosenSpeaker || data?.speaker_used || null),
       lang,
       visual_companion: data?.visual_companion ?? null,
       cloned_voice: choseClonedVoice,

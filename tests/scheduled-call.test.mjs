@@ -136,7 +136,7 @@ test('a Telugu call instruction is recognised as a call', () => {
     subject: 'సూర్య కిరణ్ కి 5 నిమిషాల్లో కాల్ చెయ్యి',
     entities: { names: ['Surya Kiran'], dates: [], times: [] },
   }
-  assert.match(buildExecutionTTS(te, surya, inFiveMinutes(), null), /I'll call/)
+  assert.match(buildExecutionTTS(te, surya, inFiveMinutes(), null), /I'll call|కాల్ చేస్తాను/)
 })
 
 test('a Hindi call instruction is recognised as a call', () => {
@@ -145,7 +145,7 @@ test('a Hindi call instruction is recognised as a call', () => {
     subject: 'सूर्या किरण को 5 मिनट में कॉल करो',
     entities: { names: ['Surya Kiran'], dates: [], times: [] },
   }
-  assert.match(buildExecutionTTS(hi, surya, inFiveMinutes(), null), /I'll call/)
+  assert.match(buildExecutionTTS(hi, surya, inFiveMinutes(), null), /I'll call|कॉल करूँ/)
 })
 
 test('a time already past never produces a confident plan', () => {

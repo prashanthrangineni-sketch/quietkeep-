@@ -18,6 +18,7 @@ import { collapseRepeats } from '@/lib/transcript-clean'
 import { impossibleSequences } from '@/lib/script-sanity'
 import { isFragment, measuredSpeechMs, caughtPartReply } from '@/lib/fragment-guard'
 import { cleanTurnTiming } from '@/lib/fillers'
+import { detectSpokenLanguage } from '@/lib/spoken-language'
 import { aariaAssist }   from '@/lib/aaria-act'
 import { aariaUnderstandLLM } from '@/lib/aaria-llm' // SOT P1: Aaria action brain for utterances regex can't parse
 import {
@@ -193,6 +194,10 @@ export async function POST(request) {
   // that lands, and it is deliberately the only place it is done.
   const rawText = collapseRepeats(transcript.trim())
   const text    = stripWakePhrase(rawText) || rawText
+  // Founder rule (12 Nov): Aaria replies in the language the person spoke,
+  // whatever the settings language. Settings language is only the fallback when
+  // transcript gives no signal (pure Latin text -> en, or settings if en-family).
+  const spokenLang = detectSpokenLanguage(text || transcript, language)
   // Private data read on locked phone guard (CARD 51)
   if (phoneLocked && isPrivateRead(null, text)) {
     const unlockPrompt = getUnlockPrompt(language)
@@ -309,19 +314,27 @@ export async function POST(request) {
     resolvedIdempotencyKey = `${user.id}:${text.slice(0, 80)}:${windowMin}`;
   }
 
-  // Check if this keep was already saved in this dedup window
-  const { data: existingKeep } = await supabase
+  // Check if this keep was already saved in this dedup window (same user + same text within 60 s = one keep)
+  const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString();
+  const { data: recentKeeps } = await supabase
     .from('keeps')
-    .select('id,content,intent_type,status,created_at')
+    .select('id,content,voice_text,intent_type,status,reminder_at,created_at')
     .eq('user_id', user.id)
-    .eq('idempotency_key', resolvedIdempotencyKey)
-    .maybeSingle();
+    .gte('created_at', sixtySecondsAgo)
+    .order('created_at', { ascending: false })
+    .limit(5);
 
-  if (existingKeep) {
+  const matchedRecent = recentKeeps?.find(k =>
+    (resolvedIdempotencyKey && k.idempotency_key === resolvedIdempotencyKey) ||
+    (k.voice_text && k.voice_text.trim() === text.trim()) ||
+    (k.content && k.content.trim() === text.trim())
+  );
+
+  if (matchedRecent) {
     // Return the already-saved keep without re-inserting
     return NextResponse.json({
-      keep:          existingKeep,
-      intent:        existingKeep,
+      keep:          matchedRecent,
+      intent:        matchedRecent,
       tts_response:  'Already saved.',
       deduplicated:  true,
     }, { status: 200 });
@@ -1497,7 +1510,7 @@ export async function POST(request) {
       'contact_name,contact_phone,follow_up,ai_summary,' +
       'geo_trigger_enabled,location_name,is_prediction'
     )
-    .single()
+    .single();
 
   if (insertError) {
     console.error('[voice/capture v10]', insertError.message, insertError.details)
@@ -1546,7 +1559,7 @@ export async function POST(request) {
 
   let reminderNudgeId = null
   let reminderRow     = null
-  if (reminderAt && keep.id) {
+  if (reminderAt && keep?.id) {
     reminderNudgeId = await scheduleReminderNudge(supabase, {
       userId:     user.id,
       keepId:     keep.id,
@@ -1657,7 +1670,7 @@ export async function POST(request) {
       }
     }).catch(() => {});
 
-  let tts_response = buildExecutionTTS(parsed, matchedContact, reminderAt, followUp)
+  let tts_response = buildExecutionTTS(parsed, matchedContact, reminderAt, followUp, spokenLang)
   // The brain replies in the language the user actually spoke — reading English
   // back to a Telugu or Hindi speaker is the same as not answering at all.
   if (llmAssist?.reply) tts_response = llmAssist.reply
@@ -1902,7 +1915,7 @@ export async function POST(request) {
             engine: 'sarvam',
             intent: llmAssist.intent ?? null,
             confidence: llmAssist.confidence ?? null,
-            language: llmAssist.language || llmAssist.language_detected || language || null,
+            language: llmAssist.language || llmAssist.language_detected || spokenLang || language || null,
             clean_text: llmAssist.cleanText || llmAssist.clean_text || null,
             title: llmAssist.title || null,
             missing: Array.isArray(llmAssist.missing) ? llmAssist.missing : [],
@@ -1913,7 +1926,7 @@ export async function POST(request) {
             engine: 'regex',
             intent: parsed?.type ?? null,
             confidence: parsed?.confidence ?? null,
-            language: language || null,
+            language: spokenLang || language || null,
             clean_text: null,
             title: null,
             missing: [],

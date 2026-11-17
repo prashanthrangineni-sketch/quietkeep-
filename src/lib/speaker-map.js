@@ -2,35 +2,23 @@
 // Maps the user's ONE voice choice across all languages to matching same-gender speakers.
 // Founder rule (17 Nov): The user chooses one voice (Aaria female / Aaria male / My own voice / Device voice),
 // which applies to EVERY language. Telugu reply voice must match the chosen gender (male = Tarun tarun_te_narration;
-// female = Kavitha), eliminating random switching between female English and male Telugu.
+// female = Kavitha kavitha_te_conversation), eliminating random switching between female English and male Telugu.
+// Sarvam voice engine requires full voice IDs (<name>_<lang>_<style>).
 
 export const SUPPORTED_VOICE_CHOICES = ['aaria_f', 'aaria_m', 'own', 'system'];
 
-// Speaker mapping per gender and language
+// Speaker mapping per gender and language using full Sarvam voice IDs.
+// Any language not explicitly mapped resolves to null (engine default).
 const SPEAKERS = {
   male: {
-    te: 'tarun', // Founder 7 Nov pick: Tarun (tarun_te_narration)
-    hi: 'arjun',
-    en: 'arjun',
-    ta: 'tarun',
-    kn: 'tarun',
-    ml: 'tarun',
-    bn: 'arjun',
-    gu: 'arjun',
-    mr: 'arjun',
-    default: 'tarun',
+    te: 'tarun_te_narration',
+    hi: 'tarun_hi_conversational',
+    en: 'tarun_hi_conversational',
   },
   female: {
-    te: 'kavitha', // Best Telugu female voice in Sarvam Bulbul
-    hi: 'kavitha',
-    en: 'kavitha',
-    ta: 'kavitha',
-    kn: 'kavitha',
-    ml: 'kavitha',
-    bn: 'kavitha',
-    gu: 'kavitha',
-    mr: 'kavitha',
-    default: 'kavitha',
+    te: 'kavitha_te_conversation',
+    hi: 'ishita_enhi_customer',
+    en: 'ishita_en_customer',
   },
 };
 
@@ -44,21 +32,24 @@ function bareLang(lang) {
 
 /**
  * Returns speaker name for a given choice and language.
+ * Returns full voice ID string, or null for languages where engine default should be used.
  */
 export function getSpeakerForChoice(choice = 'aaria_f', lang = 'en-IN') {
   const code = bareLang(lang);
   const isMale = choice === 'aaria_m' || choice === 'male';
   const table = isMale ? SPEAKERS.male : SPEAKERS.female;
-  return table[code] || table.default;
+  return table[code] ?? null;
 }
 
 /**
  * Returns gender ('male' | 'female') of a given speaker name.
+ * Inspects prefix before the first '_'.
  */
 export function getGenderOfSpeaker(speaker) {
   if (!speaker) return 'female';
-  const s = String(speaker).toLowerCase();
-  if (s.includes('tarun') || s.includes('arjun') || s.includes('adam') || s.includes('male') || s.includes('ratan') || s.includes('dhruv')) {
+  const prefix = String(speaker).trim().toLowerCase().split('_')[0];
+  const malePrefixes = ['tarun', 'arjun', 'adam', 'ratan', 'dhruv', 'male'];
+  if (malePrefixes.includes(prefix)) {
     return 'male';
   }
   return 'female';

@@ -97,15 +97,47 @@ export async function POST(req) {
       speaker: chosenSpeaker,
     });
 
-    const res = await fetch(`${AARIA_BASE_URL}/api/voice/speak`, {
+    let res = await fetch(`${AARIA_BASE_URL}/api/voice/speak`, {
       method: 'POST',
       headers: engineHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload),
     });
 
+    let speakerFallback = false;
+    // CARD T13b: If the engine call fails (non-ok) AND a speaker was sent, retry ONCE without the speaker before giving up.
+    if (!res.ok && chosenSpeaker) {
+      const fallbackPayload = buildAariaSpeakPayload({
+        text,
+        lang,
+        qualityTier: body.quality_tier || 'standard',
+        purpose,
+        userId: user.id,
+        voiceId,
+        speaker: null,
+      });
+
+      const retryRes = await fetch(`${AARIA_BASE_URL}/api/voice/speak`, {
+        method: 'POST',
+        headers: engineHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(fallbackPayload),
+      });
+
+      if (retryRes.ok) {
+        res = retryRes;
+        speakerFallback = true;
+      } else {
+        res = retryRes;
+      }
+    }
+
     if (!res.ok) {
       const detail = (await res.text().catch(() => '')).slice(0, 200);
-      return NextResponse.json({ audio: null, reason: `aaria_${res.status}`, detail });
+      return NextResponse.json({
+        audio: null,
+        reason: `aaria_${res.status}`,
+        detail,
+        ...(speakerFallback ? { speaker_fallback: true } : {}),
+      });
     }
 
     const data = await res.json().catch(() => null);
@@ -119,6 +151,7 @@ export async function POST(req) {
         visual_companion: data?.visual_companion ?? null,
         cloned_voice: false,
         voice_name: null,
+        ...(speakerFallback ? { speaker_fallback: true } : {}),
       });
     }
 
@@ -127,11 +160,14 @@ export async function POST(req) {
       audio_url,
       codec: data?.codec || data?.output_audio_codec || 'mp3',
       provider: data?.engine_used || data?.provider || 'aaria',
-      speaker: choseClonedVoice ? (consentRecord?.voice_name || 'own-voice') : (chosenSpeaker || data?.speaker_used || null),
+      speaker: speakerFallback
+        ? (data?.speaker_used || null)
+        : (choseClonedVoice ? (consentRecord?.voice_name || 'own-voice') : (chosenSpeaker || data?.speaker_used || null)),
       lang,
       visual_companion: data?.visual_companion ?? null,
       cloned_voice: choseClonedVoice,
       voice_name: choseClonedVoice ? (consentRecord?.voice_name || 'My Voice') : null,
+      ...(speakerFallback ? { speaker_fallback: true } : {}),
     });
   } catch (e) {
     return NextResponse.json({

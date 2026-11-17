@@ -60,6 +60,16 @@ const ttsRoutePath = path.join(REPO_ROOT, 'src', 'app', 'api', 'voice', 'tts', '
 const ttsSrc = fs.readFileSync(ttsRoutePath, 'utf8');
 check('TTS API', 'getSpeakerForChoice imported from speaker-map', ttsSrc.includes('getSpeakerForChoice'));
 check('TTS API', 'passes resolved speaker to buildAariaSpeakPayload', ttsSrc.includes('speaker: chosenSpeaker'));
+check('TTS API', 'retries without speaker on failure with speaker_fallback', ttsSrc.includes('speaker_fallback: true'));
+
+// 4. Speaker Map Contracts (Card T13b)
+const speakerMapPath = path.join(REPO_ROOT, 'src', 'lib', 'speaker-map.js');
+const speakerMapSrc = fs.readFileSync(speakerMapPath, 'utf8');
+check('Speaker Map', 'full voice ID tarun_te_narration used', speakerMapSrc.includes('tarun_te_narration'));
+check('Speaker Map', 'full voice ID tarun_hi_conversational used', speakerMapSrc.includes('tarun_hi_conversational'));
+check('Speaker Map', 'full voice ID kavitha_te_conversation used', speakerMapSrc.includes('kavitha_te_conversation'));
+check('Speaker Map', 'full voice ID ishita_enhi_customer used', speakerMapSrc.includes('ishita_enhi_customer'));
+check('Speaker Map', 'full voice ID ishita_en_customer used', speakerMapSrc.includes('ishita_en_customer'));
 
 const captureRoutePath = path.join(REPO_ROOT, 'src', 'app', 'api', 'voice', 'capture', 'route.js');
 const captureSrc = fs.readFileSync(captureRoutePath, 'utf8');

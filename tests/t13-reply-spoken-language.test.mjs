@@ -295,3 +295,86 @@ test('5. Keep deduplication guard: same user + same text + within 60s is one kee
   });
   assert.equal(oldDup, null, 'Keep older than 60s must not be marked duplicate');
 });
+
+test('6. Card T13b: Safe voice choices (full IDs, strict gender consistency, retry fallback)', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+
+  // A. Full Sarvam IDs only: (<name>_<lang>_<style>)
+  const expectedMale = {
+    te: 'tarun_te_narration',
+    hi: 'tarun_hi_conversational',
+    en: 'tarun_hi_conversational',
+  };
+  const expectedFemale = {
+    te: 'kavitha_te_conversation',
+    hi: 'ishita_enhi_customer',
+    en: 'ishita_en_customer',
+  };
+
+  for (const [lang, expectedId] of Object.entries(expectedMale)) {
+    const id = getSpeakerForChoice('aaria_m', lang);
+    assert.equal(id, expectedId, `Male speaker for ${lang} must match ${expectedId}`);
+    assert.ok(id.includes('_'), `Speaker ID ${id} must be a full ID containing underscores`);
+    assert.match(id, /^[a-z]+_[a-z]+_[a-z]+$/, `Speaker ID ${id} must follow <name>_<lang>_<style>`);
+    assert.equal(getGenderOfSpeaker(id), 'male', `Speaker ${id} must map to male`);
+  }
+
+  for (const [lang, expectedId] of Object.entries(expectedFemale)) {
+    const id = getSpeakerForChoice('aaria_f', lang);
+    assert.equal(id, expectedId, `Female speaker for ${lang} must match ${expectedId}`);
+    assert.ok(id.includes('_'), `Speaker ID ${id} must be a full ID containing underscores`);
+    assert.match(id, /^[a-z]+_[a-z]+_[a-z]+$/, `Speaker ID ${id} must follow <name>_<lang>_<style>`);
+    assert.equal(getGenderOfSpeaker(id), 'female', `Speaker ${id} must map to female`);
+  }
+
+  // B. Every other language returns null (engine default)
+  const unmappedLangs = ['ta', 'kn', 'ml', 'mr', 'gu', 'bn', 'pa', 'or', 'fr', 'es', 'de'];
+  for (const lang of unmappedLangs) {
+    assert.equal(getSpeakerForChoice('aaria_m', lang), null, `Male speaker for unmapped ${lang} must be null`);
+    assert.equal(getSpeakerForChoice('aaria_f', lang), null, `Female speaker for unmapped ${lang} must be null`);
+  }
+
+  // C. Male never maps to a female ID, and female never maps to a male ID
+  const testLangs = ['te', 'te-IN', 'hi', 'hi-IN', 'en', 'en-IN', 'en-US', 'ta', 'kn', 'ml', 'mr', 'gu', 'bn'];
+  for (const lang of testLangs) {
+    const m = getSpeakerForChoice('aaria_m', lang);
+    if (m !== null) {
+      assert.equal(getGenderOfSpeaker(m), 'male', `Male choice in ${lang} must never return female gender`);
+      assert.notEqual(getGenderOfSpeaker(m), 'female');
+    }
+    const f = getSpeakerForChoice('aaria_f', lang);
+    if (f !== null) {
+      assert.equal(getGenderOfSpeaker(f), 'female', `Female choice in ${lang} must never return male gender`);
+      assert.notEqual(getGenderOfSpeaker(f), 'male');
+    }
+  }
+
+  // Prefix check for getGenderOfSpeaker (prefix before the first '_')
+  assert.equal(getGenderOfSpeaker('tarun_te_narration'), 'male');
+  assert.equal(getGenderOfSpeaker('tarun_hi_conversational'), 'male');
+  assert.equal(getGenderOfSpeaker('kavitha_te_conversation'), 'female');
+  assert.equal(getGenderOfSpeaker('ishita_enhi_customer'), 'female');
+  assert.equal(getGenderOfSpeaker('ishita_en_customer'), 'female');
+  assert.equal(getGenderOfSpeaker(null), 'female');
+
+  // D. Retry-without-speaker path exists in route source
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const routePath = path.resolve(__dirname, '../src/app/api/voice/tts/route.js');
+  const routeSrc = fs.readFileSync(routePath, 'utf8');
+
+  assert.ok(
+    routeSrc.includes('speaker_fallback: true'),
+    'Route must include speaker_fallback: true in JSON response'
+  );
+  assert.ok(
+    /if\s*\(!res\.ok\s*&&\s*chosenSpeaker\)/.test(routeSrc),
+    'Route must check !res.ok && chosenSpeaker for retry'
+  );
+  assert.ok(
+    /speaker:\s*null/.test(routeSrc),
+    'Route retry must send payload with speaker: null'
+  );
+});

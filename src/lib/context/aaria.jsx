@@ -668,6 +668,7 @@ export function AariaProvider({ children }) {
               const { executeClientAction } = await import('@/lib/intent-executor');
               executeClientAction({
                 intent_type: exec.intent_type, content: exec.content || '',
+                navigation_query: exec.navigation_query || null,
                 contact_phone: exec.contact_phone || null, contact_name: exec.contact_name || null,
               });
             } else {
@@ -702,6 +703,7 @@ export function AariaProvider({ children }) {
             const { executeClientAction } = await import('@/lib/intent-executor');
             const done = executeClientAction({
               intent_type: exec.intent_type, content: exec.content || '',
+              navigation_query: exec.navigation_query || null,
               contact_phone: exec.contact_phone || null, contact_name: exec.contact_name || null,
             });
             console.log('[Aaria] action:', exec.intent_type, done?.action_taken || null);

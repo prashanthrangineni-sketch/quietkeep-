@@ -100,6 +100,21 @@ function createQueryBuilder(table) {
       filters.push(r => typeof r[col] === 'string' && r[col].toLowerCase().includes(String(pattern).replace(/%/g, '').toLowerCase()));
       return builder;
     },
+    or(expr) {
+      const clauses = String(expr).split(',').map(c => c.trim());
+      filters.push(r => {
+        return clauses.some(c => {
+          const parts = c.split('.');
+          if (parts.length >= 3 && parts[1] === 'ilike') {
+            const col = parts[0];
+            const val = parts.slice(2).join('.').replace(/%/g, '').toLowerCase();
+            return typeof r[col] === 'string' && r[col].toLowerCase().includes(val);
+          }
+          return false;
+        });
+      });
+      return builder;
+    },
     order(col, opts = {}) { orderCol = col; orderAsc = opts.ascending !== false; return builder; },
     limit(n) { limitVal = n; return builder; },
     range() { return builder; },

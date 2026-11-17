@@ -338,6 +338,10 @@ export function contactSearchWords(spokenName, max = 8) {
     const lat = isTelugu(t) ? teluguToLatin(t) : t
     add(lat)
     add(normVowels(lat))
+    if (lat.includes('i')) add(lat.replace(/i/g, 'ee'))
+    if (lat.includes('ee')) add(lat.replace(/ee/g, 'i'))
+    if (lat.includes('u')) add(lat.replace(/u/g, 'oo'))
+    if (lat.includes('oo')) add(lat.replace(/oo/g, 'u'))
     if (!isTelugu(t)) add(latinToTelugu(t))
     if (lat.length >= 5) add(lat.slice(0, 4))
   }

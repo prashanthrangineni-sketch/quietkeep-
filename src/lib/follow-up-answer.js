@@ -35,6 +35,7 @@
 // contacts-flatten.js was written dependency-free for the same reason.
 import { relativeMinutesFromText, computeReminderAt } from './intent-executor.js'
 import { pickContactFromAnswer } from './contact-match.js'
+import { isSpokenYes } from './action-levels.js'
 
 // "Which Venu?" - answered with a name, or "the first one". Unlike the time
 // questions, this one is asked about a keep that ALREADY has its time, so the
@@ -80,7 +81,7 @@ export const MAX_ANSWER_WORDS = 8
 
 // Hints we know how to answer. Anything else falls through untouched, which is
 // the correct behaviour for a question this file has never heard of.
-const TIME_HINTS = new Set(['time_needed', 'call_or_remind', 'when_is_meeting'])
+const TIME_HINTS = new Set(['time_needed', 'call_or_remind', 'confirm_call', 'when_is_meeting'])
 
 // "Now" in the three languages QuietKeep actually gets spoken to in, plus the
 // romanised forms the recogniser returns rather than the native script - which
@@ -206,8 +207,8 @@ export function readAnswer(keep, rawText, nowMs = Date.now(), opts = {}) {
     return contact ? { kind: 'contact', contact } : null
   }
 
-  // "Now" only means anything for a question that offered it.
-  if (keep.follow_up.action_hint === 'call_or_remind' && NOW_WORDS.test(text)) {
+  // "Now" / "Yes" only means anything for a question that offered it.
+  if (['call_or_remind', 'confirm_call'].includes(keep.follow_up?.action_hint) && (NOW_WORDS.test(text) || isSpokenYes(text))) {
     return { kind: 'now' }
   }
 

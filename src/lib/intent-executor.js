@@ -129,6 +129,23 @@ const NUMBER_WORDS = {
 const MINUTE_UNIT = ['minute', 'minutes', 'min', 'mins', 'నిమిష', 'मिनट'];
 const HOUR_UNIT   = ['hour', 'hours', 'hr', 'hrs', 'గంట', 'घंट'];
 
+// Clock-time markers that indicate a time of day rather than relative duration
+const CLOCK_TIME_PERIOD_WORDS = [
+  'ఉదయం', 'మార్నింగ్', 'పొద్దున్న', 'మధ్యాహ్నం', 'సాయంత్రం', 'ఈవెనింగ్', 'రాత్రి', 'నైట్',
+  'morning', 'afternoon', 'evening', 'night',
+  'सुबह', 'दोपहर', 'शाम', 'रात', 'मॉर्निंग', 'इवनिंग', 'नाइट',
+];
+
+const TELUGU_NUMBER_WORDS = {
+  'ఒకటి': 1, 'ఒక': 1, 'రెండు': 2, 'మూడు': 3, 'నాలుగు': 4, 'ఐదు': 5, 'అయిదు': 5,
+  'ఆరు': 6, 'ఏడు': 7, 'ఎనిమిది': 8, 'తొమ్మిది': 9, 'పది': 10, 'పదకొండు': 11, 'పన్నెండు': 12,
+};
+
+const HINDI_NUMBER_WORDS = {
+  'एक': 1, 'दो': 2, 'तीन': 3, 'चार': 4, 'पांच': 5, 'पाँच': 5, 'छह': 6, 'सात': 7,
+  'आठ': 8, 'नौ': 9, 'दस': 10, 'ग्यारह': 11, 'बारह': 12,
+};
+
 function unitOf(word) {
   const w = String(word || '').toLowerCase().replace(/[.,!?;:]+$/, '');
   if (MINUTE_UNIT.some((u) => w.startsWith(u))) return 'minute';
@@ -153,12 +170,32 @@ export function relativeMinutesFromText(rawText) {
   const text = collapseRepeats(String(rawText || ''));
   if (!text.trim()) return null;
 
+  // Clock time expressions (e.g. "ఉదయం 9 గంటలకి" / "at 9 o'clock" / "9 గంటలకి")
+  // are times of day, NEVER relative offsets from now.
+  // "గంటలకి" / "గంటలకు" is Telugu dative (-కి / -కు) meaning "at X o'clock".
+  // Locative relative is "గంటల్లో" (-లో / -ల్లో = in) or "గంటల తర్వాత" (after).
+  if (
+    /గంటల[కకికు]|గంట[కకికు]|o'?clock|\b(?:at|around)\s+\d{1,2}|बजे/i.test(text) ||
+    CLOCK_TIME_PERIOD_WORDS.some(w => text.includes(w))
+  ) {
+    // Only allow if explicit relative marker like "నిమిషాల్లో" / "in X minutes" is also present
+    if (!/నిమిష|minute|मिनट/i.test(text)) {
+      return null;
+    }
+  }
+
   if (/half an hour|అరగంట|आधा घंटा/i.test(text)) return 30;
 
   const words = text.trim().split(/\s+/);
   for (let i = 0; i < words.length; i++) {
     const unit = unitOf(words[i]);
     if (!unit) continue;
+
+    // Reject "గంటలకి" / "గంటలకు" / "గంటకి" / "గంటకు" for relative hours
+    if (unit === 'hour' && /గంటల[కకికు]|గంట[కకికు]/.test(words[i])) {
+      continue;
+    }
+
     for (let back = 1; back <= 3 && i - back >= 0; back++) {
       const n = numberOf(words[i - back]);
       if (n === null) continue;
@@ -172,14 +209,122 @@ export function relativeMinutesFromText(rawText) {
   return null;
 }
 
+/**
+ * Parse an explicit clock time (morning/afternoon/evening/night + hour) from text.
+ * Resolves Telugu ("ఉదయం 9 గంటలకి"), Hindi ("कल सुबह 9 बजे"), and English ("9 in the morning").
+ */
+function parseClockTimeFromText(rawText, timeZone = DEFAULT_TZ) {
+  if (!rawText) return null;
+  const s = collapseRepeats(String(rawText)).toLowerCase();
+
+  // 1. Period detection
+  let period = null; // 'morning' | 'afternoon' | 'evening' | 'night'
+  if (/ఉదయం|మార్నింగ్|పొద్దున్న|morning|\bam\b|\ba\.m\b|सुबह|मॉर्निंग|प्रातः/.test(s)) {
+    period = 'morning';
+  } else if (/మధ్యాహ్నం|afternoon|दोपहर/.test(s)) {
+    period = 'afternoon';
+  } else if (/సాయంత్రం|ఈవెనింగ్|సాయంకాలం|evening|शाम|इवनिंग/.test(s)) {
+    period = 'evening';
+  } else if (/రాత్రి|నైట్|night|रात|नाइट/.test(s)) {
+    period = 'night';
+  } else if (/\bpm\b|\bp\.m\b/.test(s)) {
+    period = 'evening';
+  }
+
+  // 2. Date detection
+  let dateOffsetDays = 0;
+  if (/రేపు|tomorrow|कल/.test(s)) {
+    dateOffsetDays = 1;
+  } else if (/ఎల్లుండి|परसों|day after tomorrow/.test(s)) {
+    dateOffsetDays = 2;
+  }
+
+  // 3. Hour and minute extraction
+  let hour = null;
+  let minute = 0;
+
+  // Numeric digit match: e.g. "9", "9:30", "10"
+  // Look for digit followed by time markers or preceded by period words
+  const digitTimeMatch = s.match(/(?:^|\s|[^\d])(\d{1,2})(?::(\d{2}))?\s*(?:గంట|గంటల|గంటలకి|గంటలకు|గంటకి|గంటకు|బజే|बजे|o'?clock|am|pm|\b)/i);
+  if (digitTimeMatch) {
+    const val = parseInt(digitTimeMatch[1], 10);
+    if (val >= 1 && val <= 24) {
+      hour = val;
+      if (digitTimeMatch[2]) minute = parseInt(digitTimeMatch[2], 10);
+    }
+  }
+
+  // Word-based number match if no digit found
+  if (hour === null) {
+    for (const [w, val] of Object.entries(TELUGU_NUMBER_WORDS)) {
+      if (s.includes(w)) { hour = val; break; }
+    }
+  }
+  if (hour === null) {
+    for (const [w, val] of Object.entries(HINDI_NUMBER_WORDS)) {
+      if (s.includes(w)) { hour = val; break; }
+    }
+  }
+  if (hour === null) {
+    const m = s.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/);
+    if (m && NUMBER_WORDS[m[1]]) hour = NUMBER_WORDS[m[1]];
+  }
+
+  // Half-hour words (e.g. "ముప్పై", "తీస్", "half", "thirty")
+  if (minute === 0 && /ముప్పై|तीस|thirty|న్నర|half/.test(s)) {
+    minute = 30;
+  }
+
+  if (hour === null) return null;
+
+  // 4. Convert to 24-hour wall-clock in user's zone
+  let hh = hour;
+  if (period === 'morning') {
+    if (hh === 12) hh = 0;
+    else if (hh > 12) hh = hh; // already 24h
+  } else if (period === 'afternoon') {
+    if (hh < 12) hh += 12;
+  } else if (period === 'evening') {
+    if (hh < 12) hh += 12;
+  } else if (period === 'night') {
+    if (hh >= 1 && hh <= 4) {
+      // late night / early morning 1am-4am
+    } else if (hh < 12) {
+      hh += 12; // 8pm -> 20, 9pm -> 21, 10pm -> 22, 11pm -> 23
+    } else if (hh === 12) {
+      hh = 0;
+    }
+  } else {
+    // Period unmentioned: check current hour in timeZone
+    const nowParts = new Intl.DateTimeFormat('en-US', {
+      timeZone, hour12: false, hour: '2-digit', minute: '2-digit',
+    }).formatToParts(new Date()).filter(x => x.type !== 'literal');
+    const np = Object.fromEntries(nowParts.map(x => [x.type, x.value]));
+    const curHour = np.hour === '24' ? 0 : +np.hour;
+    if (hh <= 12) {
+      if (curHour < hh) {
+        // e.g. at 7 AM, "9" means 9 AM today
+      } else if (curHour < hh + 12 && hh + 12 < 24) {
+        // e.g. at 11 AM, "5" means 5 PM today
+        hh += 12;
+      }
+    }
+  }
+
+  return { hh, mm: minute, dateOffsetDays, hasClockTime: true };
+}
+
 // ── COMPUTE reminder_at FROM ENTITIES ─────────────────────────────────────────
 export function computeReminderAt(entities, timeZone = DEFAULT_TZ, rawText = '') {
   if (!entities && !rawText) return null;
   const { dates = [], times = [] } = entities || {};
 
-  // A relative offset is checked FIRST and only when no date or time was
-  // extracted, so "tomorrow at ten" keeps its existing behaviour exactly.
-  if (!dates.length && !times.length && rawText) {
+  // First check if rawText contains a specific clock time (e.g. "ఉదయం 9 గంటలకి", "कल सुबह 9 बजे")
+  // so that "ఉదయం 9 గంటలకి" is never mistaken for 9 hours from now.
+  const textClock = parseClockTimeFromText(rawText, timeZone);
+
+  // A relative offset is checked only when no date, no parsed time, and no text clock was found
+  if (!dates.length && !times.length && !textClock && rawText) {
     const mins = relativeMinutesFromText(rawText);
     if (mins !== null) return new Date(Date.now() + mins * 60000);
   }
@@ -187,20 +332,26 @@ export function computeReminderAt(entities, timeZone = DEFAULT_TZ, rawText = '')
   let baseDate = null;
   for (const d of dates) { const p = parseDateString(d); if (p) { baseDate = p; break; } }
 
-  // Hours and minutes are wall-clock in the user's zone — parseTimeToDate is
-  // only used here to read them, never to fix the instant.
+  // Hours and minutes are wall-clock in the user's zone
   let hh = null, mm = 0;
   if (times.length > 0) {
     const td = parseTimeToDate(times[0], new Date());
     if (td) { hh = td.getHours(); mm = td.getMinutes(); }
+  } else if (textClock) {
+    hh = textClock.hh;
+    mm = textClock.mm;
   }
 
   if (baseDate === null && hh === null) return null;
 
-  const { y, mo, d } = zonedDateParts(baseDate || new Date(), timeZone);
+  const targetDate = baseDate || new Date();
+  if (textClock?.dateOffsetDays) {
+    targetDate.setDate(targetDate.getDate() + textClock.dateOffsetDays);
+  }
 
-  // A date with no spoken time keeps the previous behaviour: same wall-clock
-  // time of day as now, in the user's zone.
+  const { y, mo, d } = zonedDateParts(targetDate, timeZone);
+
+  // A date with no spoken time keeps previous behaviour
   if (hh === null) {
     const nowParts = new Intl.DateTimeFormat('en-US', {
       timeZone, hour12: false, hour: '2-digit', minute: '2-digit',
@@ -211,9 +362,8 @@ export function computeReminderAt(entities, timeZone = DEFAULT_TZ, rawText = '')
   }
 
   let result = zonedWallClockToUtc(y, mo, d, hh, mm, timeZone);
-  // Bare time with no date ("at 10 a.m.") that has already passed today rolls
-  // to tomorrow — same rule as before, applied in the user's zone.
-  if (!baseDate && result.getTime() <= Date.now()) {
+  // Bare time with no date ("at 10 a.m.") that has already passed today rolls to tomorrow
+  if (!baseDate && (!textClock || textClock.dateOffsetDays === 0) && result.getTime() <= Date.now()) {
     result = zonedWallClockToUtc(y, mo, d + 1, hh, mm, timeZone);
   }
   return result;
@@ -622,14 +772,78 @@ const ASK_FOR_TIME = {
   hi: 'मुझे समय समझ नहीं आया। कब याद दिलाऊँ?',
 };
 
-function scriptOf(text) {
+export function scriptOf(text) {
   const s = String(text || '');
   for (const ch of s) {
     const c = ch.codePointAt(0);
     if (c >= 0x0C00 && c <= 0x0C7F) return 'te';
     if (c >= 0x0900 && c <= 0x097F) return 'hi';
+    if (c >= 0x0B80 && c <= 0x0BFF) return 'ta';
+    if (c >= 0x0C80 && c <= 0x0CFF) return 'kn';
+    if (c >= 0x0D00 && c <= 0x0D7F) return 'ml';
+    if (c >= 0x0980 && c <= 0x09FF) return 'bn';
+    if (c >= 0x0A80 && c <= 0x0AFF) return 'gu';
+    if (c >= 0x0A00 && c <= 0x0A7F) return 'pa';
+    if (c >= 0x0B00 && c <= 0x0B7F) return 'or';
   }
   return 'en';
+}
+
+function calendarDayDiff(d1, d2, timeZone = DEFAULT_TZ) {
+  const p1 = zonedDateParts(d1, timeZone);
+  const p2 = zonedDateParts(d2, timeZone);
+  const utc1 = Date.UTC(p1.y, p1.mo, p1.d);
+  const utc2 = Date.UTC(p2.y, p2.mo, p2.d);
+  return Math.round((utc2 - utc1) / 86400000);
+}
+
+function zonedTimeParts(date, timeZone = DEFAULT_TZ) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, hour12: false, hour: '2-digit', minute: '2-digit',
+  }).formatToParts(date).filter(x => x.type !== 'literal');
+  const p = Object.fromEntries(parts.map(x => [x.type, x.value]));
+  const hour = p.hour === '24' ? 0 : +p.hour;
+  const minute = +p.minute;
+  return { hour, minute };
+}
+
+function formatNaturalDateTime(dt, lang = 'en', timeZone = DEFAULT_TZ) {
+  const diff = calendarDayDiff(new Date(), dt, timeZone);
+  const { hour, minute } = zonedTimeParts(dt, timeZone);
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+
+  if (lang === 'te') {
+    let dateStr = '';
+    if (diff === 0) dateStr = 'ఈరోజు';
+    else if (diff === 1) dateStr = 'రేపు';
+    else if (diff === 2) dateStr = 'ఎల్లుండి';
+    else dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone });
+
+    const period = hour < 12 ? 'ఉదయం' : (hour < 16 ? 'మధ్యాహ్నం' : (hour < 20 ? 'సాయంత్రం' : 'రాత్రి'));
+    const timeStr = minute === 0 ? `${period} ${hour12} గంటలకు` : `${period} ${hour12}:${minute < 10 ? '0' : ''}${minute}కి`;
+    return { dateStr, timeStr, full: `${dateStr ? dateStr + ' ' : ''}${timeStr}`.trim() };
+  }
+
+  if (lang === 'hi') {
+    let dateStr = '';
+    if (diff === 0) dateStr = 'आज';
+    else if (diff === 1) dateStr = 'कल';
+    else if (diff === 2) dateStr = 'परसों';
+    else dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone });
+
+    const period = hour < 12 ? 'सुबह' : (hour < 16 ? 'दोपहर' : (hour < 20 ? 'शाम' : 'रात'));
+    const timeStr = minute === 0 ? `${period} ${hour12} बजे` : `${period} ${hour12}:${minute < 10 ? '0' : ''}${minute} बजे`;
+    return { dateStr, timeStr, full: `${dateStr ? dateStr + ' ' : ''}${timeStr}`.trim() };
+  }
+
+  // English fallback
+  let dateStr = '';
+  if (diff === 0) dateStr = 'today';
+  else if (diff === 1) dateStr = 'tomorrow';
+  else dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone });
+
+  const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone });
+  return { dateStr, timeStr, full: `${dateStr} at ${timeStr}` };
 }
 
 // Does this instruction actually ask for a phone call?
@@ -656,32 +870,21 @@ export function isUsableInstant(value) {
 }
 
 // ── TTS CONFIRMATION ───────────────────────────────────────────────────────────
-export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
+export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, langOverride = null) {
   const name = parsed.entities?.names?.[0];
+  const lang = langOverride || scriptOf(parsed.subject || parsed.content || parsed.text || '');
 
   if (followUp) return followUp.follow_up;
 
   // THE GUARD. Anything that claims a reminder was set must pass through here
   // first, and it only passes when there is an instant to set it to.
   if ((parsed.type === 'reminder' || parsed.type === 'task') && !isUsableInstant(reminderAt)) {
-    const lang = scriptOf(parsed.subject || parsed.content || parsed.text || '');
     return ASK_FOR_TIME[lang] || ASK_FOR_TIME.en;
   }
 
   const contact = contactResult?.single || null;
 
   // A PERSON, A NUMBER, AND A TIME — nothing left to ask.
-  //
-  // "Call Surya Kiran in five minutes" used to come back as a question, which
-  // is what the founder reported on 26 September. Everything needed is known,
-  // so say what is about to happen instead.
-  //
-  // Three guards, because this must not leak:
-  //   1. the words must actually ask for a call (English, Telugu or Hindi), so
-  //      "meeting with Surya at 3pm" stays a meeting;
-  //   2. the instant must be real and in the future, so a stale value falls
-  //      through to the older wording rather than promising anything;
-  //   3. reminder and task keep their own confirmation, which reads correctly.
   if (
     contact?.phone
     && isUsableInstant(reminderAt)
@@ -689,69 +892,75 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp) {
     && parsed.type !== 'reminder'
     && parsed.type !== 'task'
   ) {
-    const dt      = new Date(reminderAt);
-    const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: DEFAULT_TZ });
-    const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: DEFAULT_TZ });
-    // An intention, not a claim of completion — and an accurate one: at that
-    // minute the alarm opens a countdown carrying this number and dials unless
-    // the countdown is cancelled.
-    return `Right — ${dateStr} at ${timeStr} I'll call ${contact.name || name}.`;
+    const dt = new Date(reminderAt);
+    const natural = formatNaturalDateTime(dt, lang, DEFAULT_TZ);
+    if (lang === 'te') {
+      return `సరే — ${natural.full} ${contact.name || name}కి కాల్ చేస్తాను.`;
+    }
+    if (lang === 'hi') {
+      return `ठीक है — ${natural.full} ${contact.name || name} को कॉल करूँगा।`;
+    }
+    return `Right — ${natural.full} I'll call ${contact.name || name}.`;
   }
 
   if (parsed.type === 'contact' && contact?.phone) {
+    if (lang === 'te') {
+      return `కాంటాక్ట్ సేవ్ అయింది. ${name || 'కాంటాక్ట్'} మీ కాంటాక్ట్స్‌లో ఉంది. కాల్ చేయడానికి బటన్ నొక్కండి.`;
+    }
+    if (lang === 'hi') {
+      return `कॉन्टैक्ट सेव हो गया। ${name || 'कॉन्टैक्ट'} आपके कॉन्टैक्ट्स में है। कॉल करने के लिए बटन दबाएँ।`;
+    }
     return `Keep saved. ${name || 'Contact'} is in your contacts. Tap the call button to dial now.`;
   }
 
   if (parsed.type === 'reminder') {
-    // WHAT hasSpecificTime IS ACTUALLY ASKING.
-    //
-    // It used to ask "did the parser pull a clock time out of the words?" and
-    // that has been the wrong question since #108 taught the app to understand
-    // "in five minutes". A relative offset resolves straight to an instant and
-    // never writes anything into entities.times — so this branch could hold a
-    // perfectly good reminderAt and still say:
-    //
-    //   "Got it — I'll remind you to call Surya exactly 5 minutes from now
-    //    Sat, 26 Sept. What time should I set it for?"
-    //
-    // Observed live on 26 September 2026 with reminder_at already stored as
-    // 19:02 IST and a reminders row already written. It asked for a time three
-    // lines above the line that prints that very time.
-    //
-    // The right question is "do we HAVE a time?", with one exception preserved:
-    // when the user named a DAY and no clock time ("remind me tomorrow"),
-    // computeReminderAt fills in the current time of day as a placeholder, and
-    // asking which hour they meant is genuinely the correct thing to do.
     const dayNamedWithoutAClockTime =
       (parsed.entities?.dates?.length > 0) && !(parsed.entities?.times?.length > 0);
     const hasSpecificTime = isUsableInstant(reminderAt) && !dayNamedWithoutAClockTime;
     const taskContent     = (parsed.subject || '').replace(/^remind\s+(?:me\s+)?(?:to\s+)?/i, '').trim();
 
     if (reminderAt) {
-      // Format in the USER's zone. Without the timeZone option these render in
-      // the server's zone (UTC on Vercel), so a correctly stored 04:30Z was
-      // read back to the user as "4:30 am" when they had said 10 a.m. The
-      // reminder fired at the right moment; the confirmation lied about it.
-      // Found 22 Aug 2026 in the spoken confirmation, after the stored value
-      // was already correct.
-      const dt      = new Date(reminderAt);
-      const timeStr = dt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: DEFAULT_TZ });
-      const dateStr = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: DEFAULT_TZ });
+      const dt = new Date(reminderAt);
+      const natural = formatNaturalDateTime(dt, lang, DEFAULT_TZ);
 
       if (hasSpecificTime) {
-        return `Got it — I'll remind you to ${taskContent || 'do this'} ${dateStr} at ${timeStr}.`;
+        if (lang === 'te') {
+          return `సరే, ${natural.full} గుర్తు చేస్తాను.`;
+        }
+        if (lang === 'hi') {
+          return `ठीक है, ${natural.full} याद दिलाऊँगा।`;
+        }
+        return `Got it — I'll remind you to ${taskContent || 'do this'} ${natural.full}.`;
       } else {
-        return `Got it — I'll remind you to ${taskContent || 'do this'} ${dateStr}. What time should I set it for?`;
+        if (lang === 'te') {
+          return `సరే, ${natural.dateStr || 'గుర్తు'} చేస్తాను. ఏ సమయానికి గుర్తు చేయాలి?`;
+        }
+        if (lang === 'hi') {
+          return `ठीक है, ${natural.dateStr || 'याद'} दिलाऊँगा। किस समय याद दिलाऊँ?`;
+        }
+        return `Got it — I'll remind you to ${taskContent || 'do this'} ${natural.dateStr}. What time should I set it for?`;
       }
     } else {
+      if (lang === 'te') {
+        return `నోట్‌గా సేవ్ చేశాను, సమయం అర్థం కాలేదు — రిమైండర్ పెట్టమంటారా?`;
+      }
+      if (lang === 'hi') {
+        return `नोट के रूप में सेव कर लिया है, समय समझ नहीं आया — क्या रिमाइंडर सेट करूँ?`;
+      }
       return `I saved that as a note, but I didn't catch a time — want me to set a reminder?`;
     }
   }
 
   if (parsed.type === 'task' && reminderAt) {
-    const dt      = new Date(reminderAt);
-    const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: DEFAULT_TZ });
-    return `Task saved. I'll remind you at ${timeStr}.`;
+    const dt = new Date(reminderAt);
+    const natural = formatNaturalDateTime(dt, lang, DEFAULT_TZ);
+    if (lang === 'te') {
+      return `టాస్క్ సేవ్ అయింది. ${natural.timeStr} గుర్తు చేస్తాను.`;
+    }
+    if (lang === 'hi') {
+      return `टास्क सेव हो गया। ${natural.timeStr} याद दिलाऊँगा।`;
+    }
+    return `Task saved. I'll remind you at ${natural.timeStr}.`;
   }
 
   if (parsed.type === 'meeting') {

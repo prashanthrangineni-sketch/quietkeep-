@@ -14,6 +14,7 @@ export function buildAariaSpeakPayload({
   purpose = 'general',
   userId,
   voiceId = null,
+  speaker = null,
 }) {
   const payload = {
     text,
@@ -25,6 +26,9 @@ export function buildAariaSpeakPayload({
   };
   if (voiceId) {
     payload.voice_id = voiceId;
+  }
+  if (speaker) {
+    payload.speaker = speaker;
   }
   return payload;
 }

@@ -12,9 +12,10 @@
 //                       project, a man from VRoid's CC0 samples), not Aaria's
 //                       own look. Each licence is beside its file.
 //   * Realistic       - SAMPLE 3D people from Microsoft's Rocketbox library
-//                       (MIT), Western woman and man. They look like game
+//                       (MIT): two women and four men, chosen by the founder,
+//                       shown as numbered looks. They look like game
 //                       characters, not filmed people, and the page says so.
-//                       Indian (saree / kurta): NOT BUILT - "Coming next".
+//                       Indian in a saree / kurta: NOT BUILT - "Coming next".
 //   * The frames-per-second line is a live measurement on this device.
 
 import { useCallback, useEffect, useState } from 'react';
@@ -47,7 +48,12 @@ const FACES = [
   { id: 'realistic', label: 'Realistic' },
 ];
 const WHO = [{ id: 'woman', label: 'Woman' }, { id: 'man', label: 'Man' }];
-const LOOKS = [{ id: 'indian', label: 'Indian' }, { id: 'western', label: 'Western' }];
+// The realistic people on offer. They are numbered, not labelled by origin:
+// none of them was made as an Indian character, and we do not claim one is.
+const REALISTIC = {
+  woman: [{ id: 'woman-1', label: 'Look 1' }, { id: 'woman-2', label: 'Look 2' }],
+  man: [{ id: 'man-1', label: 'Look 1' }, { id: 'man-2', label: 'Look 2' }, { id: 'man-3', label: 'Look 3' }, { id: 'man-4', label: 'Look 4' }],
+};
 
 function Chip({ on, onClick, children }) {
   return (
@@ -65,7 +71,7 @@ export default function AariaStagePage() {
   const aaria = useAaria();
   const [face, setFace] = useState('2d');
   const [who, setWho] = useState('woman');
-  const [look, setLook] = useState('western');
+  const [look, setLook] = useState('woman-1');
   const [fps, setFps] = useState(null);
   const [heard, setHeard] = useState(false);     // sound is audible right now
 
@@ -83,13 +89,16 @@ export default function AariaStagePage() {
     try {
       setFace(localStorage.getItem('qk_aaria_stage_face') || '2d');
       setWho(localStorage.getItem('qk_aaria_stage_who') || 'woman');
-      setLook(localStorage.getItem('qk_aaria_stage_look') || 'western');
+      setLook(localStorage.getItem('qk_aaria_stage_look2') || 'woman-1');
     } catch { }
   }, []);
   const remember = (k, v) => { setFps(null); try { localStorage.setItem(k, v); } catch { } };
   const pick = (id) => { setFace(id); remember('qk_aaria_stage_face', id); };
   const pickWho = (id) => { setWho(id); remember('qk_aaria_stage_who', id); };
-  const pickLook = (id) => { setLook(id); remember('qk_aaria_stage_look', id); };
+  const pickLook = (id) => { setLook(id); remember('qk_aaria_stage_look2', id); };
+  // The look must belong to the chosen woman-or-man group.
+  const looks = REALISTIC[who] || REALISTIC.woman;
+  const lookId = looks.some((l) => l.id === look) ? look : looks[0].id;
 
   const sayLine = useCallback((line) => {
     if (aaria.signedIn && !aaria.silent) aaria.say(line.text, { lang: line.lang });
@@ -125,32 +134,30 @@ export default function AariaStagePage() {
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
           {WHO.map((w) => <Chip key={w.id} on={who === w.id} onClick={() => pickWho(w.id)}>{w.label}</Chip>)}
           {face === 'realistic' && <span style={{ width: 8 }} />}
-          {face === 'realistic' && LOOKS.map((l) => <Chip key={l.id} on={look === l.id} onClick={() => pickLook(l.id)}>{l.label}</Chip>)}
+          {face === 'realistic' && looks.map((l) => <Chip key={l.id} on={lookId === l.id} onClick={() => pickLook(l.id)}>{l.label}</Chip>)}
         </div>
       )}
 
       <div style={{ ...card, minHeight: 380, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {face === '2d' && <AariaFace status={status} size={220} />}
         {face === 'anime3d' && <VrmStage key={who} status={status} modelUrl={ANIME[who]} height={360} onFps={onFps} />}
-        {face === 'realistic' && look === 'western' && <HumanStage key={who} status={status} who={`western-${who}`} height={360} onFps={onFps} />}
-        {face === 'realistic' && look === 'indian' && (
-          <div style={{ textAlign: 'center', padding: '24px 8px' }}>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Coming next</div>
-            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              An Indian {who === 'man' ? 'man in a kurta' : 'woman in a saree'} is not ready to show.
-              It is not built yet: we have not found a character with a licence we can use.
-            </p>
-          </div>
-        )}
+        {face === 'realistic' && <HumanStage key={lookId} status={status} who={lookId} height={360} onFps={onFps} />}
       </div>
 
       <p data-testid="stage-readout" style={{ margin: '10px 2px 16px', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
         State: <strong>{pose}</strong>
         {' · '}Mouth: {source === 'audio' ? 'following the reply audio' : source === 'cycle' ? 'simple open-close (this voice cannot be heard by the page)' : 'at rest'}
-        {(face === 'anime3d' || (face === 'realistic' && look === 'western')) && (fps
+        {face !== '2d' && (fps
           ? <>{' · '}{fps.medianFps} frames per second on this device (slowest frame {fps.worstFrameMs} ms)</>
           : <>{' · '}measuring frames per second…</>)}
       </p>
+
+      {face === 'realistic' && (
+        <p style={{ margin: '0 2px 14px', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
+          Coming next: an Indian woman in a saree and an Indian man in a kurta. They are not built yet —
+          no character with a licence we can use has been found.
+        </p>
+      )}
 
       <div style={{ ...card, marginBottom: 12 }}>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Hear Aaria speak</div>
@@ -173,8 +180,7 @@ export default function AariaStagePage() {
 
       <p style={{ margin: '14px 2px 0', fontSize: 11.5, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
         2D face: drawn by Pranix AI Labs. Anime woman: “VRM1_Constraint_Twist_Sample”, © 2022 pixiv Inc., VRM Public License 1.0.
-        Anime man: “Sakurada Fumiriya”, a VRoid sample character released under CC0. Realistic Western woman and man:
-        “Female_Adult_01” and “Male_Adult_01” from the Microsoft Rocketbox avatar library, © 2020 Microsoft, MIT licence —
+        Anime man: “Sakurada Fumiriya”, a VRoid sample character released under CC0. Realistic people: six everyday adults from the Microsoft Rocketbox avatar library, © 2020 Microsoft, MIT licence —
         3D people drawn on this device, like game characters; not real people. All of these are stand-ins, not Aaria’s final look.
         3D engine: three.js and three-vrm (MIT).
       </p>

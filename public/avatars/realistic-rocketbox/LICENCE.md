@@ -1,4 +1,4 @@
-# Licence record: Female_Adult_01 and Male_Adult_01 (Microsoft Rocketbox)
+# Licence record: six everyday adults from Microsoft Rocketbox
 
 Recorded 18 Nov 2026 for the AARIA demo page (`/aaria-stage`).
 
@@ -20,6 +20,12 @@ Recorded 18 Nov 2026 for the AARIA demo page (`/aaria-stage`).
 | `female-adult-01/f001_opacity_color.png` | `Textures/f001_opacity_color.tga` (2048 x 2048, with transparency) | Resized to 1024 x 1024, saved as PNG. |
 | `male-adult-01/Male_Adult_01_facial.glb` (5,247,500 bytes, SHA-256 `35df2eea5a5eb16913a5367ac419cac47bbdea2862b2be308c9f98f2c4570301`) | `Export/Male_Adult_01_facial.fbx` (1,962,256 bytes, SHA-256 `55771cbbcffb8204dcfe450784c8439ee27bfa48efffc48d325b55ee4bd04388`) | Converted once from FBX to GLB with the same tool. |
 | `male-adult-01/m002_head_color.jpg`, `m002_body_color.jpg`, `m002_opacity_color.png` | `Textures/m002_head_color.tga`, `m002_body_color.tga`, `m002_opacity_color.tga` (2048 x 2048) | Resized to 1024 x 1024; JPEG, JPEG, PNG. |
+| `female-adult-15/Female_Adult_15_facial.glb` (5,970,824 bytes, SHA-256 `45e145b1294f585106e83a4a4d133197a758f711e976b9202011ec7f699c2c35`) | `Adults/Female_Adult_15/Export/Female_Adult_15_facial.fbx` (2,206,336 bytes, SHA-256 `aad9bf0fdbbd68ecd0bb692e0d79bab05fef6932d6e8ae27349c78fd49986a81`) | Converted once, same tool. Textures `f018_*` resized to 1024 x 1024. |
+| `male-adult-07/Male_Adult_07_facial.glb` (5,016,068 bytes, SHA-256 `cd309f0f1800794e897f719797a0172c54839f1bb128f820f12a0bec7c305d37`) | `Adults/Male_Adult_07/Export/Male_Adult_07_facial.fbx` (1,881,520 bytes, SHA-256 `6fbd1cd44b6145fce3caf18fdd22ccbd00fad2a019b3bf489be7e9c031269b0f`) | Converted once, same tool. Textures `m013_*` resized to 1024 x 1024. |
+| `male-adult-08/Male_Adult_08_facial.glb` (5,044,332 bytes, SHA-256 `c142cf305a28ce2e50086e33518513755d8e3e454b3d572f2599396c8e0d08ed`) | `Adults/Male_Adult_08/Export/Male_Adult_08_facial.fbx` (1,913,408 bytes, SHA-256 `a736f359d8adb61436de72fd59ba0acac4b42d18751b22ac4d3e2b574d7a71e0`) | Converted once, same tool. Textures `m014_*` resized to 1024 x 1024. |
+| `male-adult-21/Male_Adult_21_facial.glb` (4,452,396 bytes, SHA-256 `7fad7a688357a69f8083859a7c5d05c56a98d40364d7fe80c04eca19a14ced3c`) | `Adults/Male_Adult_21/Export/Male_Adult_21_facial.fbx` (1,779,744 bytes, SHA-256 `0a40c3183ad21e1434839fb1b046d1bd9219da661b10401d332724e106b57aca`) | Converted once, same tool. Textures `m251_*` (head, body, head cloth) resized to 1024 x 1024. |
+
+All six were chosen by the founder on 18 Nov 2026 from a picture sheet of the library's 38 everyday adults. The page shows them as numbered looks; none is labelled by national or ethnic origin.
 
 The colour pictures are loaded next to the model by `src/components/avatar/HumanStage.jsx`; they are not packed inside the GLB.
 

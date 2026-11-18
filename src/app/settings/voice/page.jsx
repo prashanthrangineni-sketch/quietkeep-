@@ -472,52 +472,59 @@ export default function VoiceSettings() {
         {/* Talk-back voice */}
         <div style={card}>
           <h3 style={h3}>🗣️ Talk-back voice</h3>
-          {[
-            ['system', 'Device voice', 'Free, works offline. Uses your phone’s built-in voice.'],
-            ['preset', 'QuietKeep voices', 'Natural AI voices (needs internet).'],
-            ['own', 'My own voice', 'Aaria speaks back in your voice — recorded with your consent.'],
-          ].map(([v, t, d]) => (
-            <label key={v} style={{ ...opt, borderColor: prefs.provider === v ? P : 'rgba(0,0,0,.1)' }}>
-              <input
-    type="radio"
-    name="prov"
-    checked={prefs.provider === v}
-    onChange={() => {
-      if (v === 'own' && !prefs.consent && !allConsentsTicked) {
-        setPrefs(p => ({ ...p, provider: 'own' }));
-        setMsg('Please review and tick all three consent boxes below to enable your voice.');
-        return;
-      }
-      save({
-        provider: v,
-        ...(v === 'own' ? {
-          consents: {
-            consent_own_or_permitted: consentOwnership,
-            consent_no_deception: consentNoDeception,
-            consent_in_app_labeled: consentInAppAiLabel,
-          },
-        } : {}),
-      });
-    }}
-  />
-              <span><b style={{ fontSize: 14 }}>{t}</b><small style={{ display: 'block', color: '#64748b', fontSize: 12 }}>{d}</small></span>
-            </label>
-          ))}
+          {(() => {
+            const currentVoiceChoice = prefs.voice_choice ||
+              (prefs.provider === 'own' ? 'own' : (prefs.provider === 'system' ? 'system' : (prefs.preset_voice === 'aaria_m' ? 'aaria_m' : 'aaria_f')));
+            return (
+              <>
+                {[
+                  ['aaria_f', 'Aaria female', 'Natural female voice across every language.'],
+                  ['aaria_m', 'Aaria male', 'Natural male voice across every language (Tarun in Telugu).'],
+                  ['own', 'My own voice', 'Aaria speaks back in your voice — recorded with your consent.'],
+                  ['system', 'Device voice', 'Free, works offline. Uses your phone’s built-in voice.'],
+                ].map(([v, t, d]) => (
+                  <label key={v} style={{ ...opt, borderColor: currentVoiceChoice === v ? P : 'rgba(0,0,0,.1)' }}>
+                    <input
+                      type="radio"
+                      name="voice_choice"
+                      checked={currentVoiceChoice === v}
+                      onChange={() => {
+                        if (v === 'own' && !prefs.consent && !allConsentsTicked) {
+                          setPrefs(p => ({ ...p, provider: 'own', voice_choice: 'own' }));
+                          setMsg('Please review and tick all three consent boxes below to enable your voice.');
+                          return;
+                        }
+                        if (v === 'aaria_f') {
+                          save({ voice_choice: 'aaria_f', provider: 'preset', preset_voice: 'aaria_f' });
+                        } else if (v === 'aaria_m') {
+                          save({ voice_choice: 'aaria_m', provider: 'preset', preset_voice: 'aaria_m' });
+                        } else if (v === 'system') {
+                          save({ voice_choice: 'system', provider: 'system' });
+                        } else if (v === 'own') {
+                          save({
+                            voice_choice: 'own',
+                            provider: 'own',
+                            consents: {
+                              consent_own_or_permitted: consentOwnership,
+                              consent_no_deception: consentNoDeception,
+                              consent_in_app_labeled: consentInAppAiLabel,
+                            },
+                          });
+                        }
+                      }}
+                    />
+                    <span><b style={{ fontSize: 14 }}>{t}</b><small style={{ display: 'block', color: '#64748b', fontSize: 12 }}>{d}</small></span>
+                  </label>
+                ))}
 
-          {prefs.provider === 'preset' && (
-            <select value={prefs.preset_voice || 'aaria_f'} onChange={e => save({ preset_voice: e.target.value })} style={{ ...inp, marginTop: 10 }}>
-              {PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          )}
-
-          {prefs.provider === 'own' && (
-            <div style={{ marginTop: 12, background: '#faf8ff', border: '1px solid #ece9ff', borderRadius: 14, padding: 14 }}>
-              {prefs.has_own_voice ? (
-                <div>
-                  <b style={{ fontSize: 14 }}>✓ Your voice is set up</b>
-                  <p style={hint}>Aaria talks back in your voice inside QuietKeep. You can remove it anytime.</p>
-                  
-                  {!prefs.consent && (
+                {currentVoiceChoice === 'own' && (
+                  <div style={{ marginTop: 12, background: '#faf8ff', border: '1px solid #ece9ff', borderRadius: 14, padding: 14 }}>
+                    {prefs.has_own_voice ? (
+                      <div>
+                        <b style={{ fontSize: 14 }}>✓ Your voice is set up</b>
+                        <p style={hint}>Aaria talks back in your voice inside QuietKeep. You can remove it anytime.</p>
+                        
+                        {!prefs.consent && (
                     <div style={{ margin: '12px 0', padding: 12, background: '#fff', border: '1px solid #e0e7ff', borderRadius: 10 }}>
                       <b style={{ fontSize: 13, color: '#1e293b' }}>Confirm permissions to enable this voice:</b>
                       <div style={{ display: 'flex', gap: 6, margin: '8px 0' }}>
@@ -709,6 +716,9 @@ export default function VoiceSettings() {
               )}
             </div>
           )}
+          </>
+          );
+        })()}
 
           <div style={{ marginTop: 12, display: 'flex', gap: 10 }}>
             {TONES.map(([v, l]) => (

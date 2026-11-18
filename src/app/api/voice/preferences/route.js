@@ -43,12 +43,21 @@ export async function GET(req) {
     consent_in_app_labeled: data?.consent_in_app_labeled,
   });
 
+  const voiceChoice = settings.voice_choice || (
+    settings.voice_provider === 'own'
+      ? 'own'
+      : (settings.voice_provider === 'system'
+          ? 'system'
+          : (settings.preset_voice === 'aaria_m' ? 'aaria_m' : 'aaria_f'))
+  );
+
   return NextResponse.json({
     voice_language: data?.voice_language || data?.preferred_language || 'en-IN',
     voice_tone: data?.voice_tone || 'warm',
     voice_input_enabled: data?.voice_input_enabled ?? true,
-    provider: settings.voice_provider || (data?.elevenlabs_voice_id && hasFullConsent ? 'own' : 'system'),
-    preset_voice: settings.preset_voice || null,
+    provider: settings.voice_provider || (data?.elevenlabs_voice_id && hasFullConsent ? 'own' : 'preset'),
+    preset_voice: settings.preset_voice || (voiceChoice === 'aaria_m' ? 'aaria_m' : 'aaria_f'),
+    voice_choice: voiceChoice,
     has_own_voice: !!data?.elevenlabs_voice_id,
     consent: hasFullConsent,
     consents: {
@@ -73,6 +82,26 @@ export async function POST(req) {
     .eq('user_id', user.id).maybeSingle();
 
   const settings = { ...(cur?.settings || {}) };
+
+  if (body.voice_choice) {
+    settings.voice_choice = body.voice_choice;
+    if (body.voice_choice === 'aaria_f') {
+      settings.voice_provider = 'preset';
+      settings.preset_voice = 'aaria_f';
+      body.provider = 'preset';
+      body.preset_voice = 'aaria_f';
+    } else if (body.voice_choice === 'aaria_m') {
+      settings.voice_provider = 'preset';
+      settings.preset_voice = 'aaria_m';
+      body.provider = 'preset';
+      body.preset_voice = 'aaria_m';
+    } else if (body.voice_choice === 'system') {
+      settings.voice_provider = 'system';
+      body.provider = 'system';
+    } else if (body.voice_choice === 'own') {
+      body.provider = 'own';
+    }
+  }
 
   const consentsInput = body.consents || (
     ('consent_own_or_permitted' in body || 'consent_no_deception' in body || 'consent_in_app_labeled' in body)

@@ -24,6 +24,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAaria } from '@/lib/context/aaria';
 import AariaFace from '@/components/AariaFace';
+import AariaLiveFace from '@/components/avatar/AariaLiveFace';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useFaceOn } from '@/lib/avatar/useAvatar';
 
 export default function AariaDock() {
@@ -37,6 +40,8 @@ export default function AariaDock() {
   const [typed, setTyped] = useState('');
   // The animated face: only when the person switched it on (off by default).
   const faceOn = useFaceOn();
+  // The faces page already shows the chosen face large; do not draw it twice there.
+  const onStagePage = usePathname() === '/aaria-stage';
   const inputRef = useRef(null);
   const pressTimerRef = useRef(null);
   const isLongPressRef = useRef(false);
@@ -174,6 +179,17 @@ export default function AariaDock() {
               }}
             >×</button>
           </div>
+
+          {/* The chosen face, alive, while the panel is open - on every screen,
+              including keep-listening mode. Only with the switch on. */}
+          {faceOn && !onStagePage && (
+            <>
+              <AariaLiveFace status={status} height={190} />
+              <p style={{ margin: '-4px 0 8px', fontSize: 11, textAlign: 'right' }}>
+                <Link href="/aaria-stage" style={{ color: 'var(--text-subtle)' }} onClick={() => { stopAll(); setOpen(false); }}>Change face</Link>
+              </p>
+            </>
+          )}
 
           <p style={{
             margin: '0 0 10px', fontSize: 12.5, color: 'var(--text-subtle)', lineHeight: 1.5,

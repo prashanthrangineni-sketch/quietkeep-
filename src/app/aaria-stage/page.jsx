@@ -25,14 +25,12 @@ import { speak } from '@/components/VoiceTalkback';
 import AariaFace, { AariaFaceToggle } from '@/components/AariaFace';
 import { onSpeechSignal } from '@/lib/avatar/speech-signal';
 import { usePose, useMouth } from '@/lib/avatar/useAvatar';
+import { announceFaceChoice, ANIME_MODELS } from '@/lib/avatar/face-pref';
 
 const VrmStage = dynamic(() => import('@/components/avatar/VrmStage'), { ssr: false });
 const HumanStage = dynamic(() => import('@/components/avatar/HumanStage'), { ssr: false });
 
-const ANIME = {
-  woman: '/avatars/anime-sample/VRM1_Constraint_Twist_Sample.vrm',
-  man: '/avatars/anime-man-sample/Sakurada_Fumiriya.vrm',
-};
+const ANIME = ANIME_MODELS;
 
 const LINES = [
   { lang: 'te-IN', label: 'తెలుగు', text: 'నమస్కారం, నేను ఆరియా. మీకు ఏం సహాయం చేయాలి?' },
@@ -92,7 +90,7 @@ export default function AariaStagePage() {
       setLook(localStorage.getItem('qk_aaria_stage_look2') || 'woman-1');
     } catch { }
   }, []);
-  const remember = (k, v) => { setFps(null); try { localStorage.setItem(k, v); } catch { } };
+  const remember = (k, v) => { setFps(null); try { localStorage.setItem(k, v); } catch { } announceFaceChoice(); };
   const pick = (id) => { setFace(id); remember('qk_aaria_stage_face', id); };
   const pickWho = (id) => { setWho(id); remember('qk_aaria_stage_who', id); };
   const pickLook = (id) => { setLook(id); remember('qk_aaria_stage_look2', id); };
@@ -170,7 +168,8 @@ export default function AariaStagePage() {
           ))}
         </div>
         <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.5 }}>
-          Or press and hold the Aaria button to keep her listening, and ask for something real. The face shows “done” only after
+          The face you pick here is the one Aaria wears in her panel on every screen, once the switch below is on.
+          Press and hold the Aaria button to keep her listening, and ask for something real. The face shows “done” only after
           the action is confirmed, never just because Aaria understood.
         </p>
       </div>

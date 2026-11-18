@@ -45,7 +45,7 @@ const SHAPES = {
   eyesUp: [P + 'AU_63_EyesUp'],
 };
 
-export default function HumanStage({ status = 'idle', who = 'woman-1', height = 360, onFps }) {
+export default function HumanStage({ status = 'idle', who = 'woman-1', height = 360, onFps, onState }) {
   const character = HUMANS[who] || HUMANS['woman-1'];
   const holder = useRef(null);
   const pose = usePose(status);
@@ -54,6 +54,7 @@ export default function HumanStage({ status = 'idle', who = 'woman-1', height = 
   const { shapes } = useMouth();
   const [state, setState] = useState('loading');
   const [detail, setDetail] = useState('');
+  useEffect(() => { onState?.(state); }, [state, onState]);
 
   useEffect(() => {
     let alive = true, raf = 0, renderer = null, root = null, onResize = null;

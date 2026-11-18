@@ -51,6 +51,16 @@ const TASKS = [
 eq('there are 20 scripted tasks, 5 of them forced failures',
   [TASKS.length, TASKS.filter(([n]) => n.startsWith('FAIL')).length], [20, 5]);
 for (const [name, run, want] of TASKS) eq(`task: ${name}`, run(), want);
+eq('ignored background talk is never an outcome, even if a saved row came back',
+  outcomeFromCapture({ ignored: true, keep: { id: 'k9' }, step_record: { result: 'success' } }, true).status, 'none');
+{
+  // Keep-listening: a silent ignored turn goes thinking -> listening with no speech. No "done".
+  let t = 0; const m = createPoseMachine({ now: () => t });
+  m.setStatus('listening'); m.setStatus('thinking');
+  m.setOutcome(outcomeFromCapture({ ignored: true, keep: { id: 'k9' } }, true));
+  m.setStatus('idle'); m.setStatus('listening');
+  eq('a silent ignored turn shows no done', m.pose(), 'listening');
+}
 eq('phone action that threw counts as failed', outcomeFromClientAction(null).status, 'failed');
 
 // Run all 20 through the pose machine: "done" must appear exactly for the
@@ -175,6 +185,8 @@ _resetForTests();
   const vrm = read('../src/components/avatar/VrmStage.jsx');
   eq('3D "happy" comes from the pose machine only', vrm.includes("happy: p === 'done' ? 1 : 0,"), true);
   const aaria = read('../src/lib/context/aaria.jsx');
+  eq('an ignored turn leaves before any outcome is reported',
+    aaria.indexOf('if (json.ignored) {') > 0 && aaria.indexOf('if (json.ignored) {') < aaria.indexOf('reportOutcome(outcomeFromCapture(json, true));'), true);
   eq('outcome is read from the response, not the reply text', aaria.includes('reportOutcome(outcomeFromCapture(json, true));'), true);
   eq('phone action reports only after it ran', aaria.includes('reportOutcome(outcomeFromClientAction(done));'), true);
   eq('microphone hand-over estimate unchanged', aaria.includes("const est = Math.min(20000, 1200 + String(text || '').length * 75);"), true);

@@ -159,6 +159,20 @@ _resetForTests();
   const dock = read('../src/components/AariaDock.jsx');
   eq('dock draws the face only when switched on', dock.includes('{faceOn\n          ? <AariaFace status={status} size={56} />'), true);
   eq('dock keeps the plain microphone button otherwise', dock.includes("(listening ? '⏹' : thinking ? '…' : speaking ? '🔊' : '🎙️')"), true);
+  eq('dock shows the chosen live face only when switched on', dock.includes('{faceOn && !onStagePage && (\n            <>\n              <AariaLiveFace status={status} height={190} />'), true);
+  const live = read('../src/components/avatar/AariaLiveFace.jsx');
+  eq('live face draws anime, realistic or 2D from the stored choice', ["style === 'anime3d' && <VrmStage", "style === 'realistic' && <HumanStage", '<AariaFace status={status}'].every((x) => live.includes(x)), true);
+  eq('live face falls back to 2D when 3D fails or is too slow', live.includes("if (s === 'failed') setFallback(true)") && live.includes('f.medianFps < 12') && live.includes("const style = fallback ? '2d' : choice.style;"), true);
+  eq('live face is driven by the dock status, so keep-listening moves it', live.includes('status={status}') && dock.includes('<AariaLiveFace status={status}'), true);
+  {
+    const { normaliseChosenFace, ANIME_MODELS } = await import('../src/lib/avatar/face-pref.js');
+    eq('no stored choice falls back to the 2D face', normaliseChosenFace(null, null, null), { style: '2d', who: 'woman', look: 'woman-1' });
+    eq('a stored realistic man keeps his look', normaliseChosenFace('realistic', 'man', 'man-3'), { style: 'realistic', who: 'man', look: 'man-3' });
+    eq('a look from the other group is corrected', normaliseChosenFace('realistic', 'man', 'woman-2'), { style: 'realistic', who: 'man', look: 'man-1' });
+    eq('nonsense falls back safely', normaliseChosenFace('<script>', 'x', 'y'), { style: '2d', who: 'woman', look: 'woman-1' });
+    const { existsSync } = await import('node:fs');
+    eq('both anime files the dock can load are in the app', Object.values(ANIME_MODELS).every((f) => existsSync(new URL('../public' + f, import.meta.url))), true);
+  }
   const face = read('../src/components/AariaFace.jsx');
   eq('2D face takes "done" from the pose machine only', face.includes("const happy = pose === 'done';") && !/tts_response|useAaria\(/.test(face), true);
   const stage = read('../src/app/aaria-stage/page.jsx');

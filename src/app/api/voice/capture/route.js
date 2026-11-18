@@ -17,6 +17,7 @@ import { parseIntent, stripWakePhrase }    from '@/lib/intent-parser'
 import { collapseRepeats } from '@/lib/transcript-clean'
 import { impossibleSequences } from '@/lib/script-sanity'
 import { isFragment, measuredSpeechMs, caughtPartReply } from '@/lib/fragment-guard'
+import { isFillerPhrase, countWords, isActionOrQueryIntent } from '@/lib/conversation-noise-guard'
 import { cleanTurnTiming } from '@/lib/fillers'
 import { detectSpokenLanguage } from '@/lib/spoken-language'
 import { aariaAssist }   from '@/lib/aaria-act'
@@ -123,7 +124,9 @@ export async function POST(request) {
     // for attendance / stock / payroll, never as workspace_id: that would
     // switch on the older ledger path below for every money sentence.
     business_workspace_id = null,
+    auto_turn     = false,
   } = body
+  const autoTurn = auto_turn === true || body?.auto_turn === true
 
   // Which business attendance / stock / payroll act in. A business capture
   // (workspace_id) or the dock on a business screen. Never trusted alone:
@@ -292,6 +295,23 @@ export async function POST(request) {
   // (see src/lib/fragment-guard.js). Placed before the idempotency key and
   // every write, like the noise check above.
   if (isFragment({ listen: listenEvidence, answering: body.answering === true, text })) {
+    if (autoTurn) {
+      supabase.from('audit_log').insert({
+        user_id: user.id,
+        action: 'voice.auto_turn_ignored',
+        service: 'voice_capture',
+        details: { length: text.length },
+      }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) })
+
+      return NextResponse.json({
+        ignored: 'auto_turn_noise',
+        tts_response: '',
+        assistant: {
+          language: spokenLang,
+          reply: '',
+        },
+      }, { status: 200 })
+    }
     supabase.from('audit_log').insert({
       user_id: user.id,
       action:  'transcript_rejected_as_fragment',
@@ -826,6 +846,59 @@ export async function POST(request) {
       ok: true, not_saved: true, reason: 'stray_confirmation', safety: plan.safety,
       tts_response: plan.tts,
     }, { status: 200 })
+  }
+
+  // ── CARD T23: NOISE & FILLER GUARD (WHEN NOT ANSWERING A QUESTION) ───────
+  // 1. On auto turns: reject if < 3 words or filler-only.
+  if (autoTurn) {
+    if (countWords(text) < 3 || isFillerPhrase(text)) {
+      supabase.from('audit_log').insert({
+        user_id: user.id,
+        action: 'voice.auto_turn_ignored',
+        service: 'voice_capture',
+        details: { length: text.length },
+      }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) })
+
+      return NextResponse.json({
+        ignored: 'auto_turn_noise',
+        tts_response: '',
+        assistant: {
+          language: spokenLang,
+          reply: '',
+        },
+      }, { status: 200 })
+    }
+  }
+
+  // 2. Outside auto turns (a tap): filler-only phrases are never saved as keeps;
+  // Aaria asks to say it again (existing fragment reply).
+  if (!autoTurn && isFillerPhrase(text)) {
+    supabase.from('audit_log').insert({
+      user_id: user.id,
+      action: 'transcript_rejected_as_fragment',
+      service: 'voice_capture',
+      details: {
+        filler_rejected: true,
+        sample: text.slice(0, 120),
+        source,
+        language,
+      },
+    }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) })
+
+    const spokenLang = detectSpokenLanguage(text, language);
+    const fragmentReply = caughtPartReply(spokenLang);
+    return NextResponse.json({
+      ok: false,
+      not_saved: true,
+      reason: 'speech_fragment',
+      filler_rejected: true,
+      speech_ms: measuredSpeechMs(listenEvidence),
+      tts_response: fragmentReply,
+      assistant: {
+        language: spokenLang,
+        reply: fragmentReply,
+      },
+    })
   }
 
   let parsed = parseIntent(text)
@@ -1514,7 +1587,34 @@ export async function POST(request) {
     }
   }
 
-    const { data: keep, error: insertError } = await supabase
+    // ── CARD T23: AUTO TURN ACTION/QUERY INTENT GATE ─────────────────────────
+  if (autoTurn) {
+    const finalIntentType = (llmAssist && llmAssist.confidence >= 0.55 && llmAssist.intent) || (parsed.type !== 'unknown' ? parsed.type : 'note');
+    if (!isActionOrQueryIntent({
+      intentType: finalIntentType,
+      text,
+      entities: llmAssist?.entities || parsed?.entities || {},
+      parsed,
+    })) {
+      supabase.from('audit_log').insert({
+        user_id: user.id,
+        action: 'voice.auto_turn_ignored',
+        service: 'voice_capture',
+        details: { length: text.length },
+      }).then(({ error }) => { if (error) console.error('[capture] audit:', error.message) });
+
+      return NextResponse.json({
+        ignored: 'auto_turn_noise',
+        tts_response: '',
+        assistant: {
+          language: spokenLang,
+          reply: '',
+        },
+      }, { status: 200 });
+    }
+  }
+
+  const { data: keep, error: insertError } = await supabase
     .from('keeps')
     .insert({
       user_id:        user.id,

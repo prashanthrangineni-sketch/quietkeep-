@@ -40,6 +40,10 @@ export function outcomeFromCapture(json, ok = true) {
   if (!ok || !json || typeof json !== 'object') return { status: 'failed', reason: 'request_failed' };
   if (json.error) return { status: 'failed', reason: 'server_error' };
 
+  // Background talk Aaria chose to ignore in keep-listening mode: nothing was
+  // done, and nothing is said. Never a "done".
+  if (json.ignored) return { status: 'none', reason: 'ignored_background_talk' };
+
   // Waiting on the person: none of these is an action that has happened.
   if (json.needs_unlock) return { status: 'pending', reason: 'needs_unlock' };
   if (json.needs_biometric) return { status: 'pending', reason: 'needs_fingerprint' };

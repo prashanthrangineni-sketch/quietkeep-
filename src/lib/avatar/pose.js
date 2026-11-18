@@ -7,7 +7,8 @@
 //   oops                                     - a failed or refused action
 //
 // "done" and "oops" are short flashes shown once Aaria has stopped talking,
-// so the face never celebrates over the top of its own sentence.
+// so the face never celebrates over the top of its own sentence. In
+// keep-listening mode they are shown while the microphone reopens.
 
 export const POSES = ['idle', 'listening', 'thinking', 'speaking', 'done', 'oops'];
 export const FLASH_MS = 2200;
@@ -28,9 +29,14 @@ export function createPoseMachine({ now = () => Date.now() } = {}) {
     setStatus(next) {
       const prev = status;
       status = POSES.includes(next) && next !== 'done' && next !== 'oops' ? next : 'idle';
-      // A new turn wipes any old celebration: it belongs to the last request.
-      if (status === 'listening') { queued = null; flash = null; }
-      if (prev !== 'idle' && status === 'idle') startFlash();
+      // Speech has finished and an outcome is waiting: show it now. In
+      // keep-listening mode the microphone reopens straight after the reply,
+      // with no idle moment in between - the outcome must still be seen.
+      const replyOver = (prev === 'speaking' || prev === 'thinking') && (status === 'idle' || status === 'listening');
+      if (replyOver) startFlash();
+      // A turn started from rest wipes anything still queued: it belongs to
+      // the last request. (A flash already on screen simply runs out.)
+      else if (status === 'listening') queued = null;
     },
     /** An outcome arrived (src/lib/avatar/outcome.js). */
     setOutcome(outcome) {
@@ -43,8 +49,10 @@ export function createPoseMachine({ now = () => Date.now() } = {}) {
     /** The pose to draw right now. */
     pose() {
       if (flash && now() >= flash.until) flash = null;
-      if (status !== 'idle') return status;
-      return flash ? flash.pose : 'idle';
+      // The flash is drawn over rest and over listening, never over her own
+      // thinking or speaking.
+      if (flash && (status === 'idle' || status === 'listening')) return flash.pose;
+      return status;
     },
   };
 }

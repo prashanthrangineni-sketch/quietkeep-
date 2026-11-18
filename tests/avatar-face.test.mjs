@@ -51,6 +51,16 @@ const TASKS = [
 eq('there are 20 scripted tasks, 5 of them forced failures',
   [TASKS.length, TASKS.filter(([n]) => n.startsWith('FAIL')).length], [20, 5]);
 for (const [name, run, want] of TASKS) eq(`task: ${name}`, run(), want);
+eq('ignored background talk is never an outcome, even if a saved row came back',
+  outcomeFromCapture({ ignored: true, keep: { id: 'k9' }, step_record: { result: 'success' } }, true).status, 'none');
+{
+  // Keep-listening: a silent ignored turn goes thinking -> listening with no speech. No "done".
+  let t = 0; const m = createPoseMachine({ now: () => t });
+  m.setStatus('listening'); m.setStatus('thinking');
+  m.setOutcome(outcomeFromCapture({ ignored: true, keep: { id: 'k9' } }, true));
+  m.setStatus('idle'); m.setStatus('listening');
+  eq('a silent ignored turn shows no done', m.pose(), 'listening');
+}
 eq('phone action that threw counts as failed', outcomeFromClientAction(null).status, 'failed');
 
 // Run all 20 through the pose machine: "done" must appear exactly for the
@@ -88,8 +98,24 @@ eq('phone action that threw counts as failed', outcomeFromClientAction(null).sta
 
   m.setStatus('speaking'); m.setOutcome({ status: 'completed' });
   eq('never celebrates over her own sentence', m.pose(), 'speaking');
+  m.setStatus('idle'); eq('shown once she stops', m.pose(), 'done');
+  t += FLASH_MS + 1; eq('and it runs out', m.pose(), 'idle');
+
+  // Keep-listening mode: the microphone reopens straight after the reply.
+  m.setStatus('listening'); m.setStatus('thinking'); m.setOutcome({ status: 'completed' }); m.setStatus('speaking');
   m.setStatus('listening');
-  eq('a new turn wipes the old celebration', m.pose(), 'listening');
+  eq('keep-listening: done is shown as the microphone reopens', m.pose(), 'done');
+  t += FLASH_MS + 1; eq('keep-listening: then the face is listening', m.pose(), 'listening');
+  m.setStatus('thinking'); m.setOutcome({ status: 'failed' }); m.setStatus('speaking'); m.setStatus('listening');
+  eq('keep-listening: a failure shows oops, never done', m.pose(), 'oops');
+  t += FLASH_MS + 1;
+  m.setStatus('thinking'); m.setOutcome({ status: 'pending' }); m.setStatus('speaking'); m.setStatus('listening');
+  eq('keep-listening: a question back shows no done', m.pose(), 'listening');
+  m.setStatus('idle');
+
+  // An outcome left queued is dropped when a fresh turn starts from rest.
+  m.setStatus('thinking'); m.setOutcome({ status: 'completed' }); m.setStatus('idle'); t += FLASH_MS + 1;
+  m.setStatus('listening'); eq('a turn started from rest shows no old celebration', m.pose(), 'listening');
   m.setStatus('idle'); eq('nothing left over after that turn', m.pose(), 'idle');
 
   m.setStatus('thinking'); m.setOutcome({ status: 'completed' }); m.setOutcome({ status: 'failed' });
@@ -139,19 +165,28 @@ _resetForTests();
   eq('3D engine is loaded only when the stage asks for it', stage.includes("dynamic(() => import('@/components/avatar/VrmStage'), { ssr: false })"), true);
   eq('realistic people are labelled as game-style characters, not real people',
     stage.includes('like game characters; not real people'), true);
-  eq('the person can pick a woman or a man, and Indian or Western', ["{ id: 'woman', label: 'Woman' }", "{ id: 'man', label: 'Man' }", "{ id: 'indian', label: 'Indian' }", "{ id: 'western', label: 'Western' }"].every((x) => stage.includes(x)), true);
-  eq('Indian realistic says "Coming next" and "not built yet" in words', stage.includes('Coming next') && stage.includes('It is not built yet'), true);
-  eq('no Western character is ever shown under the Indian choice', stage.includes("face === 'realistic' && look === 'western' && <HumanStage"), true);
+  const human = read('../src/components/avatar/HumanStage.jsx');
+  eq('the person can pick a woman or a man', ["{ id: 'woman', label: 'Woman' }", "{ id: 'man', label: 'Man' }"].every((x) => stage.includes(x)), true);
+  eq('realistic looks are numbered, never labelled by origin', /label: '(Indian|Western|Arab|Asian|African)'/.test(stage), false);
+  eq('Indian in a saree / kurta says "Coming next" and "not built yet" in words', stage.includes('Coming next: an Indian woman in a saree and an Indian man in a kurta') && stage.includes('They are not built yet'), true);
+  {
+    const { existsSync } = await import('node:fs');
+    const ids = [...human.matchAll(/dir: '([^']+)', model: '([^']+)', tex: '([^']+)'/g)];
+    const missing = ids.flatMap(([, dir, model, tex]) => [dir + model, `${dir}${tex}_head_color.jpg`, `${dir}${tex}_body_color.jpg`])
+      .filter((f) => !existsSync(new URL('../public' + f, import.meta.url)));
+    eq('every realistic look has its model and colour pictures in the app', [ids.length, missing], [6, []]);
+  }
   const man = read('../public/avatars/anime-man-sample/LICENCE.md');
   eq('the anime man has his licence beside him', man.includes('CC0') && man.includes('d8fb05f33e377df028cb6b9d58c441ce68326c41fa23f6c735d40c65ae3dc710'), true);
-  const human = read('../src/components/avatar/HumanStage.jsx');
   eq('realistic smile comes from the pose machine only', human.includes("smile: p === 'done' ? 0.9 : 0,"), true);
   const rb = read('../public/avatars/realistic-rocketbox/LICENCE.md');
-  eq('the realistic character has its licence beside it', rb.includes('MIT') && rb.includes('0236707bb4a42b1a56ca221ad45c4254a0b69cbc4d647b399de0d541102807a4') && rb.includes('35df2eea5a5eb16913a5367ac419cac47bbdea2862b2be308c9f98f2c4570301')
+  eq('the realistic character has its licence beside it', rb.includes('MIT') && rb.includes('0236707bb4a42b1a56ca221ad45c4254a0b69cbc4d647b399de0d541102807a4') && rb.includes('35df2eea5a5eb16913a5367ac419cac47bbdea2862b2be308c9f98f2c4570301') && rb.includes('7fad7a688357a69f8083859a7c5d05c56a98d40364d7fe80c04eca19a14ced3c')
     && read('../public/avatars/realistic-rocketbox/ROCKETBOX-MIT-LICENSE.md').includes('Copyright (c) 2020 Microsoft'), true);
   const vrm = read('../src/components/avatar/VrmStage.jsx');
   eq('3D "happy" comes from the pose machine only', vrm.includes("happy: p === 'done' ? 1 : 0,"), true);
   const aaria = read('../src/lib/context/aaria.jsx');
+  eq('an ignored turn leaves before any outcome is reported',
+    aaria.indexOf('if (json.ignored) {') > 0 && aaria.indexOf('if (json.ignored) {') < aaria.indexOf('reportOutcome(outcomeFromCapture(json, true));'), true);
   eq('outcome is read from the response, not the reply text', aaria.includes('reportOutcome(outcomeFromCapture(json, true));'), true);
   eq('phone action reports only after it ran', aaria.includes('reportOutcome(outcomeFromClientAction(done));'), true);
   eq('microphone hand-over estimate unchanged', aaria.includes("const est = Math.min(20000, 1200 + String(text || '').length * 75);"), true);

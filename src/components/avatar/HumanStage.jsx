@@ -2,7 +2,7 @@
 // src/components/avatar/HumanStage.jsx
 // A realistic-style 3D person in the page. (AARIA 4.6, demo)
 //
-// The characters are "Female_Adult_01" and "Male_Adult_01" from the Microsoft
+// The characters are six everyday adults from the Microsoft
 // Rocketbox avatar library (MIT licence - recorded beside the files in
 // public/avatars/realistic-rocketbox/LICENCE.md). Each was converted once from
 // FBX to GLB; nothing else about them was changed.
@@ -20,14 +20,19 @@ import { usePose, useMouth } from '@/lib/avatar/useAvatar';
 // The characters this stage can draw. Each folder has its licence record in
 // public/avatars/realistic-rocketbox/LICENCE.md.
 export const HUMANS = {
-  'western-woman': { dir: '/avatars/realistic-rocketbox/female-adult-01/', model: 'Female_Adult_01_facial.glb', tex: 'f001' },
-  'western-man': { dir: '/avatars/realistic-rocketbox/male-adult-01/', model: 'Male_Adult_01_facial.glb', tex: 'm002' },
+  'woman-1': { group: 'woman', dir: '/avatars/realistic-rocketbox/female-adult-01/', model: 'Female_Adult_01_facial.glb', tex: 'f001' },
+  'woman-2': { group: 'woman', dir: '/avatars/realistic-rocketbox/female-adult-15/', model: 'Female_Adult_15_facial.glb', tex: 'f018' },
+  'man-1': { group: 'man', dir: '/avatars/realistic-rocketbox/male-adult-01/', model: 'Male_Adult_01_facial.glb', tex: 'm002' },
+  'man-2': { group: 'man', dir: '/avatars/realistic-rocketbox/male-adult-07/', model: 'Male_Adult_07_facial.glb', tex: 'm013' },
+  'man-3': { group: 'man', dir: '/avatars/realistic-rocketbox/male-adult-08/', model: 'Male_Adult_08_facial.glb', tex: 'm014' },
+  'man-4': { group: 'man', dir: '/avatars/realistic-rocketbox/male-adult-21/', model: 'Male_Adult_21_facial.glb', tex: 'm251' },
 };
 // Colour pictures by the last part of the material's name (f001_body, m002_head ...).
 const TEXTURE_FOR = {
   body: { file: (t) => `${t}_body_color.jpg` },
   head: { file: (t) => `${t}_head_color.jpg` },
   opacity: { file: (t) => `${t}_opacity_color.png`, cutout: true },   // hair and lashes
+  keffiyeh: { file: (t) => `${t}_keffiyeh_color.jpg`, twoSided: true },   // head cloth
 };
 // The model's own face shapes (its names), driven from our five vowels.
 const P = 'blendShape1.';
@@ -40,8 +45,8 @@ const SHAPES = {
   eyesUp: [P + 'AU_63_EyesUp'],
 };
 
-export default function HumanStage({ status = 'idle', who = 'western-woman', height = 360, onFps }) {
-  const character = HUMANS[who] || HUMANS['western-woman'];
+export default function HumanStage({ status = 'idle', who = 'woman-1', height = 360, onFps }) {
+  const character = HUMANS[who] || HUMANS['woman-1'];
   const holder = useRef(null);
   const pose = usePose(status);
   const poseRef = useRef(pose);
@@ -91,6 +96,7 @@ export default function HumanStage({ status = 'idle', who = 'western-woman', hei
             const m = o.material;
             m.map = tex; m.color?.set(0xffffff); m.metalness = 0; m.roughness = 0.78;
             if (spec.cutout) { m.transparent = false; m.alphaTest = 0.4; m.side = THREE.DoubleSide; }
+            if (spec.twoSided) m.side = THREE.DoubleSide;
             m.needsUpdate = true;
           }));
         });

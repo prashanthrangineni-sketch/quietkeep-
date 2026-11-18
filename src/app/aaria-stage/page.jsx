@@ -10,7 +10,9 @@
 //   * 2D face         - Pranix's own drawing, mouth from the reply audio.
 //   * Anime 3D        - a SAMPLE character from pixiv's three-vrm project, not
 //                       Aaria's own look. Its licence is beside the file.
-//   * Realistic human - not ready. Shown as "coming next", in those words.
+//   * Realistic human - a SAMPLE 3D person from Microsoft's Rocketbox library
+//                       (MIT). It looks like a game character, not a filmed
+//                       person, and the page says so.
 //   * The frames-per-second line is a live measurement on this device.
 
 import { useCallback, useEffect, useState } from 'react';
@@ -22,6 +24,7 @@ import { onSpeechSignal } from '@/lib/avatar/speech-signal';
 import { usePose, useMouth } from '@/lib/avatar/useAvatar';
 
 const VrmStage = dynamic(() => import('@/components/avatar/VrmStage'), { ssr: false });
+const HumanStage = dynamic(() => import('@/components/avatar/HumanStage'), { ssr: false });
 
 const ANIME_MODEL = '/avatars/anime-sample/VRM1_Constraint_Twist_Sample.vrm';
 
@@ -89,21 +92,13 @@ export default function AariaStagePage() {
       <div style={{ ...card, minHeight: 380, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {face === '2d' && <AariaFace status={status} size={220} />}
         {face === 'anime3d' && <VrmStage status={status} modelUrl={ANIME_MODEL} height={360} onFps={onFps} />}
-        {face === 'realistic' && (
-          <div style={{ textAlign: 'center', padding: '24px 8px' }}>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Coming next</div>
-            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              The realistic human is not ready to show. It will be a 3D person drawn on the phone,
-              like a good game character, using a character whose licence allows it. It is not built yet.
-            </p>
-          </div>
-        )}
+        {face === 'realistic' && <HumanStage status={status} height={360} onFps={onFps} />}
       </div>
 
       <p data-testid="stage-readout" style={{ margin: '10px 2px 16px', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
         State: <strong>{pose}</strong>
         {' · '}Mouth: {source === 'audio' ? 'following the reply audio' : source === 'cycle' ? 'simple open-close (this voice cannot be heard by the page)' : 'at rest'}
-        {face === 'anime3d' && (fps
+        {face !== '2d' && (fps
           ? <>{' · '}{fps.medianFps} frames per second on this device (slowest frame {fps.worstFrameMs} ms)</>
           : <>{' · '}measuring frames per second…</>)}
       </p>
@@ -130,6 +125,8 @@ export default function AariaStagePage() {
       <p style={{ margin: '14px 2px 0', fontSize: 11.5, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
         2D face: drawn by Pranix AI Labs. Anime 3D: “VRM1_Constraint_Twist_Sample”, © 2022 pixiv Inc.,
         a sample character under the VRM Public License 1.0 — a stand-in, not Aaria’s final look.
+        Realistic human: “Female_Adult_01” from the Microsoft Rocketbox avatar library, © 2020 Microsoft, MIT licence —
+        a 3D person drawn on this device, like a game character; not a real person and not Aaria’s final look.
         3D engine: three.js and three-vrm (MIT).
       </p>
     </main>

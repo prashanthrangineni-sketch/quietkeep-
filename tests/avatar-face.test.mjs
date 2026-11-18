@@ -137,7 +137,13 @@ _resetForTests();
   eq('2D face takes "done" from the pose machine only', face.includes("const happy = pose === 'done';") && !/tts_response|useAaria\(/.test(face), true);
   const stage = read('../src/app/aaria-stage/page.jsx');
   eq('3D engine is loaded only when the stage asks for it', stage.includes("dynamic(() => import('@/components/avatar/VrmStage'), { ssr: false })"), true);
-  eq('realistic human says "Coming next" in words', stage.includes('Coming next') && stage.includes('It is not built yet.'), true);
+  eq('realistic human is labelled as a sample game-style character, not a real person',
+    stage.includes('like a game character; not a real person and not Aaria’s final look'), true);
+  const human = read('../src/components/avatar/HumanStage.jsx');
+  eq('realistic smile comes from the pose machine only', human.includes("smile: p === 'done' ? 0.9 : 0,"), true);
+  const rb = read('../public/avatars/realistic-rocketbox/LICENCE.md');
+  eq('the realistic character has its licence beside it', rb.includes('MIT') && rb.includes('0236707bb4a42b1a56ca221ad45c4254a0b69cbc4d647b399de0d541102807a4')
+    && read('../public/avatars/realistic-rocketbox/ROCKETBOX-MIT-LICENSE.md').includes('Copyright (c) 2020 Microsoft'), true);
   const vrm = read('../src/components/avatar/VrmStage.jsx');
   eq('3D "happy" comes from the pose machine only', vrm.includes("happy: p === 'done' ? 1 : 0,"), true);
   const aaria = read('../src/lib/context/aaria.jsx');

@@ -23,6 +23,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAaria } from '@/lib/context/aaria';
+import AariaFace from '@/components/AariaFace';
+import { useFaceOn } from '@/lib/avatar/useAvatar';
 
 export default function AariaDock() {
   const {
@@ -32,6 +34,8 @@ export default function AariaDock() {
   } = useAaria();
 
   const [typed, setTyped] = useState('');
+  // The animated face: only when the person switched it on (off by default).
+  const faceOn = useFaceOn();
   const inputRef = useRef(null);
 
   // Focus the box when the panel opens by keyboard, not when it opens by voice —
@@ -268,7 +272,7 @@ export default function AariaDock() {
           right: 16,
           bottom: 'calc(86px + env(safe-area-inset-bottom, 0px))',
           width: 56, height: 56, borderRadius: '50%', border: 'none',
-          background: orbColour,
+          background: faceOn ? 'transparent' : orbColour, padding: 0,
           // #fff on a filled accent circle — same reasoning as the Send button.
           color: '#fff',
           fontSize: 23, cursor: 'pointer', zIndex: 9999,
@@ -278,7 +282,9 @@ export default function AariaDock() {
           transition: 'background .2s',
         }}
       >
-        {listening ? '⏹' : thinking ? '…' : speaking ? '🔊' : '🎙️'}
+        {faceOn
+          ? <AariaFace status={status} size={56} />
+          : (listening ? '⏹' : thinking ? '…' : speaking ? '🔊' : '🎙️')}
 
         {/* Aaria noticed something. A dot, not a sound — she tells you when you
             open her, never on her own. See rule 1 in src/lib/aaria-watch.js. */}

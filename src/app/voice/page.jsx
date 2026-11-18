@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/context/auth';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import VoiceTalkbackToggle from '@/components/VoiceTalkback';
+import { AariaFaceToggle } from '@/components/AariaFace';
 
 function fmt(ts) {
   if (!ts) return '—';
@@ -101,6 +102,8 @@ export default function VoicePage() {
         {talkbackEnabled && (
           <VoiceTalkbackToggle />
         )}
+        <div style={{ height: 10 }} />
+        <AariaFaceToggle />
       </div>
 
       {/* Stats strip */}

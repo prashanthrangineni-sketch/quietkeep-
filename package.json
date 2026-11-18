@@ -17,6 +17,7 @@
     "@capacitor/core": "^6.0.0",
     "@capacitor/preferences": "^6.0.4",
     "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
+    "@pixiv/three-vrm": "3.5.5",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.1",
     "framer-motion": "^11.0.0",
@@ -25,7 +26,8 @@
     "razorpay": "^2.9.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.4",
+    "three": "0.187.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.0.0",

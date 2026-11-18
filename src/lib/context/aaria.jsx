@@ -56,6 +56,7 @@ import { getActiveRun, recordStep } from '@/lib/step-log';
 import { getDriveSpeedKmh } from '@/lib/drive-speed'; // DRV-02 speed gate
 import { understand as sharedBrainUnderstand, decide as sharedBrainDecide } from '@/lib/brain'; // AG-I3 shared brain v0
 import { createSpeakingTracker } from '@/lib/avatar/speech-signal'; // 4.1 real speaking state
+import { reportOutcome, outcomeFromCapture, outcomeFromClientAction } from '@/lib/avatar/outcome'; // 4.3 confirmed outcomes for the face
 
 // AG-I3: Shared brain v0 flag gate (default off: existing path unchanged byte-for-byte in behaviour)
 const USE_SHARED_BRAIN = process.env.NEXT_PUBLIC_SHARED_BRAIN === '1';
@@ -562,6 +563,7 @@ export function AariaProvider({ children }) {
       if (!res.ok || !json) {
         setError('I could not save that. It is still in the box — try again.');
         setStatus('idle');
+        reportOutcome(outcomeFromCapture(null, false));
         return;
       }
       let spoken = json.tts_response || json.assistant?.reply || 'Saved.';
@@ -608,6 +610,9 @@ export function AariaProvider({ children }) {
       }
       const replyLang = json.assistant?.language || voiceLang;
       say(spoken, { lang: replyLang });
+      // For the face only: what really happened, read from the server's own
+      // record - never from the words of the reply (src/lib/avatar/outcome.js).
+      reportOutcome(outcomeFromCapture(json, true));
       setTranscript('');
       setChoices(Array.isArray(json.choices) && json.choices.length ? json.choices : null);
 
@@ -705,7 +710,8 @@ export function AariaProvider({ children }) {
               contact_phone: exec.contact_phone || null, contact_name: exec.contact_name || null,
             });
             console.log('[Aaria] action:', exec.intent_type, done?.action_taken || null);
-          } catch (e) { console.warn('[Aaria] action failed:', e); }
+            reportOutcome(outcomeFromClientAction(done));
+          } catch (e) { console.warn('[Aaria] action failed:', e); reportOutcome(outcomeFromClientAction(null)); }
         }, wait);
       }
 
@@ -764,6 +770,7 @@ export function AariaProvider({ children }) {
     } catch {
       setError('Network problem. Nothing was lost — try again.');
       setStatus('idle');
+      reportOutcome(outcomeFromCapture(null, false));
     } finally {
       endFiller();   // a network failure must not leave it playing
       brainBusyRef.current = Math.max(0, brainBusyRef.current - 1);

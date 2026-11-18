@@ -111,10 +111,23 @@ export default function AariaStagePage() {
   const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 16 };
 
   return (
-    <main style={{ maxWidth: 560, margin: '0 auto', padding: '20px 16px 180px', color: 'var(--text)' }}>
-      <h1 style={{ fontSize: 22, margin: '0 0 4px' }}>Aaria’s faces</h1>
-      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-        A preview. The mouth follows Aaria’s own voice as it plays, in any language.
+    <main style={{ maxWidth: 560, margin: '0 auto', padding: '10px 16px 180px', color: 'var(--text)' }}>
+      {/* The face comes first, at the top of the screen, so the assistant's
+          panel (which opens from the bottom) never covers it during a demo. */}
+      <h1 style={{ fontSize: 17, margin: '0 0 8px' }}>Aaria’s faces <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>· preview</span></h1>
+
+      <div style={{ ...card, padding: 8, minHeight: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        {face === '2d' && <AariaFace status={status} size={200} />}
+        {face === 'anime3d' && <VrmStage key={who} status={status} modelUrl={ANIME[who]} height={320} onFps={onFps} />}
+        {face === 'realistic' && <HumanStage key={lookId} status={status} who={lookId} height={320} onFps={onFps} />}
+      </div>
+
+      <p data-testid="stage-readout" style={{ margin: '10px 2px 16px', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
+        State: <strong>{pose}</strong>
+        {' · '}Mouth: {source === 'audio' ? 'following the reply audio' : source === 'cycle' ? 'simple open-close (this voice cannot be heard by the page)' : 'at rest'}
+        {face !== '2d' && (fps
+          ? <>{' · '}{fps.medianFps} frames per second on this device (slowest frame {fps.worstFrameMs} ms)</>
+          : <>{' · '}measuring frames per second…</>)}
       </p>
 
       <div role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -138,20 +151,6 @@ export default function AariaStagePage() {
         </div>
       )}
 
-      <div style={{ ...card, minHeight: 380, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        {face === '2d' && <AariaFace status={status} size={220} />}
-        {face === 'anime3d' && <VrmStage key={who} status={status} modelUrl={ANIME[who]} height={360} onFps={onFps} />}
-        {face === 'realistic' && <HumanStage key={lookId} status={status} who={lookId} height={360} onFps={onFps} />}
-      </div>
-
-      <p data-testid="stage-readout" style={{ margin: '10px 2px 16px', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
-        State: <strong>{pose}</strong>
-        {' · '}Mouth: {source === 'audio' ? 'following the reply audio' : source === 'cycle' ? 'simple open-close (this voice cannot be heard by the page)' : 'at rest'}
-        {face !== '2d' && (fps
-          ? <>{' · '}{fps.medianFps} frames per second on this device (slowest frame {fps.worstFrameMs} ms)</>
-          : <>{' · '}measuring frames per second…</>)}
-      </p>
-
       {face === 'realistic' && (
         <p style={{ margin: '0 2px 14px', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
           Coming next: an Indian woman in a saree and an Indian man in a kurta. They are not built yet —
@@ -171,7 +170,7 @@ export default function AariaStagePage() {
           ))}
         </div>
         <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.5 }}>
-          Or use the microphone button and ask for something real. The face shows “done” only after
+          Or press and hold the Aaria button to keep her listening, and ask for something real. The face shows “done” only after
           the action is confirmed, never just because Aaria understood.
         </p>
       </div>

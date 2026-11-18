@@ -88,8 +88,24 @@ eq('phone action that threw counts as failed', outcomeFromClientAction(null).sta
 
   m.setStatus('speaking'); m.setOutcome({ status: 'completed' });
   eq('never celebrates over her own sentence', m.pose(), 'speaking');
+  m.setStatus('idle'); eq('shown once she stops', m.pose(), 'done');
+  t += FLASH_MS + 1; eq('and it runs out', m.pose(), 'idle');
+
+  // Keep-listening mode: the microphone reopens straight after the reply.
+  m.setStatus('listening'); m.setStatus('thinking'); m.setOutcome({ status: 'completed' }); m.setStatus('speaking');
   m.setStatus('listening');
-  eq('a new turn wipes the old celebration', m.pose(), 'listening');
+  eq('keep-listening: done is shown as the microphone reopens', m.pose(), 'done');
+  t += FLASH_MS + 1; eq('keep-listening: then the face is listening', m.pose(), 'listening');
+  m.setStatus('thinking'); m.setOutcome({ status: 'failed' }); m.setStatus('speaking'); m.setStatus('listening');
+  eq('keep-listening: a failure shows oops, never done', m.pose(), 'oops');
+  t += FLASH_MS + 1;
+  m.setStatus('thinking'); m.setOutcome({ status: 'pending' }); m.setStatus('speaking'); m.setStatus('listening');
+  eq('keep-listening: a question back shows no done', m.pose(), 'listening');
+  m.setStatus('idle');
+
+  // An outcome left queued is dropped when a fresh turn starts from rest.
+  m.setStatus('thinking'); m.setOutcome({ status: 'completed' }); m.setStatus('idle'); t += FLASH_MS + 1;
+  m.setStatus('listening'); eq('a turn started from rest shows no old celebration', m.pose(), 'listening');
   m.setStatus('idle'); eq('nothing left over after that turn', m.pose(), 'idle');
 
   m.setStatus('thinking'); m.setOutcome({ status: 'completed' }); m.setOutcome({ status: 'failed' });

@@ -15,6 +15,25 @@ import {
 } from '@/lib/barge-in';
 import { shouldUseAaria, resolveSpeechLang } from '@/lib/aaria-audio';
 import { DEFAULT_WAKE_WORD, readWakeWord, acceptedWakeWords, displayWakeWord } from '@/lib/assistant-name';
+import { speechStarted, speechEnded, speechSkipped } from '@/lib/avatar/speech-signal';
+
+// 4.1: the phone's system voice cannot tell this page when it finishes (its
+// bridge has speak / stop / setLanguage only), so that one path reports an
+// ESTIMATED end. Same estimate the follow-up loop already waits on.
+let _nativeSignal = null;   // { id, timer } while the system voice is talking
+function endNativeSignal(reason) {
+  if (!_nativeSignal) return;
+  const { id, timer } = _nativeSignal;
+  _nativeSignal = null;
+  clearTimeout(timer);
+  speechEnded(id, reason);
+}
+function startNativeSignal(text) {
+  endNativeSignal('superseded');
+  const est = Math.min(20000, 1200 + String(text || '').length * 75);
+  const id = speechStarted({ source: 'native', estimated: true, durationMs: est });
+  _nativeSignal = { id, timer: setTimeout(() => endNativeSignal('estimated'), est) };
+}
 
 // ── Aaria's voice ───────────────────────────────────────────────────────────
 // Until now every reply was spoken by the phone's built-in voice, which is
@@ -163,9 +182,9 @@ export function speakError() {
  *   volume:  number 0.0–1.0 (default: 1.0)
  */
 export function speak(text, options = {}) {
-  if (!voiceEnabled) return;
+  if (!voiceEnabled) { speechSkipped('talkback_off'); return; }
   if (typeof window === 'undefined') return;
-  if (!text || !String(text).trim()) return;
+  if (!text || !String(text).trim()) { speechSkipped('empty'); return; }
 
   const currentToken = getSpeechAuthToken();
   if (options.useAaria === undefined) {
@@ -178,6 +197,7 @@ export function speak(text, options = {}) {
   const now = Date.now();
   if (text === _lastSpokenText && now - _lastSpokenTime < DEDUP_MS) {
     console.log('[QK TTS] dedup skip:', text.slice(0, 30));
+    speechSkipped('duplicate');
     return;
   }
   _lastSpokenText = text;
@@ -255,6 +275,7 @@ export function speak(text, options = {}) {
       } else {
         window.__QK_TTS__(String(text));
       }
+      startNativeSignal(text);
     } catch {}
     // The native bridge owns playback from here; we cannot observe its end, so
     // release the token rather than leaving the app permanently "speaking".
@@ -265,7 +286,7 @@ export function speak(text, options = {}) {
   // ── BROWSER FALLBACK (web / PWA) ─────────────────────────────────────
   // No output path at all. Release the token, or the app believes it is
   // speaking forever and every later utterance is treated as superseded.
-  if (!window.speechSynthesis) { endSpeech(token); return; }
+  if (!window.speechSynthesis) { endSpeech(token); speechSkipped('no_output'); return; }
   try { window.speechSynthesis.cancel(); } catch {}
 
   let _fired = false;
@@ -284,8 +305,13 @@ export function speak(text, options = {}) {
       utter.volume = options.volume || 1.0;
       const voice = getVoice(activeLang);
       if (voice) utter.voice = voice;
-      utter.onend = () => endSpeech(token);
-      utter.onerror = () => endSpeech(token);
+      let signalId = null;
+      const signalEnd = (reason) => {
+        if (signalId !== null) { speechEnded(signalId, reason); signalId = null; }
+      };
+      utter.onstart = () => { signalId = speechStarted({ source: 'browser' }); };
+      utter.onend = () => { signalEnd('ended'); endSpeech(token); };
+      utter.onerror = () => { signalEnd('error'); endSpeech(token); };
       window.speechSynthesis.speak(utter);
     } catch { endSpeech(token); }
   }
@@ -314,6 +340,7 @@ export function cancelSpeech(reason = BARGE_IN_REASON.USER_ACTION) {
   // too. Previously this only silenced the current audio, which left an
   // in-flight utterance free to arrive and play a moment later.
   ensureStoppersRegistered();
+  endNativeSignal('interrupted');
   bargeIn(reason);
   if (typeof window !== 'undefined') {
     if (window.__QK_TTS__ && window.AndroidTTS?.stop) {

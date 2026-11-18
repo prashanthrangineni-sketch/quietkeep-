@@ -271,6 +271,68 @@ export function AariaProvider({ children }) {
   const followUpTimer = useRef(null);
   const autoTurnRef = useRef(false); // this turn was opened by Aaria, not a tap
 
+  // ── Conversation mode (CARD T21) ──────────────────────────────────────────
+  // Persistent setting from Settings → Voice, and session state from long-press.
+  // When active: Aaria keeps listening after every reply without a 3-turn limit.
+  // Ends on: stop words (en/te/hi), 2 silent turns, background/screen off, or mic tap.
+  const [conversationSetting, setConversationSetting] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try { return localStorage.getItem('qk_conversation_mode') === 'true'; } catch { return false; }
+  });
+  const conversationSettingRef = useRef(false);
+  useEffect(() => { conversationSettingRef.current = conversationSetting; }, [conversationSetting]);
+
+  const [conversationActive, setConversationActive] = useState(false);
+  const conversationActiveRef = useRef(false);
+  useEffect(() => { conversationActiveRef.current = conversationActive; }, [conversationActive]);
+
+  const silentTurnsRef = useRef(0);
+  const phoneLockedRef = useRef(false);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    fetch('/api/voice/preferences', { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && typeof d.conversation_mode === 'boolean') {
+          setConversationSetting(d.conversation_mode);
+          try { localStorage.setItem('qk_conversation_mode', String(d.conversation_mode)); } catch { }
+        }
+      })
+      .catch(() => { });
+  }, [accessToken]);
+
+  useEffect(() => {
+    const onConvChange = (e) => {
+      const val = typeof e?.detail === 'boolean'
+        ? e.detail
+        : (typeof localStorage !== 'undefined' && localStorage.getItem('qk_conversation_mode') === 'true');
+      setConversationSetting(val);
+    };
+    window.addEventListener('qk_conversation_mode_changed', onConvChange);
+    return () => window.removeEventListener('qk_conversation_mode_changed', onConvChange);
+  }, []);
+
+  const checkPhoneLocked = useCallback(async () => {
+    if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+      try {
+        const res = await window.Capacitor?.Plugins?.WakeWordPlugin?.isKeyguardLocked();
+        const locked = !!res?.locked;
+        phoneLockedRef.current = locked;
+        return locked;
+      } catch { return false; }
+    }
+    return false;
+  }, []);
+
+  const startConversationMode = useCallback(() => {
+    silentTurnsRef.current = 0;
+    conversationActiveRef.current = true;
+    setConversationActive(true);
+    setOpen(true);
+    startListenRef.current?.({ conversation: true });
+  }, []);
+
   const recognitionRef = useRef(null);
   const listeningRef = useRef(false);
   const submittingRef = useRef(false);
@@ -446,6 +508,9 @@ export function AariaProvider({ children }) {
   const stopAll = useCallback(() => {
     if (followUpTimer.current) { clearInterval(followUpTimer.current); followUpTimer.current = null; }
     followUpTurns.current = 0;
+    silentTurnsRef.current = 0;
+    conversationActiveRef.current = false;
+    setConversationActive(false);
     listeningRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch { }
@@ -459,6 +524,56 @@ export function AariaProvider({ children }) {
     // recogniser has actually released it.
     if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);
   }, []);
+
+  // Screen off or background: conversation mode ends immediately
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (conversationActiveRef.current) {
+          stopAll();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [stopAll]);
+
+  const scheduleConversationReopen = useCallback((spoken) => {
+    if (!conversationActiveRef.current) return;
+    const startedAt = Date.now();
+    const atLeast = Math.min(20000, 1200 + String(spoken || '').length * 75);
+    if (followUpTimer.current) clearInterval(followUpTimer.current);
+    followUpTimer.current = setInterval(async () => {
+      const waited = Date.now() - startedAt;
+      if (waited < atLeast) return;
+      if (isSpeaking() && waited < 25000) return;
+      clearInterval(followUpTimer.current); followUpTimer.current = null;
+      if (!conversationActiveRef.current) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (await checkPhoneLocked()) return;
+      if (isSpeaking()) return;
+      if (!listeningRef.current) { autoTurnRef.current = true; startListenRef.current?.(); }
+    }, 150);
+  }, [checkPhoneLocked]);
+
+  const handleSilence = useCallback(async () => {
+    if (!conversationActiveRef.current) return;
+    silentTurnsRef.current += 1;
+    if (silentTurnsRef.current >= 2) {
+      stopAll();
+      return;
+    }
+    setTimeout(async () => {
+      if (!conversationActiveRef.current) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (await checkPhoneLocked()) return;
+      if (isSpeaking()) return;
+      if (!listeningRef.current) {
+        autoTurnRef.current = true;
+        startListenRef.current?.();
+      }
+    }, 400);
+  }, [stopAll, checkPhoneLocked]);
 
   // ── the brain call ─────────────────────────────────────────────────────────
   const askBrain = useCallback(async (text, extra = null) => {
@@ -726,20 +841,27 @@ export function AariaProvider({ children }) {
       // So: if the reply is a question, wait until she has finished speaking,
       // then open the microphone. At most three in a row, and saying nothing
       // simply ends it (the listener gives up on its own after 8 seconds).
+      const isConv = conversationActiveRef.current;
       const asked = !!json.follow_up || /[?？]\s*$/.test(String(spoken).trim());
-      if (asked && followUpTurns.current < 3) {
-        followUpTurns.current += 1;
+      if (isConv || (asked && followUpTurns.current < 3)) {
+        if (!isConv) {
+          followUpTurns.current += 1;
+        }
         const startedAt = Date.now();
         // The native voice cannot tell us when it stops, so there is a floor
         // estimated from the length of the sentence; where the end IS
         // observable (isSpeaking), we wait for that as well.
         const atLeast = Math.min(20000, 1200 + String(spoken).length * 75);
         if (followUpTimer.current) clearInterval(followUpTimer.current);
-        followUpTimer.current = setInterval(() => {
+        followUpTimer.current = setInterval(async () => {
           const waited = Date.now() - startedAt;
           if (waited < atLeast) return;
           if (isSpeaking() && waited < 25000) return;
           clearInterval(followUpTimer.current); followUpTimer.current = null;
+          if (isConv && !conversationActiveRef.current) return;
+          if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+          if (await checkPhoneLocked()) return;
+          if (isSpeaking()) return;
           if (!listeningRef.current) { autoTurnRef.current = true; startListenRef.current?.(); }
         }, 150);
       } else {
@@ -775,7 +897,7 @@ export function AariaProvider({ children }) {
       endFiller();   // a network failure must not leave it playing
       brainBusyRef.current = Math.max(0, brainBusyRef.current - 1);
     }
-  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id, silent, businessWorkspaceId]);
+  }, [signedIn, accessToken, voiceLang, pathname, here, say, user?.id, silent, businessWorkspaceId, checkPhoneLocked]);
 
   // A tap on one of the offered names. Exact - the id goes with it, so two
   // contacts with the same name can be told apart.
@@ -838,7 +960,12 @@ export function AariaProvider({ children }) {
       const action = routeUtterance(text, { wakeWord: getWakeWord() });
 
       if (action?.kind === 'stop') { stopAll(); return; }
-      if (action?.kind === 'help') { say(helpText(here)); return; }
+      if (action?.kind === 'help') {
+        const txt = helpText(here);
+        say(txt);
+        if (conversationActiveRef.current) scheduleConversationReopen(txt);
+        return;
+      }
       if (action?.kind === 'back') { router.back(); setOpen(false); return; }
 
       if (action?.kind === 'theme') {
@@ -847,6 +974,7 @@ export function AariaProvider({ children }) {
           localStorage.setItem('qk_theme', action.value);
         } catch { }
         say(action.spoken);
+        if (conversationActiveRef.current) scheduleConversationReopen(action.spoken);
         return;
       }
 
@@ -870,7 +998,7 @@ export function AariaProvider({ children }) {
     } finally {
       submittingRef.current = false;
     }
-  }, [here, pathname, router, say, stopAll, askBrain]);
+  }, [here, pathname, router, say, stopAll, askBrain, scheduleConversationReopen]);
 
   // ── listening, path B: the phone's own recogniser (browser SpeechRecognition)
   // The fallback since step 11 part 3. Unchanged otherwise.
@@ -1005,7 +1133,13 @@ export function AariaProvider({ children }) {
       if (!finished) {
         finished = true;
         const text = (heard + ' ' + lastPartial).trim();
-        if (text) { setTranscript(text); submit(text); }
+        if (text) {
+          silentTurnsRef.current = 0;
+          setTranscript(text);
+          submit(text);
+        } else {
+          handleSilence();
+        }
       }
       setStatus((s) => (s === 'listening' ? 'idle' : s));
       setInterim('');
@@ -1015,7 +1149,7 @@ export function AariaProvider({ children }) {
     recognitionRef.current = rec;
     try { rec.start(); }
     catch { setError('Could not start the microphone.'); setStatus('idle'); }
-  }, [voiceLang, submit, micHold]);
+  }, [voiceLang, submit, micHold, handleSilence]);
 
   // ── listening, path A: through Aaria's engine while the person speaks ─────
   // src/lib/listen-stream.js has the why. Sarvam saaras:v4 with this user's
@@ -1090,9 +1224,14 @@ export function AariaProvider({ children }) {
     return () => { clearInterval(passTimer); stopWarm?.(); };
   }, [silent, signedIn, refreshNames, refreshPass]);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(({ conversation = false } = {}) => {
     if (typeof window === 'undefined') return;
     if (listeningRef.current) return;
+    if (conversation || conversationSettingRef.current) {
+      silentTurnsRef.current = 0;
+      conversationActiveRef.current = true;
+      setConversationActive(true);
+    }
     if (!listenStreamWanted() || !streamingSupported(window)) {
       const info = { path: 'phone', reason: listenStreamWanted() ? 'not supported here' : 'switched off' };
       recordLastListen(info); lastListenRef.current = info; setHeardBy(info);
@@ -1157,7 +1296,13 @@ export function AariaProvider({ children }) {
         recordLastListen(info); lastListenRef.current = info; setHeardBy(info);
         setInterim('');
         setStatus((st) => (st === 'listening' ? 'idle' : st));
-        if (text) { setTranscript(text); submit(text); }
+        if (text) {
+          silentTurnsRef.current = 0;
+          setTranscript(text);
+          submit(text);
+        } else {
+          handleSilence();
+        }
         if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);
         resumeNativeVoiceSoon(20000);   // a fallback; micHold's release brings it back sooner
       },
@@ -1172,7 +1317,7 @@ export function AariaProvider({ children }) {
         // after the person tapped the mic deserves a word, or it looks broken.
         const wasAuto = autoTurnRef.current;
         autoTurnRef.current = false;
-        if (!wasAuto && err?.reason === 'nothing heard') {
+        if (!wasAuto && err?.reason === 'nothing heard' && !conversationActiveRef.current) {
           setError('I did not hear anything. Tap the mic and try again.');
         }
         if (err?.fallback) {
@@ -1187,13 +1332,14 @@ export function AariaProvider({ children }) {
         }
         setStatus((st) => (st === 'listening' ? 'idle' : st));
         if (hotwordRef.current) setTimeout(() => hotwordRef.current?.resume(), 300);
+        handleSilence();
       },
     );
-  }, [voiceLang, submit, startBrowserListening, refreshNames, refreshPass, micHold]);
+  }, [voiceLang, submit, startBrowserListening, refreshNames, refreshPass, micHold, handleSilence]);
   useEffect(() => { startListenRef.current = startListening; }, [startListening]);
 
   const toggleListening = useCallback(() => {
-    if (listeningRef.current || status === 'speaking') stopAll();
+    if (listeningRef.current || status === 'speaking' || conversationActiveRef.current) stopAll();
     else startListening();
   }, [status, stopAll, startListening]);
 
@@ -1360,8 +1506,12 @@ export function AariaProvider({ children }) {
     notice, here, silent, signedIn, heardBy, micLive, choices, choose,
     submit, say, stopAll, startListening, toggleListening,
     setError, setReply,
+    conversationMode: conversationActive,
+    conversationSetting,
+    startConversationMode,
   }), [status, open, interim, transcript, reply, error, wakeInfo, hotwordOn, notice, heardBy, micLive, choices, choose,
-    here, silent, signedIn, submit, say, stopAll, startListening, toggleListening]);
+    here, silent, signedIn, submit, say, stopAll, startListening, toggleListening,
+    conversationActive, conversationSetting, startConversationMode]);
 
   return <AariaContext.Provider value={value}>{children}</AariaContext.Provider>;
 }
@@ -1378,6 +1528,9 @@ export function useAaria() {
       submit: async () => { }, say: () => { }, stopAll: () => { },
       startListening: () => { }, toggleListening: () => { },
       setError: () => { }, setReply: () => { },
+      conversationMode: false,
+      conversationSetting: false,
+      startConversationMode: () => { },
     };
   }
   return ctx;

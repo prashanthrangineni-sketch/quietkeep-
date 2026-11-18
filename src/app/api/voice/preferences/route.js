@@ -55,6 +55,7 @@ export async function GET(req) {
     voice_language: data?.voice_language || data?.preferred_language || 'en-IN',
     voice_tone: data?.voice_tone || 'warm',
     voice_input_enabled: data?.voice_input_enabled ?? true,
+    conversation_mode: !!settings.conversation_mode,
     provider: settings.voice_provider || (data?.elevenlabs_voice_id && hasFullConsent ? 'own' : 'preset'),
     preset_voice: settings.preset_voice || (voiceChoice === 'aaria_m' ? 'aaria_m' : 'aaria_f'),
     voice_choice: voiceChoice,
@@ -138,6 +139,7 @@ export async function POST(req) {
   }
 
   if (body.preset_voice !== undefined) settings.preset_voice = body.preset_voice;
+  if (typeof body.conversation_mode === 'boolean') settings.conversation_mode = body.conversation_mode;
 
   const patch = { user_id: user.id, settings, updated_at: new Date().toISOString() };
   if (body.voice_language) { patch.voice_language = body.voice_language; patch.preferred_language = body.voice_language; }

@@ -31,12 +31,47 @@ export default function AariaDock() {
     status, open, setOpen, interim, transcript, reply, error, hotwordOn, notice,
     here, silent, signedIn, submit, toggleListening, stopAll, setError,
     heardBy, micLive, choices, choose,
+    conversationMode, startConversationMode,
   } = useAaria();
 
   const [typed, setTyped] = useState('');
   // The animated face: only when the person switched it on (off by default).
   const faceOn = useFaceOn();
   const inputRef = useRef(null);
+  const pressTimerRef = useRef(null);
+  const isLongPressRef = useRef(false);
+
+  const handlePointerDown = (e) => {
+    if (e.button && e.button !== 0) return;
+    isLongPressRef.current = false;
+    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+    pressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      try { navigator.vibrate?.(50); } catch {}
+      setOpen(true);
+      startConversationMode?.();
+    }, 500);
+  };
+
+  const clearPressTimer = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+
+  const handleOrbClick = () => {
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return;
+    }
+    if (conversationMode || busy) {
+      stopAll();
+    } else {
+      setOpen(true);
+      toggleListening();
+    }
+  };
 
   // Focus the box when the panel opens by keyboard, not when it opens by voice —
   // stealing focus mid-utterance pops the on-screen keyboard over the transcript.
@@ -257,16 +292,37 @@ export default function AariaDock() {
               Wake word on — this tab is listening for your wake word.
             </p>
           )}
+
+          {/* Conversation mode indicator */}
+          {conversationMode && (
+            <p
+              data-testid="conversation-mode-indicator"
+              style={{
+                margin: '6px 0 0', fontSize: 11, color: 'var(--text-subtle)',
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}
+            >
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: 'var(--primary)', flexShrink: 0,
+              }} />
+              Listening continuously — tap to stop
+            </p>
+          )}
         </div>
       )}
 
       {/* ── orb ──────────────────────────────────────────────────────────── */}
       <button
         className="qk-aaria-orb"
-        onClick={() => { if (busy) { stopAll(); } else { setOpen(true); toggleListening(); } }}
+        onPointerDown={handlePointerDown}
+        onPointerUp={clearPressTimer}
+        onPointerCancel={clearPressTimer}
+        onPointerLeave={clearPressTimer}
+        onClick={handleOrbClick}
         onContextMenu={(e) => { e.preventDefault(); setOpen((v) => !v); }}
-        aria-label={busy ? 'Stop Aaria' : 'Talk to Aaria'}
-        title={busy ? 'Stop (Esc)' : 'Talk to Aaria (Ctrl+Space)'}
+        aria-label={conversationMode ? 'Listening continuously — tap to stop' : busy ? 'Stop Aaria' : 'Talk to Aaria'}
+        title={conversationMode ? 'Listening continuously — tap to stop' : busy ? 'Stop (Esc)' : 'Talk to Aaria (Ctrl+Space)'}
         style={{
           position: 'fixed',
           right: 16,

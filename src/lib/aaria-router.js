@@ -183,6 +183,14 @@ const KEYWORD_INDEX = DESTINATIONS
   .flatMap((d) => d.keywords.map((k) => ({ k: k.toLowerCase(), d })))
   .sort((a, b) => b.k.length - a.k.length);
 
+// ── control words: always safe, never carry content ────────────────────────
+export const STOP_WORDS_REGEX = /^(stop|cancel|shut up|quiet|chup|bye|goodbye|aapu|chalu|chaalu|bas|ruko|रुको|ఆపు|చాలు|बस)$/i;
+
+export function isConversationStopWord(raw) {
+  const plain = light(raw);
+  return STOP_WORDS_REGEX.test(plain);
+}
+
 /**
  * The reflex router.
  *
@@ -200,7 +208,7 @@ export function routeUtterance(raw, ctx = {}) {
   // ── control words: always safe, never carry content ────────────────────────
   // Matched against `plain`, and anchored to the WHOLE utterance — "stop" is a
   // control word, "stop the delivery tomorrow" is a task.
-  if (/^(stop|cancel|shut up|quiet|chup|रुको|ఆపు)$/.test(plain)) {
+  if (STOP_WORDS_REGEX.test(plain)) {
     return { kind: 'stop' };
   }
   if (/^(go )?back$/.test(plain) || /^(peeche|पीछे)$/.test(plain)) {

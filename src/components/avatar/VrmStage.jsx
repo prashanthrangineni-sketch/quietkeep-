@@ -67,9 +67,19 @@ export default function VrmStage({ status = 'idle', modelUrl, height = 360, onFp
         // Arms down from the T-pose the file is saved in.
         const bone = (name) => vrm.humanoid?.getNormalizedBoneNode(name);
         const lArm = bone('leftUpperArm'), rArm = bone('rightUpperArm');
-        if (lArm) lArm.rotation.z = -1.25;
-        if (rArm) rArm.rotation.z = 1.25;
+        // (Older "VRM 0" files face the other way, so the turn is mirrored.)
+        const side = vrm.meta?.metaVersion === '0' ? -1 : 1;
+        if (lArm) lArm.rotation.z = -1.25 * side;
+        if (rArm) rArm.rotation.z = 1.25 * side;
         const head = bone('head'), neck = bone('neck'), chest = bone('chest') || bone('spine');
+        // Characters differ in height: frame the head and shoulders of this one.
+        vrm.scene.updateMatrixWorld(true);
+        if (head) {
+          const hp = new THREE.Vector3();
+          head.getWorldPosition(hp);
+          camera.position.set(0, hp.y + 0.0, 1.55);
+          camera.lookAt(0, hp.y - 0.04, 0);
+        }
         const ex = vrm.expressionManager;
         const set = (name, v) => { try { ex?.setValue(name, v); } catch { } };
 

@@ -2,10 +2,10 @@
 // src/components/avatar/HumanStage.jsx
 // A realistic-style 3D person in the page. (AARIA 4.6, demo)
 //
-// The character is "Female_Adult_01" from the Microsoft Rocketbox avatar
-// library (MIT licence - recorded beside the file in
-// public/avatars/realistic-rocketbox/LICENCE.md). It was converted once from
-// FBX to GLB; nothing else about it was changed.
+// The characters are "Female_Adult_01" and "Male_Adult_01" from the Microsoft
+// Rocketbox avatar library (MIT licence - recorded beside the files in
+// public/avatars/realistic-rocketbox/LICENCE.md). Each was converted once from
+// FBX to GLB; nothing else about them was changed.
 //
 // What it is: a sculpted 3D person with a skeleton, drawn fresh on the device,
 // like a game character. What it is not: a video of a real face, and not
@@ -17,12 +17,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePose, useMouth } from '@/lib/avatar/useAvatar';
 
-const DIR = '/avatars/realistic-rocketbox/';
-const MODEL = DIR + 'Female_Adult_01_facial.glb';
-const TEXTURES = {
-  f001_body: { file: 'f001_body_color.jpg' },
-  f001_head: { file: 'f001_head_color.jpg' },
-  f001_opacity: { file: 'f001_opacity_color.png', cutout: true },   // hair and lashes
+// The characters this stage can draw. Each folder has its licence record in
+// public/avatars/realistic-rocketbox/LICENCE.md.
+export const HUMANS = {
+  'western-woman': { dir: '/avatars/realistic-rocketbox/female-adult-01/', model: 'Female_Adult_01_facial.glb', tex: 'f001' },
+  'western-man': { dir: '/avatars/realistic-rocketbox/male-adult-01/', model: 'Male_Adult_01_facial.glb', tex: 'm002' },
+};
+// Colour pictures by the last part of the material's name (f001_body, m002_head ...).
+const TEXTURE_FOR = {
+  body: { file: (t) => `${t}_body_color.jpg` },
+  head: { file: (t) => `${t}_head_color.jpg` },
+  opacity: { file: (t) => `${t}_opacity_color.png`, cutout: true },   // hair and lashes
 };
 // The model's own face shapes (its names), driven from our five vowels.
 const P = 'blendShape1.';
@@ -35,7 +40,8 @@ const SHAPES = {
   eyesUp: [P + 'AU_63_EyesUp'],
 };
 
-export default function HumanStage({ status = 'idle', height = 360, onFps }) {
+export default function HumanStage({ status = 'idle', who = 'western-woman', height = 360, onFps }) {
+  const character = HUMANS[who] || HUMANS['western-woman'];
   const holder = useRef(null);
   const pose = usePose(status);
   const poseRef = useRef(pose);
@@ -63,7 +69,7 @@ export default function HumanStage({ status = 'idle', height = 360, onFps }) {
         const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(0.6, 1.2, 2); scene.add(key);
         const camera = new THREE.PerspectiveCamera(22, w / h, 0.05, 20);
 
-        const gltf = await new GLTFLoader().loadAsync(MODEL, (p) => {
+        const gltf = await new GLTFLoader().loadAsync(character.dir + character.model, (p) => {
           if (alive && p.total) setDetail(`${Math.round((p.loaded / p.total) * 100)}%`);
         });
         if (!alive) return;
@@ -78,9 +84,9 @@ export default function HumanStage({ status = 'idle', height = 360, onFps }) {
           if (!o.isMesh) return;
           o.frustumCulled = false;
           meshes.push(o);
-          const spec = TEXTURES[o.material?.name];
+          const spec = TEXTURE_FOR[String(o.material?.name || '').split('_').pop()];
           if (!spec) return;
-          jobs.push(texLoader.loadAsync(DIR + spec.file).then((tex) => {
+          jobs.push(texLoader.loadAsync(character.dir + spec.file(character.tex)).then((tex) => {
             tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
             const m = o.material;
             m.map = tex; m.color?.set(0xffffff); m.metalness = 0; m.roughness = 0.78;
@@ -221,7 +227,7 @@ export default function HumanStage({ status = 'idle', height = 360, onFps }) {
         renderer?.dispose(); renderer?.forceContextLoss?.(); renderer?.domElement?.remove();
       } catch { }
     };
-  }, [height, shapes, onFps]);
+  }, [height, shapes, onFps, character]);
 
   return (
     <div ref={holder} style={{ width: '100%', height, position: 'relative' }}>

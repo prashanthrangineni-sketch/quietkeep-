@@ -137,12 +137,17 @@ _resetForTests();
   eq('2D face takes "done" from the pose machine only', face.includes("const happy = pose === 'done';") && !/tts_response|useAaria\(/.test(face), true);
   const stage = read('../src/app/aaria-stage/page.jsx');
   eq('3D engine is loaded only when the stage asks for it', stage.includes("dynamic(() => import('@/components/avatar/VrmStage'), { ssr: false })"), true);
-  eq('realistic human is labelled as a sample game-style character, not a real person',
-    stage.includes('like a game character; not a real person and not Aaria’s final look'), true);
+  eq('realistic people are labelled as game-style characters, not real people',
+    stage.includes('like game characters; not real people'), true);
+  eq('the person can pick a woman or a man, and Indian or Western', ["{ id: 'woman', label: 'Woman' }", "{ id: 'man', label: 'Man' }", "{ id: 'indian', label: 'Indian' }", "{ id: 'western', label: 'Western' }"].every((x) => stage.includes(x)), true);
+  eq('Indian realistic says "Coming next" and "not built yet" in words', stage.includes('Coming next') && stage.includes('It is not built yet'), true);
+  eq('no Western character is ever shown under the Indian choice', stage.includes("face === 'realistic' && look === 'western' && <HumanStage"), true);
+  const man = read('../public/avatars/anime-man-sample/LICENCE.md');
+  eq('the anime man has his licence beside him', man.includes('CC0') && man.includes('d8fb05f33e377df028cb6b9d58c441ce68326c41fa23f6c735d40c65ae3dc710'), true);
   const human = read('../src/components/avatar/HumanStage.jsx');
   eq('realistic smile comes from the pose machine only', human.includes("smile: p === 'done' ? 0.9 : 0,"), true);
   const rb = read('../public/avatars/realistic-rocketbox/LICENCE.md');
-  eq('the realistic character has its licence beside it', rb.includes('MIT') && rb.includes('0236707bb4a42b1a56ca221ad45c4254a0b69cbc4d647b399de0d541102807a4')
+  eq('the realistic character has its licence beside it', rb.includes('MIT') && rb.includes('0236707bb4a42b1a56ca221ad45c4254a0b69cbc4d647b399de0d541102807a4') && rb.includes('35df2eea5a5eb16913a5367ac419cac47bbdea2862b2be308c9f98f2c4570301')
     && read('../public/avatars/realistic-rocketbox/ROCKETBOX-MIT-LICENSE.md').includes('Copyright (c) 2020 Microsoft'), true);
   const vrm = read('../src/components/avatar/VrmStage.jsx');
   eq('3D "happy" comes from the pose machine only', vrm.includes("happy: p === 'done' ? 1 : 0,"), true);

@@ -14,15 +14,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import AariaFace from '@/components/AariaFace';
-import { readChosenFace, onFaceChange, ANIME_MODELS } from '@/lib/avatar/face-pref';
+import { readChosenFace, onFaceChange, ANIME_MODELS, ALL_LOOKS_FEATURE, allowedFace } from '@/lib/avatar/face-pref';
+import { useFeatureGate } from '@/lib/hooks/useFeatureGate';
 
 const VrmStage = dynamic(() => import('@/components/avatar/VrmStage'), { ssr: false });
 const HumanStage = dynamic(() => import('@/components/avatar/HumanStage'), { ssr: false });
 
 export default function AariaLiveFace({ status = 'idle', height = 190 }) {
-  const [choice, setChoice] = useState({ style: '2d', who: 'woman', look: 'woman-1' });
+  const [saved, setSaved] = useState({ style: '2d', who: 'woman', look: 'woman-1' });
+  // A paid look falls back to Look 1 when the person's plan does not include it.
+  const gate = useFeatureGate(ALL_LOOKS_FEATURE);
+  const choice = allowedFace(saved, gate.status !== 'LOCKED');
   useEffect(() => {
-    const read = () => setChoice(readChosenFace());
+    const read = () => setSaved(readChosenFace());
     read();
     return onFaceChange(read);
   }, []);

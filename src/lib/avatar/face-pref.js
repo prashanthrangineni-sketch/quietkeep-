@@ -45,3 +45,34 @@ export function readChosenFace() {
 export function announceFaceChoice() {
   try { window.dispatchEvent(new Event('qk_aaria_face_changed')); } catch { }
 }
+
+/** Save a full choice (used by the signup step and the stage page). */
+export function saveChosenFace({ style, who, look }) {
+  const c = normaliseChosenFace(style, who, look);
+  try {
+    localStorage.setItem('qk_aaria_stage_face', c.style);
+    localStorage.setItem('qk_aaria_stage_who', c.who);
+    localStorage.setItem('qk_aaria_stage_look2', c.look);
+  } catch { }
+  announceFaceChoice();
+  return c;
+}
+
+// ── Free and paid faces ─────────────────────────────────────────────────────
+// Feature name in the existing `feature_flags` table. While no row exists the
+// existing gate treats it as open, so everyone keeps every face until the
+// founder decides the split and the row is added (Thread 3 owns the database).
+export const ALL_LOOKS_FEATURE = 'aaria_face_all_looks';
+
+/** Pure: is this choice one of the extra (paid) looks? Free = 2D face, both
+ *  anime faces, and Look 1 of the realistic woman and man. */
+export function isPaidLook(style, who, look) {
+  const c = normaliseChosenFace(style, who, look);
+  return c.style === 'realistic' && c.look !== LOOKS[c.who][0];
+}
+/** Pure: the choice a person on the free plan actually gets. */
+export function allowedFace(choice, hasAllLooks) {
+  const c = normaliseChosenFace(choice?.style, choice?.who, choice?.look);
+  if (hasAllLooks || !isPaidLook(c.style, c.who, c.look)) return c;
+  return { ...c, look: LOOKS[c.who][0] };
+}

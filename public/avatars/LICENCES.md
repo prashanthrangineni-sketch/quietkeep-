@@ -18,3 +18,10 @@ without a row in this table and, for a character file, a `LICENCE.md` beside it.
 All character files were made smaller for phone data on 20 Nov 2026 (`scripts/avatar-shrink.py`); each change is recorded in the licence file beside it.
 
 Not used, by decision: Live2D, Rive, AI-generated face video, native 3D renderers.
+
+## previews/ (signup pictures)
+Still pictures rendered on 20 Nov 2026 from the models above, used only as
+small choice pictures in the signup step: `anime-woman.jpg` (anime-sample,
+VRM Public License 1.0), `anime-man.jpg` (anime-man-sample, CC0),
+`realistic-woman.jpg` (Rocketbox female-adult-01, MIT), `realistic-man.jpg`
+(Rocketbox male-adult-01, MIT). Same licences as their source models.

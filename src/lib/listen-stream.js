@@ -470,17 +470,17 @@ export function startListenStream({
   }
 
   // The person has stopped (silence, cap, or a tap on stop).
-  function endpoint(why) {
+  //
+  // A LATE ENGINE IS NOT A LOST SENTENCE. (20 November 2026)
+  // On the founder's phone in keep-listening mode the person finished
+  // speaking before the engine had said "ready", and the turn was thrown away
+  // with "Aaria engine took too long - please say that again". Every frame of
+  // that sentence was still held in `pending`. Now the turn waits a little for
+  // the engine instead: when "ready" arrives the held audio goes first, then
+  // "stop", exactly as if it had been ready all along. Only if the engine is
+  // still not ready after LATE_READY_GRACE_MS does the old fallback run.
+  function sendStop() {
     if (ended || stopSent) return;
-    stopReason = typeof why === 'string' ? why : 'silence';
-    clear('silence'); clear('max'); clear('nothing');
-    releaseAudio();
-    if (!ready) {
-      // Never got the engine. If they spoke, those words are lost to the
-      // engine - fall back and let them say it again.
-      fail('not ready when the person stopped');
-      return;
-    }
     stopSent = true;
     tStop = now();
     send(JSON.stringify({ event: 'stop' }));
@@ -488,6 +488,23 @@ export function startListenStream({
       const text = heardText();
       if (text) succeed(text); else fail('no finished sentence from the engine', { fallback: speechSeen });
     }, DONE_TIMEOUT_MS);
+  }
+
+  function endpoint(why) {
+    if (ended || stopSent || stopWhenReady) return;
+    stopReason = typeof why === 'string' ? why : 'silence';
+    clear('silence'); clear('max'); clear('nothing');
+    releaseAudio();
+    if (!ready) {
+      if (!speechSeen) { fail('not ready when the person stopped'); return; }
+      stopWhenReady = true;
+      clear('ready');
+      timers.ready = setT(() => {
+        if (!ready) fail('not ready when the person stopped');
+      }, LATE_READY_GRACE_MS);
+      return;
+    }
+    sendStop();
   }
 
   function armSilence() {

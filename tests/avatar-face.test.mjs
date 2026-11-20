@@ -173,6 +173,7 @@ _resetForTests();
     const { existsSync } = await import('node:fs');
     eq('both anime files the dock can load are in the app', Object.values(ANIME_MODELS).every((f) => existsSync(new URL('../public' + f, import.meta.url))), true);
   }
+  eq('the face switch is in Aaria\'s own panel, where it can be found', dock.includes('data-testid="aaria-face-switch"') && dock.includes('onClick={() => setFaceOn(!faceOn)}') && dock.includes("'Show Aaria’s face (preview)'"), true);
   const face = read('../src/components/AariaFace.jsx');
   eq('2D face takes "done" from the pose machine only', face.includes("const happy = pose === 'done';") && !/tts_response|useAaria\(/.test(face), true);
   const stage = read('../src/app/aaria-stage/page.jsx');

@@ -5,20 +5,55 @@
 import { detectSpokenLanguage } from './spoken-language.js';
 
 const QUERY_PATTERNS = [
-  { type: 'weather',   pattern: /(?:^|\P{L})(?:weather|వాతావరణం|వాతావరణ|मौसम|हवामान)(?:\P{L}|$)|weather\s+ela\s+undi/iu },
+  { type: 'weather',   pattern: /(?:^|\P{L})(?:weather|vatavaranam|vaathavaranam|mausam|వాతావరణం|వాతావరణ|मौसम|हवामान)(?:\P{L}|$)|weather\s+ela\s+undi/iu },
   { type: 'tithi',     pattern: /(?:^|\P{L})(?:thithi|tithi|తిథి|పంచాంగం|panchangam|panchanga|तिथि|पंचांग)(?:\P{L}|$)/iu },
   { type: 'documents', pattern: /(?:^|\P{L})(?:పత్రాలు|పత్రం|documents?|patralu|docs?|files?|దస్తావేజులు|दस्तावेज़|दस्तावेज)(?:\P{L}|$)/iu },
   { type: 'tasks',     pattern: /(?:^|\P{L})(?:పనులు|పని|tasks?|reminders?|work|panulu|to-?dos?|काम|कार्य)(?:\P{L}|$)|ఏమేం\s*పనులు/iu },
   { type: 'memories',  pattern: /(?:^|\P{L})(?:జ్ఞాపకాలు|జ్ఞాపకం|memories|memory|keeps?|notes?|gnapakalu|यादें|याद)(?:\P{L}|$)/iu },
   { type: 'warranties',pattern: /(?:^|\P{L})(?:వారంటీ|వారంటీస్|warrant(?:y|ies)|guarantee|वारंटी)(?:\P{L}|$)/iu },
-  { type: 'expenses',  pattern: /(?:^|\P{L})(?:expenses?\s*anni|ఖర్చులు|ఖర్చు|all\s+expenses?|expenses?\s+this\s+month|how\s+much\s+did\s+i\s+spend|what\s+did\s+i\s+spend|खर्च|खर्चा)(?:\P{L}|$)/iu },
+  { type: 'contacts',  pattern: /(?:^|\P{L})(?:contacts?|contacts\s*lo|kontacts|కాంటాక్ట్స్|కాంటాక్ట్|कॉन्टैक्ट्स|कॉन्टैक्ट|संपर्क)(?:\P{L}|$)/iu },
+  { type: 'expenses',  pattern: /(?:^|\P{L})(?:expenses?|kharchu|kharchulu|kharcha|kharche|spent|spend|spending|expenses?\s*anni|ఖర్చులు|ఖర్చు|all\s+expenses?|expenses?\s+this\s+month|how\s+much\s+did\s+i\s+spend|what\s+did\s+i\s+spend|खर्च|खर्चा)(?:\P{L}|$)/iu },
 ];
 
+// A QUESTION, NOT A COMMAND (T24, 19 Nov 2026).
+//
+// The patterns above name a SUBJECT ("tasks", "notes", "reminder", "work",
+// "expenses"). On their own they also match commands: "set a reminder for 5 pm",
+// "save a note: demo went well", "remind me to finish my work" — and those were
+// being answered as questions and never saved. So a pattern only counts when
+// the sentence is asked (a question mark or a question word) and is not an
+// instruction to save, remind or call.
+const QUESTION_CUE = /[?？]|(?:^|\P{L})(?:what|what's|whats|which|how|who|any|show|list|tell|read|do\s+i\s+have|all|enti|entha|enni|emiti|emi|evi|em|emunnayi|unnaya|unnayi|unnai|undi|unda|ela|cheppu|chupinchu|anni|kya|kitna|kitne|kaun|kaunse|batao|dikhao|sab|ఏంటి|ఏమిటి|ఏమి|ఏం|ఏమేం|ఎంత|ఎన్ని|ఏవి|ఉన్నాయి|ఉన్నాయా|ఉందా|ఉంది|ఎలా|చెప్పు|చెప్పండి|చూపించు|అన్ని|ఏమున్నాయి|क्या|कितना|कितने|कौन|कौनसे|बताओ|बताइए|दिखाओ|सब)(?:\P{L}|$)/iu;
+const SAVE_CUE = /(?:^|\P{L})(?:remind\s+me|set\s+(?:a\s+)?reminder|add\s+(?:a\s+)?reminder|save\s+(?:a|an|this|that|it|my)|note\s+(?:down|this|that)|make\s+a\s+note|add\s+(?:an?\s+)?(?:expense|note|task)|gurthu\s*chey\w*|gurtu\s*chey\w*|guruthu\s*chey\w*|save\s+chey\w*|note\s+chey\w*|yaad\s+dila\w*|గుర్తు\s*చేయి|గుర్తు\s*చేయండి|గుర్తు\s*చెయ్యి|గుర్తు\s*చేస్తావా|సేవ్\s*చెయ్యి|సేవ్\s*చేయి|సేవ్\s*చేయండి|నోట్\s*చేయి|నోట్\s*చెయ్యి|याद\s*दिला\w*|सेव\s*कर\w*|नोट\s*कर\w*)(?:\P{L}|$)/iu;
+const CALL_CUE = /(?:^|\P{L})(?:call|ring|dial)(?:\P{L}|$)|కాల్|ఫోన్\s*చే|कॉल|फ़ोन\s*कर|फोन\s*कर/iu;
+
 export function isQueryUtterance(text = '', llmIntent = null) {
-  if (llmIntent === 'query') return true;
   const str = String(text || '').trim();
   if (!str) return false;
+  // An instruction to save, remind or call is never answered as a question,
+  // whatever the brain or the patterns say.
+  if (SAVE_CUE.test(str) || CALL_CUE.test(str)) return false;
+  if (llmIntent === 'query') return true;
+  if (!QUESTION_CUE.test(str)) return false;
   return QUERY_PATTERNS.some(q => q.pattern.test(str));
+}
+
+// Weather words in the three languages Aaria answers in. Unknown conditions
+// are read out as the provider wrote them in English, never replaced.
+function describeSky(desc) {
+  const d = String(desc || '').toLowerCase().trim();
+  if (!d) return { te: '', hi: '', en: '' };
+  const table = [
+    [/thunder/, 'ఉరుములతో వర్షం', 'गरज के साथ बारिश'],
+    [/drizzle|light rain/, 'చిరుజల్లులు', 'हल्की बारिश'],
+    [/rain|shower/, 'వర్షం', 'बारिश'],
+    [/clear/, 'ఆకాశం నిర్మలంగా ఉంది', 'आसमान साफ़ है'],
+    [/few clouds|scattered|partly/, 'అక్కడక్కడ మేఘాలు', 'हल्के बादल'],
+    [/broken|overcast|cloud/, 'మేఘావృతం', 'बादल छाए हैं'],
+    [/haze|mist|fog|smoke/, 'పొగమంచు', 'धुंध'],
+  ];
+  for (const [re, te, hi] of table) if (re.test(d)) return { te, hi, en: d };
+  return { te: d, hi: d, en: d };
 }
 
 export function detectQueryType(text = '', llmAssist = null) {
@@ -45,11 +80,11 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
 
   switch (queryType) {
     case 'weather': {
-      let temp = 28;
-      let descTe = 'పాక్షికంగా మేఘావృతమై ఉంది';
-      let descHi = 'आंशिक रूप से बादल छाए रहेंगे';
-      let descEn = 'partly cloudy';
-
+      // Real numbers only. Until 19 Nov this answered "28 degrees, partly
+      // cloudy" whenever nothing was stored, and always said "partly cloudy"
+      // in Telugu and Hindi whatever the sky was. A made-up forecast is worse
+      // than none.
+      let w = null;
       try {
         if (supabase) {
           const { data: row } = await supabase
@@ -58,25 +93,53 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
             .eq('scope', 'weather')
             .limit(1)
             .maybeSingle();
-          if (row?.value) {
-            temp = row.value.temp || row.value.temperature || temp;
-            if (row.value.description) {
-              descEn = row.value.description.toLowerCase();
-            }
-          }
+          if (row?.value && (row.value.temp != null || row.value.temperature != null)) w = row.value;
         }
       } catch { }
 
       let tts;
-      if (lang === 'te') {
-        tts = `ఈరోజు వాతావరణం ${temp} డిగ్రీలు, ${descTe}.`;
-      } else if (lang === 'hi') {
-        tts = `आज मौसम ${temp} डिग्री है, ${descHi}।`;
-      } else {
-        tts = `Today's weather is ${temp}°C and ${descEn}.`;
+      if (!w) {
+        if (lang === 'te') tts = 'క్షమించండి, ఇప్పుడు వాతావరణ సమాచారం అందుబాటులో లేదు.';
+        else if (lang === 'hi') tts = 'माफ़ कीजिए, अभी मौसम की जानकारी उपलब्ध नहीं है।';
+        else tts = "Sorry, I don't have today's weather right now.";
+        return { handled: true, queryType: 'weather', tts, language: lang };
       }
-
+      const temp = Math.round(Number(w.temp ?? w.temperature));
+      const { te, hi, en } = describeSky(w.description);
+      if (lang === 'te') tts = `ఈరోజు వాతావరణం ${temp} డిగ్రీలు${te ? `, ${te}` : ''}.`;
+      else if (lang === 'hi') tts = `आज मौसम ${temp} डिग्री है${hi ? `, ${hi}` : ''}।`;
+      else tts = `Today's weather is ${temp}°C${en ? ` and ${en}` : ''}.`;
       return { handled: true, queryType: 'weather', tts, language: lang };
+    }
+
+    case 'contacts': {
+      let total = 0;
+      let names = [];
+      try {
+        if (supabase && userId) {
+          const { data: rows } = await supabase
+            .from('contacts')
+            .select('name')
+            .eq('user_id', userId)
+            .limit(200);
+          if (rows?.length) {
+            total = rows.length;
+            names = rows.map(r => r.name).filter(Boolean).slice(0, 5);
+          }
+        }
+      } catch { }
+      let tts;
+      if (!total) {
+        if (lang === 'te') tts = 'QuietKeep లో ఇంకా కాంటాక్ట్స్ లేవు. Contacts తెరిచి Sync నొక్కండి, అప్పుడు నేను కాల్ చేయగలను.';
+        else if (lang === 'hi') tts = 'QuietKeep में अभी कोई कॉन्टैक्ट नहीं है। Contacts खोलकर Sync दबाइए, फिर मैं कॉल कर पाऊँगी।';
+        else tts = "You don't have any contacts in QuietKeep yet. Open Contacts and tap Sync, then I can call people for you.";
+      } else {
+        const list = names.join(', ');
+        if (lang === 'te') tts = `మీకు ${total} కాంటాక్ట్స్ ఉన్నాయి. ఉదాహరణకు: ${list}.`;
+        else if (lang === 'hi') tts = `आपके ${total} कॉन्टैक्ट हैं। जैसे: ${list}।`;
+        else tts = `You have ${total} contacts, for example ${list}.`;
+      }
+      return { handled: true, queryType: 'contacts', tts, language: lang };
     }
 
     case 'tithi': {

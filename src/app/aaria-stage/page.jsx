@@ -18,7 +18,7 @@
 //                       Indian in a saree / kurta: NOT BUILT - "Coming next".
 //   * The frames-per-second line is a live measurement on this device.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useAaria } from '@/lib/context/aaria';
 import { speak } from '@/components/VoiceTalkback';
@@ -28,6 +28,7 @@ import { usePose, useMouth } from '@/lib/avatar/useAvatar';
 import { announceFaceChoice, ANIME_MODELS, ALL_LOOKS_FEATURE, allowedFace, isPaidLook } from '@/lib/avatar/face-pref';
 import { useFeatureGate } from '@/lib/hooks/useFeatureGate';
 import { useRouter } from 'next/navigation';
+import { CHECK_FACES, summariseCheck, verdict, mouthWord } from '@/lib/avatar/phone-check';
 
 const VrmStage = dynamic(() => import('@/components/avatar/VrmStage'), { ssr: false });
 const HumanStage = dynamic(() => import('@/components/avatar/HumanStage'), { ssr: false });
@@ -114,6 +115,68 @@ export default function AariaStagePage() {
   // Keep the last reading where a phone test can pick it up.
   const onFps = useCallback((f) => { setFps(f); try { window.__qkStageFps = { ...f, at: Date.now() }; } catch { } }, []);
 
+  // ── Phone check: the phone measures every face itself (no cable needed) ──
+  const live = useRef({});
+  live.current = { fps, source, heard, pose, key: `${face}|${who}|${face === 'realistic' ? lookId : ''}` };
+  const [check, setCheck] = useState(null); // { running, step, report, text }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const waitFor = async (fn, ms) => { const t = Date.now(); while (Date.now() - t < ms) { if (fn()) return true; await sleep(250); } return false; };
+  const watchMouth = async (ms) => {
+    const m = { heard: false, audio: false, cycle: false };
+    const t = Date.now();
+    while (Date.now() - t < ms) {
+      const c = live.current;
+      if (c.heard || c.pose === 'speaking') m.heard = true;
+      if (c.source === 'audio') m.audio = true;
+      if (c.source === 'cycle') m.cycle = true;
+      if (c.fps?.talking) m.fps = c.fps; // a reading taken while she was talking
+      await sleep(200);
+    }
+    return m;
+  };
+  const runCheck = useCallback(async () => {
+    const saved = { face, who, look };
+    const startedAt = Date.now();
+    const faces = []; const voices = [];
+    const en = LINES.find((l) => l.lang === 'en-IN');
+    for (const [i, f] of CHECK_FACES.entries()) {
+      setCheck({ running: true, step: `Face ${i + 1} of ${CHECK_FACES.length}: ${f.name}` });
+      const row = { name: f.name };
+      try {
+        setFps(null); setFace(f.style); setWho(f.who); setLook(f.look);
+        const key = `${f.style}|${f.who}|${f.style === 'realistic' ? f.look : ''}`;
+        const t0 = Date.now();
+        // First see the switch land (old reading cleared), then a fresh reading.
+        await waitFor(() => live.current.key === key && live.current.fps === null, 5000);
+        const ok = await waitFor(() => live.current.key === key && live.current.fps, 60000);
+        if (!ok) throw new Error('no picture within 60 s');
+        row.loadSeconds = Math.round((Date.now() - t0) / 100) / 10;
+        await sleep(8000);
+        row.rest = live.current.fps;
+        sayLine(en);
+        row.mouth = await watchMouth(7000);
+        row.speaking = row.mouth.fps || live.current.fps;
+        delete row.mouth.fps;
+        await waitFor(() => !live.current.heard, 8000);
+      } catch (e) { row.error = String(e.message || e); }
+      faces.push(row);
+    }
+    setFps(null); setFace('anime3d'); setWho('woman'); setLook('woman-1');
+    await waitFor(() => live.current.key === 'anime3d|woman|' && live.current.fps === null, 5000);
+    await waitFor(() => live.current.key === 'anime3d|woman|' && live.current.fps, 30000);
+    for (const l of LINES) {
+      setCheck({ running: true, step: `Voice: ${l.label}` });
+      sayLine(l);
+      voices.push({ label: l.label, mouth: await watchMouth(8000) });
+      await waitFor(() => !live.current.heard, 8000);
+    }
+    setFps(null); setFace(saved.face); setWho(saved.who); setLook(saved.look);
+    const report = { device: (typeof navigator !== 'undefined' ? navigator.userAgent : '').replace(/\s+/g, ' ').slice(0, 160), faces, voices, startedAt, endedAt: Date.now() };
+    const text = summariseCheck(report);
+    try { window.__qkPhoneCheck = report; } catch { }
+    setCheck({ running: false, report, text });
+  }, [face, who, look, sayLine]);
+
   const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 16 };
 
   return (
@@ -191,6 +254,45 @@ export default function AariaStagePage() {
           Press and hold the Aaria button to keep her listening, and ask for something real. The face shows “done” only after
           the action is confirmed, never just because Aaria understood.
         </p>
+      </div>
+
+      <div data-testid="phone-check" style={{ ...card, marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Phone check</div>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.5 }}>
+          Shows every face for a few seconds, has Aaria speak, and measures how smoothly this phone draws each one.
+          Takes about 3 minutes. Keep the screen on and turn the volume up.
+        </p>
+        <button data-testid="phone-check-run" disabled={!!check?.running} onClick={runCheck} style={{
+          padding: '9px 14px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: '#fff',
+          fontSize: 14, fontWeight: 600, fontFamily: 'inherit', cursor: check?.running ? 'default' : 'pointer', opacity: check?.running ? 0.6 : 1,
+        }}>{check?.running ? 'Checking…' : check?.report ? 'Run again' : 'Run phone check'}</button>
+        {check?.running && <p data-testid="phone-check-step" style={{ margin: '10px 0 0', fontSize: 12 }}>{check.step}</p>}
+        {check?.report && (
+          <div data-testid="phone-check-result" style={{ marginTop: 12, fontSize: 12, lineHeight: 1.6 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr style={{ textAlign: 'left', color: 'var(--text-subtle)' }}><th>Face</th><th>Smooth?</th><th>fps</th><th>Lips</th></tr></thead>
+              <tbody>
+                {check.report.faces.map((f) => (
+                  <tr key={f.name} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td>{f.name}</td>
+                    <td>{f.error ? 'failed' : verdict(f.speaking || f.rest)}</td>
+                    <td>{f.error ? '-' : `${f.rest?.medianFps ?? '-'} / ${f.speaking?.medianFps ?? '-'}`}</td>
+                    <td>{f.error ? f.error : mouthWord(f.mouth)}</td>
+                  </tr>
+                ))}
+                {check.report.voices.map((v) => (
+                  <tr key={v.label} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td>Voice {v.label}</td><td colSpan={3}>{mouthWord(v.mouth)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button onClick={() => { try { navigator.clipboard.writeText(check.text); } catch { } }} style={{
+              marginTop: 10, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent',
+              color: 'var(--text)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer',
+            }}>Copy results</button>
+          </div>
+        )}
       </div>
 
       <AariaFaceToggle />

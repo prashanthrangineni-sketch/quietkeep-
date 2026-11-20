@@ -29,6 +29,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useFaceOn } from '@/lib/avatar/useAvatar';
 import { setFaceOn } from '@/lib/avatar/face-pref';
+import { useFaceAccountSync } from '@/lib/avatar/face-sync';
+import { useAuth } from '@/lib/context/auth';
 import { avatarBus, connectSources, fromStatus, fromError } from '@/lib/avatar/events';
 import { onSpeechSignal } from '@/lib/avatar/speech-signal';
 import { onOutcome } from '@/lib/avatar/outcome';
@@ -44,6 +46,9 @@ export default function AariaDock() {
   const [typed, setTyped] = useState('');
   // The animated face: only when the person switched it on (off by default).
   const faceOn = useFaceOn();
+  // The face choice follows the person to a new phone (once the account column exists).
+  const auth = useAuth();
+  useFaceAccountSync(auth?.user?.id || null);
   // AARIA 4.4: every face is drawn from one checked list of events
   // (src/lib/avatar/events.js). The dock is where status and errors live, so
   // it feeds them in; speech and outcomes are connected once, here.

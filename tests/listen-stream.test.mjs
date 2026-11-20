@@ -277,6 +277,38 @@ const outcome = (p) => p.then((v) => ({ ok: true, v }), (e) => ({ ok: false, e }
   check('words were lost → fall back and say "say that again"', !r.ok && r.e.fallback === true && r.e.lostSpeech === true);
 }
 
+// ── spoke and stopped BEFORE the engine was ready, engine ready soon after: keep the words (20 Nov) ──
+{
+  const w = makeWorld();
+  const s = startListenStream({ lang: 'te', silenceMs: 900, deps: w.deps });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  for (let i = 0; i < 3; i++) { w.hush(); w.clock.advance(100); }
+  for (let i = 0; i < 8; i++) { w.speak(); w.clock.advance(100); }
+  for (let i = 0; i < 12; i++) { w.hush(); w.clock.advance(100); }       // stopped; engine still not ready
+  check('late engine: no "stop" sent before the engine is ready', !w.json().some((m) => m.event === 'stop'));
+  w.clock.advance(1500);                                                  // engine wakes up 1.5 s later
+  w.engine({ event: 'ready' });
+  check('late engine: held audio sent, then "stop"', w.json().some((m) => m.event === 'stop'));
+  w.engine({ event: 'done', text: 'ee roju naa panulu enti' });
+  const r = await res;
+  check('late engine: the sentence is kept, not "say that again"', r.ok && r.v.text === 'ee roju naa panulu enti', JSON.stringify(r));
+}
+
+// ── stopped before ready and the engine never comes: still falls back with lostSpeech ──
+{
+  const w = makeWorld();
+  const s = startListenStream({ lang: 'te', silenceMs: 900, deps: w.deps });
+  const res = outcome(s.result);
+  await new Promise((r) => setTimeout(r, 5)); await flush();
+  for (let i = 0; i < 3; i++) { w.hush(); w.clock.advance(100); }
+  for (let i = 0; i < 8; i++) { w.speak(); w.clock.advance(100); }
+  for (let i = 0; i < 12; i++) { w.hush(); w.clock.advance(100); }
+  w.clock.advance(5000);
+  const r = await res;
+  check('engine never ready → fall back and ask again', !r.ok && r.e.fallback === true && r.e.lostSpeech === true, JSON.stringify(r));
+}
+
 // ── the engine refuses ───────────────────────────────────────────────────────
 {
   const w = makeWorld();

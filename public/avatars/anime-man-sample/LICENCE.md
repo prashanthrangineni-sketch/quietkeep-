@@ -9,7 +9,7 @@ Recorded 18 Nov 2026 for the AARIA demo page (`/aaria-stage`).
 | Taken from | `https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/Sakurada_Fumiriya.vrm` (a public collection of VRoid sample models) |
 | Origin | A sample character from early versions of VRoid Studio (pixiv). |
 | Licence | CC0 (public-domain dedication), as written inside the file. |
-| Modified by Pranix | No. The file is byte-for-byte as downloaded. |
+| Modified by Pranix | Yes, pictures only (20 Nov 2026) - see below. CC0 places no conditions on changes. |
 
 ## The permissions written inside the file itself
 
@@ -36,3 +36,16 @@ In plain words: anyone may use it, including commercially, with no conditions.
   describes the same set as released by VRoid under CC0.
 - The copy came from a third-party collection, not from pixiv directly.
 - It is a stand-in to show the engine. It is not Aaria's own character.
+
+## Made smaller for phone data (20 Nov 2026)
+
+Changed with `scripts/avatar-shrink.py`, which is in this repository. The look was compared
+before and after on rendered pictures; no visible difference.
+
+| | Before | After |
+|---|---|---|
+| Size | 19,342,280 bytes | 5,205,316 bytes |
+| SHA-256 | `d8fb05f33e377df028cb6b9d58c441ce68326c41fa23f6c735d40c65ae3dc710` | `a2d5d91a7ee453941284cd7f4e15b8bd4edc0dd2f4ee1d7a130605041e80a343` |
+
+Command: `python3 scripts/avatar-shrink.py ORIGINAL.vrm Sakurada_Fumiriya.vrm --max-texture 1024 --palette`.
+Shape, skeleton, face shapes, materials and the licence block are untouched.

@@ -23,7 +23,7 @@ import dynamic from 'next/dynamic';
 import { useAaria } from '@/lib/context/aaria';
 import { speak } from '@/components/VoiceTalkback';
 import AariaFace, { AariaFaceToggle } from '@/components/AariaFace';
-import { onSpeechSignal } from '@/lib/avatar/speech-signal';
+import { avatarBus } from '@/lib/avatar/events';
 import { usePose, useMouth } from '@/lib/avatar/useAvatar';
 import { announceFaceChoice, ANIME_MODELS } from '@/lib/avatar/face-pref';
 
@@ -75,9 +75,9 @@ export default function AariaStagePage() {
 
   // Signed out (or on a screen where the dock is hidden) there is no dock
   // status to follow, so follow the sound itself.
-  useEffect(() => onSpeechSignal((e) => {
-    if (e.type === 'start') setHeard(true);
-    if (e.type === 'end') setHeard(false);
+  useEffect(() => avatarBus.on((e) => {
+    if (e.type === 'speech.start') setHeard(true);
+    if (e.type === 'speech.end') setHeard(false);
   }), []);
   const status = aaria.status !== 'idle' ? aaria.status : heard ? 'speaking' : 'idle';
   const pose = usePose(status);
@@ -147,6 +147,14 @@ export default function AariaStagePage() {
           {face === 'realistic' && <span style={{ width: 8 }} />}
           {face === 'realistic' && looks.map((l) => <Chip key={l.id} on={lookId === l.id} onClick={() => pickLook(l.id)}>{l.label}</Chip>)}
         </div>
+      )}
+
+      {face !== '2d' && (
+        <p data-testid="face-download-note" style={{ margin: '0 2px 8px', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
+          {face === 'anime3d'
+            ? 'This face downloads about 5 MB the first time, then works from your phone. If your phone is slow with it, Aaria switches to the simple face by herself.'
+            : 'This face downloads about 1 to 1.5 MB the first time, then works from your phone. If your phone is slow with it, Aaria switches to the simple face by herself.'}
+        </p>
       )}
 
       {face === 'realistic' && (

@@ -57,6 +57,7 @@ import { getDriveSpeedKmh } from '@/lib/drive-speed'; // DRV-02 speed gate
 import { understand as sharedBrainUnderstand, decide as sharedBrainDecide } from '@/lib/brain'; // AG-I3 shared brain v0
 import { createSpeakingTracker } from '@/lib/avatar/speech-signal'; // 4.1 real speaking state
 import { reportOutcome, outcomeFromCapture, outcomeFromClientAction } from '@/lib/avatar/outcome'; // 4.3 confirmed outcomes for the face
+import { handleFaceCommand } from '@/lib/avatar/face-command'; // "change your face" by voice (Thread 4)
 
 // AG-I3: Shared brain v0 flag gate (default off: existing path unchanged byte-for-byte in behaviour)
 const USE_SHARED_BRAIN = process.env.NEXT_PUBLIC_SHARED_BRAIN === '1';
@@ -581,6 +582,15 @@ export function AariaProvider({ children }) {
     if (!signedIn) {
       setError('Sign in first and I can act on that.');
       setStatus('idle');
+      return;
+    }
+    // Thread 4: "change your face to the man" etc. only changes a setting on
+    // this phone, so it is done here, not sent to the server.
+    let faceReply = null;
+    try { faceReply = handleFaceCommand(text, speechLang(voiceLang)); } catch { }
+    if (faceReply) {
+      setTranscript('');
+      say(faceReply, { lang: voiceLang });
       return;
     }
     setStatus('thinking');

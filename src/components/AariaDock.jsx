@@ -307,7 +307,7 @@ export default function AariaDock() {
                 border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)',
                 borderRadius: 999, padding: '5px 12px', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer',
               }}
-            >{faceOn ? 'Hide Aaria’s face' : 'Show Aaria’s face (preview)'}</button>
+            >{faceOn ? 'Hide Aaria’s face' : 'Show Aaria’s face'}</button>
             {faceOn && (
               <Link href="/aaria-stage" style={{ marginLeft: 10, color: 'var(--text-subtle)' }}
                 onClick={() => { stopAll(); setOpen(false); }}>Choose her face</Link>

@@ -173,7 +173,7 @@ _resetForTests();
     const { existsSync } = await import('node:fs');
     eq('both anime files the dock can load are in the app', Object.values(ANIME_MODELS).every((f) => existsSync(new URL('../public' + f, import.meta.url))), true);
   }
-  eq('the face switch is in Aaria\'s own panel, where it can be found', dock.includes('data-testid="aaria-face-switch"') && dock.includes('onClick={() => setFaceOn(!faceOn)}') && dock.includes("'Show Aaria’s face (preview)'"), true);
+  eq('the face switch is in Aaria\'s own panel, where it can be found', dock.includes('data-testid="aaria-face-switch"') && dock.includes('onClick={() => setFaceOn(!faceOn)}') && dock.includes("'Show Aaria’s face'"), true);
   {
     // The smaller files must still hold every face shape the app moves.
     const { readFileSync: rf, readdirSync } = await import('node:fs');

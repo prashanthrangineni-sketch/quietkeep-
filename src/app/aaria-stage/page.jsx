@@ -2,7 +2,8 @@
 // src/app/aaria-stage/page.jsx
 // One page to show Aaria's faces side by side. (AARIA demo build, 20 Nov 2026)
 //
-// DEMO ONLY. Nothing here is switched on for anyone by default: the dock keeps
+// Out of preview 20 Nov 2026 after the founder's phone check (all 8 faces
+// 60 fps, lips followed the voice in te/hi/en). Still off by default: the dock keeps
 // its plain microphone button unless the switch on this page (or on the Voice
 // screen) is turned on.
 //
@@ -183,7 +184,7 @@ export default function AariaStagePage() {
     <main style={{ maxWidth: 560, margin: '0 auto', padding: '10px 16px 180px', color: 'var(--text)' }}>
       {/* The face comes first, at the top of the screen, so the assistant's
           panel (which opens from the bottom) never covers it during a demo. */}
-      <h1 style={{ fontSize: 17, margin: '0 0 8px' }}>Aaria’s faces <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>· preview</span></h1>
+      <h1 style={{ fontSize: 17, margin: '0 0 8px' }}>Aaria’s faces</h1>
 
       <div style={{ ...card, padding: 8, minHeight: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {face === '2d' && <AariaFace status={status} size={200} />}
@@ -270,7 +271,7 @@ export default function AariaStagePage() {
         {check?.report && (
           <div data-testid="phone-check-result" style={{ marginTop: 12, fontSize: 12, lineHeight: 1.6 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr style={{ textAlign: 'left', color: 'var(--text-subtle)' }}><th>Face</th><th>Smooth?</th><th>fps</th><th>Lips</th></tr></thead>
+              <thead><tr style={{ textAlign: 'left', color: 'var(--text-subtle)' }}><th>Face</th><th style={{ paddingRight: 8 }}>Smooth?</th><th style={{ paddingRight: 8 }}>fps</th><th>Lips</th></tr></thead>
               <tbody>
                 {check.report.faces.map((f) => (
                   <tr key={f.name} style={{ borderTop: '1px solid var(--border)' }}>

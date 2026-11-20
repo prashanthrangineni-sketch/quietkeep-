@@ -53,6 +53,7 @@ export const FRAME_SAMPLES = 1600;   // 100 ms at 16 kHz
 export const READY_TIMEOUT_MS   = 7000;
 export const RETRY_DELAY_MS     = 800;
 export const DONE_TIMEOUT_MS    = 5000;
+export const LATE_READY_GRACE_MS = 4000;  // person stopped before the engine was ready: wait this long for it
 export const NOTHING_HEARD_MS   = 8000;  // tapped the mic and said nothing
 export const BUZZ_FRAMES       = 3;     // the first 300 ms after the mic opens: the "speak now" buzz, not the person
 export const ENGINE_HOLD_MS     = 1000;  // new words from the engine count only this soon after a voice

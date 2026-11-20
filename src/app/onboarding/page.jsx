@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import ConsentScreen from '@/components/ConsentScreen';
+import FacePicker from '@/components/avatar/FacePicker';
+import { saveChosenFace, setFaceOn } from '@/lib/avatar/face-pref';
 
 const LANGUAGES = [
   { value: 'en-IN', label: 'English', desc: 'Default voice & text assistant' },
@@ -33,6 +35,7 @@ const STEPS = [
   { id: 'details', title: 'Welcome to QuietKeep!', subtitle: 'Tell us a bit about yourself to get started.' },
   { id: 'language', title: 'Preferred Language', subtitle: 'Choose your assistant voice & UI language.' },
   { id: 'voice', title: 'Choose Aaria’s Voice', subtitle: 'Pick how Aaria sounds in every language (female or male).' },
+  { id: 'face', title: 'Choose Aaria’s Face', subtitle: 'Optional. Pick how Aaria looks while she talks.' },
   { id: 'persona', title: 'How do you use QuietKeep?', subtitle: "We'll personalise your experience." },
   { id: 'calendar', title: 'Pick your calendar tradition', subtitle: 'Your daily brief will show relevant events.' },
   { id: 'keep', title: 'Add your first keep', subtitle: 'A keep is anything you want to remember.' },
@@ -47,6 +50,9 @@ export default function OnboardingPage() {
   const [email, setEmail] = useState('');
   const [language, setLanguage] = useState('en-IN');
   const [voiceChoice, setVoiceChoice] = useState('aaria_f'); // default = female
+  const [faceChoice, setFaceChoice] = useState('none'); // off unless chosen
+  const [faceWho, setFaceWho] = useState(null); // follows the voice until picked
+  const faceWhoNow = faceWho || (voiceChoice === 'aaria_m' ? 'man' : 'woman');
   const [calendar, setCalendar] = useState('gregorian');
   const [persona, setPersona] = useState('professional');
   const [referralCode, setReferralCode] = useState('');
@@ -108,9 +114,17 @@ export default function OnboardingPage() {
     }
   }
 
+  // Saved on this phone only (like the panel switch). Free looks only here.
+  function applyFaceChoice() {
+    if (faceChoice === 'none') { setFaceOn(false); return; }
+    saveChosenFace({ style: faceChoice, who: faceWhoNow, look: `${faceWhoNow}-1` });
+    setFaceOn(true);
+  }
+
   async function handleNext() {
     setError('');
     if (step === 0 && !name.trim()) { setError('Full name is required.'); return; }
+    if (STEPS[step]?.id === 'face') applyFaceChoice();
     if (step < STEPS.length - 1) { setStep(s => s + 1); return; }
     await finishOnboarding();
   }
@@ -345,8 +359,13 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 3: Persona */}
+        {/* Step 3: Face */}
         {step === 3 && (
+          <FacePicker face={faceChoice} who={faceWhoNow} onFace={setFaceChoice} onWho={setFaceWho} />
+        )}
+
+        {/* Step 4: Persona */}
+        {step === 4 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {PERSONAS.map(p => (
               <button key={p.value} onClick={() => setPersona(p.value)}
@@ -368,8 +387,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 4: Calendar */}
-        {step === 4 && (
+        {/* Step 5: Calendar */}
+        {step === 5 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {CALENDARS.map(cal => (
               <button
@@ -394,8 +413,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 5: First keep */}
-        {step === 5 && (
+        {/* Step 6: First keep */}
+        {step === 6 && (
           <>
             <textarea
               value={firstKeep}
@@ -432,7 +451,7 @@ export default function OnboardingPage() {
             {saving ? 'Setting up your space…' : step < STEPS.length - 1 ? 'Continue →' : "Let's go →"}
           </button>
 
-          {step === 5 && !saving && (
+          {step === 6 && !saving && (
             <button
               onClick={skipKeep}
               style={{ width: '100%', background: 'transparent', color: 'var(--text-subtle)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', fontSize: '14px', cursor: 'pointer', minHeight: '48px' }}

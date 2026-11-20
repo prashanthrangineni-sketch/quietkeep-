@@ -25,7 +25,9 @@ import { speak } from '@/components/VoiceTalkback';
 import AariaFace, { AariaFaceToggle } from '@/components/AariaFace';
 import { avatarBus } from '@/lib/avatar/events';
 import { usePose, useMouth } from '@/lib/avatar/useAvatar';
-import { announceFaceChoice, ANIME_MODELS } from '@/lib/avatar/face-pref';
+import { announceFaceChoice, ANIME_MODELS, ALL_LOOKS_FEATURE, allowedFace, isPaidLook } from '@/lib/avatar/face-pref';
+import { useFeatureGate } from '@/lib/hooks/useFeatureGate';
+import { useRouter } from 'next/navigation';
 
 const VrmStage = dynamic(() => import('@/components/avatar/VrmStage'), { ssr: false });
 const HumanStage = dynamic(() => import('@/components/avatar/HumanStage'), { ssr: false });
@@ -67,6 +69,11 @@ function Chip({ on, onClick, children }) {
 
 export default function AariaStagePage() {
   const aaria = useAaria();
+  // Extra realistic looks are for paid plans once the founder switches the
+  // rule on; until then the gate reports OPEN and every look stays available.
+  const gate = useFeatureGate(ALL_LOOKS_FEATURE);
+  const router = useRouter();
+  const allLooks = gate.status !== 'LOCKED';
   const [face, setFace] = useState('2d');
   const [who, setWho] = useState('woman');
   const [look, setLook] = useState('woman-1');
@@ -96,7 +103,8 @@ export default function AariaStagePage() {
   const pickLook = (id) => { setLook(id); remember('qk_aaria_stage_look2', id); };
   // The look must belong to the chosen woman-or-man group.
   const looks = REALISTIC[who] || REALISTIC.woman;
-  const lookId = looks.some((l) => l.id === look) ? look : looks[0].id;
+  const wanted = looks.some((l) => l.id === look) ? look : looks[0].id;
+  const lookId = allowedFace({ style: 'realistic', who, look: wanted }, allLooks).look;
 
   const sayLine = useCallback((line) => {
     if (aaria.signedIn && !aaria.silent) aaria.say(line.text, { lang: line.lang });
@@ -145,7 +153,10 @@ export default function AariaStagePage() {
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
           {WHO.map((w) => <Chip key={w.id} on={who === w.id} onClick={() => pickWho(w.id)}>{w.label}</Chip>)}
           {face === 'realistic' && <span style={{ width: 8 }} />}
-          {face === 'realistic' && looks.map((l) => <Chip key={l.id} on={lookId === l.id} onClick={() => pickLook(l.id)}>{l.label}</Chip>)}
+          {face === 'realistic' && looks.map((l) => {
+            const locked = !allLooks && isPaidLook('realistic', who, l.id);
+            return <Chip key={l.id} on={lookId === l.id} onClick={() => (locked ? router.push('/pricing') : pickLook(l.id))}>{locked ? `🔒 ${l.label}` : l.label}</Chip>;
+          })}
         </div>
       )}
 

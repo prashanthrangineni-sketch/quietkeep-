@@ -11,7 +11,8 @@ const QUERY_PATTERNS = [
   { type: 'tasks',     pattern: /(?:^|\P{L})(?:పనులు|పని|tasks?|reminders?|work|panulu|to-?dos?|काम|कार्य)(?:\P{L}|$)|ఏమేం\s*పనులు/iu },
   { type: 'memories',  pattern: /(?:^|\P{L})(?:జ్ఞాపకాలు|జ్ఞాపకం|memories|memory|keeps?|notes?|gnapakalu|यादें|याद)(?:\P{L}|$)/iu },
   { type: 'warranties',pattern: /(?:^|\P{L})(?:వారంటీ|వారంటీస్|warrant(?:y|ies)|guarantee|वारंटी)(?:\P{L}|$)/iu },
-  { type: 'expenses',  pattern: /(?:^|\P{L})(?:expenses?\s*anni|ఖర్చులు|ఖర్చు|all\s+expenses?|expenses?\s+this\s+month|how\s+much\s+did\s+i\s+spend|what\s+did\s+i\s+spend|खर्च|खर्चा)(?:\P{L}|$)/iu },
+  { type: 'contacts',  pattern: /(?:^|\P{L})(?:contacts?|contacts\s*lo|kontacts|కాంటాక్ట్స్|కాంటాక్ట్|कॉन्टैक्ट्स|कॉन्टैक्ट|संपर्क)(?:\P{L}|$)/iu },
+  { type: 'expenses',  pattern: /(?:^|\P{L})(?:expenses?|kharchu|kharchulu|kharcha|kharche|spent|spend|spending|expenses?\s*anni|ఖర్చులు|ఖర్చు|all\s+expenses?|expenses?\s+this\s+month|how\s+much\s+did\s+i\s+spend|what\s+did\s+i\s+spend|खर्च|खर्चा)(?:\P{L}|$)/iu },
 ];
 
 export function isQueryUtterance(text = '', llmIntent = null) {

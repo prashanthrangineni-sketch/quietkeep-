@@ -2,8 +2,7 @@
 // src/lib/avatar/useAvatar.js
 // The two hooks every face uses: which pose, and what the mouth is doing.
 import { useEffect, useRef, useState } from 'react';
-import { onSpeechSignal } from './speech-signal';
-import { onOutcome } from './outcome';
+import { avatarBus } from './events';
 import { createPoseMachine } from './pose';
 import { attachMouth, cycleShapes, smoothShapes, SILENT } from './mouth';
 import { isFaceOn, onFaceChange } from './face-pref';
@@ -14,8 +13,20 @@ export function usePose(status) {
   if (!machine.current) machine.current = createPoseMachine();
   const [pose, setPose] = useState('idle');
   useEffect(() => { machine.current.setStatus(status); setPose(machine.current.pose()); }, [status]);
+  // Tell the rest of the app which pose is on screen (the contract's "emotion").
+  const lastPose = useRef(null);
   useEffect(() => {
-    const off = onOutcome((o) => { machine.current.setOutcome(o); setPose(machine.current.pose()); });
+    if (lastPose.current === pose) return;
+    lastPose.current = pose;
+    avatarBus.emit({ type: 'emotion', pose });
+  }, [pose]);
+  useEffect(() => {
+    // Outcomes come through the checked event list (src/lib/avatar/events.js).
+    const off = avatarBus.on((e) => {
+      if (e.type !== 'outcome') return;
+      machine.current.setOutcome({ status: e.status });
+      setPose(machine.current.pose());
+    });
     // A flash ends by itself; look again a few times a second while idle.
     const t = setInterval(() => setPose(machine.current.pose()), 250);
     return () => { off(); clearInterval(t); };
@@ -39,14 +50,15 @@ export function useMouth() {
       shapes.current = smoothShapes(shapes.current, target);
       raf = requestAnimationFrame(tick);
     };
-    const off = onSpeechSignal(async (e) => {
-      if (e.type === 'start') {
+    // Speech start and end come through the checked event list.
+    const off = avatarBus.on(async (e) => {
+      if (e.type === 'speech.start') {
         speaking = true; startedAt = performance.now(); reader = null; cycle = true; setSource('cycle');
         if (e.source === 'aaria' && typeof window !== 'undefined' && window.__qkActiveAudio) {
           const r = await attachMouth(window.__qkActiveAudio);
           if (r && speaking) { reader = r; cycle = false; setSource('audio'); }
         }
-      } else if (e.type === 'end') {
+      } else if (e.type === 'speech.end') {
         speaking = false; reader = null; cycle = false; setSource(null);
       }
     });

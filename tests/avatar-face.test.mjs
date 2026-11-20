@@ -174,6 +174,41 @@ _resetForTests();
     eq('both anime files the dock can load are in the app', Object.values(ANIME_MODELS).every((f) => existsSync(new URL('../public' + f, import.meta.url))), true);
   }
   eq('the face switch is in Aaria\'s own panel, where it can be found', dock.includes('data-testid="aaria-face-switch"') && dock.includes('onClick={() => setFaceOn(!faceOn)}') && dock.includes("'Show Aaria’s face (preview)'"), true);
+  {
+    // The smaller files must still hold every face shape the app moves.
+    const { readFileSync: rf, readdirSync } = await import('node:fs');
+    const glbJson = (path) => { const b = rf(new URL(path, import.meta.url)); const n = b.readUInt32LE(12); return JSON.parse(b.subarray(20, 20 + n).toString('utf8')); };
+    const humanSrc = read('../src/components/avatar/HumanStage.jsx');
+    const used = [...humanSrc.matchAll(/P \+ '([^']+)'/g)].map((m) => 'blendShape1.' + m[1]);
+    const bad = [];
+    for (const d of readdirSync(new URL('../public/avatars/realistic-rocketbox/', import.meta.url), { withFileTypes: true }).filter((x) => x.isDirectory())) {
+      for (const fn of readdirSync(new URL(`../public/avatars/realistic-rocketbox/${d.name}/`, import.meta.url)).filter((x) => x.endsWith('.glb'))) {
+        const j = glbJson(`../public/avatars/realistic-rocketbox/${d.name}/${fn}`);
+        const have = new Set(j.meshes.flatMap((m) => (m.extras && m.extras.targetNames) || []));
+        for (const u of used) if (!have.has(u)) bad.push(`${fn}: ${u}`);
+      }
+    }
+    eq('every realistic file still has every face shape the app uses', [used.length >= 12, bad], [true, []]);
+    for (const f of ['../public/avatars/anime-sample/VRM1_Constraint_Twist_Sample.vrm', '../public/avatars/anime-man-sample/Sakurada_Fumiriya.vrm']) {
+      const j = glbJson(f);
+      const ext = j.extensions || {};
+      const meta = (ext.VRMC_vrm && ext.VRMC_vrm.meta) || (ext.VRM && ext.VRM.meta) || {};
+      const hasMouth = ext.VRMC_vrm ? ['aa', 'ih', 'ou', 'ee', 'oh', 'blink', 'happy'].every((k) => ext.VRMC_vrm.expressions.preset[k])
+        : ['a', 'i', 'u', 'e', 'o', 'blink', 'joy'].every((k) => ext.VRM.blendShapeMaster.blendShapeGroups.some((g) => g.presetName === k));
+      eq(`${f.split('/').pop()}: licence block and mouth shapes kept`, [!!(meta.licenseUrl || meta.licenseName), hasMouth], [true, true]);
+    }
+    const { statSync } = await import('node:fs');
+    const sizes = ['../public/avatars/anime-sample/VRM1_Constraint_Twist_Sample.vrm', '../public/avatars/anime-man-sample/Sakurada_Fumiriya.vrm']
+      .map((f) => statSync(new URL(f, import.meta.url)).size);
+    eq('each anime file is under 6 MB', sizes.every((x) => x < 6 * 1024 * 1024), true);
+    // What the page tells people about the download must match the real files.
+    const dirSize = (d) => readdirSync(new URL(d, import.meta.url)).filter((x) => !x.endsWith('.md'))
+      .reduce((n, x) => n + statSync(new URL(d + x, import.meta.url)).size, 0);
+    const realistic = readdirSync(new URL('../public/avatars/realistic-rocketbox/', import.meta.url), { withFileTypes: true })
+      .filter((x) => x.isDirectory()).map((x) => dirSize(`../public/avatars/realistic-rocketbox/${x.name}/`));
+    eq('every realistic look is 1 to 1.5 MB, as the page says', realistic.every((x) => x > 0.9 * 1024 * 1024 && x < 1.5 * 1024 * 1024), true);
+    eq('every anime face is about 5 MB, as the page says', sizes.every((x) => x > 4 * 1024 * 1024 && x < 6 * 1024 * 1024), true);
+  }
   const face = read('../src/components/AariaFace.jsx');
   eq('2D face takes "done" from the pose machine only', face.includes("const happy = pose === 'done';") && !/tts_response|useAaria\(/.test(face), true);
   const stage = read('../src/app/aaria-stage/page.jsx');

@@ -29,6 +29,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useFaceOn } from '@/lib/avatar/useAvatar';
 import { setFaceOn } from '@/lib/avatar/face-pref';
+import { avatarBus, connectSources, fromStatus, fromError } from '@/lib/avatar/events';
+import { onSpeechSignal } from '@/lib/avatar/speech-signal';
+import { onOutcome } from '@/lib/avatar/outcome';
 
 export default function AariaDock() {
   const {
@@ -41,6 +44,13 @@ export default function AariaDock() {
   const [typed, setTyped] = useState('');
   // The animated face: only when the person switched it on (off by default).
   const faceOn = useFaceOn();
+  // AARIA 4.4: every face is drawn from one checked list of events
+  // (src/lib/avatar/events.js). The dock is where status and errors live, so
+  // it feeds them in; speech and outcomes are connected once, here.
+  useEffect(() => connectSources(avatarBus, { onSpeechSignal, onOutcome }), []);
+  useEffect(() => { const e = fromStatus(status); if (e) avatarBus.emit(e); }, [status]);
+  useEffect(() => { const e = fromError(error); if (e) avatarBus.emit(e); }, [error]);
+
   // The faces page already shows the chosen face large; do not draw it twice there.
   const onStagePage = usePathname() === '/aaria-stage';
   const inputRef = useRef(null);

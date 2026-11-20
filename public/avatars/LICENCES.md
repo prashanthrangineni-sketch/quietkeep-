@@ -15,4 +15,6 @@ without a row in this table and, for a character file, a `LICENCE.md` beside it.
 | Sample realistic 3D people (two women, four men) | `public/avatars/realistic-rocketbox/` | Microsoft Rocketbox avatar library: Female_Adult_01, 15 and Male_Adult_01, 07, 08, 21 | MIT (Copyright (c) 2020 Microsoft) | See `realistic-rocketbox/LICENCE.md`. Converted once from FBX to GLB. A stand-in, not Aaria's final look. |
 | Realistic Indian woman (saree) and man (kurta) | — | — | — | NOT ADDED. No character with a usable licence has been found yet. |
 
+All character files were made smaller for phone data on 20 Nov 2026 (`scripts/avatar-shrink.py`); each change is recorded in the licence file beside it.
+
 Not used, by decision: Live2D, Rive, AI-generated face video, native 3D renderers.

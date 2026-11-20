@@ -80,11 +80,11 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
 
   switch (queryType) {
     case 'weather': {
-      let temp = 28;
-      let descTe = 'పాక్షికంగా మేఘావృతమై ఉంది';
-      let descHi = 'आंशिक रूप से बादल छाए रहेंगे';
-      let descEn = 'partly cloudy';
-
+      // Real numbers only. Until 19 Nov this answered "28 degrees, partly
+      // cloudy" whenever nothing was stored, and always said "partly cloudy"
+      // in Telugu and Hindi whatever the sky was. A made-up forecast is worse
+      // than none.
+      let w = null;
       try {
         if (supabase) {
           const { data: row } = await supabase
@@ -93,25 +93,53 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
             .eq('scope', 'weather')
             .limit(1)
             .maybeSingle();
-          if (row?.value) {
-            temp = row.value.temp || row.value.temperature || temp;
-            if (row.value.description) {
-              descEn = row.value.description.toLowerCase();
-            }
-          }
+          if (row?.value && (row.value.temp != null || row.value.temperature != null)) w = row.value;
         }
       } catch { }
 
       let tts;
-      if (lang === 'te') {
-        tts = `ఈరోజు వాతావరణం ${temp} డిగ్రీలు, ${descTe}.`;
-      } else if (lang === 'hi') {
-        tts = `आज मौसम ${temp} डिग्री है, ${descHi}।`;
-      } else {
-        tts = `Today's weather is ${temp}°C and ${descEn}.`;
+      if (!w) {
+        if (lang === 'te') tts = 'క్షమించండి, ఇప్పుడు వాతావరణ సమాచారం అందుబాటులో లేదు.';
+        else if (lang === 'hi') tts = 'माफ़ कीजिए, अभी मौसम की जानकारी उपलब्ध नहीं है।';
+        else tts = "Sorry, I don't have today's weather right now.";
+        return { handled: true, queryType: 'weather', tts, language: lang };
       }
-
+      const temp = Math.round(Number(w.temp ?? w.temperature));
+      const { te, hi, en } = describeSky(w.description);
+      if (lang === 'te') tts = `ఈరోజు వాతావరణం ${temp} డిగ్రీలు${te ? `, ${te}` : ''}.`;
+      else if (lang === 'hi') tts = `आज मौसम ${temp} डिग्री है${hi ? `, ${hi}` : ''}।`;
+      else tts = `Today's weather is ${temp}°C${en ? ` and ${en}` : ''}.`;
       return { handled: true, queryType: 'weather', tts, language: lang };
+    }
+
+    case 'contacts': {
+      let total = 0;
+      let names = [];
+      try {
+        if (supabase && userId) {
+          const { data: rows } = await supabase
+            .from('contacts')
+            .select('name')
+            .eq('user_id', userId)
+            .limit(200);
+          if (rows?.length) {
+            total = rows.length;
+            names = rows.map(r => r.name).filter(Boolean).slice(0, 5);
+          }
+        }
+      } catch { }
+      let tts;
+      if (!total) {
+        if (lang === 'te') tts = 'QuietKeep లో ఇంకా కాంటాక్ట్స్ లేవు. Contacts తెరిచి Sync నొక్కండి, అప్పుడు నేను కాల్ చేయగలను.';
+        else if (lang === 'hi') tts = 'QuietKeep में अभी कोई कॉन्टैक्ट नहीं है। Contacts खोलकर Sync दबाइए, फिर मैं कॉल कर पाऊँगी।';
+        else tts = "You don't have any contacts in QuietKeep yet. Open Contacts and tap Sync, then I can call people for you.";
+      } else {
+        const list = names.join(', ');
+        if (lang === 'te') tts = `మీకు ${total} కాంటాక్ట్స్ ఉన్నాయి. ఉదాహరణకు: ${list}.`;
+        else if (lang === 'hi') tts = `आपके ${total} कॉन्टैक्ट हैं। जैसे: ${list}।`;
+        else tts = `You have ${total} contacts, for example ${list}.`;
+      }
+      return { handled: true, queryType: 'contacts', tts, language: lang };
     }
 
     case 'tithi': {

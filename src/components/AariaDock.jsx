@@ -28,6 +28,7 @@ import AariaLiveFace from '@/components/avatar/AariaLiveFace';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useFaceOn } from '@/lib/avatar/useAvatar';
+import { setFaceOn } from '@/lib/avatar/face-pref';
 
 export default function AariaDock() {
   const {
@@ -282,6 +283,25 @@ export default function AariaDock() {
             margin: '10px 0 0', fontSize: 11, color: 'var(--text-subtle)', lineHeight: 1.5,
           }}>
             Ctrl+Space to talk from anywhere · Esc to stop
+          </p>
+
+          {/* The face switch, where it can be found: in Aaria's own panel.
+              Off by default; one tap turns the animated face on or off. */}
+          <p style={{ margin: '8px 0 0', fontSize: 12 }}>
+            <button
+              type="button"
+              onClick={() => setFaceOn(!faceOn)}
+              aria-pressed={faceOn}
+              data-testid="aaria-face-switch"
+              style={{
+                border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)',
+                borderRadius: 999, padding: '5px 12px', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer',
+              }}
+            >{faceOn ? 'Hide Aaria’s face' : 'Show Aaria’s face (preview)'}</button>
+            {faceOn && (
+              <Link href="/aaria-stage" style={{ marginLeft: 10, color: 'var(--text-subtle)' }}
+                onClick={() => { stopAll(); setOpen(false); }}>Choose her face</Link>
+            )}
           </p>
 
           {/* Which listener heard the last sentence. On screen, at the moment

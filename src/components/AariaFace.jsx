@@ -177,7 +177,7 @@ export function AariaFaceToggle() {
       borderRadius: 12, padding: '12px 16px', cursor: 'pointer', userSelect: 'none',
     }}>
       <div>
-        <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>Animated Aaria face (preview)</div>
+        <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>Animated Aaria face</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
           Aaria blinks, and her mouth follows her voice. Off by default.{' '}
           <a href="/aaria-stage" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--primary)' }}>Choose her face</a>

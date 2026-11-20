@@ -28,7 +28,7 @@ export function verdict(fps) {
 /** What happened to the mouth while she spoke. */
 export function mouthWord(m) {
   if (!m || !m.heard) return 'no sound reached the page';
-  if (m.audio) return 'lips followed her voice';
+  if (m.audio) return 'lips followed the voice';
   if (m.cycle) return 'lips moved (simple open-close)';
   return 'sound played, lips did not move';
 }

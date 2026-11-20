@@ -17,7 +17,7 @@ t('verdict thresholds match the panel fallback', () => {
   assert.equal(verdict(null), 'no reading');
 });
 t('mouth words never claim lip-sync without audio', () => {
-  assert.equal(mouthWord({ heard: true, audio: true }), 'lips followed her voice');
+  assert.equal(mouthWord({ heard: true, audio: true }), 'lips followed the voice');
   assert.equal(mouthWord({ heard: true, cycle: true }), 'lips moved (simple open-close)');
   assert.equal(mouthWord({ heard: true }), 'sound played, lips did not move');
   assert.equal(mouthWord({ heard: false, audio: true }), 'no sound reached the page');
@@ -27,9 +27,9 @@ t('summary text has every face and voice', () => {
   const txt = summariseCheck({ device: 'Phone X', startedAt: 0, endedAt: 181000,
     faces: [{ name: 'Anime woman', loadSeconds: 1.5, rest: { medianFps: 60, worstFrameMs: 42 }, speaking: { medianFps: 58, worstFrameMs: 50 }, mouth: { heard: true, audio: true } }, { name: 'Realistic man 4', error: 'no picture within 60 s' }],
     voices: [{ label: 'English', mouth: { heard: true, audio: true } }] });
-  assert.match(txt, /Anime woman: 60 \/ 58 fps; slowest 42 \/ 50 ms; loaded in 1.5 s; smooth; lips followed her voice/);
+  assert.match(txt, /Anime woman: 60 \/ 58 fps; slowest 42 \/ 50 ms; loaded in 1.5 s; smooth; lips followed the voice/);
   assert.match(txt, /Realistic man 4: FAILED \(no picture within 60 s\)/);
-  assert.match(txt, /- English: lips followed her voice/);
+  assert.match(txt, /- English: lips followed the voice/);
   assert.match(txt, /Took 181 s/);
 });
 const page = readFileSync(new URL('../src/app/aaria-stage/page.jsx', import.meta.url), 'utf8');

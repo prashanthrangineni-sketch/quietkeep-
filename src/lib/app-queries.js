@@ -15,11 +15,45 @@ const QUERY_PATTERNS = [
   { type: 'expenses',  pattern: /(?:^|\P{L})(?:expenses?|kharchu|kharchulu|kharcha|kharche|spent|spend|spending|expenses?\s*anni|ఖర్చులు|ఖర్చు|all\s+expenses?|expenses?\s+this\s+month|how\s+much\s+did\s+i\s+spend|what\s+did\s+i\s+spend|खर्च|खर्चा)(?:\P{L}|$)/iu },
 ];
 
+// A QUESTION, NOT A COMMAND (T24, 19 Nov 2026).
+//
+// The patterns above name a SUBJECT ("tasks", "notes", "reminder", "work",
+// "expenses"). On their own they also match commands: "set a reminder for 5 pm",
+// "save a note: demo went well", "remind me to finish my work" — and those were
+// being answered as questions and never saved. So a pattern only counts when
+// the sentence is asked (a question mark or a question word) and is not an
+// instruction to save, remind or call.
+const QUESTION_CUE = /[?？]|(?:^|\P{L})(?:what|what's|whats|which|how|who|any|show|list|tell|read|do\s+i\s+have|all|enti|entha|enni|emiti|emi|evi|em|emunnayi|unnaya|unnayi|unnai|undi|unda|ela|cheppu|chupinchu|anni|kya|kitna|kitne|kaun|kaunse|batao|dikhao|sab|ఏంటి|ఏమిటి|ఏమి|ఏం|ఏమేం|ఎంత|ఎన్ని|ఏవి|ఉన్నాయి|ఉన్నాయా|ఉందా|ఉంది|ఎలా|చెప్పు|చెప్పండి|చూపించు|అన్ని|ఏమున్నాయి|क्या|कितना|कितने|कौन|कौनसे|बताओ|बताइए|दिखाओ|सब)(?:\P{L}|$)/iu;
+const SAVE_CUE = /(?:^|\P{L})(?:remind\s+me|set\s+(?:a\s+)?reminder|add\s+(?:a\s+)?reminder|save\s+(?:a|an|this|that|it|my)|note\s+(?:down|this|that)|make\s+a\s+note|add\s+(?:an?\s+)?(?:expense|note|task)|gurthu\s*chey\w*|gurtu\s*chey\w*|guruthu\s*chey\w*|save\s+chey\w*|note\s+chey\w*|yaad\s+dila\w*|గుర్తు\s*చేయి|గుర్తు\s*చేయండి|గుర్తు\s*చెయ్యి|గుర్తు\s*చేస్తావా|సేవ్\s*చెయ్యి|సేవ్\s*చేయి|సేవ్\s*చేయండి|నోట్\s*చేయి|నోట్\s*చెయ్యి|याद\s*दिला\w*|सेव\s*कर\w*|नोट\s*कर\w*)(?:\P{L}|$)/iu;
+const CALL_CUE = /(?:^|\P{L})(?:call|ring|dial)(?:\P{L}|$)|కాల్|ఫోన్\s*చే|कॉल|फ़ोन\s*कर|फोन\s*कर/iu;
+
 export function isQueryUtterance(text = '', llmIntent = null) {
-  if (llmIntent === 'query') return true;
   const str = String(text || '').trim();
   if (!str) return false;
+  // An instruction to save, remind or call is never answered as a question,
+  // whatever the brain or the patterns say.
+  if (SAVE_CUE.test(str) || CALL_CUE.test(str)) return false;
+  if (llmIntent === 'query') return true;
+  if (!QUESTION_CUE.test(str)) return false;
   return QUERY_PATTERNS.some(q => q.pattern.test(str));
+}
+
+// Weather words in the three languages Aaria answers in. Unknown conditions
+// are read out as the provider wrote them in English, never replaced.
+function describeSky(desc) {
+  const d = String(desc || '').toLowerCase().trim();
+  if (!d) return { te: '', hi: '', en: '' };
+  const table = [
+    [/thunder/, 'ఉరుములతో వర్షం', 'गरज के साथ बारिश'],
+    [/drizzle|light rain/, 'చిరుజల్లులు', 'हल्की बारिश'],
+    [/rain|shower/, 'వర్షం', 'बारिश'],
+    [/clear/, 'ఆకాశం నిర్మలంగా ఉంది', 'आसमान साफ़ है'],
+    [/few clouds|scattered|partly/, 'అక్కడక్కడ మేఘాలు', 'हल्के बादल'],
+    [/broken|overcast|cloud/, 'మేఘావృతం', 'बादल छाए हैं'],
+    [/haze|mist|fog|smoke/, 'పొగమంచు', 'धुंध'],
+  ];
+  for (const [re, te, hi] of table) if (re.test(d)) return { te, hi, en: d };
+  return { te: d, hi: d, en: d };
 }
 
 export function detectQueryType(text = '', llmAssist = null) {

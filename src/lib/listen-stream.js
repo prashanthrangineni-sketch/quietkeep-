@@ -385,7 +385,7 @@ export function startListenStream({
   const t0 = now();
   const terms = cleanKeyterms(keyterms);
   let ws = null, stream = null, ctx = null, node = null, source = null;
-  let ready = false, ended = false, stopSent = false;
+  let ready = false, ended = false, stopSent = false, stopWhenReady = false;
   let speechSeen = false, firstWordsMs = null, tStop = null;
   let lastPartial = '';
   let engineUsed = null;   // what the engine said it used, from its "ready"

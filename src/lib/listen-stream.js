@@ -629,6 +629,7 @@ export function startListenStream({
         clear('ready');
         clear('retry');
         while (pending.length) send(pending.shift());
+        if (stopWhenReady) sendStop();
       } else if (ev === 'partial') {
         const t = (msg.text || '').trim();
         if (t) {

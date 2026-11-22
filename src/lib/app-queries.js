@@ -173,7 +173,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         } else if (lang === 'hi') {
           tts = 'माफ़ कीजिए, अभी तेलुगु पंचांग तिथि विवरण उपलब्ध नहीं हैं।';
         } else {
-          tts = 'Sorry, Telugu calendar tithi details are not available yet.';
+          tts = say('tithi_none', lang, {}) ?? 'Sorry, Telugu calendar tithi details are not available yet.';
         }
       }
 

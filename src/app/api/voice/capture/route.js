@@ -284,7 +284,7 @@ export async function POST(request) {
       not_saved: true,
       reason: 'transcription_noise',
       detail: noiseReasons[0],
-      tts_response: DIDNT_CATCH[lang] || DIDNT_CATCH.en,
+      tts_response: DIDNT_CATCH[lang] || say('didnt_catch', lang) || DIDNT_CATCH.en,
     })
   }
 

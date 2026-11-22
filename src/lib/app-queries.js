@@ -165,7 +165,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       if (tithiFound) {
         if (lang === 'te') tts = `ఈరోజు తిథి: ${tithiFound}.`;
         else if (lang === 'hi') tts = `आज की तिथि: ${tithiFound}।`;
-        else tts = `Today's tithi is ${tithiFound}.`;
+        else tts = say('tithi_now', lang, { tithi: tithiFound }) ?? `Today's tithi is ${tithiFound}.`;
       } else {
         // Source not in repo / DB -> state plainly it cannot yet
         if (lang === 'te') {

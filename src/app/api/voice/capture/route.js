@@ -1896,7 +1896,8 @@ export async function POST(request) {
     }
   } else if (geoData?.location_name && !geoData?.geo_trigger_enabled) {
     const saveSuggestion = suggestSave ? ' Tap "Save here" on the Geo page to enable it.' : '';
-    tts_response = `Noted for near ${geoData.location_name}.${saveSuggestion}`;
+    const noted = say('place_noted', spokenLang, { place: geoData.location_name })
+    tts_response = noted ?? `Noted for near ${geoData.location_name}.${saveSuggestion}`;
   }
 
   // v15: Memory context injection — personalise TTS when strong habit detected

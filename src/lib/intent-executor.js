@@ -997,7 +997,7 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
   }
 
   if (parsed.type === 'purchase') {
-    return `Purchase keep saved. Tap to search on Amazon.`;
+    return say('purchase_saved', lang) ?? `Purchase keep saved. Tap to search on Amazon.`;
   }
 
   if (parsed.type === 'trip' || parsed.type === 'navigation') {

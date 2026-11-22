@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import ConsentScreen from '@/components/ConsentScreen';
 import FacePicker from '@/components/avatar/FacePicker';
 import { saveChosenFace, setFaceOn } from '@/lib/avatar/face-pref';
+import { saveOnboardingVoiceSettings } from '@/lib/voice-settings-merge';
 
 const LANGUAGES = [
   { value: 'en-IN', label: 'English', desc: 'Default voice & text assistant' },
@@ -178,18 +179,9 @@ export default function OnboardingPage() {
       await saveConsent(consentData);
 
       // Save user voice preference (FOUNDER DECISION 17 Nov: chosen during onboarding, default female)
+      // Card F1: Read existing settings first and merge new voice choice so earlier settings (wake_name, keep_listening, etc.) are never wiped.
       try {
-        await supabase.from('user_settings').upsert({
-          user_id: user.id,
-          voice_language: language,
-          preferred_language: language,
-          settings: {
-            voice_choice: voiceChoice || 'aaria_f',
-            voice_provider: 'preset',
-            preset_voice: voiceChoice === 'aaria_m' ? 'aaria_m' : 'aaria_f',
-          },
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
+        await saveOnboardingVoiceSettings(supabase, user.id, language, voiceChoice);
       } catch (voicePrefErr) {
         console.error('[onboarding] voice preference save failed', voicePrefErr);
       }

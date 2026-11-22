@@ -29,6 +29,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/auth';
 import { supabase } from '@/lib/supabase';
+import { fetchAllContacts } from '@/app/api/contacts/fetchAll';
 import { contactSource, syncDeviceContacts } from '@/lib/contacts-sync';
 import {
   AuroraPage, PageHeader, SectionTitle, Grid, GlassCard,
@@ -57,11 +58,15 @@ export default function ContactsPage() {
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase.from('contacts')
-      .select('id,name,phone,email,relation,avatar_emoji,is_favorite,source')
-      .eq('user_id', user.id).order('is_favorite', { ascending: false }).order('name');
-    setContacts(data || []);
-    setLoading(false);
+    try {
+      const data = await fetchAllContacts(supabase, user.id);
+      setContacts(data || []);
+    } catch (e) {
+      console.error('Failed to load contacts:', e);
+      setError('Could not load contacts');
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => {

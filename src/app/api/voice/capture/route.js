@@ -65,6 +65,7 @@ import { DRIVE_INTENTS, planDriveTurn } from '@/lib/drive-voice' // Drive Mode i
 import { cleanSpeedKmh } from '@/lib/drive-speed' // DRV-02 speed gate: the phone's GPS speed in Drive Mode
 import { waitUntilStoppedLine, speakWhileMoving } from '@/lib/moving-lines'
 import { say } from '@/lib/reply-phrases' // T27: every reply in the spoken language
+import { refreshTauProfile } from '@/lib/tau-profile' // T28: personal profile
 
 export async function POST(request) {
   try {
@@ -1842,6 +1843,10 @@ export async function POST(request) {
         recordSequence(user.id, prevType, parsed.type, getTimeBucket()).catch(() => {});
       }
     }).catch(() => {});
+
+  // T28: keep Aaria's personal profile fresh - rebuilt at most every 6 hours,
+  // never awaited, never throws (learning must not slow or break a turn).
+  refreshTauProfile(supabase, user.id).catch(() => {});
 
   let tts_response = buildExecutionTTS(parsed, matchedContact, reminderAt, followUp, spokenLang)
   // The brain replies in the language the user actually spoke — reading English

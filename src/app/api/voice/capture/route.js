@@ -1888,7 +1888,8 @@ export async function POST(request) {
     const locLabel = geoData.location_name || 'this location';
     const geoType  = parsed.geo?.type;
     if (geoType === 'current') {
-      tts_response = `Saved. I'll remind you when you return here: ${keepSnippet}`;
+      tts_response = say('place_return', spokenLang, { what: keepSnippet })
+        ?? `Saved. I'll remind you when you return here: ${keepSnippet}`;
     } else {
       tts_response = `Got it. When you reach ${locLabel}, I'll remind you: ${keepSnippet}`;
     }

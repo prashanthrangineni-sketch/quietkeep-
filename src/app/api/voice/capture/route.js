@@ -1734,6 +1734,8 @@ export async function POST(request) {
 
   let reminderNudgeId = null
   let reminderRow     = null
+  // T30: "every day / ప్రతి రోజు / हर सोमवार ..." makes the reminder repeat.
+  const repeatOf = reminderAt ? detectRepeat(text) : null
   if (reminderAt && keep?.id) {
     reminderNudgeId = await scheduleReminderNudge(supabase, {
       userId:     user.id,

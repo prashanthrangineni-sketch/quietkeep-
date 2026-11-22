@@ -14,6 +14,7 @@
 // Same rules as every other face: mouth from the reply audio, a smile only for
 // a confirmed completed action, and a measured frames-per-second reading.
 
+import { createGestures } from '@/lib/avatar/gestures';
 import { useEffect, useRef, useState } from 'react';
 import { usePose, useMouth } from '@/lib/avatar/useAvatar';
 
@@ -130,9 +131,23 @@ export default function HumanStage({ status = 'idle', who = 'woman-1', height = 
         const headPos = new THREE.Vector3();
         (head || root).getWorldPosition(headPos);
         const target = headPos.clone().add(new THREE.Vector3(0, 0.02, 0));
-        camera.position.copy(target).add(new THREE.Vector3(0, 0.02, 1.25));
+        // Head to waist, so the hands show when they move.
+        target.y -= 0.2;
+        camera.position.copy(target).add(new THREE.Vector3(0, 0.04, 2.3));
         camera.lookAt(target);
         const headBase = head ? head.quaternion.clone() : null;
+        // Arms and hands move by small turns in the world's axes, from this
+        // arms-down rest (same idea as the head below).
+        const limbs = ['Bip01 L UpperArm', 'Bip01 R UpperArm', 'Bip01 L Forearm', 'Bip01 R Forearm'].map((n) => {
+          const b = bone(n); return b ? { b, base: b.quaternion.clone() } : null;
+        });
+        const turnWorld = (limb, x, y, z) => {
+          if (!limb) return;
+          euler.set(x, y, z); dq.setFromEuler(euler);
+          const pq = new THREE.Quaternion(); limb.b.parent.getWorldQuaternion(pq);
+          limb.b.quaternion.copy(pq.clone().invert().multiply(dq).multiply(pq).multiply(limb.base));
+        };
+        const gestures = createGestures();
         const spineBase = spine ? spine.quaternion.clone() : null;
 
         const setShape = (names, v) => {
@@ -188,11 +203,23 @@ export default function HumanStage({ status = 'idle', who = 'woman-1', height = 
           for (const k of Object.keys(want)) mood[k] += (want[k] - mood[k]) * Math.min(1, dt * 6);
           setShape(SHAPES.smile, mood.smile); setShape(SHAPES.frown, mood.frown); setShape(SHAPES.eyesUp, mood.up);
 
+          // Body: arms, hands and head (gestures.js decides, this maps to the bones).
+          const gs = gestures(p, t, dt, talking ? (shapes.current?.aa || 0) : 0);
+          const [lUp, rUp, lFore, rFore] = limbs;
+          root.updateMatrixWorld(true);
+          turnWorld(lUp, -gs.left.lift, 0, gs.left.out);
+          // These bodies are wider in the frame, so the waving arm stays closer to the body.
+          turnWorld(rUp, -gs.right.lift, 0, -gs.right.out * (gs.waving ? 0.4 : 1));
+          root.updateMatrixWorld(true);
+          turnWorld(lFore, -gs.left.bend, 0, 0);
+          if (gs.waving) turnWorld(rFore, 0, 0, -gs.right.bend * 1.45 + gs.right.swing);
+          else turnWorld(rFore, -gs.right.bend, 0, 0);
+
           if (head && headBase) {
             // Small turns added in the world's axes, so the bone's own axes do not matter.
             euler.set(
-              mood.tiltX + Math.sin(t * 0.9) * 0.02 + (talking ? Math.sin(t * 5.1) * 0.01 : 0),
-              Math.sin(t * 0.4) * 0.05,
+              mood.tiltX + gs.nod + Math.sin(t * 0.9) * 0.02,
+              Math.sin(t * 0.4) * 0.05 + gs.shake,
               mood.tiltZ + Math.sin(t * 0.6) * 0.012,
             );
             dq.setFromEuler(euler);

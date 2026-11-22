@@ -64,6 +64,7 @@ import {
 import { DRIVE_INTENTS, planDriveTurn } from '@/lib/drive-voice' // Drive Mode intents (DRV-03): no keep, phone acts
 import { cleanSpeedKmh } from '@/lib/drive-speed' // DRV-02 speed gate: the phone's GPS speed in Drive Mode
 import { waitUntilStoppedLine, speakWhileMoving } from '@/lib/moving-lines'
+import { say } from '@/lib/reply-phrases' // T27: every reply in the spoken language
 
 export async function POST(request) {
   try {

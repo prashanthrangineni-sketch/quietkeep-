@@ -517,8 +517,13 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
 
     // Name found, no phone in contacts
     if (name && (contactResult === null || !contactResult?.single?.phone)) {
+      const askLang = scriptOf(parsed.subject || parsed.content || parsed.text || '');
       return {
-        follow_up:      `"${name}" isn't in your contacts.`,
+        follow_up:      askLang === 'te'
+          ? `${name} మీ కాంటాక్ట్స్‌లో లేరు.`
+          : askLang === 'hi'
+            ? `${name} आपके कॉन्टैक्ट्स में नहीं हैं।`
+            : `"${name}" isn't in your contacts.`,
         action_hint:    'add_contact',
         suggested_name: name,
       };

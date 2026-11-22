@@ -271,7 +271,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const top = taskItems.slice(0, 3).join(', ');
         if (lang === 'te') tts = `ఈరోజు మీకు ${taskItems.length} పనులు ఉన్నాయి: ${top}.`;
         else if (lang === 'hi') tts = `आज आपके ${taskItems.length} काम हैं: ${top}।`;
-        else tts = `You have ${taskItems.length} tasks scheduled for today: ${top}.`;
+        else tts = say('tasks_count', lang, { n: taskItems.length, top }) ?? `You have ${taskItems.length} tasks scheduled for today: ${top}.`;
       } else {
         if (lang === 'te') tts = 'ఈరోజు మీకు ఎలాంటి పనులు లేవు. మీరు ప్రశాంతంగా ఉండవచ్చు!';
         else if (lang === 'hi') tts = 'आज आपका कोई काम नहीं है।';

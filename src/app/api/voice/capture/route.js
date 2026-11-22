@@ -17,7 +17,7 @@ import { parseIntent, stripWakePhrase }    from '@/lib/intent-parser'
 import { collapseRepeats } from '@/lib/transcript-clean'
 import { impossibleSequences } from '@/lib/script-sanity'
 import { isFragment, measuredSpeechMs, caughtPartReply } from '@/lib/fragment-guard'
-import { isFillerPhrase, countWords, isActionOrQueryIntent } from '@/lib/conversation-noise-guard'
+import { isFillerPhrase, countWords, isActionOrQueryIntent, soundsLikeAaria, REMIND_CUE } from '@/lib/conversation-noise-guard'
 import { cleanTurnTiming } from '@/lib/fillers'
 import { detectSpokenLanguage } from '@/lib/spoken-language'
 import { aariaAssist }   from '@/lib/aaria-act'
@@ -33,7 +33,7 @@ import {
   isNavigationRequest,
 } from '@/lib/intent-executor'
 import { isQueryUtterance, resolveAppQuery } from '@/lib/app-queries'
-import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation, isRepeatOfOpenQuestion, isPendingQuestion, isUnmatchedAnswer, askAgain } from '@/lib/follow-up-answer'
+import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation, isRepeatOfOpenQuestion, isPendingQuestion, isUnmatchedAnswer, askAgain, hasOpenQuestion } from '@/lib/follow-up-answer'
 import { contactChoices, spokenContactQuestion, narrowContacts } from '@/lib/contact-match'
 import { whyBrainRun, describeUnderstanding } from '@/lib/understanding-record'
 import { geocodePlace, cleanPlaceName, prettyPlaceName, isPersonalPlace } from '@/lib/geocode'
@@ -294,7 +294,17 @@ export async function POST(request) {
   // again; write nothing, do nothing. Answer turns and unmeasured turns pass
   // (see src/lib/fragment-guard.js). Placed before the idempotency key and
   // every write, like the noise check above.
-  if (isFragment({ listen: listenEvidence, answering: body.answering === true, text })) {
+  // THE PHONE DID NOT SAY IT WAS AN ANSWER. (22 November 2026)
+  // Aaria asked "Call Surya Kiran now?" and the founder said "Yes." - half a
+  // second of speech - and it was thrown away as a fragment, because only the
+  // phone's own `answering` flag let short answers through and that turn did
+  // not carry it. The server knows when it has a question open: a short reply
+  // while one is open is an answer, whatever the phone said.
+  let serverAnswering = false
+  if (body.answering !== true && countWords(text) <= 4) {
+    serverAnswering = await hasOpenQuestion(supabase, user.id)
+  }
+  if (isFragment({ listen: listenEvidence, answering: body.answering === true || serverAnswering, text })) {
     if (autoTurn) {
       supabase.from('audit_log').insert({
         user_id: user.id,
@@ -851,7 +861,7 @@ export async function POST(request) {
   // ── CARD T23: NOISE & FILLER GUARD (WHEN NOT ANSWERING A QUESTION) ───────
   // 1. On auto turns: reject if < 3 words or filler-only.
   if (autoTurn) {
-    if (countWords(text) < 3 || isFillerPhrase(text)) {
+    if (countWords(text) < 3 || isFillerPhrase(text) || soundsLikeAaria(text)) {
       supabase.from('audit_log').insert({
         user_id: user.id,
         action: 'voice.auto_turn_ignored',
@@ -1281,6 +1291,16 @@ export async function POST(request) {
     }
   }
 
+  // "...GURTHU CHEYYI" IS A REMINDER, EVEN WITH "CALL" IN IT. (22 Nov 2026)
+  // "సాయంత్రం ఐదుకి బ్యాంకుకి కాల్ చేయాలి అని గుర్తు చేయి" was filed as a
+  // contact because the parser saw కాల్, the time was then thrown away, and
+  // Aaria asked "Who do you want to contact?". The person asked to be
+  // REMINDED. A spoken "remind me" decides the type.
+  if (REMIND_CUE.test(text) && !['reminder', 'task'].includes(parsed.type)) {
+    parsed.type = 'reminder'
+    parsed.confidence = Math.max(parsed.confidence || 0, 0.9)
+  }
+
   // ── A NAVIGATION OR PLACE THE BRAIN HEARD ───────────────────────────────
   const isNav = parsed.type === 'navigation' || llmAssist?.intent === 'navigation' || isNavigationRequest(text);
   if (isNav) {
@@ -1291,7 +1311,7 @@ export async function POST(request) {
 
   // Did the user ask to CALL this person, as opposed to merely naming them?
   parsed.wants_call = /\b(call|ring|dial|phone)\b|కాల్|ఫోన్|कॉल|काल|फ़ोन|फोन/i.test(text);
-  if ((parsed.type === 'contact' || parsed.wants_call) && !llmAssist?.entities?.datetimeISO && !parsed.entities?.times?.length && !parsed.entities?.dates?.length) {
+  if ((parsed.type === 'contact' || parsed.wants_call) && !llmAssist?.entities?.datetimeISO && !parsed.entities?.times?.length && !parsed.entities?.dates?.length && !computeReminderAt({ dates: [], times: [] }, undefined, text)) {
     reminderAt = null;
   }
 

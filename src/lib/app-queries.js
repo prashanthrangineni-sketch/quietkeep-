@@ -5,7 +5,7 @@
 import { detectSpokenLanguage } from './spoken-language.js';
 
 const QUERY_PATTERNS = [
-  { type: 'weather',   pattern: /(?:^|\P{L})(?:weather|vatavaranam|vaathavaranam|mausam|వాతావరణం|వాతావరణ|मौसम|हवामान)(?:\P{L}|$)|weather\s+ela\s+undi/iu },
+  { type: 'weather',   pattern: /(?:^|\P{L})(?:weather|vatavaranam|vaathavaranam|mausam|వెదర్|వెధర్|వెథర్|వెదరు|వాతావరణం|వాతావరణ|मौसम|हवामान)(?:\P{L}|$)|weather\s+ela\s+undi/iu },
   { type: 'tithi',     pattern: /(?:^|\P{L})(?:thithi|tithi|తిథి|పంచాంగం|panchangam|panchanga|तिथि|पंचांग)(?:\P{L}|$)/iu },
   { type: 'documents', pattern: /(?:^|\P{L})(?:పత్రాలు|పత్రం|documents?|patralu|docs?|files?|దస్తావేజులు|दस्तावेज़|दस्तावेज)(?:\P{L}|$)/iu },
   { type: 'tasks',     pattern: /(?:^|\P{L})(?:పనులు|పని|tasks?|reminders?|work|panulu|to-?dos?|काम|कार्य)(?:\P{L}|$)|ఏమేం\s*పనులు/iu },
@@ -370,9 +370,15 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
               .eq('user_id', userId)
               .eq('intent_type', 'expense')
               .gte('created_at', startOfMonth.toISOString());
-            if (keepExps?.length) {
-              topItems = keepExps.slice(0, 3).map(k => k.content?.slice(0, 30)).filter(Boolean);
+            // Only keeps that carry an amount are spending. A sentence like
+            // "ee nela expenses anni" (a question once saved by mistake) is
+            // not an expense and was being read back as one, next to "₹0".
+            const withAmount = (keepExps || []).filter(k => /\d/.test(String(k.content || '')));
+            for (const k of withAmount) {
+              const m = String(k.content).replace(/,/g, '').match(/(?:₹|rs\.?|inr)?\s*(\d+(?:\.\d+)?)/i);
+              if (m) total += parseFloat(m[1]) || 0;
             }
+            topItems = withAmount.slice(0, 3).map(k => k.content?.slice(0, 30)).filter(Boolean);
           }
         }
       } catch { }

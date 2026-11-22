@@ -182,3 +182,17 @@ export function isFillerOutsideAutoTurn({
   if (answersPendingQuestion) return false;
   return isFillerPhrase(text);
 }
+
+
+// HER OWN VOICE IS NOT A COMMAND. (22 November 2026)
+// On an automatic turn the microphone caught Aaria saying "సారీ, ఈ కాల్
+// చేయలేను" ("sorry, I can't make this call") and saved it as a contact. A
+// person giving Aaria an instruction does not apologise or say what they
+// cannot do; Aaria does. Used only on turns the app opened by itself.
+const AARIA_SPEECH = /(?:^|\P{L})(?:sorry|i\s+can'?t|i\s+cannot|i\s+couldn'?t|i\s+did\s+not\s+catch|సారీ|క్షమించండి|చేయలేను|చేయలేకపోయాను|చేయలేకపోతున్నాను|వినిపించింది|माफ़|माफ|क्षमा|नहीं\s+कर\s+सकती|नहीं\s+कर\s+सकता)(?:\P{L}|$)/iu;
+export function soundsLikeAaria(text = '') {
+  return AARIA_SPEECH.test(String(text || ''));
+}
+
+// A spoken "remind me" in the languages Aaria hears.
+export const REMIND_CUE = /(?:^|\P{L})(?:remind\s+me|set\s+(?:a\s+)?reminder|gurthu\s*chey\w*|gurtu\s*chey\w*|guruthu\s*chey\w*|yaad\s+dila\w*|గుర్తు\s*చేయి|గుర్తు\s*చేయండి|గుర్తు\s*చెయ్యి|గుర్తు\s*చేస్తావా|గుర్తుచేయి|याद\s*दिला\w*)(?:\P{L}|$)/iu;

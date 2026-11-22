@@ -40,7 +40,7 @@ check('isCallCommand needs a name, not just the verb', isCallCommand('call Surya
 
 // The capture route passes the sentence to the guard.
 const route = readFileSync(new URL('../src/app/api/voice/capture/route.js', import.meta.url), 'utf8');
-check('capture route gives the guard the sentence', /isFragment\(\{ listen: listenEvidence, answering: body\.answering === true, text \}\)/.test(route));
+check('capture route gives the guard the sentence', /isFragment\(\{ listen: listenEvidence, answering: body\.answering === true(?: \|\| serverAnswering)?, text \}\)/.test(route));
 
 // ── A. words said before the first quiet frame are counted ─────────────────
 {

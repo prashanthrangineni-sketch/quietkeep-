@@ -499,10 +499,17 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
     }
 
     // Name found, phone available, and no time said → read back to confirm call
+    // In the language it was asked in (22 Nov 2026: a Telugu request was
+    // answered "Call Surya Kiran now or set a reminder?").
     if (name && contactResult?.single?.phone && !timeAlreadyGiven) {
       const contactName = contactResult.single.name || name;
+      const askLang = scriptOf(parsed.subject || parsed.content || parsed.text || '');
       return {
-        follow_up:   `Call ${contactName} now or set a reminder?`,
+        follow_up:   askLang === 'te'
+          ? `${contactName}కి ఇప్పుడే కాల్ చేయనా?`
+          : askLang === 'hi'
+            ? `${contactName} को अभी कॉल करूँ?`
+            : `Call ${contactName} now or set a reminder?`,
         action_hint: 'call_or_remind',
         contact:     contactResult.single,
       };
@@ -510,8 +517,13 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
 
     // Name found, no phone in contacts
     if (name && (contactResult === null || !contactResult?.single?.phone)) {
+      const askLang = scriptOf(parsed.subject || parsed.content || parsed.text || '');
       return {
-        follow_up:      `"${name}" isn't in your contacts.`,
+        follow_up:      askLang === 'te'
+          ? `${name} మీ కాంటాక్ట్స్‌లో లేరు.`
+          : askLang === 'hi'
+            ? `${name} आपके कॉन्टैक्ट्स में नहीं हैं।`
+            : `"${name}" isn't in your contacts.`,
         action_hint:    'add_contact',
         suggested_name: name,
       };
@@ -519,8 +531,13 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
 
     // No name extracted at all
     if (!name) {
+      const askLang = scriptOf(parsed.subject || parsed.content || parsed.text || '');
       return {
-        follow_up:   'Who do you want to contact? Say their name.',
+        follow_up:   askLang === 'te'
+          ? 'ఎవరికి కాల్ చేయాలి? పేరు చెప్పండి.'
+          : askLang === 'hi'
+            ? 'किसे कॉल करना है? नाम बताइए।'
+            : 'Who do you want to contact? Say their name.',
         action_hint: 'name_needed',
       };
     }

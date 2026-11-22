@@ -1844,6 +1844,10 @@ export async function POST(request) {
       }
     }).catch(() => {});
 
+  // T28: keep Aaria's personal profile fresh - rebuilt at most every 6 hours,
+  // never awaited, never throws (learning must not slow or break a turn).
+  refreshTauProfile(supabase, user.id).catch(() => {});
+
   let tts_response = buildExecutionTTS(parsed, matchedContact, reminderAt, followUp, spokenLang)
   // The brain replies in the language the user actually spoke — reading English
   // back to a Telugu or Hindi speaker is the same as not answering at all.

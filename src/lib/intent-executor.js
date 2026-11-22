@@ -1001,7 +1001,7 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
   }
 
   if (parsed.type === 'trip' || parsed.type === 'navigation') {
-    return `Navigation keep saved. Tap to open Maps.`;
+    return say('navigation_saved', lang) ?? `Navigation keep saved. Tap to open Maps.`;
   }
 
   if (parsed.type === 'expense') {

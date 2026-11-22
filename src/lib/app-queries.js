@@ -389,7 +389,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const topStr = topItems.join(', ');
         if (lang === 'te') tts = `ఈ నెల మొత్తం ఖర్చులు ₹${Math.round(total)}. ప్రధాన ఖర్చులు: ${topStr}.`;
         else if (lang === 'hi') tts = `इस महीने का कुल खर्च ₹${Math.round(total)} है। मुख्य खर्च: ${topStr}।`;
-        else tts = `This month's total expenses are ₹${Math.round(total)}. Top items: ${topStr}.`;
+        else tts = say('spend_total', lang, { total: Math.round(total), top: topStr }) ?? `This month's total expenses are ₹${Math.round(total)}. Top items: ${topStr}.`;
       } else {
         if (lang === 'te') tts = 'ఈ నెల ఖర్చులేవీ నమోదు కాలేదు.';
         else if (lang === 'hi') tts = 'इस महीने कोई खर्च दर्ज नहीं हुआ है।';

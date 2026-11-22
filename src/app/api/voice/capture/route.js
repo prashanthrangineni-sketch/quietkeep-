@@ -1754,6 +1754,7 @@ export async function POST(request) {
           reminder_text: text,
           scheduled_for: reminderAt.toISOString(),
           is_active:     true,
+          recurrence:    repeatOf || 'none',
           space_type:    workspace_id ? 'business' : 'personal',
           // Without these the alarm can speak the reminder and nothing else.
           // src/lib/reminder-voice.js reads contact_phone off THIS row, not off

@@ -3,6 +3,7 @@
 // Questions are answered aloud from the user's data; they NEVER create a keep.
 
 import { detectSpokenLanguage } from './spoken-language.js';
+import { say } from './reply-phrases.js';
 
 const QUERY_PATTERNS = [
   { type: 'weather',   pattern: /(?:^|\P{L})(?:weather|vatavaranam|vaathavaranam|mausam|వెదర్|వెధర్|వెథర్|వెదరు|వాతావరణం|వాతావరణ|मौसम|हवामान)(?:\P{L}|$)|weather\s+ela\s+undi/iu },

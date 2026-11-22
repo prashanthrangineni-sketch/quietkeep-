@@ -102,7 +102,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       if (!w) {
         if (lang === 'te') tts = 'క్షమించండి, ఇప్పుడు వాతావరణ సమాచారం అందుబాటులో లేదు.';
         else if (lang === 'hi') tts = 'माफ़ कीजिए, अभी मौसम की जानकारी उपलब्ध नहीं है।';
-        else tts = "Sorry, I don't have today's weather right now.";
+        else tts = say('weather_none', lang, {}) ?? "Sorry, I don't have today's weather right now.";
         return { handled: true, queryType: 'weather', tts, language: lang };
       }
       const temp = Math.round(Number(w.temp ?? w.temperature));

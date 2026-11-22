@@ -307,7 +307,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       } else {
         if (lang === 'te') tts = 'మీ ఫోన్లో జ్ఞాపకాలేవీ సేవ్ చేయబడలేదు.';
         else if (lang === 'hi') tts = 'आपके फ़ोन में कोई यादें सहेजी नहीं गई हैं।';
-        else tts = 'You have no memories saved.';
+        else tts = say('memories_none', lang, {}) ?? 'You have no memories saved.';
       }
 
       return { handled: true, queryType: 'memories', tts, language: lang };

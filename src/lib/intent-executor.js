@@ -993,7 +993,7 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
   }
 
   if (parsed.type === 'meeting') {
-    return `Meeting keep saved. Tap to add to Google Calendar.`;
+    return say('meeting_saved', lang) ?? `Meeting keep saved. Tap to add to Google Calendar.`;
   }
 
   if (parsed.type === 'purchase') {

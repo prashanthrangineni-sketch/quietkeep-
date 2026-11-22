@@ -1291,6 +1291,16 @@ export async function POST(request) {
     }
   }
 
+  // "...GURTHU CHEYYI" IS A REMINDER, EVEN WITH "CALL" IN IT. (22 Nov 2026)
+  // "సాయంత్రం ఐదుకి బ్యాంకుకి కాల్ చేయాలి అని గుర్తు చేయి" was filed as a
+  // contact because the parser saw కాల్, the time was then thrown away, and
+  // Aaria asked "Who do you want to contact?". The person asked to be
+  // REMINDED. A spoken "remind me" decides the type.
+  if (REMIND_CUE.test(text) && !['reminder', 'task'].includes(parsed.type)) {
+    parsed.type = 'reminder'
+    parsed.confidence = Math.max(parsed.confidence || 0, 0.9)
+  }
+
   // ── A NAVIGATION OR PLACE THE BRAIN HEARD ───────────────────────────────
   const isNav = parsed.type === 'navigation' || llmAssist?.intent === 'navigation' || isNavigationRequest(text);
   if (isNav) {

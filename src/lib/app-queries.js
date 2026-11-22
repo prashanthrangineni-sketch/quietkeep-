@@ -275,7 +275,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       } else {
         if (lang === 'te') tts = 'ఈరోజు మీకు ఎలాంటి పనులు లేవు. మీరు ప్రశాంతంగా ఉండవచ్చు!';
         else if (lang === 'hi') tts = 'आज आपका कोई काम नहीं है।';
-        else tts = 'You have no tasks scheduled for today. All clear!';
+        else tts = say('tasks_none', lang, {}) ?? 'You have no tasks scheduled for today. All clear!';
       }
 
       return { handled: true, queryType: 'tasks', tts, language: lang };

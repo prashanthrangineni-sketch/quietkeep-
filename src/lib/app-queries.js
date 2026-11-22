@@ -338,7 +338,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       } else {
         if (lang === 'te') tts = 'యాక్టివ్ వారంటీలేవీ లేవు.';
         else if (lang === 'hi') tts = 'कोई सक्रिय वारंटी नहीं है।';
-        else tts = 'You have no active warranties.';
+        else tts = say('warranties_none', lang, {}) ?? 'You have no active warranties.';
       }
 
       return { handled: true, queryType: 'warranties', tts, language: lang };

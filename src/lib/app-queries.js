@@ -109,7 +109,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       const { te, hi, en } = describeSky(w.description);
       if (lang === 'te') tts = `ఈరోజు వాతావరణం ${temp} డిగ్రీలు${te ? `, ${te}` : ''}.`;
       else if (lang === 'hi') tts = `आज मौसम ${temp} डिग्री है${hi ? `, ${hi}` : ''}।`;
-      else tts = `Today's weather is ${temp}°C${en ? ` and ${en}` : ''}.`;
+      else tts = say('weather_now', lang, { temp }) ?? `Today's weather is ${temp}°C${en ? ` and ${en}` : ''}.`;
       return { handled: true, queryType: 'weather', tts, language: lang };
     }
 

@@ -662,7 +662,8 @@ export async function POST(request) {
       const ask = isContactQ
         ? (narrowed.length >= 2
             ? `There are ${narrowed.length} called ${narrowed[0].name}. Tap the right number, or say first or second.`
-            : spokenContactQuestion(fu.suggested_name, fu.contacts))
+            : spokenContactQuestion(fu.suggested_name, fu.contacts,
+                detectSpokenLanguage(`${openQuestion.voice_text || openQuestion.content || ''} ${text}`, language)))
         : fu.follow_up
       return NextResponse.json({
         keep:              openQuestion,

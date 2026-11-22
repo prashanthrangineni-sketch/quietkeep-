@@ -538,7 +538,7 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
           ? 'ఎవరికి కాల్ చేయాలి? పేరు చెప్పండి.'
           : askLang === 'hi'
             ? 'किसे कॉल करना है? नाम बताइए।'
-            : 'Who do you want to contact? Say their name.',
+            : (say('who_to_call', askLang) ?? 'Who do you want to contact? Say their name.'),
         action_hint: 'name_needed',
       };
     }

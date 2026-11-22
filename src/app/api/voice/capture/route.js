@@ -1872,7 +1872,7 @@ export async function POST(request) {
     } else if (spokenLang === 'hi') {
       tts_response = `${dest} के लिए नेविगेशन सेट कर रही हूँ।`;
     } else {
-      tts_response = `Setting navigation to ${dest}.`;
+      tts_response = say('navigating', spokenLang, { dest }) ?? `Setting navigation to ${dest}.`;
     }
   } else if (parsed.route?.detected && routeData?.destLoc) {
     tts_response = `Got it. When you're near ${routeData.destLoc.name}, I'll remind you: ${keepSnippet}`;

@@ -294,7 +294,17 @@ export async function POST(request) {
   // again; write nothing, do nothing. Answer turns and unmeasured turns pass
   // (see src/lib/fragment-guard.js). Placed before the idempotency key and
   // every write, like the noise check above.
-  if (isFragment({ listen: listenEvidence, answering: body.answering === true, text })) {
+  // THE PHONE DID NOT SAY IT WAS AN ANSWER. (22 November 2026)
+  // Aaria asked "Call Surya Kiran now?" and the founder said "Yes." - half a
+  // second of speech - and it was thrown away as a fragment, because only the
+  // phone's own `answering` flag let short answers through and that turn did
+  // not carry it. The server knows when it has a question open: a short reply
+  // while one is open is an answer, whatever the phone said.
+  let serverAnswering = false
+  if (body.answering !== true && countWords(text) <= 4) {
+    serverAnswering = await hasOpenQuestion(supabase, user.id)
+  }
+  if (isFragment({ listen: listenEvidence, answering: body.answering === true || serverAnswering, text })) {
     if (autoTurn) {
       supabase.from('audit_log').insert({
         user_id: user.id,

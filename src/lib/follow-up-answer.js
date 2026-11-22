@@ -346,3 +346,26 @@ export function answerConfirmation(answer, keep, timeZone = 'Asia/Kolkata') {
     ? `Right — ${dateStr} at ${timeStr} I'll call ${who}.`
     : `Right — ${dateStr} at ${timeStr}.`
 }
+
+
+/**
+ * Is a question of Aaria's still open for this person? Read-only. Used by the
+ * capture route to let a short answer ("Yes.") through the fragment guard even
+ * when the phone did not mark the turn as an answer (22 November 2026).
+ */
+export async function hasOpenQuestion(supabase, userId, nowMs = Date.now()) {
+  if (!supabase || !userId) return false
+  try {
+    const { data } = await supabase
+      .from('keeps')
+      .select('id,follow_up,reminder_at,created_at')
+      .eq('user_id', userId)
+      .not('follow_up', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    return !!(data && isPendingQuestion(data, nowMs))
+  } catch {
+    return false
+  }
+}

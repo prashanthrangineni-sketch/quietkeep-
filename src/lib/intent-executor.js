@@ -989,7 +989,7 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
     if (lang === 'hi') {
       return `टास्क सेव हो गया। ${natural.timeStr} याद दिलाऊँगा।`;
     }
-    return `Task saved. I'll remind you at ${natural.timeStr}.`;
+    return say('task_at', lang, { time: natural.timeStr }) ?? `Task saved. I'll remind you at ${natural.timeStr}.`;
   }
 
   if (parsed.type === 'meeting') {

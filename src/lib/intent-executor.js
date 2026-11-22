@@ -531,8 +531,13 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
 
     // No name extracted at all
     if (!name) {
+      const askLang = scriptOf(parsed.subject || parsed.content || parsed.text || '');
       return {
-        follow_up:   'Who do you want to contact? Say their name.',
+        follow_up:   askLang === 'te'
+          ? 'ఎవరికి కాల్ చేయాలి? పేరు చెప్పండి.'
+          : askLang === 'hi'
+            ? 'किसे कॉल करना है? नाम बताइए।'
+            : 'Who do you want to contact? Say their name.',
         action_hint: 'name_needed',
       };
     }

@@ -374,7 +374,7 @@ export async function POST(request) {
     return NextResponse.json({
       keep:          matchedRecent,
       intent:        matchedRecent,
-      tts_response:  'Already saved.',
+      tts_response:  say('already_saved', detectSpokenLanguage(text, language)) || 'Already saved.',
       deduplicated:  true,
     }, { status: 200 });
   }

@@ -59,6 +59,7 @@ export default function MorePage() {
       { icon: '✦',  title: 'Ask Aaria',       sub: 'Voice-assistant powered help',         href: '/ask-aaria' },
       { icon: '🎤', title: 'Voice History',   sub: 'Past voice inputs',                    href: '/voice' },
       { icon: '🗣️', title: 'Voice Settings',  sub: 'Language, speed, wake word',           href: '/settings/voice' },
+      { icon: '🌱', title: 'What Aaria learned', sub: 'How she learns, habits she noticed', href: '/settings/learning' },
       { icon: '📷', title: 'AI Camera',       sub: 'Capture with location, people & AI',   href: '/camera' },
     ]},
     { label: 'Money', rows: [

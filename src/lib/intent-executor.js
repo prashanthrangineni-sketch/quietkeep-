@@ -935,7 +935,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
     if (lang === 'hi') {
       return `कॉन्टैक्ट सेव हो गया। ${name || 'कॉन्टैक्ट'} आपके कॉन्टैक्ट्स में है। कॉल करने के लिए बटन दबाएँ।`;
     }
-    return `Keep saved. ${name || 'Contact'} is in your contacts. Tap the call button to dial now.`;
+    return say('contact_saved', lang, { name: name || contact.name || '' })
+      ?? `Keep saved. ${name || 'Contact'} is in your contacts. Tap the call button to dial now.`;
   }
 
   if (parsed.type === 'reminder') {

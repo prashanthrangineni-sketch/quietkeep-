@@ -66,6 +66,7 @@ import { cleanSpeedKmh } from '@/lib/drive-speed' // DRV-02 speed gate: the phon
 import { waitUntilStoppedLine, speakWhileMoving } from '@/lib/moving-lines'
 import { say } from '@/lib/reply-phrases' // T27: every reply in the spoken language
 import { refreshTauProfile } from '@/lib/tau-profile' // T28: personal profile
+import { detectRepeat, repeatLine } from '@/lib/repeat-rule' // T30: instructions that repeat
 
 export async function POST(request) {
   try {

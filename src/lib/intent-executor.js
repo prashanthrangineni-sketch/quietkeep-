@@ -903,7 +903,7 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
   // THE GUARD. Anything that claims a reminder was set must pass through here
   // first, and it only passes when there is an instant to set it to.
   if ((parsed.type === 'reminder' || parsed.type === 'task') && !isUsableInstant(reminderAt)) {
-    return ASK_FOR_TIME[lang] || ASK_FOR_TIME.en;
+    return ASK_FOR_TIME[lang] || say('ask_for_time', lang) || ASK_FOR_TIME.en;
   }
 
   const contact = contactResult?.single || null;

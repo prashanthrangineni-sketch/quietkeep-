@@ -855,6 +855,11 @@ function formatNaturalDateTime(dt, lang = 'en', timeZone = DEFAULT_TZ) {
     return { dateStr, timeStr, full: `${dateStr ? dateStr + ' ' : ''}${timeStr}`.trim() };
   }
 
+  // T27: Tamil, Kannada, Malayalam, Bengali, Gujarati, Punjabi, Marathi, Odia
+  const other = naturalTimeWords(lang, diff, hour, minute,
+    dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone }));
+  if (other) return other;
+
   // English fallback
   let dateStr = '';
   if (diff === 0) dateStr = 'today';

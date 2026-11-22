@@ -168,7 +168,8 @@ export default function AariaStagePage() {
     for (const l of LINES) {
       setCheck({ running: true, step: `Voice: ${l.label}` });
       sayLine(l);
-      voices.push({ label: l.label, mouth: await watchMouth(8000) });
+      const vm = await watchMouth(8000); delete vm.fps;
+      voices.push({ label: l.label, mouth: vm });
       await waitFor(() => !live.current.heard, 8000);
     }
     setFps(null); setFace(saved.face); setWho(saved.who); setLook(saved.look);

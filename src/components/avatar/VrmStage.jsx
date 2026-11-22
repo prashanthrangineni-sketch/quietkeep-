@@ -11,6 +11,7 @@
 // It reports frames per second through onFps - a number to MEASURE on a real
 // phone, not a claim that it is fast.
 
+import { createGestures } from '@/lib/avatar/gestures';
 import { useEffect, useRef, useState } from 'react';
 import { usePose, useMouth } from '@/lib/avatar/useAvatar';
 
@@ -72,13 +73,16 @@ export default function VrmStage({ status = 'idle', modelUrl, height = 360, onFp
         if (lArm) lArm.rotation.z = -1.25 * side;
         if (rArm) rArm.rotation.z = 1.25 * side;
         const head = bone('head'), neck = bone('neck'), chest = bone('chest') || bone('spine');
+        const lLow = bone('leftLowerArm'), rLow = bone('rightLowerArm');
+        const gestures = createGestures();
         // Characters differ in height: frame the head and shoulders of this one.
         vrm.scene.updateMatrixWorld(true);
         if (head) {
           const hp = new THREE.Vector3();
           head.getWorldPosition(hp);
-          camera.position.set(0, hp.y + 0.0, 1.55);
-          camera.lookAt(0, hp.y - 0.04, 0);
+          // Head to waist, so her hands show when she moves them.
+          camera.position.set(0, hp.y - 0.16, 2.05);
+          camera.lookAt(0, hp.y - 0.2, 0);
         }
         const ex = vrm.expressionManager;
         const set = (name, v) => { try { ex?.setValue(name, v); } catch { } };
@@ -132,13 +136,26 @@ export default function VrmStage({ status = 'idle', modelUrl, height = 360, onFp
           for (const k of Object.keys(want)) mood[k] += (want[k] - mood[k]) * Math.min(1, dt * 6);
           set('happy', mood.happy); set('sad', mood.sad);
           set('lookUp', p === 'thinking' ? 0.6 : 0);
-          if (head) {
-            head.rotation.x = mood.tiltX + Math.sin(t * 0.9) * 0.02 + (talking ? Math.sin(t * 5.1) * 0.012 : 0);
+          // Body: arms, hands and head (gestures.js decides, this maps to the bones).
+          const g = gestures(p, t, dt, talking ? s.aa : 0);
+          // Axes checked with side-view test renders (22 Nov): upper-arm x
+          // swings the arm forward, lower-arm y bends the elbow forward
+          // (mirrored left/right).
+          if (lArm) { lArm.rotation.z = (-1.4 + g.left.out) * side; lArm.rotation.x = -g.left.lift; }
+          if (rArm) { rArm.rotation.z = (1.4 - g.right.out) * side; rArm.rotation.x = -g.right.lift; }
+          if (lLow) { lLow.rotation.y = -g.left.bend * side; }
+          if (rLow) {
+            const up = g.waving ? 1 : 0;
+            rLow.rotation.y = g.right.bend * (1 - up) * side;
+            rLow.rotation.z = (-g.right.bend * up + g.right.swing) * side;
+          }
+                    if (head) {
+            head.rotation.x = mood.tiltX + g.nod + Math.sin(t * 0.9) * 0.02;
             head.rotation.z = mood.tiltZ + Math.sin(t * 0.6) * 0.015;
-            head.rotation.y = Math.sin(t * 0.4) * 0.05;
+            head.rotation.y = Math.sin(t * 0.4) * 0.05 + g.shake;
           }
           if (neck) neck.rotation.x = Math.sin(t * 0.9 + 0.6) * 0.01;
-          if (chest) chest.rotation.x = Math.sin(t * 1.5) * 0.012;     // breathing
+          if (chest) chest.rotation.x = g.chest + Math.sin(t * 1.5) * 0.012;     // breathing
 
           vrm.update(dt);
           renderer.render(scene, camera);

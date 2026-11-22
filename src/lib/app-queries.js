@@ -303,7 +303,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const top = memoryItems.slice(0, 3).join(', ');
         if (lang === 'te') tts = `మీ ఫోన్లో ${memoryItems.length} జ్ఞాపకాలు ఉన్నాయి: ${top}.`;
         else if (lang === 'hi') tts = `आपके फ़ोन में ${memoryItems.length} यादें सहेजी गई हैं: ${top}।`;
-        else tts = `You have ${memoryItems.length} memories saved: ${top}.`;
+        else tts = say('memories_count', lang, { n: memoryItems.length, top }) ?? `You have ${memoryItems.length} memories saved: ${top}.`;
       } else {
         if (lang === 'te') tts = 'మీ ఫోన్లో జ్ఞాపకాలేవీ సేవ్ చేయబడలేదు.';
         else if (lang === 'hi') tts = 'आपके फ़ोन में कोई यादें सहेजी नहीं गई हैं।';

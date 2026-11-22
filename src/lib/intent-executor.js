@@ -975,7 +975,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
       if (lang === 'hi') {
         return `नोट के रूप में सेव कर लिया है, समय समझ नहीं आया — क्या रिमाइंडर सेट करूँ?`;
       }
-      return `I saved that as a note, but I didn't catch a time — want me to set a reminder?`;
+      return say('remind_no_time', lang)
+        ?? `I saved that as a note, but I didn't catch a time — want me to set a reminder?`;
     }
   }
 

@@ -861,7 +861,7 @@ export async function POST(request) {
   // ── CARD T23: NOISE & FILLER GUARD (WHEN NOT ANSWERING A QUESTION) ───────
   // 1. On auto turns: reject if < 3 words or filler-only.
   if (autoTurn) {
-    if (countWords(text) < 3 || isFillerPhrase(text)) {
+    if (countWords(text) < 3 || isFillerPhrase(text) || soundsLikeAaria(text)) {
       supabase.from('audit_log').insert({
         user_id: user.id,
         action: 'voice.auto_turn_ignored',

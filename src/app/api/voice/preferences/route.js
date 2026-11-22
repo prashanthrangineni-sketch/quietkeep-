@@ -78,7 +78,7 @@ export async function POST(req) {
 
   let body; try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
-  const { data: cur } = await sb.from('user_settings')
+  const { data: cur } = await db.from('user_settings')
     .select('settings, elevenlabs_voice_id, voice_clone_consent, consent_own_or_permitted, consent_no_deception, consent_in_app_labeled')
     .eq('user_id', user.id).maybeSingle();
 

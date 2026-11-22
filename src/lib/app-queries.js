@@ -403,7 +403,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       let tts;
       if (lang === 'te') tts = 'మీరు అడిగిన సమాచారం ప్రస్తుతం అందుబాటులో లేదు.';
       else if (lang === 'hi') tts = 'यह जानकारी अभी उपलब्ध नहीं है।';
-      else tts = 'This information is not currently available.';
+      else tts = say('query_unavailable', lang, {}) ?? 'This information is not currently available.';
       return { handled: true, queryType: 'general', tts, language: lang };
     }
   }

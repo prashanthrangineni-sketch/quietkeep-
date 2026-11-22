@@ -483,6 +483,11 @@ export function spokenContactQuestion(name, contacts, lang = 'en') {
   }
   const said = distinct.slice(0, 3)
   const more = (contacts || []).length - said.length
+  // T27: asked in the language the person spoke (Telugu, Hindi, Tamil...).
+  const local = more > 0
+    ? say('which_more', lang, { name: name || '', names: joinOr(said, lang), more })
+    : say('which_one', lang, { name: name || '', names: joinOr(said, lang) })
+  if (local) return local.replace(/\s+\?/, '?').replace(/\s{2,}/g, ' ')
   const who = name ? `Which ${name}?` : 'Which one?'
   const names = said.length > 1 ? `${said.slice(0, -1).join(', ')} or ${said[said.length - 1]}` : (said[0] || '')
   return more > 0

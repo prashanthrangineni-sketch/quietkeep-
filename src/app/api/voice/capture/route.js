@@ -1311,7 +1311,7 @@ export async function POST(request) {
 
   // Did the user ask to CALL this person, as opposed to merely naming them?
   parsed.wants_call = /\b(call|ring|dial|phone)\b|కాల్|ఫోన్|कॉल|काल|फ़ोन|फोन/i.test(text);
-  if ((parsed.type === 'contact' || parsed.wants_call) && !llmAssist?.entities?.datetimeISO && !parsed.entities?.times?.length && !parsed.entities?.dates?.length) {
+  if ((parsed.type === 'contact' || parsed.wants_call) && !llmAssist?.entities?.datetimeISO && !parsed.entities?.times?.length && !parsed.entities?.dates?.length && !computeReminderAt({ dates: [], times: [] }, undefined, text)) {
     reminderAt = null;
   }
 

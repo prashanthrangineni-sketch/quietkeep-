@@ -510,7 +510,7 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
           ? `${contactName}కి ఇప్పుడే కాల్ చేయనా?`
           : askLang === 'hi'
             ? `${contactName} को अभी कॉल करूँ?`
-            : `Call ${contactName} now or set a reminder?`,
+            : (say('call_now_ask', askLang, { name: contactName }) ?? `Call ${contactName} now or set a reminder?`),
         action_hint: 'call_or_remind',
         contact:     contactResult.single,
       };

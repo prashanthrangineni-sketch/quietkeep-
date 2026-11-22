@@ -33,7 +33,7 @@ import {
   isNavigationRequest,
 } from '@/lib/intent-executor'
 import { isQueryUtterance, resolveAppQuery } from '@/lib/app-queries'
-import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation, isRepeatOfOpenQuestion, isPendingQuestion, isUnmatchedAnswer, askAgain } from '@/lib/follow-up-answer'
+import { readAnswer, answerConfirmation, isPlaceAnswer, placeConfirmation, isRepeatOfOpenQuestion, isPendingQuestion, isUnmatchedAnswer, askAgain, hasOpenQuestion } from '@/lib/follow-up-answer'
 import { contactChoices, spokenContactQuestion, narrowContacts } from '@/lib/contact-match'
 import { whyBrainRun, describeUnderstanding } from '@/lib/understanding-record'
 import { geocodePlace, cleanPlaceName, prettyPlaceName, isPersonalPlace } from '@/lib/geocode'

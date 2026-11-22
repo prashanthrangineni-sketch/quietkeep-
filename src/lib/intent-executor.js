@@ -956,7 +956,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
         if (lang === 'hi') {
           return `ठीक है, ${natural.full} याद दिलाऊँगा।`;
         }
-        return `Got it — I'll remind you to ${taskContent || 'do this'} ${natural.full}.`;
+        return say('remind_at', lang, { when: natural.full })
+          ?? `Got it — I'll remind you to ${taskContent || 'do this'} ${natural.full}.`;
       } else {
         if (lang === 'te') {
           return `సరే, ${natural.dateStr || 'గుర్తు'} చేస్తాను. ఏ సమయానికి గుర్తు చేయాలి?`;

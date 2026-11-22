@@ -66,6 +66,7 @@ import { cleanSpeedKmh } from '@/lib/drive-speed' // DRV-02 speed gate: the phon
 import { waitUntilStoppedLine, speakWhileMoving } from '@/lib/moving-lines'
 import { say } from '@/lib/reply-phrases' // T27: every reply in the spoken language
 import { refreshTauProfile } from '@/lib/tau-profile' // T28: personal profile
+import { detectRepeat, repeatLine } from '@/lib/repeat-rule' // T30: instructions that repeat
 
 export async function POST(request) {
   try {
@@ -718,6 +719,7 @@ export async function POST(request) {
             reminder_text: openQuestion.voice_text || openQuestion.content || text,
             scheduled_for: answer.reminderAt.toISOString(),
             is_active:     true,
+            recurrence:    detectRepeat(`${openQuestion.voice_text || openQuestion.content || ''} ${text}`) || 'none',
             space_type:    openQuestion.space_type || 'personal',
             contact_name:  openQuestion.contact_name  || null,
             contact_phone: openQuestion.contact_phone || null,
@@ -1733,6 +1735,8 @@ export async function POST(request) {
 
   let reminderNudgeId = null
   let reminderRow     = null
+  // T30: "every day / ప్రతి రోజు / हर सोमवार ..." makes the reminder repeat.
+  const repeatOf = reminderAt ? detectRepeat(text) : null
   if (reminderAt && keep?.id) {
     reminderNudgeId = await scheduleReminderNudge(supabase, {
       userId:     user.id,
@@ -1751,6 +1755,7 @@ export async function POST(request) {
           reminder_text: text,
           scheduled_for: reminderAt.toISOString(),
           is_active:     true,
+          recurrence:    repeatOf || 'none',
           space_type:    workspace_id ? 'business' : 'personal',
           // Without these the alarm can speak the reminder and nothing else.
           // src/lib/reminder-voice.js reads contact_phone off THIS row, not off
@@ -2085,6 +2090,11 @@ export async function POST(request) {
   // needs the screen (PIN level, a purchase, an invoice) is held with the
   // founder's line; a long reply is cut to the first part plus "the rest when
   // you stop". With no speed (not driving, or GPS unknown) nothing changes.
+  // T30: say that it repeats, in the language spoken.
+  if (repeatOf && reminderAt && keep?.id) {
+    const line = repeatLine(repeatOf, spokenLang)
+    if (line && !String(tts_response || '').includes(line)) tts_response = `${tts_response || ''} ${line}`.trim()
+  }
   let spokenReply = tts_response
   if (speedKmh != null) {
     const gate = decide(

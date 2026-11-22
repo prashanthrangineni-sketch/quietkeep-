@@ -51,7 +51,7 @@ export const DEVICE_ACTION = Object.freeze({
 });
 
 function langOf(language) {
-  const base = String(language || 'en').toLowerCase().split('-')[0];
+  const base = String(language || 'en').trim().toLowerCase().split(/[-_]/)[0];
   return base === 'te' || base === 'hi' ? base : 'en';
 }
 

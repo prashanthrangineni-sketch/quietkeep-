@@ -499,10 +499,17 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
     }
 
     // Name found, phone available, and no time said → read back to confirm call
+    // In the language it was asked in (22 Nov 2026: a Telugu request was
+    // answered "Call Surya Kiran now or set a reminder?").
     if (name && contactResult?.single?.phone && !timeAlreadyGiven) {
       const contactName = contactResult.single.name || name;
+      const askLang = scriptOf(parsed.subject || parsed.content || parsed.text || '');
       return {
-        follow_up:   `Call ${contactName} now or set a reminder?`,
+        follow_up:   askLang === 'te'
+          ? `${contactName}కి ఇప్పుడే కాల్ చేయనా?`
+          : askLang === 'hi'
+            ? `${contactName} को अभी कॉल करूँ?`
+            : `Call ${contactName} now or set a reminder?`,
         action_hint: 'call_or_remind',
         contact:     contactResult.single,
       };

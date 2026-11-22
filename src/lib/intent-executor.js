@@ -1005,7 +1005,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
   }
 
   if (parsed.type === 'expense') {
-    return `Expense recorded: ${(parsed.subject || '').slice(0, 60)}.`;
+    return say('expense_saved', lang, { what: (parsed.subject || '').slice(0, 60) })
+      ?? `Expense recorded: ${(parsed.subject || '').slice(0, 60)}.`;
   }
 
   return `Intent recorded: ${(parsed.subject || '').slice(0, 60)}. Open loop. Next step unresolved.`;

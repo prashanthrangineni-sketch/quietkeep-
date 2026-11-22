@@ -2090,6 +2090,11 @@ export async function POST(request) {
   // needs the screen (PIN level, a purchase, an invoice) is held with the
   // founder's line; a long reply is cut to the first part plus "the rest when
   // you stop". With no speed (not driving, or GPS unknown) nothing changes.
+  // T30: say that it repeats, in the language spoken.
+  if (repeatOf && reminderAt && keep?.id) {
+    const line = repeatLine(repeatOf, spokenLang)
+    if (line && !String(tts_response || '').includes(line)) tts_response = `${tts_response || ''} ${line}`.trim()
+  }
   let spokenReply = tts_response
   if (speedKmh != null) {
     const gate = decide(

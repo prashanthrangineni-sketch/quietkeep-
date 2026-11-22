@@ -1891,7 +1891,8 @@ export async function POST(request) {
       tts_response = say('place_return', spokenLang, { what: keepSnippet })
         ?? `Saved. I'll remind you when you return here: ${keepSnippet}`;
     } else {
-      tts_response = `Got it. When you reach ${locLabel}, I'll remind you: ${keepSnippet}`;
+      tts_response = say('place_reach', spokenLang, { place: locLabel, what: keepSnippet })
+        ?? `Got it. When you reach ${locLabel}, I'll remind you: ${keepSnippet}`;
     }
   } else if (geoData?.location_name && !geoData?.geo_trigger_enabled) {
     const saveSuggestion = suggestSave ? ' Tap "Save here" on the Geo page to enable it.' : '';

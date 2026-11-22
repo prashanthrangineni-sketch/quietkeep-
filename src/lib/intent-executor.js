@@ -924,7 +924,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
     if (lang === 'hi') {
       return `ठीक है — ${natural.full} ${contact.name || name} को कॉल करूँगा।`;
     }
-    return `Right — ${natural.full} I'll call ${contact.name || name}.`;
+    return say('call_at', lang, { when: natural.full, name: contact.name || name })
+      ?? `Right — ${natural.full} I'll call ${contact.name || name}.`;
   }
 
   if (parsed.type === 'contact' && contact?.phone) {

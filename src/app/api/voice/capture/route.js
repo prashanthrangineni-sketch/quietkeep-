@@ -1856,7 +1856,7 @@ export async function POST(request) {
   // "Which Venu?" is SAID short and SHOWN in full: three names aloud, every
   // match as a button. Six names in one breath cannot be answered by ear.
   if (followUp?.action_hint === 'disambiguate_contact' && Array.isArray(followUp.contacts)) {
-    tts_response = spokenContactQuestion(followUp.suggested_name, followUp.contacts)
+    tts_response = spokenContactQuestion(followUp.suggested_name, followUp.contacts, spokenLang)
   }
   // v12: business TTS overrides generic TTS when resolver produced a confirmation
   if (bizPayload?.tts_response) tts_response = bizPayload.tts_response;

@@ -719,6 +719,7 @@ export async function POST(request) {
             reminder_text: openQuestion.voice_text || openQuestion.content || text,
             scheduled_for: answer.reminderAt.toISOString(),
             is_active:     true,
+            recurrence:    detectRepeat(`${openQuestion.voice_text || openQuestion.content || ''} ${text}`) || 'none',
             space_type:    openQuestion.space_type || 'personal',
             contact_name:  openQuestion.contact_name  || null,
             contact_phone: openQuestion.contact_phone || null,

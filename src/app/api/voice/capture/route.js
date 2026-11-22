@@ -1875,7 +1875,8 @@ export async function POST(request) {
       tts_response = say('navigating', spokenLang, { dest }) ?? `Setting navigation to ${dest}.`;
     }
   } else if (parsed.route?.detected && routeData?.destLoc) {
-    tts_response = `Got it. When you're near ${routeData.destLoc.name}, I'll remind you: ${keepSnippet}`;
+    tts_response = say('place_reach', spokenLang, { place: routeData.destLoc.name, what: keepSnippet })
+      ?? `Got it. When you're near ${routeData.destLoc.name}, I'll remind you: ${keepSnippet}`;
   } else if (geoData?.geo_trigger_enabled && brainPlace && llmAssist?.reply) {
     // The brain already said "I'll remind you when you reach Chintal Kunta"
     // in the language the user spoke; the English template below would

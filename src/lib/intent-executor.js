@@ -1009,5 +1009,6 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
       ?? `Expense recorded: ${(parsed.subject || '').slice(0, 60)}.`;
   }
 
-  return `Intent recorded: ${(parsed.subject || '').slice(0, 60)}. Open loop. Next step unresolved.`;
+  return say('intent_saved', lang, { what: (parsed.subject || '').slice(0, 60) })
+    ?? `Intent recorded: ${(parsed.subject || '').slice(0, 60)}. Open loop. Next step unresolved.`;
           }

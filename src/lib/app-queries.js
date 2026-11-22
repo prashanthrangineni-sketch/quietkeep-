@@ -133,7 +133,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       if (!total) {
         if (lang === 'te') tts = 'QuietKeep లో ఇంకా కాంటాక్ట్స్ లేవు. Contacts తెరిచి Sync నొక్కండి, అప్పుడు నేను కాల్ చేయగలను.';
         else if (lang === 'hi') tts = 'QuietKeep में अभी कोई कॉन्टैक्ट नहीं है। Contacts खोलकर Sync दबाइए, फिर मैं कॉल कर पाऊँगी।';
-        else tts = "You don't have any contacts in QuietKeep yet. Open Contacts and tap Sync, then I can call people for you.";
+        else tts = say('contacts_none', lang, {}) ?? "You don't have any contacts in QuietKeep yet. Open Contacts and tap Sync, then I can call people for you.";
       } else {
         const list = names.join(', ');
         if (lang === 'te') tts = `మీకు ${total} కాంటాక్ట్స్ ఉన్నాయి. ఉదాహరణకు: ${list}.`;

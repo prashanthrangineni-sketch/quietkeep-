@@ -11,6 +11,7 @@
 // Node, where it does not resolve and the import throws before any test runs.
 import { collapseRepeats } from './transcript-clean.js'
 import { nameTokens, rankContactsForName, contactSearchWords } from './contact-match.js'
+import { say, naturalTimeWords } from './reply-phrases.js'
 
 // ── TIME PARSING ──────────────────────────────────────────────────────────────
 // Speech-to-text emits "10 a.m." / "5 P.M." with full stops and inconsistent
@@ -509,7 +510,7 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
           ? `${contactName}కి ఇప్పుడే కాల్ చేయనా?`
           : askLang === 'hi'
             ? `${contactName} को अभी कॉल करूँ?`
-            : `Call ${contactName} now or set a reminder?`,
+            : (say('call_now_ask', askLang, { name: contactName }) ?? `Call ${contactName} now or set a reminder?`),
         action_hint: 'call_or_remind',
         contact:     contactResult.single,
       };
@@ -523,7 +524,7 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
           ? `${name} మీ కాంటాక్ట్స్‌లో లేరు.`
           : askLang === 'hi'
             ? `${name} आपके कॉन्टैक्ट्स में नहीं हैं।`
-            : `"${name}" isn't in your contacts.`,
+            : (say('not_in_contacts', askLang, { name }) ?? `"${name}" isn't in your contacts.`),
         action_hint:    'add_contact',
         suggested_name: name,
       };
@@ -537,7 +538,7 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
           ? 'ఎవరికి కాల్ చేయాలి? పేరు చెప్పండి.'
           : askLang === 'hi'
             ? 'किसे कॉल करना है? नाम बताइए।'
-            : 'Who do you want to contact? Say their name.',
+            : (say('who_to_call', askLang) ?? 'Who do you want to contact? Say their name.'),
         action_hint: 'name_needed',
       };
     }
@@ -854,6 +855,11 @@ function formatNaturalDateTime(dt, lang = 'en', timeZone = DEFAULT_TZ) {
     return { dateStr, timeStr, full: `${dateStr ? dateStr + ' ' : ''}${timeStr}`.trim() };
   }
 
+  // T27: Tamil, Kannada, Malayalam, Bengali, Gujarati, Punjabi, Marathi, Odia
+  const other = naturalTimeWords(lang, diff, hour, minute,
+    dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone }));
+  if (other) return other;
+
   // English fallback
   let dateStr = '';
   if (diff === 0) dateStr = 'today';
@@ -897,7 +903,7 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
   // THE GUARD. Anything that claims a reminder was set must pass through here
   // first, and it only passes when there is an instant to set it to.
   if ((parsed.type === 'reminder' || parsed.type === 'task') && !isUsableInstant(reminderAt)) {
-    return ASK_FOR_TIME[lang] || ASK_FOR_TIME.en;
+    return ASK_FOR_TIME[lang] || say('ask_for_time', lang) || ASK_FOR_TIME.en;
   }
 
   const contact = contactResult?.single || null;
@@ -918,7 +924,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
     if (lang === 'hi') {
       return `ठीक है — ${natural.full} ${contact.name || name} को कॉल करूँगा।`;
     }
-    return `Right — ${natural.full} I'll call ${contact.name || name}.`;
+    return say('call_at', lang, { when: natural.full, name: contact.name || name })
+      ?? `Right — ${natural.full} I'll call ${contact.name || name}.`;
   }
 
   if (parsed.type === 'contact' && contact?.phone) {
@@ -928,7 +935,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
     if (lang === 'hi') {
       return `कॉन्टैक्ट सेव हो गया। ${name || 'कॉन्टैक्ट'} आपके कॉन्टैक्ट्स में है। कॉल करने के लिए बटन दबाएँ।`;
     }
-    return `Keep saved. ${name || 'Contact'} is in your contacts. Tap the call button to dial now.`;
+    return say('contact_saved', lang, { name: name || contact.name || '' })
+      ?? `Keep saved. ${name || 'Contact'} is in your contacts. Tap the call button to dial now.`;
   }
 
   if (parsed.type === 'reminder') {
@@ -948,7 +956,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
         if (lang === 'hi') {
           return `ठीक है, ${natural.full} याद दिलाऊँगा।`;
         }
-        return `Got it — I'll remind you to ${taskContent || 'do this'} ${natural.full}.`;
+        return say('remind_at', lang, { when: natural.full })
+          ?? `Got it — I'll remind you to ${taskContent || 'do this'} ${natural.full}.`;
       } else {
         if (lang === 'te') {
           return `సరే, ${natural.dateStr || 'గుర్తు'} చేస్తాను. ఏ సమయానికి గుర్తు చేయాలి?`;
@@ -956,7 +965,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
         if (lang === 'hi') {
           return `ठीक है, ${natural.dateStr || 'याद'} दिलाऊँगा। किस समय याद दिलाऊँ?`;
         }
-        return `Got it — I'll remind you to ${taskContent || 'do this'} ${natural.dateStr}. What time should I set it for?`;
+        return say('remind_day_ask', lang, { date: natural.dateStr })
+          ?? `Got it — I'll remind you to ${taskContent || 'do this'} ${natural.dateStr}. What time should I set it for?`;
       }
     } else {
       if (lang === 'te') {
@@ -965,7 +975,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
       if (lang === 'hi') {
         return `नोट के रूप में सेव कर लिया है, समय समझ नहीं आया — क्या रिमाइंडर सेट करूँ?`;
       }
-      return `I saved that as a note, but I didn't catch a time — want me to set a reminder?`;
+      return say('remind_no_time', lang)
+        ?? `I saved that as a note, but I didn't catch a time — want me to set a reminder?`;
     }
   }
 
@@ -978,24 +989,26 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
     if (lang === 'hi') {
       return `टास्क सेव हो गया। ${natural.timeStr} याद दिलाऊँगा।`;
     }
-    return `Task saved. I'll remind you at ${natural.timeStr}.`;
+    return say('task_at', lang, { time: natural.timeStr }) ?? `Task saved. I'll remind you at ${natural.timeStr}.`;
   }
 
   if (parsed.type === 'meeting') {
-    return `Meeting keep saved. Tap to add to Google Calendar.`;
+    return say('meeting_saved', lang) ?? `Meeting keep saved. Tap to add to Google Calendar.`;
   }
 
   if (parsed.type === 'purchase') {
-    return `Purchase keep saved. Tap to search on Amazon.`;
+    return say('purchase_saved', lang) ?? `Purchase keep saved. Tap to search on Amazon.`;
   }
 
   if (parsed.type === 'trip' || parsed.type === 'navigation') {
-    return `Navigation keep saved. Tap to open Maps.`;
+    return say('navigation_saved', lang) ?? `Navigation keep saved. Tap to open Maps.`;
   }
 
   if (parsed.type === 'expense') {
-    return `Expense recorded: ${(parsed.subject || '').slice(0, 60)}.`;
+    return say('expense_saved', lang, { what: (parsed.subject || '').slice(0, 60) })
+      ?? `Expense recorded: ${(parsed.subject || '').slice(0, 60)}.`;
   }
 
-  return `Intent recorded: ${(parsed.subject || '').slice(0, 60)}. Open loop. Next step unresolved.`;
+  return say('intent_saved', lang, { what: (parsed.subject || '').slice(0, 60) })
+    ?? `Intent recorded: ${(parsed.subject || '').slice(0, 60)}. Open loop. Next step unresolved.`;
           }

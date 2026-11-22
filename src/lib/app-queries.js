@@ -3,6 +3,7 @@
 // Questions are answered aloud from the user's data; they NEVER create a keep.
 
 import { detectSpokenLanguage } from './spoken-language.js';
+import { say } from './reply-phrases.js';
 
 const QUERY_PATTERNS = [
   { type: 'weather',   pattern: /(?:^|\P{L})(?:weather|vatavaranam|vaathavaranam|mausam|వెదర్|వెధర్|వెథర్|వెదరు|వాతావరణం|వాతావరణ|मौसम|हवामान)(?:\P{L}|$)|weather\s+ela\s+undi/iu },
@@ -101,14 +102,14 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       if (!w) {
         if (lang === 'te') tts = 'క్షమించండి, ఇప్పుడు వాతావరణ సమాచారం అందుబాటులో లేదు.';
         else if (lang === 'hi') tts = 'माफ़ कीजिए, अभी मौसम की जानकारी उपलब्ध नहीं है।';
-        else tts = "Sorry, I don't have today's weather right now.";
+        else tts = say('weather_none', lang, {}) ?? "Sorry, I don't have today's weather right now.";
         return { handled: true, queryType: 'weather', tts, language: lang };
       }
       const temp = Math.round(Number(w.temp ?? w.temperature));
       const { te, hi, en } = describeSky(w.description);
       if (lang === 'te') tts = `ఈరోజు వాతావరణం ${temp} డిగ్రీలు${te ? `, ${te}` : ''}.`;
       else if (lang === 'hi') tts = `आज मौसम ${temp} डिग्री है${hi ? `, ${hi}` : ''}।`;
-      else tts = `Today's weather is ${temp}°C${en ? ` and ${en}` : ''}.`;
+      else tts = say('weather_now', lang, { temp }) ?? `Today's weather is ${temp}°C${en ? ` and ${en}` : ''}.`;
       return { handled: true, queryType: 'weather', tts, language: lang };
     }
 
@@ -132,12 +133,12 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       if (!total) {
         if (lang === 'te') tts = 'QuietKeep లో ఇంకా కాంటాక్ట్స్ లేవు. Contacts తెరిచి Sync నొక్కండి, అప్పుడు నేను కాల్ చేయగలను.';
         else if (lang === 'hi') tts = 'QuietKeep में अभी कोई कॉन्टैक्ट नहीं है। Contacts खोलकर Sync दबाइए, फिर मैं कॉल कर पाऊँगी।';
-        else tts = "You don't have any contacts in QuietKeep yet. Open Contacts and tap Sync, then I can call people for you.";
+        else tts = say('contacts_none', lang, {}) ?? "You don't have any contacts in QuietKeep yet. Open Contacts and tap Sync, then I can call people for you.";
       } else {
         const list = names.join(', ');
         if (lang === 'te') tts = `మీకు ${total} కాంటాక్ట్స్ ఉన్నాయి. ఉదాహరణకు: ${list}.`;
         else if (lang === 'hi') tts = `आपके ${total} कॉन्टैक्ट हैं। जैसे: ${list}।`;
-        else tts = `You have ${total} contacts, for example ${list}.`;
+        else tts = say('contacts_count', lang, { total, list }) ?? `You have ${total} contacts, for example ${list}.`;
       }
       return { handled: true, queryType: 'contacts', tts, language: lang };
     }
@@ -164,7 +165,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       if (tithiFound) {
         if (lang === 'te') tts = `ఈరోజు తిథి: ${tithiFound}.`;
         else if (lang === 'hi') tts = `आज की तिथि: ${tithiFound}।`;
-        else tts = `Today's tithi is ${tithiFound}.`;
+        else tts = say('tithi_now', lang, { tithi: tithiFound }) ?? `Today's tithi is ${tithiFound}.`;
       } else {
         // Source not in repo / DB -> state plainly it cannot yet
         if (lang === 'te') {
@@ -172,7 +173,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         } else if (lang === 'hi') {
           tts = 'माफ़ कीजिए, अभी तेलुगु पंचांग तिथि विवरण उपलब्ध नहीं हैं।';
         } else {
-          tts = 'Sorry, Telugu calendar tithi details are not available yet.';
+          tts = say('tithi_none', lang, {}) ?? 'Sorry, Telugu calendar tithi details are not available yet.';
         }
       }
 
@@ -211,11 +212,11 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const top = docNames.slice(0, 3).join(', ');
         if (lang === 'te') tts = `మీ ఫోన్లో ${docNames.length} పత్రాలు సేవ్ చేయబడి ఉన్నాయి: ${top}.`;
         else if (lang === 'hi') tts = `आपके फ़ोन में ${docNames.length} दस्तावेज़ सहेजे गए हैं: ${top}।`;
-        else tts = `You have ${docNames.length} documents saved: ${top}.`;
+        else tts = say('docs_count', lang, { n: docNames.length, top }) ?? `You have ${docNames.length} documents saved: ${top}.`;
       } else {
         if (lang === 'te') tts = 'మీ ఫోన్లో పత్రాలేవీ సేవ్ చేయబడలేదు.';
         else if (lang === 'hi') tts = 'आपके फ़ोन में कोई दस्तावेज़ सहेजे नहीं गए हैं।';
-        else tts = 'No documents are saved on your phone.';
+        else tts = say('docs_none', lang, {}) ?? 'No documents are saved on your phone.';
       }
 
       return { handled: true, queryType: 'documents', tts, language: lang };
@@ -270,11 +271,11 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const top = taskItems.slice(0, 3).join(', ');
         if (lang === 'te') tts = `ఈరోజు మీకు ${taskItems.length} పనులు ఉన్నాయి: ${top}.`;
         else if (lang === 'hi') tts = `आज आपके ${taskItems.length} काम हैं: ${top}।`;
-        else tts = `You have ${taskItems.length} tasks scheduled for today: ${top}.`;
+        else tts = say('tasks_count', lang, { n: taskItems.length, top }) ?? `You have ${taskItems.length} tasks scheduled for today: ${top}.`;
       } else {
         if (lang === 'te') tts = 'ఈరోజు మీకు ఎలాంటి పనులు లేవు. మీరు ప్రశాంతంగా ఉండవచ్చు!';
         else if (lang === 'hi') tts = 'आज आपका कोई काम नहीं है।';
-        else tts = 'You have no tasks scheduled for today. All clear!';
+        else tts = say('tasks_none', lang, {}) ?? 'You have no tasks scheduled for today. All clear!';
       }
 
       return { handled: true, queryType: 'tasks', tts, language: lang };
@@ -302,11 +303,11 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const top = memoryItems.slice(0, 3).join(', ');
         if (lang === 'te') tts = `మీ ఫోన్లో ${memoryItems.length} జ్ఞాపకాలు ఉన్నాయి: ${top}.`;
         else if (lang === 'hi') tts = `आपके फ़ोन में ${memoryItems.length} यादें सहेजी गई हैं: ${top}।`;
-        else tts = `You have ${memoryItems.length} memories saved: ${top}.`;
+        else tts = say('memories_count', lang, { n: memoryItems.length, top }) ?? `You have ${memoryItems.length} memories saved: ${top}.`;
       } else {
         if (lang === 'te') tts = 'మీ ఫోన్లో జ్ఞాపకాలేవీ సేవ్ చేయబడలేదు.';
         else if (lang === 'hi') tts = 'आपके फ़ोन में कोई यादें सहेजी नहीं गई हैं।';
-        else tts = 'You have no memories saved.';
+        else tts = say('memories_none', lang, {}) ?? 'You have no memories saved.';
       }
 
       return { handled: true, queryType: 'memories', tts, language: lang };
@@ -333,11 +334,11 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const top = productNames.slice(0, 3).join(', ');
         if (lang === 'te') tts = `మీ వద్ద ${productNames.length} వారంటీలు ఉన్నాయి: ${top}.`;
         else if (lang === 'hi') tts = `आपके पास ${productNames.length} वारंटी हैं: ${top}।`;
-        else tts = `You have ${productNames.length} warranties in your wallet: ${top}.`;
+        else tts = say('warranties_count', lang, { n: productNames.length, top }) ?? `You have ${productNames.length} warranties in your wallet: ${top}.`;
       } else {
         if (lang === 'te') tts = 'యాక్టివ్ వారంటీలేవీ లేవు.';
         else if (lang === 'hi') tts = 'कोई सक्रिय वारंटी नहीं है।';
-        else tts = 'You have no active warranties.';
+        else tts = say('warranties_none', lang, {}) ?? 'You have no active warranties.';
       }
 
       return { handled: true, queryType: 'warranties', tts, language: lang };
@@ -388,11 +389,11 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const topStr = topItems.join(', ');
         if (lang === 'te') tts = `ఈ నెల మొత్తం ఖర్చులు ₹${Math.round(total)}. ప్రధాన ఖర్చులు: ${topStr}.`;
         else if (lang === 'hi') tts = `इस महीने का कुल खर्च ₹${Math.round(total)} है। मुख्य खर्च: ${topStr}।`;
-        else tts = `This month's total expenses are ₹${Math.round(total)}. Top items: ${topStr}.`;
+        else tts = say('spend_total', lang, { total: Math.round(total), top: topStr }) ?? `This month's total expenses are ₹${Math.round(total)}. Top items: ${topStr}.`;
       } else {
         if (lang === 'te') tts = 'ఈ నెల ఖర్చులేవీ నమోదు కాలేదు.';
         else if (lang === 'hi') tts = 'इस महीने कोई खर्च दर्ज नहीं हुआ है।';
-        else tts = 'No expenses recorded this month.';
+        else tts = say('spend_none', lang, {}) ?? 'No expenses recorded this month.';
       }
 
       return { handled: true, queryType: 'expenses', tts, language: lang };
@@ -402,7 +403,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       let tts;
       if (lang === 'te') tts = 'మీరు అడిగిన సమాచారం ప్రస్తుతం అందుబాటులో లేదు.';
       else if (lang === 'hi') tts = 'यह जानकारी अभी उपलब्ध नहीं है।';
-      else tts = 'This information is not currently available.';
+      else tts = say('query_unavailable', lang, {}) ?? 'This information is not currently available.';
       return { handled: true, queryType: 'general', tts, language: lang };
     }
   }

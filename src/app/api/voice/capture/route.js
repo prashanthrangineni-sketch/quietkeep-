@@ -64,6 +64,7 @@ import {
 import { DRIVE_INTENTS, planDriveTurn } from '@/lib/drive-voice' // Drive Mode intents (DRV-03): no keep, phone acts
 import { cleanSpeedKmh } from '@/lib/drive-speed' // DRV-02 speed gate: the phone's GPS speed in Drive Mode
 import { waitUntilStoppedLine, speakWhileMoving } from '@/lib/moving-lines'
+import { say } from '@/lib/reply-phrases' // T27: every reply in the spoken language
 
 export async function POST(request) {
   try {
@@ -283,7 +284,7 @@ export async function POST(request) {
       not_saved: true,
       reason: 'transcription_noise',
       detail: noiseReasons[0],
-      tts_response: DIDNT_CATCH[lang] || DIDNT_CATCH.en,
+      tts_response: DIDNT_CATCH[lang] || say('didnt_catch', lang) || DIDNT_CATCH.en,
     })
   }
 
@@ -373,7 +374,7 @@ export async function POST(request) {
     return NextResponse.json({
       keep:          matchedRecent,
       intent:        matchedRecent,
-      tts_response:  'Already saved.',
+      tts_response:  say('already_saved', detectSpokenLanguage(text, language)) || 'Already saved.',
       deduplicated:  true,
     }, { status: 200 });
   }
@@ -661,7 +662,8 @@ export async function POST(request) {
       const ask = isContactQ
         ? (narrowed.length >= 2
             ? `There are ${narrowed.length} called ${narrowed[0].name}. Tap the right number, or say first or second.`
-            : spokenContactQuestion(fu.suggested_name, fu.contacts))
+            : spokenContactQuestion(fu.suggested_name, fu.contacts,
+                detectSpokenLanguage(`${openQuestion.voice_text || openQuestion.content || ''} ${text}`, language)))
         : fu.follow_up
       return NextResponse.json({
         keep:              openQuestion,
@@ -1854,7 +1856,7 @@ export async function POST(request) {
   // "Which Venu?" is SAID short and SHOWN in full: three names aloud, every
   // match as a button. Six names in one breath cannot be answered by ear.
   if (followUp?.action_hint === 'disambiguate_contact' && Array.isArray(followUp.contacts)) {
-    tts_response = spokenContactQuestion(followUp.suggested_name, followUp.contacts)
+    tts_response = spokenContactQuestion(followUp.suggested_name, followUp.contacts, spokenLang)
   }
   // v12: business TTS overrides generic TTS when resolver produced a confirmation
   if (bizPayload?.tts_response) tts_response = bizPayload.tts_response;
@@ -1870,10 +1872,11 @@ export async function POST(request) {
     } else if (spokenLang === 'hi') {
       tts_response = `${dest} के लिए नेविगेशन सेट कर रही हूँ।`;
     } else {
-      tts_response = `Setting navigation to ${dest}.`;
+      tts_response = say('navigating', spokenLang, { dest }) ?? `Setting navigation to ${dest}.`;
     }
   } else if (parsed.route?.detected && routeData?.destLoc) {
-    tts_response = `Got it. When you're near ${routeData.destLoc.name}, I'll remind you: ${keepSnippet}`;
+    tts_response = say('place_reach', spokenLang, { place: routeData.destLoc.name, what: keepSnippet })
+      ?? `Got it. When you're near ${routeData.destLoc.name}, I'll remind you: ${keepSnippet}`;
   } else if (geoData?.geo_trigger_enabled && brainPlace && llmAssist?.reply) {
     // The brain already said "I'll remind you when you reach Chintal Kunta"
     // in the language the user spoke; the English template below would
@@ -1885,13 +1888,16 @@ export async function POST(request) {
     const locLabel = geoData.location_name || 'this location';
     const geoType  = parsed.geo?.type;
     if (geoType === 'current') {
-      tts_response = `Saved. I'll remind you when you return here: ${keepSnippet}`;
+      tts_response = say('place_return', spokenLang, { what: keepSnippet })
+        ?? `Saved. I'll remind you when you return here: ${keepSnippet}`;
     } else {
-      tts_response = `Got it. When you reach ${locLabel}, I'll remind you: ${keepSnippet}`;
+      tts_response = say('place_reach', spokenLang, { place: locLabel, what: keepSnippet })
+        ?? `Got it. When you reach ${locLabel}, I'll remind you: ${keepSnippet}`;
     }
   } else if (geoData?.location_name && !geoData?.geo_trigger_enabled) {
     const saveSuggestion = suggestSave ? ' Tap "Save here" on the Geo page to enable it.' : '';
-    tts_response = `Noted for near ${geoData.location_name}.${saveSuggestion}`;
+    const noted = say('place_noted', spokenLang, { place: geoData.location_name })
+    tts_response = noted ?? `Noted for near ${geoData.location_name}.${saveSuggestion}`;
   }
 
   // v15: Memory context injection — personalise TTS when strong habit detected

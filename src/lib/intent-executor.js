@@ -965,7 +965,8 @@ export function buildExecutionTTS(parsed, contactResult, reminderAt, followUp, l
         if (lang === 'hi') {
           return `ठीक है, ${natural.dateStr || 'याद'} दिलाऊँगा। किस समय याद दिलाऊँ?`;
         }
-        return `Got it — I'll remind you to ${taskContent || 'do this'} ${natural.dateStr}. What time should I set it for?`;
+        return say('remind_day_ask', lang, { date: natural.dateStr })
+          ?? `Got it — I'll remind you to ${taskContent || 'do this'} ${natural.dateStr}. What time should I set it for?`;
       }
     } else {
       if (lang === 'te') {

@@ -524,7 +524,7 @@ export function computeFollowUp(parsed, contactResult = null, reminderAt = null)
           ? `${name} మీ కాంటాక్ట్స్‌లో లేరు.`
           : askLang === 'hi'
             ? `${name} आपके कॉन्टैक्ट्स में नहीं हैं।`
-            : `"${name}" isn't in your contacts.`,
+            : (say('not_in_contacts', askLang, { name }) ?? `"${name}" isn't in your contacts.`),
         action_hint:    'add_contact',
         suggested_name: name,
       };

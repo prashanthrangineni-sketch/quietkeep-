@@ -11,6 +11,7 @@
 // Node, where it does not resolve and the import throws before any test runs.
 import { collapseRepeats } from './transcript-clean.js'
 import { nameTokens, rankContactsForName, contactSearchWords } from './contact-match.js'
+import { say, naturalTimeWords } from './reply-phrases.js'
 
 // ── TIME PARSING ──────────────────────────────────────────────────────────────
 // Speech-to-text emits "10 a.m." / "5 P.M." with full stops and inconsistent

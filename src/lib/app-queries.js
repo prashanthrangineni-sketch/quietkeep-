@@ -334,7 +334,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const top = productNames.slice(0, 3).join(', ');
         if (lang === 'te') tts = `మీ వద్ద ${productNames.length} వారంటీలు ఉన్నాయి: ${top}.`;
         else if (lang === 'hi') tts = `आपके पास ${productNames.length} वारंटी हैं: ${top}।`;
-        else tts = `You have ${productNames.length} warranties in your wallet: ${top}.`;
+        else tts = say('warranties_count', lang, { n: productNames.length, top }) ?? `You have ${productNames.length} warranties in your wallet: ${top}.`;
       } else {
         if (lang === 'te') tts = 'యాక్టివ్ వారంటీలేవీ లేవు.';
         else if (lang === 'hi') tts = 'कोई सक्रिय वारंटी नहीं है।';

@@ -393,7 +393,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       } else {
         if (lang === 'te') tts = 'ఈ నెల ఖర్చులేవీ నమోదు కాలేదు.';
         else if (lang === 'hi') tts = 'इस महीने कोई खर्च दर्ज नहीं हुआ है।';
-        else tts = 'No expenses recorded this month.';
+        else tts = say('spend_none', lang, {}) ?? 'No expenses recorded this month.';
       }
 
       return { handled: true, queryType: 'expenses', tts, language: lang };

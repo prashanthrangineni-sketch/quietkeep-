@@ -216,7 +216,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
       } else {
         if (lang === 'te') tts = 'మీ ఫోన్లో పత్రాలేవీ సేవ్ చేయబడలేదు.';
         else if (lang === 'hi') tts = 'आपके फ़ोन में कोई दस्तावेज़ सहेजे नहीं गए हैं।';
-        else tts = 'No documents are saved on your phone.';
+        else tts = say('docs_none', lang, {}) ?? 'No documents are saved on your phone.';
       }
 
       return { handled: true, queryType: 'documents', tts, language: lang };

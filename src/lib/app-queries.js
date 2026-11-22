@@ -212,7 +212,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const top = docNames.slice(0, 3).join(', ');
         if (lang === 'te') tts = `మీ ఫోన్లో ${docNames.length} పత్రాలు సేవ్ చేయబడి ఉన్నాయి: ${top}.`;
         else if (lang === 'hi') tts = `आपके फ़ोन में ${docNames.length} दस्तावेज़ सहेजे गए हैं: ${top}।`;
-        else tts = `You have ${docNames.length} documents saved: ${top}.`;
+        else tts = say('docs_count', lang, { n: docNames.length, top }) ?? `You have ${docNames.length} documents saved: ${top}.`;
       } else {
         if (lang === 'te') tts = 'మీ ఫోన్లో పత్రాలేవీ సేవ్ చేయబడలేదు.';
         else if (lang === 'hi') tts = 'आपके फ़ोन में कोई दस्तावेज़ सहेजे नहीं गए हैं।';

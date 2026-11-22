@@ -476,7 +476,7 @@ export function contactChoices(contacts) {
 }
 
 /** What Aaria SAYS: at most three different names, the rest are on screen. */
-export function spokenContactQuestion(name, contacts) {
+export function spokenContactQuestion(name, contacts, lang = 'en') {
   const distinct = []
   for (const c of contactChoices(contacts)) {
     if (!distinct.some((n) => n.toLowerCase() === c.name.toLowerCase())) distinct.push(c.name)

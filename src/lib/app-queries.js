@@ -138,7 +138,7 @@ export async function resolveAppQuery({ text = '', language = 'en', supabase, us
         const list = names.join(', ');
         if (lang === 'te') tts = `మీకు ${total} కాంటాక్ట్స్ ఉన్నాయి. ఉదాహరణకు: ${list}.`;
         else if (lang === 'hi') tts = `आपके ${total} कॉन्टैक्ट हैं। जैसे: ${list}।`;
-        else tts = `You have ${total} contacts, for example ${list}.`;
+        else tts = say('contacts_count', lang, { total, list }) ?? `You have ${total} contacts, for example ${list}.`;
       }
       return { handled: true, queryType: 'contacts', tts, language: lang };
     }

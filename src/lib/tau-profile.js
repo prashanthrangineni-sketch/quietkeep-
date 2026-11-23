@@ -261,7 +261,7 @@ export async function refreshTauProfile(db, userId, { now = new Date(), force = 
       ({ error } = await db.from('tau_behaviour_profile').upsert(row, { onConflict: 'user_id' }));
     }
     if (error) return { ok: false, reason: error.message };
-    return { ok: true, habits: habits.length };
+    return { ok: true, habits: habits.length, acted };
   } catch (e) {
     return { ok: false, reason: e?.message || 'error' };
   }

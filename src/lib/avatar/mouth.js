@@ -69,6 +69,14 @@ export function cycleShapes(tMs) {
   return { open, aa: open * 0.8, ih: 0, ou: 0, ee: 0, oh: open * 0.25 };
 }
 
+function onAndroidApp() {
+  try {
+    const cap = window.Capacitor;
+    if (cap?.isNativePlatform?.() && cap?.getPlatform?.() === 'android') return true;
+  } catch { }
+  return false;
+}
+
 let _ctx = null;
 const _sources = new WeakMap();   // one source per <audio>, ever (a browser rule)
 

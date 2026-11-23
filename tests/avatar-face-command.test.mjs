@@ -54,3 +54,13 @@ t('hook runs before the brain call and never reaches the server', () => {
   assert.ok(hook < src.indexOf('brainBusyRef.current += 1', a));
 });
 console.log(`avatar-face-command: ${n} passed`);
+// 23 Nov: the Indian looks by name
+{
+  const { parseFaceCommand: p, resolveFaceCommand: r } = await import('../src/lib/avatar/face-command.js');
+  assert.deepEqual(p('show the saree face'), { style: 'realistic', who: 'woman', lookNo: 3 });
+  assert.deepEqual(p('change your face to kurta'), { style: 'realistic', who: 'man', lookNo: 5 });
+  assert.deepEqual(p('साड़ी वाला चेहरा दिखाओ'), { style: 'realistic', who: 'woman', lookNo: 3 });
+  assert.equal(p('buy a new saree for diwali'), null);
+  assert.deepEqual(r({ style: 'realistic', who: 'man', lookNo: 5 }, { style: '2d', who: 'woman', look: 'woman-1' }, 'en').choice, { style: 'realistic', who: 'man', look: 'man-5' });
+  console.log('avatar-face-command: indian looks passed');
+}

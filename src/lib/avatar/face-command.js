@@ -20,7 +20,10 @@ const MAN = /\b(man|male|boy|guy|gents|men)\b|आदमी|पुरुष|ल�
 const WOMAN = /\b(woman|female|girl|lady|ladies|women)\b|औरत|महिला|लड़की|ladki|ఆడ|అమ్మాయి|ammayi/i;
 const LOOKN = /\blook\s*(\d)\b|\b(first|second|third|fourth)\s+look\b/i;
 const ORD = { first: 1, second: 2, third: 3, fourth: 4 };
-const MAX_LOOK = { woman: 2, man: 4 };
+const MAX_LOOK = { woman: 3, man: 5 };
+// Indian looks by name: 'saree' -> the woman's look 3, 'kurta' -> the man's look 5.
+const SAREE = /\b(saree|sari)\b|साड़ी|साडी|చీర/i;
+const KURTA = /\b(kurta|kurtha)\b|कुर्ता|కుర్తా/i;
 
 /**
  * Pure. Returns null when the words are not a face request, else
@@ -31,7 +34,7 @@ export function parseFaceCommand(text) {
   if (!t || t.length > 140) return null;           // long sentences go to the brain
   if (!FACE.test(t)) return null;
   const wantsChange = CHANGE.test(t) || SHOW.test(t) || HIDE.test(t);
-  const target = ANIME.test(t) || REAL.test(t) || SIMPLE.test(t) || MAN.test(t) || WOMAN.test(t) || LOOKN.test(t);
+  const target = ANIME.test(t) || REAL.test(t) || SIMPLE.test(t) || MAN.test(t) || WOMAN.test(t) || LOOKN.test(t) || SAREE.test(t) || KURTA.test(t);
   if (!wantsChange && !target) return null;
   if (/\?\s*$/.test(t) && !wantsChange) return null; // a question about faces, not a request
   if (HIDE.test(t) && !target) return { hide: true };
@@ -43,6 +46,8 @@ export function parseFaceCommand(text) {
   else if (MAN.test(t)) cmd.who = 'man';
   const m = t.match(LOOKN);
   if (m) cmd.lookNo = Number(m[1] || ORD[String(m[2]).toLowerCase()]);
+  if (SAREE.test(t)) { cmd.style = 'realistic'; cmd.who = 'woman'; cmd.lookNo = 3; }
+  else if (KURTA.test(t)) { cmd.style = 'realistic'; cmd.who = 'man'; cmd.lookNo = 5; }
   if (!cmd.style && !cmd.who && !cmd.lookNo && !SHOW.test(t)) return CHANGE.test(t) ? { ask: true } : null; // "change your face" alone: ask which
   if (!cmd.style && !cmd.who && !cmd.lookNo) cmd.show = true;
   return cmd;

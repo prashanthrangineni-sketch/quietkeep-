@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 const { CHECK_FACES, verdict, mouthWord, summariseCheck, SMOOTH_FPS, USABLE_FPS } = await import('../src/lib/avatar/phone-check.js');
 let n = 0; const t = (name, fn) => { fn(); n++; };
 
-t('checks all 8 3D faces, the founder picks included', () => {
-  assert.equal(CHECK_FACES.length, 8);
-  assert.deepEqual(CHECK_FACES.filter((f) => f.style === 'realistic').map((f) => f.look), ['woman-1', 'woman-2', 'man-1', 'man-2', 'man-3', 'man-4']);
+t('checks all 10 3D faces, the Indian looks included', () => {
+  assert.equal(CHECK_FACES.length, 10);
+  assert.deepEqual(CHECK_FACES.filter((f) => f.style === 'realistic').map((f) => f.look), ['woman-1', 'woman-2', 'man-1', 'man-2', 'man-3', 'man-4', 'woman-3', 'man-5']);
 });
 t('verdict thresholds match the panel fallback', () => {
   assert.equal(USABLE_FPS, 12);

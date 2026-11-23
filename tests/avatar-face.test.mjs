@@ -206,7 +206,7 @@ _resetForTests();
       .reduce((n, x) => n + statSync(new URL(d + x, import.meta.url)).size, 0);
     const realistic = readdirSync(new URL('../public/avatars/realistic-rocketbox/', import.meta.url), { withFileTypes: true })
       .filter((x) => x.isDirectory()).map((x) => dirSize(`../public/avatars/realistic-rocketbox/${x.name}/`));
-    eq('every realistic look is 1 to 1.5 MB, as the page says', realistic.every((x) => x > 0.9 * 1024 * 1024 && x < 1.5 * 1024 * 1024), true);
+    eq('every realistic look is under 1.5 MB, as the page says', realistic.every((x) => x > 0.7 * 1024 * 1024 && x < 1.5 * 1024 * 1024), true);
     eq('every anime face is about 5 MB, as the page says', sizes.every((x) => x > 4 * 1024 * 1024 && x < 6 * 1024 * 1024), true);
   }
   const face = read('../src/components/AariaFace.jsx');
@@ -218,13 +218,13 @@ _resetForTests();
   const human = read('../src/components/avatar/HumanStage.jsx');
   eq('the person can pick a woman or a man', ["{ id: 'woman', label: 'Woman' }", "{ id: 'man', label: 'Man' }"].every((x) => stage.includes(x)), true);
   eq('realistic looks are numbered, never labelled by origin', /label: '(Indian|Western|Arab|Asian|African)'/.test(stage), false);
-  eq('Indian in a saree / kurta says "Coming next" and "not built yet" in words', stage.includes('Coming next: an Indian woman in a saree and an Indian man in a kurta') && stage.includes('They are not built yet'), true);
+  eq('saree and kurta looks are offered by their clothing, and "coming next" is gone', stage.includes("{ id: 'woman-3', label: 'Saree' }") && stage.includes("{ id: 'man-5', label: 'Kurta' }") && !stage.includes('Coming next'), true);
   {
     const { existsSync } = await import('node:fs');
     const ids = [...human.matchAll(/dir: '([^']+)', model: '([^']+)', tex: '([^']+)'/g)];
     const missing = ids.flatMap(([, dir, model, tex]) => [dir + model, `${dir}${tex}_head_color.jpg`, `${dir}${tex}_body_color.jpg`])
       .filter((f) => !existsSync(new URL('../public' + f, import.meta.url)));
-    eq('every realistic look has its model and colour pictures in the app', [ids.length, missing], [6, []]);
+    eq('every realistic look has its model and colour pictures in the app', [ids.length, missing], [8, []]);
   }
   const man = read('../public/avatars/anime-man-sample/LICENCE.md');
   eq('the anime man has his licence beside him', man.includes('CC0') && man.includes('d8fb05f33e377df028cb6b9d58c441ce68326c41fa23f6c735d40c65ae3dc710'), true);

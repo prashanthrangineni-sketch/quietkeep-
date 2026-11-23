@@ -79,6 +79,12 @@ const _sources = new WeakMap();   // one source per <audio>, ever (a browser rul
  */
 export async function attachMouth(audioEl) {
   if (typeof window === 'undefined' || !audioEl) return null;
+  // 23 Nov 2026 (Thread 1 hot-fix, founder's phone): on the Android app, routing
+  // Aaria's voice through Web Audio played it at the low "call" level even with
+  // the volume at maximum. Her voice must never be quieter because the face is
+  // on, so on the app the face uses its built-in talking motion (cycleShapes)
+  // and the voice goes straight to the speaker.
+  if (onAndroidApp()) return null;
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return null;
   try {

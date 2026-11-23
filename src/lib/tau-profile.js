@@ -72,6 +72,7 @@ const median = (nums) => {
   const s = [...nums].sort((a, b) => a - b);
   return s.length ? s[Math.floor((s.length - 1) / 2)] : null;
 };
+const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o && o[k] !== undefined && o[k] !== null).map((k) => [k, o[k]]));
 const slug = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 60);
 
 /** How sure Aaria is: more days = surer; fades with a 14-day half-life. */

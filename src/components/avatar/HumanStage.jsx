@@ -25,8 +25,12 @@ export const HUMANS = {
   'woman-2': { group: 'woman', dir: '/avatars/realistic-rocketbox/female-adult-15/', model: 'Female_Adult_15_facial.glb', tex: 'f018' },
   'man-1': { group: 'man', dir: '/avatars/realistic-rocketbox/male-adult-01/', model: 'Male_Adult_01_facial.glb', tex: 'm002' },
   'man-2': { group: 'man', dir: '/avatars/realistic-rocketbox/male-adult-07/', model: 'Male_Adult_07_facial.glb', tex: 'm013' },
+  // Indian looks (23 Nov 2026), made by Pranix AI Labs from Rocketbox characters (MIT):
+  // new colour pictures, a bindi, and the saree's end piece drawn on the device.
+  'woman-3': { group: 'woman', dir: '/avatars/realistic-rocketbox/female-adult-11/', model: 'Female_Adult_11_facial.glb', tex: 'f011', pallu: 'f011_pallu_color.jpg' },
   'man-3': { group: 'man', dir: '/avatars/realistic-rocketbox/male-adult-08/', model: 'Male_Adult_08_facial.glb', tex: 'm014' },
   'man-4': { group: 'man', dir: '/avatars/realistic-rocketbox/male-adult-21/', model: 'Male_Adult_21_facial.glb', tex: 'm251' },
+  'man-5': { group: 'man', dir: '/avatars/realistic-rocketbox/male-adult-15/', model: 'Male_Adult_15_facial.glb', tex: 'm204' },
 };
 // Colour pictures by the last part of the material's name (f001_body, m002_head ...).
 const TEXTURE_FOR = {
@@ -126,6 +130,13 @@ export default function HumanStage({ status = 'idle', who = 'woman-1', height = 
         };
         aim(bone('Bip01 L UpperArm'), bone('Bip01 L Forearm'), new THREE.Vector3(0.22, -1, 0.05));
         aim(bone('Bip01 R UpperArm'), bone('Bip01 R Forearm'), new THREE.Vector3(-0.22, -1, 0.05));
+        if (character.pallu) {
+          try {
+            const { addPallu } = await import('./saree-pallu');
+            await addPallu(THREE, { root, bone, meshes, textureUrl: character.dir + character.pallu });
+          } catch { /* the look still works without the end piece */ }
+          if (!alive) return;
+        }
 
         // Frame the head and shoulders, from the front.
         const headPos = new THREE.Vector3();

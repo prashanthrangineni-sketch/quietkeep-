@@ -11,6 +11,8 @@ export const CHECK_FACES = [
   { name: 'Realistic man 2', style: 'realistic', who: 'man', look: 'man-2' },
   { name: 'Realistic man 3', style: 'realistic', who: 'man', look: 'man-3' },
   { name: 'Realistic man 4', style: 'realistic', who: 'man', look: 'man-4' },
+  { name: 'Woman in a saree', style: 'realistic', who: 'woman', look: 'woman-3' },
+  { name: 'Man in a kurta', style: 'realistic', who: 'man', look: 'man-5' },
 ];
 
 // Same bar the live panel uses to fall back to the simple face.

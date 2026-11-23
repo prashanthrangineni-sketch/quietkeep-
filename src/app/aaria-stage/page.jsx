@@ -16,7 +16,8 @@
 //                       (MIT): two women and four men, chosen by the founder,
 //                       shown as numbered looks. They look like game
 //                       characters, not filmed people, and the page says so.
-//                       Indian in a saree / kurta: NOT BUILT - "Coming next".
+//                       Indian looks (23 Nov): 'Saree' and 'Kurta', made by
+//                       Pranix from two more Rocketbox people (MIT).
 //   * The frames-per-second line is a live measurement on this device.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -53,8 +54,8 @@ const WHO = [{ id: 'woman', label: 'Woman' }, { id: 'man', label: 'Man' }];
 // The realistic people on offer. They are numbered, not labelled by origin:
 // none of them was made as an Indian character, and we do not claim one is.
 const REALISTIC = {
-  woman: [{ id: 'woman-1', label: 'Look 1' }, { id: 'woman-2', label: 'Look 2' }],
-  man: [{ id: 'man-1', label: 'Look 1' }, { id: 'man-2', label: 'Look 2' }, { id: 'man-3', label: 'Look 3' }, { id: 'man-4', label: 'Look 4' }],
+  woman: [{ id: 'woman-1', label: 'Look 1' }, { id: 'woman-2', label: 'Look 2' }, { id: 'woman-3', label: 'Saree' }],
+  man: [{ id: 'man-1', label: 'Look 1' }, { id: 'man-2', label: 'Look 2' }, { id: 'man-3', label: 'Look 3' }, { id: 'man-4', label: 'Look 4' }, { id: 'man-5', label: 'Kurta' }],
 };
 
 function Chip({ on, onClick, children }) {
@@ -229,16 +230,10 @@ export default function AariaStagePage() {
         <p data-testid="face-download-note" style={{ margin: '0 2px 8px', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
           {face === 'anime3d'
             ? 'This face downloads about 5 MB the first time, then works from your phone. If your phone is slow with it, Aaria switches to the simple face by herself.'
-            : 'This face downloads about 1 to 1.5 MB the first time, then works from your phone. If your phone is slow with it, Aaria switches to the simple face by herself.'}
+            : 'This face downloads under 1.5 MB the first time, then works from your phone. If your phone is slow with it, Aaria switches to the simple face by herself.'}
         </p>
       )}
 
-      {face === 'realistic' && (
-        <p style={{ margin: '0 2px 14px', fontSize: 12, color: 'var(--text-subtle)', lineHeight: 1.6 }}>
-          Coming next: an Indian woman in a saree and an Indian man in a kurta. They are not built yet —
-          no character with a licence we can use has been found.
-        </p>
-      )}
 
       <div style={{ ...card, marginBottom: 12 }}>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Hear Aaria speak</div>

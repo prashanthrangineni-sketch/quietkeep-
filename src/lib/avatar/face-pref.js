@@ -23,7 +23,7 @@ export const ANIME_MODELS = {
   woman: '/avatars/anime-sample/VRM1_Constraint_Twist_Sample.vrm',
   man: '/avatars/anime-man-sample/Sakurada_Fumiriya.vrm',
 };
-const LOOKS = { woman: ['woman-1', 'woman-2'], man: ['man-1', 'man-2', 'man-3', 'man-4'] };
+const LOOKS = { woman: ['woman-1', 'woman-2', 'woman-3'], man: ['man-1', 'man-2', 'man-3', 'man-4', 'man-5'] };
 
 /** Pure: turn stored values into a valid choice (anything odd falls back to the 2D face). */
 export function normaliseChosenFace(style, who, look) {

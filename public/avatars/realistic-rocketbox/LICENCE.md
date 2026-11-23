@@ -62,3 +62,30 @@ as first converted; these are the files now in the app:
 | `male-adult-08/Male_Adult_08_facial.glb` | 594,520 bytes | `15fd762c2983dd5854a2457d6c96b2a315c11a7cf3ee6cecff7637b4fc228211` |
 | `male-adult-08/m014_opacity_color.png` | 216,928 bytes | `a806ccaba96382a9228f1fbce9221696c16858de9c280c2e0dec4bfa05e637a4` |
 | `male-adult-21/Male_Adult_21_facial.glb` | 617,040 bytes | `1e6813a353e57567c95b93af1a82745208a199d974e2f57590316291f2f7540f` |
+
+## Indian looks: "Saree" and "Kurta" (23 Nov 2026)
+
+Two more characters from the same Microsoft Rocketbox library (MIT, same licence text in
+`ROCKETBOX-MIT-LICENSE.md` beside this file), changed by Pranix AI Labs to make an Indian
+woman in a saree and an Indian man in a kurta. Taken from commit
+`0943055db6ec570bcef9f2c8b41c9e5467c808f9` of `https://github.com/microsoft/Microsoft-Rocketbox`.
+
+| Original | Size, SHA-256 |
+|---|---|
+| `Assets/Avatars/Adults/Female_Adult_11/Export/Female_Adult_11_facial.fbx` | 2,126,800 bytes, `7ddb77aedb39fa1dd17dc3b5beffaf260769f39cbace52e9e6cc62cd93ee1af9` |
+| `Assets/Avatars/Adults/Male_Adult_15/Export/Male_Adult_15_facial.fbx` | 1,853,888 bytes, `14d1e398fb0dc762eafa1e457cf8fc4f151aefc5b54c8b3e6093486b10bbb380` |
+
+| File here | Size | SHA-256 | What was done |
+|---|---|---|---|
+| `female-adult-11/Female_Adult_11_facial.glb` | 1,064,992 | `c0a7a31277e27b6c56f9825212ce81ac8cf52be8cbff00888741c3ff65fc2b04` | Converted with FBX2glTF v0.13.1, then `scripts/avatar-shrink.py` keeping the same 22 face shapes as the other looks. Shape and skeleton untouched. |
+| `female-adult-11/f011_body_color.jpg` | 164,752 | `27544c4dfcde6d6b0209e52fab8396708dc039a0324564b6badb5f1859be24ab` | From `f011_body_color.tga`: the knitted dress recoloured, keeping its light and shade - maroon blouse and sleeves, teal saree with gold borders, gold waistband. |
+| `female-adult-11/f011_head_color.jpg` | 118,006 | `3722f48010b2afcec6cfc6d7a4a2f4bb32f57a45ede37c6a7903f66fb7c0f27d` | From `f011_head_color.tga`: a red bindi painted between the eyebrows. |
+| `female-adult-11/f011_opacity_color.png` | 139,160 | `1e3fc9a28d8526d9bea4235b6ef0f376405503f4821cc4266bf8cc44b1e61aad` | From `f011_opacity_color.tga`: resized, at most 256 colours. |
+| `female-adult-11/f011_pallu_color.jpg` | 26,925 | `d20acdb7ecf383b4245f09998db404f07c2336dac43a9f86b5ca5a7b82515474` | Drawn by Pranix AI Labs (not from Rocketbox): the saree cloth for the end piece over her shoulder. The end piece itself is built on the device by `src/components/avatar/saree-pallu.js`. |
+| `male-adult-15/Male_Adult_15_facial.glb` | 828,696 | `0d3e9c3abb9e2e55bd1c72bce22c62c89650225c70684add0da728696c5cbdc5` | Converted and shrunk the same way. |
+| `male-adult-15/m204_body_color.jpg` | 104,027 | `4993a29f8bd897ad6776ae6de3b9c9ad5ea1d4ce9dd5764f826edd24b50349a3` | From `m204_body_color.tga` (white kurta and pyjama): resized only. |
+| `male-adult-15/m204_head_color.jpg` | 88,845 | `9fb705398f2216667090b6dc254caed34304f1e165fe5c0dfe674789cefe1790` | From `m204_head_color.tga`: the embroidered cap painted over in dark hair colour, so the default kurta look carries no religious cap. |
+
+The page names these two looks by their clothing ("Saree", "Kurta"), never by origin. Like
+the others they are sculpted game-style characters, not photographs and not made by AI.
+The picture-making steps are in `scripts/avatar-indian-looks.py`.

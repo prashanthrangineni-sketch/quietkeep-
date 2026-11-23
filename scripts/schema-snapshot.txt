@@ -96,7 +96,7 @@ stock_movements|balance_after,change,created_at,id,item_id,reason,reference_id,w
 subscriptions|amount,billing_cycle,category,created_at,currency,cycle,id,is_active,name,next_due,notes,plan_id,razorpay_order_id,razorpay_payment_id,razorpay_signature,razorpay_subscription_id,tier_name,trial_ends_at,user_id,verified_at
 suggestions|action_type,confirmed_at,created_at,id,intent_id,text,tier,user_confirmed,user_viewed
 system_health_log|created_at,id,snapshot
-tau_behaviour_profile|afternoon_intent,evening_intent,home_intent,id,language_preference,last_updated,morning_intent,most_active_hour,night_intent,office_intent,top_intents,user_id,voice_capture_daily_avg
+tau_behaviour_profile|afternoon_intent,evening_intent,habits,home_intent,id,language_preference,last_updated,learning_mode,morning_intent,most_active_hour,night_intent,office_intent,top_intents,user_id,voice_capture_daily_avg
 tau_intent_log|confidence,corrected_intent,created_at,day_of_week,executed,hour_of_day,id,intent_type,language_detected,location_lat,location_lng,location_name,raw_transcript,user_id
 test_run_log|action,created_at,db_after,db_before,duration_ms,error_msg,id,input,passed,result,run_id,test_name
 trip_plans|ai_itinerary,budget,created_at,destination,expenses,id,keep_id,metadata,notes,packing_list,return_date,status,travel_date,travelers,user_id,weather_data

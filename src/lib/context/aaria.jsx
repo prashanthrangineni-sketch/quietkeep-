@@ -59,6 +59,8 @@ import { createSpeakingTracker } from '@/lib/avatar/speech-signal'; // 4.1 real 
 import { reportOutcome, outcomeFromCapture, outcomeFromClientAction } from '@/lib/avatar/outcome'; // 4.3 confirmed outcomes for the face
 import { handleFaceCommand } from '@/lib/avatar/face-command'; // "change your face" by voice (Thread 4)
 
+import { offerAnswer } from '@/lib/habit-offers'; // T31: spoken yes / no to an offered habit
+
 // AG-I3: Shared brain v0 flag gate (default off: existing path unchanged byte-for-byte in behaviour)
 const USE_SHARED_BRAIN = process.env.NEXT_PUBLIC_SHARED_BRAIN === '1';
 
@@ -558,6 +560,36 @@ export function AariaProvider({ children }) {
     }, 150);
   }, [checkPhoneLocked]);
 
+  // T31 (23 Nov 2026): once after the app opens, if Aaria is sure of a habit
+  // and it is the right moment, she asks ONCE (hybrid). Then she listens for
+  // the answer; a spoken yes / no within two minutes is handled in askBrain.
+  const pendingOfferRef = useRef(null);
+  useEffect(() => {
+    if (!user?.id || !accessToken) return;
+    let cancelled = false;
+    let poll = null;
+    const timer = setTimeout(async () => {
+      try {
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+        const lang = voiceLang || 'en-IN';
+        const r = await fetch(`/api/aaria/offer?lang=${encodeURIComponent(lang)}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const j = await r.json().catch(() => ({}));
+        if (cancelled || !j?.offer?.question || listeningRef.current) return;
+        pendingOfferRef.current = { id: j.offer.id, at: Date.now(), lang };
+        say(j.offer.question, { lang });
+        const startedAt = Date.now();
+        poll = setInterval(() => {
+          const waited = Date.now() - startedAt;
+          if (cancelled || waited > 30000) { clearInterval(poll); return; }
+          if (waited < 1500 || isSpeaking()) return;
+          clearInterval(poll);
+          if (!listeningRef.current) { autoTurnRef.current = true; startListenRef.current?.(); }
+        }, 200);
+      } catch { }
+    }, 12000);
+    return () => { cancelled = true; clearTimeout(timer); if (poll) clearInterval(poll); };
+  }, [user?.id, accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSilence = useCallback(async () => {
     if (!conversationActiveRef.current) return;
     silentTurnsRef.current += 1;
@@ -583,6 +615,28 @@ export function AariaProvider({ children }) {
       setError('Sign in first and I can act on that.');
       setStatus('idle');
       return;
+    }
+    // T31: the answer to the habit Aaria just offered.
+    const offer = pendingOfferRef.current;
+    if (offer && Date.now() - offer.at < 120000) {
+      const yn = offerAnswer(text);
+      pendingOfferRef.current = null;
+      if (yn) {
+        setTranscript('');
+        try {
+          const r = await fetch('/api/aaria/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${fillerTokenRef.current}` },
+            body: JSON.stringify({ id: offer.id, answer: yn, lang: offer.lang }),
+          });
+          const j = await r.json().catch(() => ({}));
+          say(j.line || (yn === 'yes' ? 'Done.' : 'Okay.'), { lang: offer.lang });
+          if (r.ok && yn === 'yes' && typeof window !== 'undefined') window.dispatchEvent(new Event('qk_reminders_changed'));
+        } catch {
+          say(yn === 'yes' ? 'Sorry, I could not set that just now.' : 'Okay.', { lang: offer.lang });
+        }
+        return;
+      }
     }
     // Thread 4: "change your face to the man" etc. only changes a setting on
     // this phone, so it is done here, not sent to the server.

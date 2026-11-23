@@ -616,6 +616,28 @@ export function AariaProvider({ children }) {
       setStatus('idle');
       return;
     }
+    // T31: the answer to the habit Aaria just offered.
+    const offer = pendingOfferRef.current;
+    if (offer && Date.now() - offer.at < 120000) {
+      const yn = offerAnswer(text);
+      pendingOfferRef.current = null;
+      if (yn) {
+        setTranscript('');
+        try {
+          const r = await fetch('/api/aaria/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${fillerTokenRef.current}` },
+            body: JSON.stringify({ id: offer.id, answer: yn, lang: offer.lang }),
+          });
+          const j = await r.json().catch(() => ({}));
+          say(j.line || (yn === 'yes' ? 'Done.' : 'Okay.'), { lang: offer.lang });
+          if (r.ok && yn === 'yes' && typeof window !== 'undefined') window.dispatchEvent(new Event('qk_reminders_changed'));
+        } catch {
+          say(yn === 'yes' ? 'Sorry, I could not set that just now.' : 'Okay.', { lang: offer.lang });
+        }
+        return;
+      }
+    }
     // Thread 4: "change your face to the man" etc. only changes a setting on
     // this phone, so it is done here, not sent to the server.
     let faceReply = null;

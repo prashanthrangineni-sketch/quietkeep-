@@ -208,12 +208,14 @@ export default function BizDashboardPage() {
 
   // CHANGE: added /b/chat and /b/team, now 9 items in 3×3 grid
   const QUICK_ACTIONS = [
+    { href: '/b/counter',    icon: '⚡', label: 'Counter' },  // Quick counter screen
+    { href: '/b/closing',    icon: '🏁', label: 'Closing' },  // Closing check
     { href: '/b/attendance', icon: '👥', label: 'Attend' },
     { href: '/b/invoices',   icon: '🧾', label: 'Invoice' },
-    { href: '/b/chat',       icon: '💬', label: 'Chat' },    // ← NEW
+    { href: '/b/chat',       icon: '💬', label: 'Chat' },
     { href: '/b/payroll',    icon: '💳', label: 'Payroll' },
     { href: '/b/inventory',  icon: '📦', label: 'Stock' },
-    { href: '/b/team',       icon: '👨‍💼', label: 'Team' },    // ← NEW
+    { href: '/b/team',       icon: '👨‍💼', label: 'Team' },
     { href: '/b/customers',  icon: '🤝', label: 'Clients' },
     { href: '/b/tasks',      icon: '✅', label: 'Tasks' },
     { href: '/b/compliance', icon: '⚖️', label: 'Comply' },
@@ -353,7 +355,7 @@ export default function BizDashboardPage() {
               <div key={a.id} className="qk-card" style={{ padding: '12px 14px', marginBottom: 8, border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: G }}>
-                    {a.action_type === 'business_order_confirm' || a.action_type === 'business_booking_confirm' || a.payload?.what === 'order_request' || a.payload?.what === 'order' || a.payload?.what === 'booking_request' || a.payload?.what === 'booking' ? '📦 Order Request' : '💬 Customer Inquiry'}
+                    {a.action_type === 'upi_unmatched_payment' ? '💰 UPI Payment (No Items)' : (a.action_type === 'business_order_confirm' || a.action_type === 'business_booking_confirm' || a.payload?.what === 'order_request' || a.payload?.what === 'order' || a.payload?.what === 'booking_request' || a.payload?.what === 'booking' ? '📦 Order Request' : '💬 Customer Inquiry')}
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>
                     {a.payload?.who || a.payload?.customerPhone || 'Customer'}
@@ -364,6 +366,25 @@ export default function BizDashboardPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {(() => {
+                    if (a.action_type === 'upi_unmatched_payment') {
+                      return (
+                        <>
+                          <Link
+                            href={`/b/counter?match_upi=${a.id}&amount=${a.payload?.amount || 0}`}
+                            className="qk-btn qk-btn-sm"
+                            style={{ background: G, color: '#fff', border: 'none', padding: '4px 10px', fontSize: 12, textDecoration: 'none' }}>
+                            🏷️ Pick Items
+                          </Link>
+                          <button
+                            onClick={() => handleApprovalAction(a.id, 'skip')}
+                            className="qk-btn qk-btn-sm"
+                            style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-subtle)', padding: '4px 10px', fontSize: 12 }}>
+                            Skip
+                          </button>
+                        </>
+                      );
+                    }
+
                     const isOrderOrBooking =
                       a.action_type === 'business_order_confirm' ||
                       a.action_type === 'business_booking_confirm' ||
@@ -406,21 +427,25 @@ export default function BizDashboardPage() {
                       </button>
                     );
                   })()}
-                  <button
-                    onClick={() => {
-                      const edit = prompt('Edit reply to customer:', a.payload?.suggested_reply || '');
-                      if (edit !== null) handleApprovalAction(a.id, 'edit', edit);
-                    }}
-                    className="qk-btn qk-btn-sm"
-                    style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '4px 10px', fontSize: 12 }}>
-                    ✏️ Edit
-                  </button>
-                  <button
-                    onClick={() => handleApprovalAction(a.id, 'ignore')}
-                    className="qk-btn qk-btn-sm"
-                    style={{ background: 'transparent', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', padding: '4px 10px', fontSize: 12 }}>
-                    ✕ Ignore
-                  </button>
+                  {a.action_type !== 'upi_unmatched_payment' && (
+                    <>
+                      <button
+                        onClick={() => {
+                          const edit = prompt('Edit reply to customer:', a.payload?.suggested_reply || '');
+                          if (edit !== null) handleApprovalAction(a.id, 'edit', edit);
+                        }}
+                        className="qk-btn qk-btn-sm"
+                        style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '4px 10px', fontSize: 12 }}>
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => handleApprovalAction(a.id, 'ignore')}
+                        className="qk-btn qk-btn-sm"
+                        style={{ background: 'transparent', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', padding: '4px 10px', fontSize: 12 }}>
+                        ✕ Ignore
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}

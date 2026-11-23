@@ -15,7 +15,7 @@ export default function InventoryPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name:'', category:'', unit:'pcs', current_stock:'0', min_stock_alert:'5', purchase_price:'', selling_price:'', supplier_name:'', supplier_phone:'', location:'', gst_rate:'18', expiry_date:'', manufacture_date:'', batch_number:'' });
+  const [form, setForm] = useState({ name:'', category:'', unit:'pcs', current_stock:'0', min_stock_alert:'5', purchase_price:'', selling_price:'', supplier_name:'', supplier_phone:'', location:'', gst_rate:'18', expiry_date:'', manufacture_date:'', batch_number:'', is_made_on_spot: false, is_top_item: false, recipe_text: '' });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
   const [filter, setFilter] = useState('all');
@@ -40,15 +40,30 @@ export default function InventoryPage() {
   async function saveItem() {
     if (!form.name || !workspace) return;
     setSaving(true);
-    const payload = { ...form, workspace_id: workspace.id, current_stock: parseFloat(form.current_stock)||0, min_stock_alert: parseFloat(form.min_stock_alert)||5, purchase_price: parseFloat(form.purchase_price)||null, selling_price: parseFloat(form.selling_price)||null, gst_rate: parseFloat(form.gst_rate)||18 };
-    const { workspace_id: _w, ...fields } = payload;
+    let recipe = [];
+    if (form.recipe_text) {
+      try { recipe = JSON.parse(form.recipe_text); } catch (_) {}
+    }
+    const payload = {
+      ...form,
+      workspace_id: workspace.id,
+      current_stock: parseFloat(form.current_stock)||0,
+      min_stock_alert: parseFloat(form.min_stock_alert)||5,
+      purchase_price: parseFloat(form.purchase_price)||null,
+      selling_price: parseFloat(form.selling_price)||null,
+      gst_rate: parseFloat(form.gst_rate)||18,
+      is_made_on_spot: Boolean(form.is_made_on_spot),
+      is_top_item: Boolean(form.is_top_item),
+      recipe,
+    };
+    const { workspace_id: _w, recipe_text: _rt, ...fields } = payload;
     await fetch('/api/business/inventory', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify(editId ? { ...fields, id: editId } : fields),
     });
     setSaving(false); setShowForm(false); setEditId(null);
-    setForm({ name:'', category:'', unit:'pcs', current_stock:'0', min_stock_alert:'5', purchase_price:'', selling_price:'', supplier_name:'', supplier_phone:'', location:'', gst_rate:'18', expiry_date:'', manufacture_date:'', batch_number:'' });
+    setForm({ name:'', category:'', unit:'pcs', current_stock:'0', min_stock_alert:'5', purchase_price:'', selling_price:'', supplier_name:'', supplier_phone:'', location:'', gst_rate:'18', expiry_date:'', manufacture_date:'', batch_number:'', is_made_on_spot: false, is_top_item: false, recipe_text: '' });
     loadItems(workspace.id);
   }
 
@@ -132,6 +147,37 @@ export default function InventoryPage() {
                   {[0,5,12,18,28].map(r => <option key={r} value={r}>{r}%</option>)}
                 </select>
               </div>
+              <div style={{ gridColumn: '1/-1', display: 'flex', gap: 16, marginTop: 4 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_made_on_spot}
+                    onChange={e => setForm(p => ({ ...p, is_made_on_spot: e.target.checked }))}
+                  />
+                  <span>Made on the spot (uses recipe)</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_top_item}
+                    onChange={e => setForm(p => ({ ...p, is_top_item: e.target.checked }))}
+                  />
+                  <span>Show on Quick Counter</span>
+                </label>
+              </div>
+              {form.is_made_on_spot && (
+                <div style={{ gridColumn: '1/-1' }}>
+                  <label className="qk-lbl">{'Recipe Ingredients (JSON array e.g. [{"name":"milk","quantity":0.1,"unit":"L"},{"name":"tea powder","quantity":5,"unit":"g"}])'}</label>
+                  <input
+                    type="text"
+                    value={form.recipe_text}
+                    onChange={e => setForm(p => ({ ...p, recipe_text: e.target.value }))}
+                    placeholder='[{"name":"milk","quantity":0.1},{"name":"tea powder","quantity":5}]'
+                    className="qk-input"
+                    style={{ marginTop: 4, fontSize: 12 }}
+                  />
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <button onClick={saveItem} disabled={saving} className="qk-btn qk-btn-primary" style={{ flex: 1, justifyContent: 'center' }}>{saving ? 'Saving...' : editId ? '✓ Update' : '+ Add Item'}</button>

@@ -190,6 +190,10 @@ export function buildTauProfile({ userId, keeps = [], patterns = [], previous = 
       ...h,
       status: before.get(h.id)?.status || 'learned',
       first_seen: before.get(h.id)?.first_seen || now.toISOString(),
+      // T31: keep what the person and Aaria already did with this habit across
+      // every rebuild - when she asked (ask once), the reminder it became (no
+      // duplicate reminders), and whether she set it up by herself.
+      ...pick(before.get(h.id), ['asked_at', 'answered_at', 'reminder_id', 'auto']),
     }))
     .sort((a, b) => b.confidence - a.confidence)
     .slice(0, 40);

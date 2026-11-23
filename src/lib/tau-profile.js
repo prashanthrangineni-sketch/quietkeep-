@@ -21,6 +21,8 @@
 // Pure functions here; the database read/write lives in refreshTauProfile().
 // No model, no network beyond Supabase, no new spend.
 
+import { habitsToActOn, createHabitReminder } from './habit-offers.js';
+
 export const PROFILE_WINDOW_DAYS = 60;
 export const HALF_LIFE_DAYS = 14;          // habits fade when not seen (founder vision: ~2 weeks)
 export const MIN_DAYS_FOR_HABIT = 3;       // seen on 3 different days before it counts

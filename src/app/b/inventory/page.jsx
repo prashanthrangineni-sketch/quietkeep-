@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/context/auth';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import BizNavbar from '@/components/biz/BizNavbar';
+import { calculateAvailabilityLabel } from '@/lib/cart2save/availability';
 const G = '#10b981';
 const UNITS = ['pcs','kg','litre','box','metre','dozen','bag','bottle','sheet','roll'];
 
@@ -15,18 +16,29 @@ export default function InventoryPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name:'', category:'', unit:'pcs', current_stock:'0', min_stock_alert:'5', purchase_price:'', selling_price:'', supplier_name:'', supplier_phone:'', location:'', gst_rate:'18', expiry_date:'', manufacture_date:'', batch_number:'' });
+  const [form, setForm] = useState({
+    name: '', category: '', unit: 'pcs', current_stock: '0', min_stock_alert: '5',
+    purchase_price: '', selling_price: '', supplier_name: '', supplier_phone: '',
+    location: '', gst_rate: '18', expiry_date: '', manufacture_date: '', batch_number: '',
+    barcode: '', is_public: false, is_made_on_spot: false,
+  });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
   const [filter, setFilter] = useState('all');
   const [stockAdj, setStockAdj] = useState({});
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   useEffect(() => {
     if (authLoading) return; // wait for auth context to resolve
     if (!user) { router.replace('/biz-login'); return; }
     (async () => {
-            const ws = await resolveWorkspace(supabase, user?.id, 'id');
-            if (ws) { setWorkspace(ws); loadItems(ws.id); }
+      const ws = await resolveWorkspace(supabase, user?.id, 'id');
+      if (ws) {
+        // Fetch full workspace details including opening hours & accuracy score
+        const { data: fullWs } = await supabase.from('business_workspaces').select('*').eq('id', ws.id).maybeSingle();
+        setWorkspace(fullWs || ws);
+        loadItems(ws.id);
+      }
     })();
   }, [user, authLoading]);
 
@@ -40,7 +52,18 @@ export default function InventoryPage() {
   async function saveItem() {
     if (!form.name || !workspace) return;
     setSaving(true);
-    const payload = { ...form, workspace_id: workspace.id, current_stock: parseFloat(form.current_stock)||0, min_stock_alert: parseFloat(form.min_stock_alert)||5, purchase_price: parseFloat(form.purchase_price)||null, selling_price: parseFloat(form.selling_price)||null, gst_rate: parseFloat(form.gst_rate)||18 };
+    const payload = {
+      ...form,
+      workspace_id: workspace.id,
+      current_stock: parseFloat(form.current_stock) || 0,
+      min_stock_alert: parseFloat(form.min_stock_alert) || 5,
+      purchase_price: parseFloat(form.purchase_price) || null,
+      selling_price: parseFloat(form.selling_price) || null,
+      gst_rate: parseFloat(form.gst_rate) || 18,
+      barcode: form.barcode.trim() || null,
+      is_public: Boolean(form.is_public),
+      is_made_on_spot: Boolean(form.is_made_on_spot),
+    };
     const { workspace_id: _w, ...fields } = payload;
     await fetch('/api/business/inventory', {
       method: 'POST',
@@ -48,8 +71,59 @@ export default function InventoryPage() {
       body: JSON.stringify(editId ? { ...fields, id: editId } : fields),
     });
     setSaving(false); setShowForm(false); setEditId(null);
-    setForm({ name:'', category:'', unit:'pcs', current_stock:'0', min_stock_alert:'5', purchase_price:'', selling_price:'', supplier_name:'', supplier_phone:'', location:'', gst_rate:'18', expiry_date:'', manufacture_date:'', batch_number:'' });
+    setForm({
+      name: '', category: '', unit: 'pcs', current_stock: '0', min_stock_alert: '5',
+      purchase_price: '', selling_price: '', supplier_name: '', supplier_phone: '',
+      location: '', gst_rate: '18', expiry_date: '', manufacture_date: '', batch_number: '',
+      barcode: '', is_public: false, is_made_on_spot: false,
+    });
     loadItems(workspace.id);
+  }
+
+  function startEditItem(item) {
+    setEditId(item.id);
+    setForm({
+      name: item.name || '',
+      category: item.category || '',
+      unit: item.unit || 'pcs',
+      current_stock: String(item.current_stock ?? 0),
+      min_stock_alert: String(item.min_stock_alert ?? 5),
+      purchase_price: item.purchase_price ? String(item.purchase_price) : '',
+      selling_price: item.selling_price ? String(item.selling_price) : '',
+      supplier_name: item.supplier_name || '',
+      supplier_phone: item.supplier_phone || '',
+      location: item.location || '',
+      gst_rate: String(item.gst_rate ?? 18),
+      expiry_date: item.expiry_date || '',
+      manufacture_date: item.manufacture_date || '',
+      batch_number: item.batch_number || '',
+      barcode: item.barcode || '',
+      is_public: Boolean(item.is_public),
+      is_made_on_spot: Boolean(item.is_made_on_spot),
+    });
+    setShowForm(true);
+  }
+
+  async function toggleItemPublic(item) {
+    const nextPublic = !item.is_public;
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_public: nextPublic } : i));
+    await fetch('/api/business/inventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ id: item.id, is_public: nextPublic }),
+    });
+  }
+
+  async function bulkSetPublic(makePublic = true) {
+    if (!workspace) return;
+    setBulkUpdating(true);
+    await fetch('/api/business/inventory/bulk-public', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ is_public: makePublic }),
+    });
+    await loadItems(workspace.id);
+    setBulkUpdating(false);
   }
 
   async function adjustStock(id, delta) {
@@ -82,8 +156,26 @@ export default function InventoryPage() {
       <BizNavbar />
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '20px 16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-          <div><h1 className="qk-h1">📦 Inventory</h1><p className="qk-desc">Stock tracking with low-stock alerts</p></div>
-          <button onClick={() => { setShowForm(!showForm); setEditId(null); }} className="qk-btn qk-btn-primary qk-btn-sm">+ Add</button>
+          <div><h1 className="qk-h1">📦 Inventory</h1><p className="qk-desc">Stock tracking & Cart2Save discovery</p></div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={() => bulkSetPublic(true)}
+              disabled={bulkUpdating}
+              className="qk-btn qk-btn-ghost qk-btn-sm"
+              title="Publish all inventory items to Cart2Save"
+            >
+              {bulkUpdating ? '...' : '🌐 Make All Public'}
+            </button>
+            <button
+              onClick={() => bulkSetPublic(false)}
+              disabled={bulkUpdating}
+              className="qk-btn qk-btn-ghost qk-btn-sm"
+              title="Set all inventory items to private"
+            >
+              🔒 Private All
+            </button>
+            <button onClick={() => { setShowForm(!showForm); setEditId(null); }} className="qk-btn qk-btn-primary qk-btn-sm">+ Add</button>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
@@ -114,6 +206,7 @@ export default function InventoryPage() {
                 { label: 'Expiry Date', key: 'expiry_date', type: 'date', ph: '' },
                 { label: 'Manufacture Date', key: 'manufacture_date', type: 'date', ph: '' },
                 { label: 'Batch / Lot Number', key: 'batch_number', type: 'text', ph: 'e.g. BTH2024A' },
+                { label: 'Barcode / EAN', key: 'barcode', type: 'text', ph: 'e.g. 8901030383344' },
               ].map(f => (
                 <div key={f.key} style={{ gridColumn: f.full ? '1/-1' : undefined }}>
                   <label className="qk-lbl">{f.label}</label>
@@ -131,6 +224,35 @@ export default function InventoryPage() {
                 <select value={form.gst_rate} onChange={e => setForm(p => ({...p, gst_rate: e.target.value}))} className="qk-input" style={{ marginTop: 4 }}>
                   {[0,5,12,18,28].map(r => <option key={r} value={r}>{r}%</option>)}
                 </select>
+              </div>
+
+              {/* ── Cart2Save Settings for Item ── */}
+              <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4, padding: '10px 12px', background: 'var(--surface-hover)', borderRadius: 10 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_public}
+                    onChange={e => setForm(p => ({ ...p, is_public: e.target.checked }))}
+                    style={{ width: 16, height: 16, accentColor: G }}
+                  />
+                  <span>🛒 Public on Cart2Save (Default: OFF)</span>
+                </label>
+                <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginLeft: 24 }}>
+                  Make this item discoverable to nearby buyers with price and availability on Cart2Save.
+                </div>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, marginTop: 4 }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_made_on_spot}
+                    onChange={e => setForm(p => ({ ...p, is_made_on_spot: e.target.checked }))}
+                    style={{ width: 16, height: 16, accentColor: G }}
+                  />
+                  <span>🍳 Made on the spot (Fresh/prepared food, chai, juice, snacks)</span>
+                </label>
+                <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginLeft: 24 }}>
+                  Marked as &quot;Available while open&quot; during shop hours instead of tracked packaging count.
+                </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
@@ -155,20 +277,59 @@ export default function InventoryPage() {
                 : null;
               const isExpired = expiryDays !== null && expiryDays < 0;
               const isExpiringSoon = expiryDays !== null && expiryDays >= 0 && expiryDays <= 30;
+              const isPublic = Boolean(item.is_public);
+              const isMadeOnSpot = Boolean(item.is_made_on_spot);
+              const availLabel = calculateAvailabilityLabel({ item, shop: workspace || {} });
+
+              const labelColors = {
+                in_stock: { bg: 'rgba(16,185,129,0.15)', text: '#10b981', label: 'In Stock' },
+                few_left: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b', label: 'Few Left' },
+                hidden: { bg: 'rgba(148,163,184,0.15)', text: '#94a3b8', label: 'Hidden (0 count)' },
+                available_while_open: { bg: 'rgba(59,130,246,0.15)', text: '#3b82f6', label: 'Available While Open' },
+                call_to_confirm: { bg: 'rgba(168,85,247,0.15)', text: '#a855f7', label: 'Call to Confirm' },
+                closed: { bg: 'rgba(100,116,139,0.15)', text: '#64748b', label: 'Shop Closed' },
+              };
+              const badgeStyle = labelColors[availLabel] || labelColors.in_stock;
+
               return (
                 <div key={item.id} className="qk-card" style={{ padding: '13px 14px', borderLeft: `3px solid ${isOut ? '#ef4444' : isLow ? '#f59e0b' : G}` }}>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 3 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 3, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{item.name}</span>
-                        {isOut && <span className="qk-badge qk-badge-red">Out</span>}
-                        {isLow && !isOut && <span className="qk-badge qk-badge-amber">Low</span>}
+                        {/* Cart2Save Public/Private quick toggle */}
+                        <button
+                          type="button"
+                          onClick={() => toggleItemPublic(item)}
+                          style={{
+                            fontSize: 10, fontWeight: 700,
+                            padding: '2px 7px', borderRadius: 6, cursor: 'pointer',
+                            border: `1px solid ${isPublic ? G : 'var(--border)'}`,
+                            background: isPublic ? `${G}20` : 'var(--surface-hover)',
+                            color: isPublic ? G : 'var(--text-subtle)',
+                          }}
+                          title="Click to toggle Public on Cart2Save"
+                        >
+                          {isPublic ? '🛒 Public' : '🔒 Private'}
+                        </button>
+                        {/* Cart2Save Availability Label */}
+                        <span style={{
+                          fontSize: 10, fontWeight: 700,
+                          padding: '2px 7px', borderRadius: 6,
+                          background: badgeStyle.bg, color: badgeStyle.text,
+                        }}>
+                          {badgeStyle.label}
+                        </span>
+                        {isMadeOnSpot && <span className="qk-badge qk-badge-blue">Fresh / Made on Spot</span>}
+                        {isOut && !isMadeOnSpot && <span className="qk-badge qk-badge-red">Out</span>}
+                        {isLow && !isOut && !isMadeOnSpot && <span className="qk-badge qk-badge-amber">Low</span>}
                         {isExpired && <span className="qk-badge qk-badge-red">Expired</span>}
                         {isExpiringSoon && !isExpired && <span className="qk-badge qk-badge-amber">Exp {expiryDays}d</span>}
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-subtle)' }}>
                         {item.category && `${item.category} · `}
                         Buy ₹{item.purchase_price||'—'} · Sell ₹{item.selling_price||'—'}
+                        {item.barcode && ` · Barcode: ${item.barcode}`}
                         {item.supplier_name && ` · ${item.supplier_name}`}
                         {item.batch_number && ` · Batch: ${item.batch_number}`}
                         {item.expiry_date && <span style={{ color: isExpired ? '#ef4444' : isExpiringSoon ? '#f59e0b' : 'inherit', marginLeft: 4 }}>· Exp: {item.expiry_date}</span>}
@@ -183,13 +344,27 @@ export default function InventoryPage() {
                       <button onClick={() => adjustStock(item.id, 1)} style={{ width: 26, height: 26, borderRadius: '50%', border: `1px solid ${G}40`, background: `${G}15`, cursor: 'pointer', fontSize: 14, color: G }}>+</button>
                     </div>
                   </div>
-                  {item.supplier_phone && isLow && (
-                    <div style={{ marginTop: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                    {item.supplier_phone && isLow ? (
                       <a href={'https://wa.me/' + item.supplier_phone.replace(/[^0-9]/g,'') + '?text=' + encodeURIComponent('Hi, we need to reorder ' + item.name + '. Current stock: ' + stock + ' ' + item.unit + '. Please confirm availability and delivery date.')} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#25D366', textDecoration: 'none', fontWeight: 600 }}>
                         WhatsApp supplier for reorder
                       </a>
+                    ) : <span />}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={() => startEditItem(item)}
+                        style={{ fontSize: 11, background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', color: 'var(--text)', cursor: 'pointer' }}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => deleteItem(item.id, item.name)}
+                        style={{ fontSize: 11, background: 'transparent', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '3px 8px', color: '#ef4444', cursor: 'pointer' }}
+                      >
+                        🗑️ Delete
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}

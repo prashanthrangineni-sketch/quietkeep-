@@ -10,6 +10,7 @@
 export const dynamic = 'force-dynamic';
 import { requireBizPermission } from '@/lib/biz-rbac';
 import { createWriteClient } from '@/lib/supabase-bearer';
+import { handleWorkspaceChange } from '@/lib/cart2save/outbox';
 
 export async function GET(req) {
   try {
@@ -44,11 +45,34 @@ export async function POST(req) {
     // Force the write onto the caller's OWN workspace (update-only).
     const payload = { ...safe, id: ctx.workspace.id };
 
+    // Auto-set location_set_at if lat/lng are being set or modified
+    if (payload.lat !== undefined && payload.lng !== undefined && !payload.location_set_at) {
+      if (payload.lat !== null && payload.lng !== null) {
+        payload.location_set_at = new Date().toISOString();
+      }
+    }
+
     const db = createWriteClient();
+
+    // Fetch previous state to detect show_on_cart2save toggle and changes
+    const { data: previousWs } = await db
+      .from('business_workspaces')
+      .select('*')
+      .eq('id', ctx.workspace.id)
+      .maybeSingle();
+
     const { data, error } = await db
       .from('business_workspaces').upsert(payload).select().single();
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
+
+    // Handle Cart2Save outbox update (switch off sends unpublish, switch on/update sends upsert)
+    try {
+      await handleWorkspaceChange(db, ctx.workspace.id, previousWs, data);
+    } catch (outboxErr) {
+      console.error('[WORKSPACE POST] Cart2Save outbox write failed:', outboxErr.message);
+    }
+
     return Response.json({ data });
   } catch (e) {
     console.error('[WORKSPACE POST]', e.message);

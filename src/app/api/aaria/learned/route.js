@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   LEARNING_MODES, normaliseMode, answerHabit, teachFact, habitSentence, decideHabitUse,
 } from '@/lib/tau-profile';
+import { createHabitReminder, stopHabitReminder, planForHabit } from '@/lib/habit-offers';
 
 function clientFor(req) {
   const a = (req.headers.get('Authorization') || '').trim();
@@ -60,8 +61,18 @@ export async function POST(req) {
     patch.learning_mode = body.mode;
   }
   if (['confirm', 'decline', 'forget'].includes(body.action)) {
-    if (!habits.some((h) => h.id === body.id)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const target = habits.find((h) => h.id === body.id);
+    if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     habits = answerHabit(habits, body.id, body.action);
+    // T31: "Yes, help me with this" now DOES something: the habit becomes a
+    // repeating reminder. "No" / "Forget" switch that reminder off again.
+    if (body.action === 'confirm' && !target.reminder_id && planForHabit(target)) {
+      const reminderId = await createHabitReminder(sb, user.id, target);
+      if (reminderId) habits = habits.map((h) => (h.id === target.id ? { ...h, reminder_id: reminderId } : h));
+    } else if (body.action !== 'confirm' && target.reminder_id) {
+      await stopHabitReminder(sb, target);
+      habits = habits.map((h) => (h.id === target.id ? { ...h, reminder_id: null } : h));
+    }
     patch.habits = habits;
   } else if (body.action === 'teach') {
     const next = teachFact(habits, body.text);

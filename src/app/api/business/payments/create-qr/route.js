@@ -1,17 +1,14 @@
 // src/app/api/business/payments/create-qr/route.js
 // ─────────────────────────────────────────────────────────────────────────────
-// SOFTWARE SOUNDBOX (1/2): generate a dynamic, fixed-amount UPI QR for a bill.
+// SUBSCRIPTION-ONLY (LEGACY / PLATFORM SUBSCRIPTIONS):
 //
-// POST { amount, customer_name?, customer_id?, note? } (Bearer auth)
-//   → creates a Razorpay single-use UPI QR for exactly this amount
-//   → records a `pending` row in business_payments
-//   → returns { payment_id, qr_image_url, amount }
+// DECISION: Shop payments go straight to the shop's own UPI ID.
+// Pranix never holds shop money. The Razorpay QR stays ONLY for
+// QuietKeep's own subscription fees (e.g. Plus, Family, Business tiers).
 //
-// When the customer pays, Razorpay calls /api/business/payments/webhook, which
-// marks it paid and QUEUES A SPOKEN CONFIRMATION into nudge_queue — so the
-// merchant's phone says "₹500 received from Ramesh" with no hardware soundbox.
-//
-// Env: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, SUPABASE_SERVICE_ROLE_KEY.
+// This route must NOT be displayed or used on shop counter screens for customer
+// retail billing. Shop counter payments and public shop sales (/s/[shop])
+// use direct UPI links (upi://pay?pa=shop_upi_id&...) directly to the shop.
 // ─────────────────────────────────────────────────────────────────────────────
 export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
@@ -87,38 +84,46 @@ export async function POST(req) {
     }).select().single();
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 400 });
 
-    // Create the Razorpay single-use, fixed-amount UPI QR.
-    const basic = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+    // Create the Razorpay single-use, fixed-amount UPI QR (QuietKeep subscription fees only)
     const rzRes = await fetch('https://api.razorpay.com/v1/payments/qr_codes', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Basic ${basic}` },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64'),
+      },
       body: JSON.stringify({
         type: 'upi_qr',
         usage: 'single_use',
         fixed_amount: true,
-        payment_amount: Math.round(amount * 100),
-        description: (body.note || 'QuietKeep payment').slice(0, 40),
-        notes: { payment_id: pay.id, workspace_id: workspaceId },
-        close_by: Math.floor(Date.now() / 1000) + 30 * 60, // expires in 30 min
+        payment_amount: Math.round(amount * 100), // paise
+        description: body.note || `QuietKeep subscription ${pay.id.slice(0, 8)}`,
+        notes: {
+          payment_id: pay.id,
+          workspace_id: workspaceId,
+          type: 'subscription',
+        },
       }),
     });
+
     const rz = await rzRes.json();
     if (!rzRes.ok) {
-      await db.from('business_payments').update({ status: 'failed' }).eq('id', pay.id);
-      return NextResponse.json({ error: 'QR creation failed', detail: rz?.error?.description || null }, { status: 502 });
+      await db.from('business_payments').update({ status: 'failed', note: rz.error?.description || 'Razorpay error' }).eq('id', pay.id);
+      return NextResponse.json({ error: rz.error?.description || 'Razorpay call failed' }, { status: 502 });
     }
 
     await db.from('business_payments').update({
+      provider_payment_id: rz.id,
       provider_qr_id: rz.id,
       qr_image_url: rz.image_url,
     }).eq('id', pay.id);
 
     return NextResponse.json({
       payment_id: pay.id,
-      qr_id: rz.id,
       qr_image_url: rz.image_url,
       amount,
+      currency: 'INR',
       status: 'pending',
+      notice: 'Subscription payments only. Shop sales use direct shop UPI ID.',
     });
   } catch (e) {
     console.error('[create-qr]', e.message);

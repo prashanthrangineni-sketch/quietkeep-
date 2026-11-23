@@ -1252,7 +1252,9 @@ export async function POST(request) {
     // Absolute time from the brain wins — it resolves "రేపు ఉదయం" / "कल सुबह"
     // that computeReminderAt() cannot see.
     if (llmEntities.datetimeISO) {
-      const dt = new Date(llmEntities.datetimeISO)
+      // 23 Nov 2026: the clock time the person SAID in digits wins over the
+      // brain's (9:00 was saved as 9:30); the brain still picks the day.
+      const dt = reconcileSpokenClock(new Date(llmEntities.datetimeISO), reminderAt, text)
       if (!isNaN(dt.getTime()) && dt.getTime() > Date.now() - 60000) {
         reminderAt = dt
         // Write the resolved time back into entities. computeFollowUp() and

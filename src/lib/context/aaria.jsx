@@ -560,6 +560,36 @@ export function AariaProvider({ children }) {
     }, 150);
   }, [checkPhoneLocked]);
 
+  // T31 (23 Nov 2026): once after the app opens, if Aaria is sure of a habit
+  // and it is the right moment, she asks ONCE (hybrid). Then she listens for
+  // the answer; a spoken yes / no within two minutes is handled in askBrain.
+  const pendingOfferRef = useRef(null);
+  useEffect(() => {
+    if (!user?.id || !accessToken) return;
+    let cancelled = false;
+    let poll = null;
+    const timer = setTimeout(async () => {
+      try {
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+        const lang = voiceLang || 'en-IN';
+        const r = await fetch(`/api/aaria/offer?lang=${encodeURIComponent(lang)}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const j = await r.json().catch(() => ({}));
+        if (cancelled || !j?.offer?.question || listeningRef.current) return;
+        pendingOfferRef.current = { id: j.offer.id, at: Date.now(), lang };
+        say(j.offer.question, { lang });
+        const startedAt = Date.now();
+        poll = setInterval(() => {
+          const waited = Date.now() - startedAt;
+          if (cancelled || waited > 30000) { clearInterval(poll); return; }
+          if (waited < 1500 || isSpeaking()) return;
+          clearInterval(poll);
+          if (!listeningRef.current) { autoTurnRef.current = true; startListenRef.current?.(); }
+        }, 200);
+      } catch { }
+    }, 12000);
+    return () => { cancelled = true; clearTimeout(timer); if (poll) clearInterval(poll); };
+  }, [user?.id, accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSilence = useCallback(async () => {
     if (!conversationActiveRef.current) return;
     silentTurnsRef.current += 1;

@@ -1907,7 +1907,9 @@ export async function POST(request) {
       tts_response = say('place_reach', spokenLang, { place: locLabel, what: keepSnippet })
         ?? `Got it. When you reach ${locLabel}, I'll remind you: ${keepSnippet}`;
     }
-  } else if (geoData?.location_name && !geoData?.geo_trigger_enabled) {
+  } else if (geoData?.location_name && !geoData?.geo_trigger_enabled && !reminderAt) {
+    // (23 Nov 2026: never when a time was set - "మందులు" (medicines) was taken
+    // as a place and "noted near mandulu" replaced the reminder confirmation.)
     const saveSuggestion = suggestSave ? ' Tap "Save here" on the Geo page to enable it.' : '';
     const noted = say('place_noted', spokenLang, { place: geoData.location_name })
     tts_response = noted ?? `Noted for near ${geoData.location_name}.${saveSuggestion}`;

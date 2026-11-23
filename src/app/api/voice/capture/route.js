@@ -67,6 +67,7 @@ import { waitUntilStoppedLine, speakWhileMoving } from '@/lib/moving-lines'
 import { say } from '@/lib/reply-phrases' // T27: every reply in the spoken language
 import { refreshTauProfile } from '@/lib/tau-profile' // T28: personal profile
 import { detectRepeat, repeatLine } from '@/lib/repeat-rule' // T30: instructions that repeat
+import { reconcileSpokenClock } from '@/lib/spoken-clock' // 23 Nov: the spoken clock time wins
 
 export async function POST(request) {
   try {
@@ -1251,7 +1252,9 @@ export async function POST(request) {
     // Absolute time from the brain wins — it resolves "రేపు ఉదయం" / "कल सुबह"
     // that computeReminderAt() cannot see.
     if (llmEntities.datetimeISO) {
-      const dt = new Date(llmEntities.datetimeISO)
+      // 23 Nov 2026: the clock time the person SAID in digits wins over the
+      // brain's (9:00 was saved as 9:30); the brain still picks the day.
+      const dt = reconcileSpokenClock(new Date(llmEntities.datetimeISO), reminderAt, text)
       if (!isNaN(dt.getTime()) && dt.getTime() > Date.now() - 60000) {
         reminderAt = dt
         // Write the resolved time back into entities. computeFollowUp() and
@@ -1904,7 +1907,9 @@ export async function POST(request) {
       tts_response = say('place_reach', spokenLang, { place: locLabel, what: keepSnippet })
         ?? `Got it. When you reach ${locLabel}, I'll remind you: ${keepSnippet}`;
     }
-  } else if (geoData?.location_name && !geoData?.geo_trigger_enabled) {
+  } else if (geoData?.location_name && !geoData?.geo_trigger_enabled && !reminderAt) {
+    // (23 Nov 2026: never when a time was set - "మందులు" (medicines) was taken
+    // as a place and "noted near mandulu" replaced the reminder confirmation.)
     const saveSuggestion = suggestSave ? ' Tap "Save here" on the Geo page to enable it.' : '';
     const noted = say('place_noted', spokenLang, { place: geoData.location_name })
     tts_response = noted ?? `Noted for near ${geoData.location_name}.${saveSuggestion}`;

@@ -243,6 +243,17 @@ export async function refreshTauProfile(db, userId, { now = new Date(), force = 
     });
     if (!(keeps || []).length) return { ok: true, skipped: 'no_data' };
 
+    // T31: what Aaria may now do without asking - habits the person said yes to
+    // (or, in "Let her act", habits she is sure of) become repeating reminders.
+    let acted = 0;
+    for (const h of habitsToActOn(habits, existing?.learning_mode)) {
+      const reminderId = await createHabitReminder(db, userId, h, now);
+      if (!reminderId) continue;
+      h.reminder_id = reminderId;
+      if (h.status === 'learned') { h.status = 'confirmed'; h.auto = true; }
+      acted++;
+    }
+
     let { error } = await db.from('tau_behaviour_profile').upsert({ ...row, habits }, { onConflict: 'user_id' });
     // The habits column arrives with migration 20261122_tau_profile_habits.sql.
     // Until it is applied, save the profile row alone so nothing breaks.

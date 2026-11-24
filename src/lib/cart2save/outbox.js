@@ -7,7 +7,13 @@
 // Nightly full re-send re-enqueues all active shops and their public items.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { buildShopPayload, buildItemPayload, assertNoPrivateFields, sanitizePayload } from './payload.js';
+import {
+  buildShopPayload,
+  buildItemPayload,
+  buildUnpublishItemPayload,
+  assertNoPrivateFields,
+  sanitizePayload,
+} from './payload.js';
 
 /**
  * Inserts an outbox row into `cart2save_outbox`.
@@ -64,8 +70,10 @@ export async function handleWorkspaceChange(db, workspaceId, previousWs, current
 
   if (wasEnabled && !isEnabled) {
     // Switch off sends unpublish!
+    const shopData = { ...(previousWs || {}), ...(currentWs || {}) };
     const unpublishPayload = {
       shop_id: workspaceId,
+      shop_name: shopData.name || shopData.shop_name || '',
       unpublish: true,
       updated_time: new Date().toISOString(),
     };
@@ -113,14 +121,14 @@ export async function handleItemChange(db, item, previousItem, shop = {}) {
   const isDeleted = Boolean(item?.deleted);
 
   if (isDeleted || (wasPublic && !isPublic)) {
-    // Unpublish item
-    const unpublishPayload = {
-      item_id: item.id,
-      unpublish: true,
-      updated_time: new Date().toISOString(),
+    // Unpublish item - preserve name, barcode, unit from previousItem if missing on deleted item
+    const itemData = {
+      ...(previousItem || {}),
+      ...(item || {}),
     };
+    const unpublishPayload = buildUnpublishItemPayload(itemData);
     return writeOutboxRow(db, {
-      workspace_id: item.workspace_id,
+      workspace_id: itemData.workspace_id || item.workspace_id,
       entity_type: 'item',
       entity_id: item.id,
       action: 'unpublish',

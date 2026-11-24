@@ -81,7 +81,7 @@ export async function DELETE(req) {
 
     const db = createWriteClient();
     const { data: existing } = await db
-      .from('inventory_items').select('workspace_id').eq('id', id).maybeSingle();
+      .from('inventory_items').select('*').eq('id', id).maybeSingle();
     if (!existing) return Response.json({ ok: true }); // already gone
     if (existing.workspace_id !== ctx.workspace.id) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });

@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { requireBizPermission } from '@/lib/biz-rbac';
 import { createWriteClient } from '@/lib/supabase-bearer';
 import { writeOutboxRow, enqueueAllPublicItems } from '@/lib/cart2save/outbox';
+import { buildUnpublishItemPayload } from '@/lib/cart2save/payload';
 
 export async function POST(req) {
   try {
@@ -51,16 +52,13 @@ export async function POST(req) {
       // Made all private: enqueue unpublish for each item that was previously public
       for (const item of items || []) {
         if (item.is_public) {
+          const unpublishPayload = buildUnpublishItemPayload(item);
           await writeOutboxRow(db, {
             workspace_id: ctx.workspace.id,
             entity_type: 'item',
             entity_id: item.id,
             action: 'unpublish',
-            payload: {
-              item_id: item.id,
-              unpublish: true,
-              updated_time: new Date().toISOString(),
-            },
+            payload: unpublishPayload,
           });
         }
       }

@@ -101,7 +101,8 @@ function getIstDayOfWeek(date) {
 
 /**
  * Determines whether a shop's accuracy score is considered low.
- * Supports both decimal scale (threshold: 0.7) and percentage scale (threshold: 70).
+ * Scale is 0-100 (aligned with PR #269, default 100). Low accuracy is < 70.
+ * Also tolerates legacy fractional 0.0-1.0 scale if 0 < score <= 1.0.
  *
  * @param {number|null|undefined} score
  * @returns {boolean}
@@ -110,8 +111,12 @@ export function isAccuracyScoreLow(score) {
   if (score === null || score === undefined) return false;
   const num = Number(score);
   if (isNaN(num)) return false;
-  // If score > 1, assume 0-100 scale; if <= 1, assume 0.0-1.0 scale.
-  return num > 1 ? num < 70 : num < 0.7;
+  // If explicitly given in 0.0 - 1.0 fractional scale
+  if (num > 0 && num <= 1.0) {
+    return num < 0.7;
+  }
+  // Standard scale: 0 - 100 (default 100)
+  return num < 70;
 }
 
 /**

@@ -15,6 +15,7 @@ import {
 import {
   buildShopPayload,
   buildItemPayload,
+  buildUnpublishItemPayload,
   assertNoPrivateFields,
   sanitizePayload,
   FORBIDDEN_FIELD_PATTERNS,
@@ -219,8 +220,8 @@ test('2.2 Switching an item from public to private enqueues item unpublish', asy
     },
   };
 
-  const prevItem = { id: 'item_1', workspace_id: 'ws_1', is_public: true, name: 'Apples' };
-  const currentItem = { id: 'item_1', workspace_id: 'ws_1', is_public: false, name: 'Apples' };
+  const prevItem = { id: 'item_1', workspace_id: 'ws_1', is_public: true, name: 'Apples', barcode: '8901234567890', unit: 'kg', selling_price: 120 };
+  const currentItem = { id: 'item_1', workspace_id: 'ws_1', is_public: false, name: 'Apples', barcode: '8901234567890', unit: 'kg', selling_price: 120 };
 
   await handleItemChange(mockDb, currentItem, prevItem);
 
@@ -232,9 +233,13 @@ test('2.2 Switching an item from public to private enqueues item unpublish', asy
   assert.equal(outbox.action, 'unpublish');
   assert.equal(outbox.payload.unpublish, true);
   assert.equal(outbox.payload.item_id, 'item_1');
+  assert.equal(outbox.payload.item_name, 'Apples');
+  assert.equal(outbox.payload.barcode, '8901234567890');
+  assert.equal(outbox.payload.unit, 'kg');
+  assert.equal(outbox.payload.selling_price, 120);
 });
 
-test('2.3 Deleting an item marked public enqueues item unpublish', async () => {
+test('2.3 Deleting an item marked public enqueues item unpublish with item name and identifying fields', async () => {
   const outboxWrites = [];
   const mockDb = {
     from: (table) => {
@@ -247,21 +252,28 @@ test('2.3 Deleting an item marked public enqueues item unpublish', async () => {
     },
   };
 
-  const prevItem = { id: 'item_del', workspace_id: 'ws_1', is_public: true, name: 'Sugar' };
-  const deletedItem = { id: 'item_del', workspace_id: 'ws_1', deleted: true, is_public: false, name: 'Sugar' };
+  const prevItem = { id: 'item_del', workspace_id: 'ws_1', is_public: true, name: 'Sugar', barcode: '8901111111111', unit: 'kg', selling_price: 45 };
+  const deletedItem = { id: 'item_del', workspace_id: 'ws_1', deleted: true, is_public: false };
 
   await handleItemChange(mockDb, deletedItem, prevItem);
 
   assert.equal(outboxWrites.length, 1);
-  assert.equal(outboxWrites[0].action, 'unpublish');
-  assert.equal(outboxWrites[0].entity_id, 'item_del');
+  const outbox = outboxWrites[0];
+  assert.equal(outbox.action, 'unpublish');
+  assert.equal(outbox.entity_id, 'item_del');
+  assert.equal(outbox.payload.unpublish, true);
+  assert.equal(outbox.payload.item_id, 'item_del');
+  assert.equal(outbox.payload.item_name, 'Sugar');
+  assert.equal(outbox.payload.barcode, '8901111111111');
+  assert.equal(outbox.payload.unit, 'kg');
+  assert.equal(outbox.payload.selling_price, 45);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. Tests: Availability label rules (AG-1 / AG-3 Requirement 4)
 // ─────────────────────────────────────────────────────────────────────────────
 test('3.1 Packaged items: in_stock if count > 3', () => {
-  const shop = { hours: { open: '00:00', close: '23:59' }, accuracy_score: 1.0 };
+  const shop = { hours: { open: '00:00', close: '23:59' }, accuracy_score: 100 };
   const now = new Date('2026-11-24T12:00:00Z');
 
   // count 4
@@ -274,7 +286,7 @@ test('3.1 Packaged items: in_stock if count > 3', () => {
 });
 
 test('3.2 Packaged items: few_left if count 1-3', () => {
-  const shop = { hours: { open: '00:00', close: '23:59' }, accuracy_score: 1.0 };
+  const shop = { hours: { open: '00:00', close: '23:59' }, accuracy_score: 100 };
   const now = new Date('2026-11-24T12:00:00Z');
 
   for (const count of [1, 2, 3]) {
@@ -288,7 +300,7 @@ test('3.2 Packaged items: few_left if count 1-3', () => {
 });
 
 test('3.3 Packaged items: hidden if count 0', () => {
-  const shop = { hours: { open: '00:00', close: '23:59' }, accuracy_score: 1.0 };
+  const shop = { hours: { open: '00:00', close: '23:59' }, accuracy_score: 100 };
   const now = new Date('2026-11-24T12:00:00Z');
 
   const item0 = { current_stock: 0, updated_at: '2026-11-24T11:45:00Z' };
@@ -299,7 +311,7 @@ test('3.3 Packaged items: hidden if count 0', () => {
 });
 
 test('3.4 Items marked "made on the spot": available_while_open during opening hours', () => {
-  const shop = { hours: { open: '08:00', close: '22:00' }, accuracy_score: 1.0 };
+  const shop = { hours: { open: '08:00', close: '22:00' }, accuracy_score: 100 };
   // 10:00 UTC = 15:30 IST (within 08:00 - 22:00 IST)
   const duringOpen = new Date('2026-11-24T10:00:00Z');
 
@@ -323,7 +335,7 @@ test('3.4 Items marked "made on the spot": available_while_open during opening h
 });
 
 test('3.5 Any item with no recorded sale or update for 3 hours during opening hours: call_to_confirm', () => {
-  const shop = { hours: { open: '00:00', close: '23:59' }, accuracy_score: 1.0 };
+  const shop = { hours: { open: '00:00', close: '23:59' }, accuracy_score: 100 };
   const now = new Date('2026-11-24T15:00:00Z');
 
   // Last update was 3.5 hours ago (11:30)
@@ -357,39 +369,57 @@ test('3.5 Any item with no recorded sale or update for 3 hours during opening ho
   );
 });
 
-test('3.6 Shop accuracy score low: call_to_confirm', () => {
+test('3.6 Shop accuracy score scale (0-100, default 100 matching PR #269): low score (< 70) triggers call_to_confirm', () => {
   const now = new Date('2026-11-24T12:00:00Z');
   const freshItem = { current_stock: 20, updated_at: '2026-11-24T11:50:00Z' };
 
-  // Decimal scale low (< 0.7)
-  const lowAccShopDecimal = {
+  // Default accuracy score (100) -> good (in_stock)
+  const defaultAccShop = {
     hours: { open: '00:00', close: '23:59' },
-    accuracy_score: 0.65,
+    accuracy_score: 100,
   };
+  assert.equal(isAccuracyScoreLow(defaultAccShop.accuracy_score), false);
   assert.equal(
-    calculateAvailabilityLabel({ item: freshItem, shop: lowAccShopDecimal, now }),
-    'call_to_confirm'
+    calculateAvailabilityLabel({ item: freshItem, shop: defaultAccShop, now }),
+    'in_stock'
   );
 
-  // Percentage scale low (< 70)
-  const lowAccShopPercent = {
-    hours: { open: '00:00', close: '23:59' },
-    accuracy_score: 55,
-  };
-  assert.equal(
-    calculateAvailabilityLabel({ item: freshItem, shop: lowAccShopPercent, now }),
-    'call_to_confirm'
-  );
-
-  // Good accuracy score (>= 0.7 or >= 70)
+  // High accuracy score (85) -> good (in_stock)
   const goodAccShop = {
     hours: { open: '00:00', close: '23:59' },
-    accuracy_score: 0.95,
+    accuracy_score: 85,
   };
+  assert.equal(isAccuracyScoreLow(goodAccShop.accuracy_score), false);
   assert.equal(
     calculateAvailabilityLabel({ item: freshItem, shop: goodAccShop, now }),
     'in_stock'
   );
+
+  // Low accuracy score on 0-100 scale: score 55 (< 70) -> call_to_confirm
+  const lowAccShop55 = {
+    hours: { open: '00:00', close: '23:59' },
+    accuracy_score: 55,
+  };
+  assert.equal(isAccuracyScoreLow(lowAccShop55.accuracy_score), true);
+  assert.equal(
+    calculateAvailabilityLabel({ item: freshItem, shop: lowAccShop55, now }),
+    'call_to_confirm'
+  );
+
+  // Low accuracy score on 0-100 scale: score 0 (< 70) -> call_to_confirm
+  const lowAccShop0 = {
+    hours: { open: '00:00', close: '23:59' },
+    accuracy_score: 0,
+  };
+  assert.equal(isAccuracyScoreLow(lowAccShop0.accuracy_score), true);
+  assert.equal(
+    calculateAvailabilityLabel({ item: freshItem, shop: lowAccShop0, now }),
+    'call_to_confirm'
+  );
+
+  // Legacy decimal scale compatibility (e.g. 0.65 < 0.7 low, 0.95 >= 0.7 good)
+  assert.equal(isAccuracyScoreLow(0.65), true);
+  assert.equal(isAccuracyScoreLow(0.95), false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -677,4 +707,227 @@ test('4.6 Nightly full re-send enqueues all active shops and their public items'
   assert.equal(res.itemsCount, 3);
   // Total 2 shop rows + 3 item rows = 5 outbox records
   assert.equal(outboxInserts.length, 5);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. Tests: Unpublish Payload & PR #189 Receiver Validation Rules
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Receiver validation function directly reflecting PR #189
+ * (pranix-witness-ui lib/integrations/quietkeep/feedHandler.ts lines 130-147)
+ */
+function simulatePR189Receiver(feedPayload) {
+  // 1. assertNoForbiddenFields from PR #189 security.ts
+  const FORBIDDEN = [
+    'purchase_price', 'cost_price', 'cost', 'buy_price', 'supplier',
+    'supplier_name', 'supplier_phone', 'supplier_id', 'profit', 'margin',
+    'batch', 'batch_number', 'batch_no', 'batch_id', 'lot_number',
+    'customer', 'customer_name', 'customer_phone', 'customer_id',
+    'customer_email', 'gstin', 'gst_rate', 'min_stock_alert',
+    'current_stock', 'owner_user_id', 'user_id', 'member_id', 'created_by',
+  ];
+
+  function checkSecurity(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    if (Array.isArray(obj)) {
+      obj.forEach(checkSecurity);
+      return;
+    }
+    for (const [key, val] of Object.entries(obj)) {
+      const lower = key.toLowerCase();
+      if (lower !== 'batch_size' && lower !== 'batch_count') {
+        for (const f of FORBIDDEN) {
+          if (lower === f || lower.includes(f)) {
+            throw new Error(`PR #189 Rejected: forbidden field "${key}"`);
+          }
+        }
+      }
+      if (val && typeof val === 'object') checkSecurity(val);
+    }
+  }
+
+  checkSecurity(feedPayload);
+
+  // 2. Format 2 parsing from PR #189 feedHandler.ts
+  const parsedItems = [];
+  if (Array.isArray(feedPayload.items)) {
+    for (const entry of feedPayload.items) {
+      if (!entry || typeof entry !== 'object') continue;
+      const entityType = entry.entity_type;
+      const action = entry.action;
+      const data = entry.data || {};
+
+      if (entityType === 'item') {
+        const isUnpublish = action === 'unpublish' || data.unpublish === true;
+        const itemId = String(entry.entity_id || data.item_id || '').trim();
+        const itemName = String(data.item_name || data.name || '').trim();
+
+        // CRITICAL CHECK in PR #189: both id and name MUST be present
+        if (itemId && itemName) {
+          parsedItems.push({
+            external_id: itemId,
+            name: itemName,
+            barcode: data.barcode || null,
+            unit: data.unit || 'pcs',
+            selling_price: Number(data.selling_price) || 0,
+            availability: isUnpublish ? 'hidden' : (data.availability_label || data.availability || 'in_stock'),
+            updated_at: data.updated_time || data.updated_at || new Date().toISOString(),
+            published: !isUnpublish,
+          });
+        }
+      }
+    }
+  }
+
+  return parsedItems;
+}
+
+test('5.1 buildUnpublishItemPayload includes required identifying fields and excludes private fields', () => {
+  const fullItem = {
+    id: 'item_unpub_1',
+    workspace_id: 'ws_1',
+    name: 'Basmati Rice 5kg',
+    barcode: '8901112223334',
+    unit: 'bag',
+    selling_price: 650,
+    current_stock: 5,
+    cost_price: 520,
+    supplier_name: 'Wholesaler A',
+    batch_number: 'BATCH-99',
+    profit: 130,
+    updated_at: '2026-11-24T12:00:00.000Z',
+  };
+
+  const payload = buildUnpublishItemPayload(fullItem);
+
+  // Must include item id, item name, barcode, unit, selling price, unpublish, updated_time
+  assert.equal(payload.item_id, 'item_unpub_1');
+  assert.equal(payload.item_name, 'Basmati Rice 5kg');
+  assert.equal(payload.barcode, '8901112223334');
+  assert.equal(payload.unit, 'bag');
+  assert.equal(payload.selling_price, 650);
+  assert.equal(payload.unpublish, true);
+  assert.equal(payload.updated_time, '2026-11-24T12:00:00.000Z');
+
+  // Must NEVER leak private fields
+  assert.equal(payload.cost_price, undefined);
+  assert.equal(payload.supplier_name, undefined);
+  assert.equal(payload.batch_number, undefined);
+  assert.equal(payload.profit, undefined);
+  assert.equal(payload.current_stock, undefined);
+});
+
+test('5.2 Unpublish payload passes PR #189 validation rules and correctly unpublishes item', async () => {
+  const outboxWrites = [];
+  const mockDb = {
+    from: (table) => ({
+      insert: (row) => {
+        outboxWrites.push(row);
+        return { select: () => ({ single: () => ({ data: { id: 'out_unpub', ...row }, error: null }) }) };
+      },
+    }),
+  };
+
+  const prevItem = {
+    id: 'item_456',
+    workspace_id: 'ws_test',
+    name: 'Organic Honey 500g',
+    barcode: '8909876543210',
+    unit: 'bottle',
+    selling_price: 350,
+    is_public: true,
+  };
+
+  const currentItem = {
+    ...prevItem,
+    is_public: false,
+  };
+
+  await handleItemChange(mockDb, currentItem, prevItem);
+
+  assert.equal(outboxWrites.length, 1);
+  const outboxRow = outboxWrites[0];
+
+  // Wrap in outbox batch format matching feed-sender.js
+  const batchFeed = {
+    source: 'quietkeep_business',
+    sent_at: new Date().toISOString(),
+    batch_size: 1,
+    items: [
+      {
+        outbox_id: 'out_unpub',
+        workspace_id: outboxRow.workspace_id,
+        entity_type: outboxRow.entity_type,
+        entity_id: outboxRow.entity_id,
+        action: outboxRow.action,
+        data: outboxRow.payload,
+      },
+    ],
+  };
+
+  // Run through PR #189 validation rules
+  const ingestedItems = simulatePR189Receiver(batchFeed);
+
+  // Must not be dropped: exactly 1 item parsed
+  assert.equal(ingestedItems.length, 1);
+  const ingested = ingestedItems[0];
+  assert.equal(ingested.external_id, 'item_456');
+  assert.equal(ingested.name, 'Organic Honey 500g');
+  assert.equal(ingested.barcode, '8909876543210');
+  assert.equal(ingested.unit, 'bottle');
+  assert.equal(ingested.selling_price, 350);
+  assert.equal(ingested.published, false);
+  assert.equal(ingested.availability, 'hidden');
+});
+
+test('5.3 PR #189 drops unpublish when item name is missing, confirming the bug and fix', () => {
+  // Payload WITHOUT item name (the bug that existed before Fix 2)
+  const buggyFeed = {
+    source: 'quietkeep_business',
+    items: [
+      {
+        entity_type: 'item',
+        entity_id: 'item_missing_name',
+        action: 'unpublish',
+        data: {
+          item_id: 'item_missing_name',
+          unpublish: true,
+          updated_time: new Date().toISOString(),
+          // item_name missing!
+        },
+      },
+    ],
+  };
+
+  const droppedResult = simulatePR189Receiver(buggyFeed);
+  // PR #189 lines 131-133 drops it when itemName is empty
+  assert.equal(droppedResult.length, 0, 'Receiver must drop item if item_name is missing');
+
+  // Payload WITH item name (our fix)
+  const fixedFeed = {
+    source: 'quietkeep_business',
+    items: [
+      {
+        entity_type: 'item',
+        entity_id: 'item_fixed',
+        action: 'unpublish',
+        data: {
+          item_id: 'item_fixed',
+          item_name: 'Tata Salt 1kg',
+          barcode: '8901030000000',
+          unit: 'pkt',
+          selling_price: 28,
+          unpublish: true,
+          updated_time: new Date().toISOString(),
+        },
+      },
+    ],
+  };
+
+  const fixedResult = simulatePR189Receiver(fixedFeed);
+  assert.equal(fixedResult.length, 1, 'Receiver must successfully parse unpublish when item_name is present');
+  assert.equal(fixedResult[0].name, 'Tata Salt 1kg');
+  assert.equal(fixedResult[0].published, false);
+  assert.equal(fixedResult[0].availability, 'hidden');
 });

@@ -10,7 +10,7 @@ ALTER TABLE public.business_workspaces
   ADD COLUMN IF NOT EXISTS address text,
   ADD COLUMN IF NOT EXISTS category text,
   ADD COLUMN IF NOT EXISTS hours jsonb,
-  ADD COLUMN IF NOT EXISTS accuracy_score numeric DEFAULT 1.0,
+  ADD COLUMN IF NOT EXISTS accuracy_score numeric DEFAULT 100,
   ADD COLUMN IF NOT EXISTS upi_id text;
 
 -- 2. Public visibility, barcode, and made-on-spot on inventory_items

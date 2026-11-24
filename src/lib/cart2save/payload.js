@@ -77,11 +77,13 @@ export const ALLOWED_SHOP_FIELDS = new Set([
  * Allowed item field names.
  */
 export const ALLOWED_ITEM_FIELDS = new Set([
+  'item_id',
   'item_name',
   'barcode',
   'unit',
   'selling_price',
   'availability_label',
+  'unpublish',
   'updated_time',
 ]);
 
@@ -139,6 +141,35 @@ export function buildItemPayload(item, shop = {}, now = new Date()) {
     selling_price: Number.isFinite(sellingPrice) ? sellingPrice : null,
     availability_label: calculateAvailabilityLabel({ item, shop, now }),
     updated_time: item.updated_at || item.created_at || new Date().toISOString(),
+  };
+
+  assertNoPrivateFields(payload);
+  return payload;
+}
+
+/**
+ * Builds the unpublish item payload containing required identifying fields
+ * (item_id, item_name, barcode, unit, selling_price, unpublish: true, updated_time)
+ * matching Cart2Save receiver expectations (pranix-witness-ui PR #189 feedHandler.ts).
+ *
+ * @param {object} item
+ * @returns {object}
+ */
+export function buildUnpublishItemPayload(item) {
+  if (!item) return null;
+
+  const sellingPrice = item.selling_price !== undefined && item.selling_price !== null && item.selling_price !== ''
+    ? Number(item.selling_price)
+    : 0;
+
+  const payload = {
+    item_id: String(item.id || item.item_id || '').trim(),
+    item_name: String(item.name || item.item_name || '').trim(),
+    barcode: item.barcode || null,
+    unit: item.unit || 'pcs',
+    selling_price: Number.isFinite(sellingPrice) ? sellingPrice : 0,
+    unpublish: true,
+    updated_time: item.updated_at || new Date().toISOString(),
   };
 
   assertNoPrivateFields(payload);

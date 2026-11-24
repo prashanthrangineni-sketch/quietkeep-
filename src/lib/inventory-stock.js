@@ -1,16 +1,21 @@
 // src/lib/inventory-stock.js
 // ─────────────────────────────────────────────────────────────────────────────
 // Close the inventory↔sales loop: when a sale is recorded (invoices, counter
-// taps, text commands, or UPI payments), decrement matching inventory items
-// or recipe ingredients and log stock movements.
+// sales/taps, text commands, or confirmed UPI shop orders), decrement matching
+// inventory items or recipe ingredients and log stock movements.
 //
-// Extended for TASK B2 (AG-2):
+// Extended for TASK B2 (AG-2) & TASK B3 (Shop UPI / PR #270):
 // 1. Recipe items: Made-on-the-spot items (is_made_on_spot = true) with a
 //    recipe decrement their raw ingredients (e.g. 0.1 L milk, 5 g tea powder).
 // 2. Quick counter sales with idempotency (client_sale_id) for offline sync.
 // 3. 10-second undo for counter sales to revert stock.
 // 4. Closing check stock adjustments with reason='adjustment' and 0-100 accuracy score.
-// 5. Best-effort audit log into stock_movements.
+// 5. Shop confirmation order stock decrement (single shared stock-movement path).
+// 6. Best-effort audit log into stock_movements.
+//
+// Matching is by itemId → SKU → barcode → name (case-insensitive), scoped to workspace.
+// Best-effort by design: a match miss or movement-log failure never throws into
+// the sale path. Caller wraps this in try/catch and never blocks the sale on it.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function num(v) {

@@ -10,6 +10,7 @@
 export const dynamic = 'force-dynamic';
 import { requireBizPermission } from '@/lib/biz-rbac';
 import { createWriteClient } from '@/lib/supabase-bearer';
+import { validateUpiId } from '@/lib/upi';
 
 export async function GET(req) {
   try {
@@ -40,6 +41,17 @@ export async function POST(req) {
       id, owner_user_id, plan, tier, tier_name, workspace_id, created_at,
       ...safe
     } = body;
+
+    // Validate upi_id if provided
+    if (safe.upi_id !== undefined && safe.upi_id !== null && String(safe.upi_id).trim() !== '') {
+      const v = validateUpiId(safe.upi_id);
+      if (!v.valid) {
+        return Response.json({ error: v.error }, { status: 400 });
+      }
+      safe.upi_id = v.upiId;
+    } else if (safe.upi_id === '') {
+      safe.upi_id = null;
+    }
 
     // Force the write onto the caller's OWN workspace (update-only).
     const payload = { ...safe, id: ctx.workspace.id };

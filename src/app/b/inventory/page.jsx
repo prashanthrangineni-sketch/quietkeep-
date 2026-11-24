@@ -20,7 +20,7 @@ export default function InventoryPage() {
     name: '', category: '', unit: 'pcs', current_stock: '0', min_stock_alert: '5',
     purchase_price: '', selling_price: '', supplier_name: '', supplier_phone: '',
     location: '', gst_rate: '18', expiry_date: '', manufacture_date: '', batch_number: '',
-    barcode: '', is_public: false, is_made_on_spot: false,
+    barcode: '', is_public: false, is_made_on_spot: false, is_top_item: false, recipe_text: '',
   });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -52,6 +52,10 @@ export default function InventoryPage() {
   async function saveItem() {
     if (!form.name || !workspace) return;
     setSaving(true);
+    let recipe = [];
+    if (form.recipe_text) {
+      try { recipe = JSON.parse(form.recipe_text); } catch (_) {}
+    }
     const payload = {
       ...form,
       workspace_id: workspace.id,
@@ -60,11 +64,13 @@ export default function InventoryPage() {
       purchase_price: parseFloat(form.purchase_price) || null,
       selling_price: parseFloat(form.selling_price) || null,
       gst_rate: parseFloat(form.gst_rate) || 18,
-      barcode: form.barcode.trim() || null,
+      barcode: form.barcode ? form.barcode.trim() || null : null,
       is_public: Boolean(form.is_public),
       is_made_on_spot: Boolean(form.is_made_on_spot),
+      is_top_item: Boolean(form.is_top_item),
+      recipe,
     };
-    const { workspace_id: _w, ...fields } = payload;
+    const { workspace_id: _w, recipe_text: _rt, ...fields } = payload;
     await fetch('/api/business/inventory', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -75,7 +81,7 @@ export default function InventoryPage() {
       name: '', category: '', unit: 'pcs', current_stock: '0', min_stock_alert: '5',
       purchase_price: '', selling_price: '', supplier_name: '', supplier_phone: '',
       location: '', gst_rate: '18', expiry_date: '', manufacture_date: '', batch_number: '',
-      barcode: '', is_public: false, is_made_on_spot: false,
+      barcode: '', is_public: false, is_made_on_spot: false, is_top_item: false, recipe_text: '',
     });
     loadItems(workspace.id);
   }
@@ -100,6 +106,8 @@ export default function InventoryPage() {
       barcode: item.barcode || '',
       is_public: Boolean(item.is_public),
       is_made_on_spot: Boolean(item.is_made_on_spot),
+      is_top_item: Boolean(item.is_top_item),
+      recipe_text: item.recipe ? JSON.stringify(item.recipe) : '',
     });
     setShowForm(true);
   }
@@ -225,7 +233,6 @@ export default function InventoryPage() {
                   {[0,5,12,18,28].map(r => <option key={r} value={r}>{r}%</option>)}
                 </select>
               </div>
-
               {/* ── Cart2Save Settings for Item ── */}
               <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4, padding: '10px 12px', background: 'var(--surface-hover)', borderRadius: 10 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
@@ -241,19 +248,44 @@ export default function InventoryPage() {
                   Make this item discoverable to nearby buyers with price and availability on Cart2Save.
                 </div>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, marginTop: 4 }}>
-                  <input
-                    type="checkbox"
-                    checked={form.is_made_on_spot}
-                    onChange={e => setForm(p => ({ ...p, is_made_on_spot: e.target.checked }))}
-                    style={{ width: 16, height: 16, accentColor: G }}
-                  />
-                  <span>🍳 Made on the spot (Fresh/prepared food, chai, juice, snacks)</span>
-                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 4 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={form.is_made_on_spot}
+                      onChange={e => setForm(p => ({ ...p, is_made_on_spot: e.target.checked }))}
+                      style={{ width: 16, height: 16, accentColor: G }}
+                    />
+                    <span>🍳 Made on the spot (Fresh/prepared food, chai, juice — uses recipe)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={form.is_top_item}
+                      onChange={e => setForm(p => ({ ...p, is_top_item: e.target.checked }))}
+                    />
+                    <span>Show on Quick Counter</span>
+                  </label>
+                </div>
                 <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginLeft: 24 }}>
                   Marked as &quot;Available while open&quot; during shop hours instead of tracked packaging count.
                 </div>
               </div>
+
+              {form.is_made_on_spot && (
+                <div style={{ gridColumn: '1/-1' }}>
+                  <label className="qk-lbl">{'Recipe Ingredients (JSON array e.g. [{"name":"milk","quantity":0.1,"unit":"L"},{"name":"tea powder","quantity":5,"unit":"g"}])'}</label>
+                  <input
+                    type="text"
+                    value={form.recipe_text}
+                    onChange={e => setForm(p => ({ ...p, recipe_text: e.target.value }))}
+                    placeholder='[{"name":"milk","quantity":0.1},{"name":"tea powder","quantity":5}]'
+                    className="qk-input"
+                    style={{ marginTop: 4, fontSize: 12 }}
+                  />
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
               <button onClick={saveItem} disabled={saving} className="qk-btn qk-btn-primary" style={{ flex: 1, justifyContent: 'center' }}>{saving ? 'Saving...' : editId ? '✓ Update' : '+ Add Item'}</button>

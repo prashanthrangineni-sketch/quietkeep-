@@ -88,6 +88,40 @@ export async function POST(req) {
       apprRow.payload?.what === 'order' ||
       apprRow.payload?.what === 'booking';
 
+    // ── TASK B2: UNMATCHED UPI PAYMENT CARD ('what was this for?') ───────────
+    if (apprRow.action_type === 'upi_unmatched_payment') {
+      if (['skip', 'ignore', 'dismiss', 'reject'].includes(normAction)) {
+        await db.from('business_approvals')
+          .update({ status: 'rejected', approved_at: new Date().toISOString() })
+          .eq('id', approval_id)
+          .eq('status', 'pending');
+        return NextResponse.json({ ok: true, status: 'skipped', action: 'skip' });
+      }
+
+      if (['resolve', 'pick_items', 'confirm', 'approve'].includes(normAction)) {
+        const pickedItems = body.items || body.selected_items || [];
+        if (Array.isArray(pickedItems) && pickedItems.length > 0) {
+          const { decrementStockForSale } = await import('@/lib/inventory-stock');
+          await decrementStockForSale(db, ctx.workspace.id, pickedItems, {
+            referenceId: approval_id,
+            reason: 'upi_unmatched_sale',
+            paymentMode: 'upi',
+          });
+        }
+
+        await db.from('business_approvals')
+          .update({
+            status: 'approved',
+            approved_at: new Date().toISOString(),
+            payload: { ...apprRow.payload, selected_items: pickedItems, resolved: true },
+          })
+          .eq('id', approval_id)
+          .eq('status', 'pending');
+
+        return NextResponse.json({ ok: true, status: 'resolved', items: pickedItems });
+      }
+    }
+
     // ── 1. APPROVE / SEND / CONFIRM / EDIT (Item K & 4) ───────────────────────
     if (['send', 'edit', 'confirm', 'approve'].includes(normAction)) {
       let replyMessage = (normAction === 'edit' && edited_message)

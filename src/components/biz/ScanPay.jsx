@@ -1,27 +1,30 @@
 'use client';
 // src/components/biz/ScanPay.jsx
 // ─────────────────────────────────────────────────────────────────────────────
-// The "single scanner": one camera surface that reads by content and routes.
-//   • UPI QR  (upi://pay?...)      → shows the payee/amount to pay
-//   • product barcode (EAN/UPC)    → emits onProduct(code) for inventory/billing
-//   • any other QR/text            → emits onText(text)
-// Plus a "Collect" mode that calls /api/business/payments/create-qr to generate
-// a dynamic UPI QR for a bill amount (the software soundbox front end).
+// The "single scanner": camera surface that reads barcodes and UPI QRs.
+//   • UPI QR (upi://pay?...)   → emits onUpi(parsed)
+//   • product barcode (EAN/UPC) → emits onProduct(code)
+//   • any other text           → emits onText(text)
 //
-// Dependency-free: uses the native BarcodeDetector API (available in Android
-// WebView / Chromium). Degrades honestly with a clear message where absent
-// (e.g. iOS Safari) instead of pretending to scan.
+// Collect mode:
+// SHOP PAYMENTS GO STRAIGHT TO THE SHOP'S OWN UPI ID. Pranix never holds shop money.
+// The old Razorpay create-qr route is subscription-only and NOT shown on counter screens.
 // ─────────────────────────────────────────────────────────────────────────────
+
 import { useEffect, useRef, useState } from 'react';
+import { parseUpiUri, buildUpiPayUri } from '@/lib/upi';
 
 function parseScan(raw) {
   const text = (raw || '').trim();
-  if (/^upi:\/\//i.test(text)) {
-    // upi://pay?pa=vpa&pn=Name&am=100&...
-    try {
-      const q = new URLSearchParams(text.split('?')[1] || '');
-      return { kind: 'upi', vpa: q.get('pa'), name: q.get('pn'), amount: q.get('am'), raw: text };
-    } catch { return { kind: 'upi', raw: text }; }
+  const parsedUpi = parseUpiUri(text);
+  if (parsedUpi.valid && parsedUpi.pa) {
+    return {
+      kind: 'upi',
+      vpa: parsedUpi.pa,
+      name: parsedUpi.pn,
+      amount: parsedUpi.am,
+      raw: text,
+    };
   }
   if (/^\d{8,14}$/.test(text)) return { kind: 'barcode', code: text, raw: text };
   return { kind: 'text', raw: text };
@@ -36,17 +39,33 @@ export default function ScanPay({ token, onProduct, onText, onUpi }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
-  // Collect mode (generate a QR to receive money)
+  // Collect mode (shop's own direct UPI QR)
   const [collectAmount, setCollectAmount] = useState('');
   const [collectName, setCollectName] = useState('');
   const [collectQr, setCollectQr] = useState(null);
   const [collecting, setCollecting] = useState(false);
+  const [workspace, setWorkspace] = useState(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !('BarcodeDetector' in window)) setSupported(false);
+
+    // Load workspace UPI ID
+    if (token) {
+      fetch('/api/business/workspace', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(res => res.json())
+        .then(d => {
+          if (d.data && d.data[0]) {
+            setWorkspace(d.data[0]);
+          }
+        })
+        .catch(() => {});
+    }
+
     return () => stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token]);
 
   async function start() {
     setError(''); setResult(null);
@@ -69,7 +88,7 @@ export default function ScanPay({ token, onProduct, onText, onUpi }) {
           if (codes && codes.length) {
             const parsed = parseScan(codes[0].rawValue);
             handleResult(parsed);
-            return; // stop after first hit
+            return;
           }
         } catch { /* frame not ready */ }
         rafRef.current = requestAnimationFrame(tick);
@@ -96,20 +115,38 @@ export default function ScanPay({ token, onProduct, onText, onUpi }) {
     else onText && onText(parsed.raw);
   }
 
+  // Generate direct shop UPI QR (NOT Razorpay)
   async function createCollectQr() {
     setError(''); setCollectQr(null);
     const amount = Number(collectAmount);
-    if (!amount || amount <= 0) { setError('Enter an amount'); return; }
+    if (!amount || amount <= 0) { setError('Enter a valid amount'); return; }
+
+    if (!workspace?.upi_id) {
+      setError('Please add your shop UPI ID in Workspace Settings before collecting UPI payments.');
+      return;
+    }
+
     setCollecting(true);
     try {
-      const res = await fetch('/api/business/payments/create-qr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ amount, customer_name: collectName || null }),
+      const orderRef = `Bill-${Date.now().toString(36).toUpperCase()}`;
+      const uri = buildUpiPayUri({
+        pa: workspace.upi_id,
+        pn: workspace.name || 'Shop',
+        am: amount,
+        tn: collectName ? `${collectName}-${orderRef}` : orderRef,
+        cu: 'INR',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Could not create QR');
-      setCollectQr(data);
+
+      // Render standard QR via QR service or canvas
+      const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(uri)}`;
+
+      setCollectQr({
+        uri,
+        qr_image_url: qrImageUrl,
+        amount,
+        upi_id: workspace.upi_id,
+        shop_name: workspace.name,
+      });
     } catch (e) {
       setError(e.message);
     } finally {
@@ -126,7 +163,7 @@ export default function ScanPay({ token, onProduct, onText, onUpi }) {
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff' }}>
             {supported
               ? <button onClick={start} style={btn}>📷 Scan barcode / UPI QR</button>
-              : <p style={{ padding: 20, textAlign: 'center', opacity: 0.85 }}>Scanning needs the app or a Chromium browser. Use “Collect” below to receive a payment.</p>}
+              : <p style={{ padding: 20, textAlign: 'center', opacity: 0.85 }}>Scanning needs the app or a Chromium browser. Use "Collect" below to receive a payment.</p>}
           </div>
         )}
       </div>
@@ -140,21 +177,38 @@ export default function ScanPay({ token, onProduct, onText, onUpi }) {
         </div>
       )}
 
-      {/* Collect (software soundbox) */}
+      {/* Collect (Shop's Own Direct UPI) */}
       <div style={{ ...card, display: 'grid', gap: 10 }}>
-        <strong>Collect a payment</strong>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <strong>Collect Direct to Shop UPI</strong>
+          {workspace?.upi_id ? (
+            <span style={{ fontSize: 11, color: '#0e9f6e', fontWeight: 600 }}>
+              ✓ {workspace.upi_id}
+            </span>
+          ) : (
+            <a href="/b/onboarding" style={{ fontSize: 11, color: '#ef4444', textDecoration: 'none', fontWeight: 600 }}>
+              ⚠️ Set UPI ID
+            </a>
+          )}
+        </div>
         <input value={collectAmount} onChange={e => setCollectAmount(e.target.value)}
           inputMode="decimal" placeholder="Amount (₹)" style={input} />
         <input value={collectName} onChange={e => setCollectName(e.target.value)}
           placeholder="Customer name (optional)" style={input} />
         <button onClick={createCollectQr} disabled={collecting} style={btn}>
-          {collecting ? 'Generating…' : 'Show UPI QR'}
+          {collecting ? 'Generating…' : 'Show Shop UPI QR'}
         </button>
-        {collectQr?.qr_image_url && (
-          <div style={{ textAlign: 'center' }}>
+
+        {collectQr && (
+          <div style={{ textAlign: 'center', marginTop: 8 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={collectQr.qr_image_url} alt="Scan to pay" style={{ width: 220, height: 220 }} />
-            <p style={{ fontSize: 13, color: '#64748b' }}>Ask the customer to scan. You’ll hear the confirmation when it’s paid.</p>
+            <img src={collectQr.qr_image_url} alt="Shop UPI QR" style={{ width: 220, height: 220, borderRadius: 12 }} />
+            <p style={{ fontSize: 13, color: '#0e9f6e', fontWeight: 700, margin: '8px 0 2px' }}>
+              Direct UPI Payment: ₹{collectQr.amount.toFixed(2)}
+            </p>
+            <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+              Money goes straight to {collectQr.upi_id}. Pranix holds no customer money.
+            </p>
           </div>
         )}
       </div>

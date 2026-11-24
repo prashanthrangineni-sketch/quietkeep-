@@ -22,6 +22,8 @@ const BIZ_BOTTOM_TABS = [
 
 const BIZ_NAV_LINKS = [
   { href: '/b/dashboard',   icon: <QkIcon name="dashboard" size={20} />,  label: 'Dashboard' },
+  { href: '/b/counter',     icon: <QkIcon name="invoice" size={20} />,    label: 'Counter' },
+  { href: '/b/closing',     icon: <QkIcon name="tasks" size={20} />,      label: 'Closing Check' },
   { href: '/b/ledger',      icon: <QkIcon name="ledger" size={20} />,     label: 'Ledger' },
   { href: '/b/scan',        icon: <QkIcon name="scan" size={20} />,       label: 'Scan & Pay' },
   { href: '/b/team',        icon: <QkIcon name="team" size={20} />,       label: 'Team' },

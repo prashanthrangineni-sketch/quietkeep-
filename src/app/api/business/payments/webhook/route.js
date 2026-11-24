@@ -96,6 +96,30 @@ export async function POST(req) {
   const amount = applied.amount;
   const who = applied.party || 'a customer';
 
+  // ── TASK B2: UPI payment received with no items -> create pending 'what was this for?' card ──
+  const hasItems = Boolean(notes?.items || notes?.item_ids || notes?.invoice_id);
+  if (!hasItems) {
+    try {
+      await db.from('business_approvals').insert({
+        workspace_id: applied.workspace_id,
+        action_type: 'upi_unmatched_payment',
+        status: 'pending',
+        payload: {
+          payment_id: paymentId,
+          amount,
+          party: who,
+          upi_ref: upiRef,
+          question: 'What was this for?',
+          snippet: `₹${Number(amount).toLocaleString('en-IN')} received via UPI from ${who}. What was this for?`,
+          what: 'upi_unmatched_payment',
+        },
+        created_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn('[pay-webhook] unmatched UPI approval card failed:', err.message);
+    }
+  }
+
   // ── 3. queue the SPOKEN confirmation for the workspace owner ──
   const { data: ws } = await db.from('business_workspaces')
     .select('owner_user_id').eq('id', applied.workspace_id).maybeSingle();

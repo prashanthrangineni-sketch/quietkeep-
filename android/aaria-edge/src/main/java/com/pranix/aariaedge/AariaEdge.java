@@ -169,7 +169,11 @@ public class AariaEdge {
                             for (int i = 0; i < preRollCount; i++) {
                                 speechBuffer[speechLength++] = preRollBuffer[(startIdx + i) % preRollSize];
                             }
+                            try {
                             listener.onSpeechStart(ev.t);
+                        } catch (Throwable t) {
+                            Log.e(TAG, "Speech start could not be handed on; still listening", t);
+                        }
                         } else if (ev.type == VadProcessor.EventType.SPEECH_END) {
                             inSpeech = false;
                             short[] audioData = new short[speechLength];

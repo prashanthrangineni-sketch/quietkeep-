@@ -115,7 +115,7 @@ export default async function PrivacyPage({ searchParams }) {
           Privacy Policy
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-subtle)', marginBottom: 40 }}>
-          Last updated: August 18, 2026 · Pranix AI Labs Pvt Ltd
+          Last updated: November 23, 2026 · Pranix AI Labs Pvt Ltd
         </p>
 
         {sections.map(({ title, body }) => (

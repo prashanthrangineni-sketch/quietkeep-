@@ -33,6 +33,7 @@ business_tasks|assigned_to_member_id,completed_at,created_at,created_by,descript
 business_workspaces|accuracy_score,address,business_type,category,closing_cash_in_drawer,created_at,daily_promo_limit,employee_count,financial_year_start,geo_tracking_enabled,gstin,hours,id,last_closing_at,lat,lng,location_set_at,logo_url,name,owner_user_id,pan,phone,plan,show_on_cart2save,slug,timezone,timings,updated_at,upi_id
 calendar_events|calendar_type,category,color,created_at,description,event_date,event_name,event_type,hijri_day,hijri_month,id,is_annual,is_personal_event,is_public_holiday,keep_id,nakshatra,paksha,region,religion,reminder_time,source,state,tags,timezone,tithi,traditional_month,user_id
 cart2save_outbox|action,attempts,created_at,entity_id,entity_type,error,id,last_attempt_at,next_attempt_at,payload,processed_at,status,workspace_id
+code_batches|app,cancelled_at,cancelled_by,code_count,codes_expire_at,created_at,days,decided_at,decided_by,decline_reason,id,plan_tier,purpose,requested_by,status,uses_each
 compliance_reminders|amount_estimate,assigned_to,auto_generated,created_at,description,due_date,frequency,id,next_due,notes,priority,status,title,type,workspace_id
 connector_logs|connector_name,created_at,direction,duration_ms,id,request_summary,response_summary,status,user_id
 contact_group_members|contact_id,group_id,id,user_id
@@ -87,7 +88,7 @@ qk_connections|created_at,id,receiver_id,requester_id,status,updated_at
 qk_conversations|created_at,id,last_message_at,last_message_preview,participant_ids
 qk_messages|content,context_payload,conversation_id,created_at,deleted_at,delivered_at,geo_expires_at,geo_lat,geo_lng,id,message_type,reply_to_id,sender_id,voice_duration_ms,voice_transcript,voice_url
 realtime_events|created_at,event_type,id,payload,processed,user_id
-referral_codes|code,created_at,expires_at,id,is_active,kind,label,max_uses,plan_tier,referee_reward_days,reward_days,user_id,uses_count
+referral_codes|batch_id,code,created_at,expires_at,id,is_active,kind,label,max_uses,plan_tier,referee_reward_days,reward_days,user_id,uses_count
 referral_uses|code_id,created_at,granted_tier,granted_until,id,referee_user_id,referrer_user_id,reward_applied
 reminders|contact_name,contact_phone,created_at,geo_trigger_enabled,geo_trigger_lat,geo_trigger_lng,geo_trigger_radius,id,intent_id,is_active,keep_id,location_name,recurrence,reminder_channel,reminder_text,scheduled_for,space_type,title,updated_at,user_id
 replacement_plans|ai_reasoning,best_time_to_buy,created_at,id,product_id,recommended_replacement_date,replacement_budget,savings_opportunity,updated_at,user_id

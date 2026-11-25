@@ -129,10 +129,21 @@ public class WakeWordMatcher {
                     bestName = name;
                 }
             }
+        } else if (w.tokens.size() == 1 && WakeTuning.current().nameAloneWakes) {
+            // The name said on its own, as the whole phrase (founder decision, 23 Nov 2026): "Aaria." / "ఆర్యా".
+            // Only a one-word phrase counts, so the name inside a sentence ("Arya today") still never wakes.
+            for (String name : validNames(wakeName, aliases)) {
+                float s = wholePhraseScore(w.tokens.get(0), name);
+                if (s > maxScore) {
+                    maxScore = s;
+                    bestName = name;
+                }
+            }
         }
 
-        boolean isShort = bestName.length() <= 3; 
-        float threshold = isShort ? 0.9f : 0.8f;
+        WakeTuning tuning = WakeTuning.current();
+        boolean isShort = bestName.length() <= tuning.shortNameMaxLetters; 
+        float threshold = isShort ? tuning.shortNameThreshold : tuning.matchThreshold;
 
         MatchResult result = new MatchResult();
         result.score = maxScore;

@@ -474,6 +474,25 @@ public class AariaEdgePlugin extends Plugin {
         }
     }
 
+    /**
+     * The worker that works out heard speech. The page shuts it down when it closes (handleOnDestroy), but the
+     * listening service can outlive the page; before 23 Nov 2026 the next speech then threw
+     * RejectedExecutionException and killed the recording thread (founder's phone, T16). Re-made when needed.
+     */
+    private synchronized ExecutorService getExecutor() {
+        if (executor == null || executor.isShutdown()) {
+            executor = Executors.newSingleThreadExecutor();
+        }
+        return executor;
+    }
+
+    /** What the recogniser wrote for the last wake check, for the diagnostic log only (null if unknown). */
+    private static String heardText(WakeWordDetector detector) {
+        WakeWordDetector d = detector;
+        if (d instanceof EitherWakeWord) d = ((EitherWakeWord) d).first();
+        return (d instanceof AsrWakeWord) ? ((AsrWakeWord) d).lastTranscript() : null;
+    }
+
     @PluginMethod
     public void getStatus(PluginCall call) {
         boolean ready = ensureReady();

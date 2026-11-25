@@ -25,3 +25,7 @@ small choice pictures in the signup step: `anime-woman.jpg` (anime-sample,
 VRM Public License 1.0), `anime-man.jpg` (anime-man-sample, CC0),
 `realistic-woman.jpg` (Rocketbox female-adult-01, MIT), `realistic-man.jpg`
 (Rocketbox male-adult-01, MIT). Same licences as their source models.
+`realistic-indian-woman.jpg` and `realistic-indian-man.jpg` (23 Nov 2026) are
+stills of the "Saree" and "Kurta" looks (Rocketbox female-adult-11 and
+male-adult-15, MIT, as changed by Pranix AI Labs - see
+`realistic-rocketbox/LICENCE.md`).

@@ -164,9 +164,11 @@ export default function VrmStage({ status = 'idle', modelUrl, height = 360, onFp
           const nowMs = performance.now();
           frames.push(nowMs - lastFrame); lastFrame = nowMs;
           if (frames.length > 240) frames.shift();
-          if (nowMs - lastReport > 1000 && frames.length > 20) {
+          // A reading every second, even when frames are few (a slow phone must be
+          // noticed within about 2 seconds), over the last second or so of frames.
+          if (nowMs - lastReport > 900 && frames.length >= 3) {
             lastReport = nowMs;
-            const sorted = [...frames].sort((a, b) => a - b);
+            const sorted = frames.slice(-60).sort((a, b) => a - b);
             const median = sorted[Math.floor(sorted.length / 2)];
             const worst = sorted[sorted.length - 1];
             onFps?.({ medianFps: Math.round(1000 / median), worstFrameMs: Math.round(worst), talking });

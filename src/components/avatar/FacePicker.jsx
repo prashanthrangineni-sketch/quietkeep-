@@ -8,14 +8,15 @@ export const FACE_OPTIONS = [
   { id: 'none', label: 'No face', desc: 'Just the glowing Aaria button (lightest)' },
   { id: '2d', label: 'Simple face', desc: 'A small animated face. No download.' },
   { id: 'anime3d', label: 'Anime', desc: 'Lips move as Aaria talks. About 5 MB, once.' },
-  { id: 'realistic', label: 'Realistic', desc: 'A 3D person. About 1.5 MB, once.' },
+  { id: 'realistic', label: 'Realistic', desc: 'A 3D person. About 1 MB, once.' },
+  { id: 'realistic-in', label: 'Saree or kurta', desc: 'A 3D person in a saree (woman) or a kurta (man). About 1.5 MB, once.' },
 ];
 
 function Picture({ id, who }) {
   const box = { width: 64, height: 64, borderRadius: 12, overflow: 'hidden', flex: '0 0 64px', background: 'var(--surface-2, #1b1530)', display: 'flex', alignItems: 'center', justifyContent: 'center' };
   if (id === 'none') return <div style={box}><div style={{ width: 30, height: 30, borderRadius: '50%', background: 'radial-gradient(circle at 35% 35%, #c084fc, #7c3aed)' }} /></div>;
   if (id === '2d') return <div style={box}><AariaFace status="idle" size={56} /></div>;
-  const file = `${id === 'anime3d' ? 'anime' : 'realistic'}-${who}`;
+  const file = id === 'realistic-in' ? `realistic-indian-${who}` : `${id === 'anime3d' ? 'anime' : 'realistic'}-${who}`;
   return <div style={box}><img src={`/avatars/previews/${file}.jpg`} alt="" width={64} height={64} style={{ objectFit: 'cover' }} /></div>;
 }
 

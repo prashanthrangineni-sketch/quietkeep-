@@ -581,8 +581,8 @@ public class AariaEdgePlugin extends Plugin {
         }
 
         int sampleRate = call.getInt("sampleRate", 16000);
-        int minSpeechMs = call.getInt("minSpeechMs", 250);
-        int minSilenceMs = call.getInt("minSilenceMs", 600);
+        int minSpeechMs = call.getInt("minSpeechMs", WakeTuning.current().minSpeechMs);
+        int minSilenceMs = call.getInt("minSilenceMs", WakeTuning.current().minSilenceMs);
 
         try {
             NightlySyncWorker.microphoneActive = true;

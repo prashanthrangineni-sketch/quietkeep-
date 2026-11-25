@@ -27,6 +27,7 @@ check('every GET is checked before anything is read', /export async function GET
 check('every POST is checked against the exact body before anything is done', /const raw = await request\.text\(\);\s*const auth = check\(request, raw\);\s*if \(!auth\.ok\) return refuse\(auth\);/.test(route));
 check('the door has no sign-in fallback and no cross-site access', !/getUser\(/.test(route) && !/Access-Control-Allow-Origin/i.test(route));
 check('the door cannot make codes except by approving a request', !/create_campaign_codes/.test(route) && /rpc\('approve_code_batch'/.test(route));
+check('approve answers with code details, the same shape as opening a batch', /rpc\('code_batch_codes', \{ p_batch: batch \}\)[^]*?status: 'approved', codes \}/.test(route.slice(route.indexOf("body.action === 'approve'"))));
 check('the key is read from its own setting', /process\.env\.FOUNDER_DASHBOARD_KEY/.test(route));
 
 // --- the database change

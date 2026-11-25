@@ -8,7 +8,7 @@
 //   GET  /api/founder/codes               every request, pending first, with use counts
 //   GET  /api/founder/codes?batch=<id>    the codes of one approved batch
 //   POST { action: 'request', requested_by, app, plan_tier, days, code_count, uses_each?, purpose?, codes_expire_at? }
-//   POST { action: 'approve', batch, by }        makes the codes and returns them
+//   POST { action: 'approve', batch, by }        makes the codes and returns them (same shape as GET ?batch=)
 //   POST { action: 'decline', batch, by, reason? }
 //   POST { action: 'cancel',  batch, by }        switches off every code in an approved batch
 //
@@ -88,7 +88,14 @@ export async function POST(request) {
   if (body.action === 'approve') {
     const { data, error } = await db.rpc('approve_code_batch', { p_batch: batch, p_by: by });
     if (error) return Response.json({ error: error.message || 'Could not approve' }, { status: 409 });
-    return Response.json({ success: true, batch, status: 'approved', codes: data || [] });
+    // Answer in the same shape as GET ?batch= (code, uses_count, max_uses, is_active, expires_at),
+    // so a screen can show the new codes straight away. Found in the live test on 25 Nov 2026:
+    // plain code text here made the dashboard show a blank, "switched off" row right after Approve.
+    const { data: details } = await db.rpc('code_batch_codes', { p_batch: batch });
+    const codes = Array.isArray(details) && details.length
+      ? details
+      : (data || []).map((code) => ({ code, uses_count: 0, max_uses: null, is_active: true, expires_at: null }));
+    return Response.json({ success: true, batch, status: 'approved', codes });
   }
   if (body.action === 'decline') {
     const { data, error } = await db.rpc('decline_code_batch', { p_batch: batch, p_by: by, p_reason: body.reason ? String(body.reason).slice(0, 300) : null });

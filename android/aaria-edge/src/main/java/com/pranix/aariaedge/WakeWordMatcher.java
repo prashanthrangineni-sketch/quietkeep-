@@ -207,9 +207,9 @@ public class WakeWordMatcher {
             for (String other : validHeard) {
                 if (other.equals(h)) count++;
             }
-            if (count >= 2 && !selected.contains(h)) {
+            if (count >= WakeTuning.current().learnMinTimesHeard && !selected.contains(h)) {
                 selected.add(h);
-                if (selected.size() == 5) break;
+                if (selected.size() >= WakeTuning.current().learnMaxSpellings) break;
             }
         }
         return selected;

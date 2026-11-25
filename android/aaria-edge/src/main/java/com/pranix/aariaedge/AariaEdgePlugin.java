@@ -336,6 +336,7 @@ public class AariaEdgePlugin extends Plugin {
                                         // One log line per wake the app was told of: time, score, who heard it, command or not.
                                         // Never audio, never the spoken words.
                                         WakeLog.wake(t, score, heardByForLog, hasCommand);
+                                        WakeLog.segment(durationMs, audioData, "wake", score, heardText(usedDetector));
                                         playChime();
                                         lastWakeWordTime = System.currentTimeMillis();
 

@@ -208,28 +208,43 @@ public class AariaEdgePlugin extends Plugin {
 
                         // Speech that arrives while a turn-off is under way, or from a recorder that has been told
                         // to stop, is thrown away here and now, whatever happens before its turn would have come.
-                        if (turningOff || speechUnwanted) return;
+                        if (turningOff || speechUnwanted) {
+                            WakeLog.segment(durationMs, audioData, "dropped_turning_off", 0f, null);
+                            return;
+                        }
                         // Speech heard before a turn-off is thrown away when its turn comes.
                         final int offCountWhenHeard = offCount.get();
                         getExecutor().submit(() -> {
-                            if (stale(offCountWhenHeard)) return;
-                            if (System.currentTimeMillis() - lastWakeWordTime < 1500) return;
+                            if (stale(offCountWhenHeard)) {
+                                WakeLog.segment(durationMs, audioData, "dropped_turned_off", 0f, null);
+                                return;
+                            }
+                            if (System.currentTimeMillis() - lastWakeWordTime < 1500) {
+                                WakeLog.segment(durationMs, audioData, "just_after_wake", 0f, null);
+                                return;
+                            }
                             final int nameEpochAtStart;
                             synchronized (nameLock) { nameEpochAtStart = nameEpoch; }
                             // The app holds the microphone: whatever was still being worked out is dropped.
-                            if (listenController.isHeldByApp()) return;
+                            if (listenController.isHeldByApp()) {
+                                WakeLog.segment(durationMs, audioData, "app_holds_mic", 0f, null);
+                                return;
+                            }
                             statsHeard++;
 
                             // Read once: a turn-off in the middle must not turn a wake check into a command.
                             final boolean checkForName = isWaitingForWakeWord;
+                            if (!checkForName) WakeLog.segment(durationMs, audioData, "command_mode", 0f, null);
                             if (checkForName) {
-                                if (durationMs < 300) {
+                                if (durationMs < WakeTuning.current().minWakeSpeechMs) {
                                     statsSkipped++;
+                                    WakeLog.segment(durationMs, audioData, "too_short", 0f, null);
                                     return;
                                 }
 
+                                if (wakeWordDetector == null) WakeLog.segment(durationMs, audioData, "no_detector", 0f, null);
                                 if (wakeWordDetector != null) {
-                                    int wakeSamples = 1500 * 16;
+                                    int wakeSamples = WakeTuning.current().wakeWindowMs * 16;
                                     short[] wakeData = audioData;
                                     if (audioData.length > wakeSamples) {
                                         wakeData = new short[wakeSamples];

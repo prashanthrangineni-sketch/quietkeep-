@@ -33,7 +33,12 @@ export default function SharePage({ params }) {
     }
 
     else if (tokenRow.share_type === 'daily_brief') {
-      const uid = tokenRow.user_id;
+      // 25 Nov 2026: a share link no longer reveals whose account it belongs to.
+      // A daily brief is readable only by its signed-in owner (the database rules
+      // already worked that way), so the id comes from the viewer's own sign-in.
+      const { data: { user: viewer } } = await supabase.auth.getUser();
+      const uid = viewer?.id;
+      if (!uid) { setError('Please sign in to QuietKeep to open this daily brief.'); setLoading(false); return; }
       const today = new Date().toISOString().split('T')[0];
       const in7 = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
 

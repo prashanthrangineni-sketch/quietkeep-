@@ -176,7 +176,7 @@ Owned by the voice thread (SOS countdown, PR #161). Drive calls the existing SOS
 >
 > The reviewer test account's email, one-time code and password are **not kept in this file** (this repository is public).
 > They live only in Play Console → App content → App access, for both the Personal (`com.pranix.quietkeep`) and
-> Business (`com.pranix.quietkeep.business`) apps. Removed from here on 23 Nov 2026; the old values must be treated
+> Business (`com.pranix.quietkeep.business`) apps. Removed from here on 25 Nov 2026; the old values must be treated
 > as known to anyone and changed.
 >
 > *Note to Founder: set the reviewer account's one-time code in the Supabase Dashboard under **Auth -> Settings -> Test OTPs** before submitting the Personal app for review.*

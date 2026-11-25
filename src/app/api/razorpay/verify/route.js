@@ -1,7 +1,30 @@
 // src/app/api/razorpay/verify/route.js
-// Verifies payment signature and activates subscription for all plan types
+// Checks a finished payment and switches the plan on.
+//
+// 25 Nov 2026: the plan is now read from the order held by Razorpay (what was
+// actually paid for), never from what the browser says. Before this, a person
+// could pay for Plus and ask for Business. The same payment can also no longer
+// be used twice, and the plan is written with the server key because a
+// signed-in person can no longer change their own plan.
 import { createClient } from '@supabase/supabase-js';
+import Razorpay from 'razorpay';
 import crypto from 'crypto';
+
+// Plan config - maps plan key to subscription details
+const PLAN_CONFIG = {
+  // Monthly
+  plus:                 { name: 'QuietKeep Plus',          amount: 99,   tier: 'plus',     cycle: 'monthly', months: 1 },
+  premium:              { name: 'QuietKeep Plus',          amount: 99,   tier: 'plus',     cycle: 'monthly', months: 1 },
+  family:               { name: 'QuietKeep Family',        amount: 199,  tier: 'family',   cycle: 'monthly', months: 1 },
+  business:             { name: 'QuietKeep Business',      amount: 299,  tier: 'business', cycle: 'monthly', months: 1 },
+  business_team:        { name: 'QuietKeep Business Team', amount: 999,  tier: 'growth',   cycle: 'monthly', months: 1 },
+  // Yearly
+  plus_yearly:          { name: 'QuietKeep Plus',          amount: 990,  tier: 'plus',     cycle: 'yearly',  months: 12 },
+  premium_yearly:       { name: 'QuietKeep Plus',          amount: 990,  tier: 'plus',     cycle: 'yearly',  months: 12 },
+  family_yearly:        { name: 'QuietKeep Family',        amount: 1990, tier: 'family',   cycle: 'yearly',  months: 12 },
+  business_yearly:      { name: 'QuietKeep Business',      amount: 2990, tier: 'business', cycle: 'yearly',  months: 12 },
+  business_team_yearly: { name: 'QuietKeep Business Team', amount: 9990, tier: 'growth',   cycle: 'yearly',  months: 12 },
+};
 
 export async function POST(request) {
   try {
@@ -18,7 +41,10 @@ export async function POST(request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan } = await request.json();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = await request.json();
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return Response.json({ error: 'Missing payment details' }, { status: 400 });
+    }
 
     // Verify Razorpay signature
     const body = razorpay_order_id + '|' + razorpay_payment_id;
@@ -27,33 +53,49 @@ export async function POST(request) {
       .update(body)
       .digest('hex');
 
-    if (expectedSignature !== razorpay_signature) {
+    const given = Buffer.from(String(razorpay_signature));
+    const expected = Buffer.from(expectedSignature);
+    if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) {
       console.error('[verify] Invalid signature for order:', razorpay_order_id);
       return Response.json({ error: 'Invalid payment signature' }, { status: 400 });
     }
 
-    // Plan config — maps plan key to subscription details
-    const planConfig = {
-      // Monthly
-      plus:             { name: 'QuietKeep Plus',      amount: 99,  tier: 'plus',     cycle: 'monthly', months: 1 },
-      premium:          { name: 'QuietKeep Plus',      amount: 99,  tier: 'plus',     cycle: 'monthly', months: 1 },
-      family:           { name: 'QuietKeep Family',    amount: 199, tier: 'family',   cycle: 'monthly', months: 1 },
-      business:         { name: 'QuietKeep Business',  amount: 299, tier: 'business', cycle: 'monthly', months: 1 },
-      // Yearly
-      plus_yearly:      { name: 'QuietKeep Plus',      amount: 990,  tier: 'plus',    cycle: 'yearly',  months: 12 },
-      premium_yearly:   { name: 'QuietKeep Plus',      amount: 990,  tier: 'plus',    cycle: 'yearly',  months: 12 },
-      family_yearly:    { name: 'QuietKeep Family',    amount: 1990, tier: 'family',  cycle: 'yearly',  months: 12 },
-      business_yearly:  { name: 'QuietKeep Business',  amount: 2990, tier: 'business',cycle: 'yearly',  months: 12 },
-    };
+    // What was actually paid for: read the order back from Razorpay.
+    const razorpay = new Razorpay({
+      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+    const order = await razorpay.orders.fetch(razorpay_order_id);
+    const plan = order?.notes?.plan;
+    const pc = PLAN_CONFIG[plan];
+    if (!order || order.notes?.user_id !== user.id || !pc) {
+      console.error('[verify] order does not belong to this account or has no known plan:', razorpay_order_id);
+      return Response.json({ error: 'This payment does not match your account' }, { status: 400 });
+    }
+    if (Number(order.amount) !== pc.amount * 100) {
+      console.error('[verify] order amount does not match the plan price:', razorpay_order_id);
+      return Response.json({ error: 'Payment amount does not match the plan' }, { status: 400 });
+    }
 
-    const pc = planConfig[plan] || planConfig.plus;
+    const svc = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+    // One payment switches a plan on once.
+    const { data: usedBefore } = await svc
+      .from('audit_log')
+      .select('id')
+      .eq('action', 'subscription_purchased')
+      .eq('details->>payment_id', razorpay_payment_id)
+      .limit(1);
+    if (usedBefore && usedBefore.length > 0) {
+      return Response.json({ success: true, plan: pc.name, tier: pc.tier, cycle: pc.cycle, already_applied: true });
+    }
 
     // Calculate expiry
     const nextDue = new Date();
     nextDue.setMonth(nextDue.getMonth() + pc.months);
 
     // Upsert subscription record
-    const { error: subError } = await supabase
+    const { error: subError } = await svc
       .from('subscriptions')
       .upsert({
         user_id: user.id,
@@ -76,13 +118,14 @@ export async function POST(request) {
     }
 
     // Update profile tier
-    await supabase.from('profiles').update({
+    const { error: profileError } = await svc.from('profiles').update({
       subscription_tier: pc.tier,
       subscription_expires_at: nextDue.toISOString(),
     }).eq('user_id', user.id);
+    if (profileError) throw profileError;
 
     // Audit log
-    await supabase.from('audit_log').insert({
+    await svc.from('audit_log').insert({
       user_id: user.id,
       action: 'subscription_purchased',
       service: 'razorpay',

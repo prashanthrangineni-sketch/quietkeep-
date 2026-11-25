@@ -60,6 +60,8 @@ export async function POST(req) {
     premium_yearly:   { tier: 'plus',     name: 'QuietKeep Plus',     amount: 990,  months: 12 },
     family_yearly:    { tier: 'family',   name: 'QuietKeep Family',   amount: 1990, months: 12 },
     business_yearly:  { tier: 'business', name: 'QuietKeep Business', amount: 2990, months: 12 },
+    business_team:        { tier: 'growth', name: 'QuietKeep Business Team', amount: 999,  months: 1 },
+    business_team_yearly: { tier: 'growth', name: 'QuietKeep Business Team', amount: 9990, months: 12 },
   };
   const pc = planMap[plan] || planMap.plus;
 

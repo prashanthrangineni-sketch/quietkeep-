@@ -274,9 +274,14 @@ export default function SettingsPage() {
   }
 
 
+  // Load the person's own code once they are signed in (this was never called before 25 Nov 2026).
+  useEffect(() => {
+    if (accessToken) loadReferral(accessToken);
+  }, [accessToken]);
+
   async function loadReferral(token) {
     try {
-      const { data: res, error: resErr } = await safeFetch('/api/referral');
+      const { data: res, error: resErr } = await safeFetch('/api/referral', { token });
       if (!resErr && res) { const d = res; setReferralCode(d.code?.code || ''); setReferralUses(d.uses || 0); }
     } catch {}
   }
@@ -601,9 +606,9 @@ export default function SettingsPage() {
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-subtle)', marginBottom: 14 }}>🎁 Referral Program</div>
           <div style={{ background: 'var(--primary-dim)', border: '1px solid var(--primary-glow)', borderRadius: 12, padding: '16px 18px' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Share &amp; earn 30 days Premium</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Share your code: 30 days free for both of you</div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.6 }}>
-              When a friend activates using your link, you both get 30 days Premium free. Rewards stack — no cap.
+              When a friend enters your code at sign-up or under Plans, you both get 30 days free. This works for up to 12 friends.
             </div>
             {referralCode ? (
               <>
@@ -623,7 +628,7 @@ export default function SettingsPage() {
                 </div>
                 <button onClick={async () => {
                   const url = `https://quietkeep.com/waitlist?ref=${referralCode}`;
-                  const text = `Join me on QuietKeep — private voice-first life OS! We both get 30 days Premium free: ${url}`;
+                  const text = `Join me on QuietKeep, a private voice-first life organiser. Enter my code ${referralCode} when you sign up and we both get 30 days free: ${url}`;
                   if (navigator.share) { try { await navigator.share({ title: 'QuietKeep', text, url }); } catch {} }
                   else { await navigator.clipboard.writeText(text); setCopyMsg('Message copied!'); setTimeout(() => setCopyMsg(''), 2500); }
                 }} className="qk-btn qk-btn-ghost qk-btn-sm" style={{ width: '100%', justifyContent: 'center' }}>

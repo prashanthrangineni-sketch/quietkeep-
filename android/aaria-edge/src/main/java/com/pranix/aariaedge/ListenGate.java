@@ -19,9 +19,10 @@ public class ListenGate {
             return new Result(true, "unplugged");
         }
 
-        if (powerSave) {
-            return new Result(true, "power_saver");
-        }
+        // Battery Saver no longer pauses listening (founder decision, 23 Nov 2026). The founder's phone keeps
+        // Battery Saver on all the time, and the pause silently stopped every wake, even while charging (T16).
+        // Listening on battery still needs the person's own "listen on battery" choice (above), and the
+        // low-battery and heat pauses below still apply. powerSave stays in the signature for callers.
 
         if (thermalStatus >= android.os.PowerManager.THERMAL_STATUS_SEVERE) {
             wasHot = true;

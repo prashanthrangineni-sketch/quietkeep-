@@ -169,12 +169,21 @@ public class AariaEdge {
                             for (int i = 0; i < preRollCount; i++) {
                                 speechBuffer[speechLength++] = preRollBuffer[(startIdx + i) % preRollSize];
                             }
+                            try {
                             listener.onSpeechStart(ev.t);
+                        } catch (Throwable t) {
+                            Log.e(TAG, "Speech start could not be handed on; still listening", t);
+                        }
                         } else if (ev.type == VadProcessor.EventType.SPEECH_END) {
                             inSpeech = false;
                             short[] audioData = new short[speechLength];
                             System.arraycopy(speechBuffer, 0, audioData, 0, speechLength);
+                            // Whatever goes wrong while the speech is handed on must never stop the recording (T16).
+                        try {
                             listener.onSpeechEnd(ev.t, ev.durationMs, audioData);
+                        } catch (Throwable t) {
+                            Log.e(TAG, "Heard speech could not be handed on; still listening", t);
+                        }
                             speechLength = 0;
                             preRollCount = 0;
                             preRollHead = 0;

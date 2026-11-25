@@ -65,10 +65,13 @@ export function saveChosenFace({ style, who, look }) {
 export const ALL_LOOKS_FEATURE = 'aaria_face_all_looks';
 
 /** Pure: is this choice one of the extra (paid) looks? Free = 2D face, both
- *  anime faces, and Look 1 of the realistic woman and man. */
+ *  anime faces, realistic Look 1, and the saree and kurta looks. */
+// Free for everyone (founder, 25 Nov 2026): Look 1 and the Indian looks,
+// woman in a saree (woman-3) and man in a kurta (man-5).
+export const FREE_REALISTIC_LOOKS = ['woman-1', 'man-1', 'woman-3', 'man-5'];
 export function isPaidLook(style, who, look) {
   const c = normaliseChosenFace(style, who, look);
-  return c.style === 'realistic' && c.look !== LOOKS[c.who][0];
+  return c.style === 'realistic' && !FREE_REALISTIC_LOOKS.includes(c.look);
 }
 /** Pure: the choice a person on the free plan actually gets. */
 export function allowedFace(choice, hasAllLooks) {

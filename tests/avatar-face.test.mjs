@@ -250,3 +250,10 @@ _resetForTests();
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
+// 25 Nov: the kurta look shows hair, not a cap edge (cap points pulled inside the head).
+{
+  const fs = await import('node:fs');
+  const lic = fs.readFileSync(new URL('../public/avatars/realistic-rocketbox/LICENCE.md', import.meta.url), 'utf8');
+  if (!/cap's 172 points pulled inside the head/.test(lic) || !fs.existsSync(new URL('../scripts/avatar-kurta-hair.py', import.meta.url))) { console.error('kurta hair record missing'); process.exit(1); }
+  console.log('kurta hair: recorded');
+}

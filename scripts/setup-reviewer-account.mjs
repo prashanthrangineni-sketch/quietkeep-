@@ -16,7 +16,13 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 const email = 'reviewer-demo@quietkeep.com';
-const password = 'QuietKeepReviewer2026!';
+// The password is never written in this file (the repository is public).
+// Give it when running: REVIEWER_PASSWORD='...' node scripts/setup-reviewer-account.mjs
+const password = process.env.REVIEWER_PASSWORD;
+if (!password || password.length < 12) {
+  console.error('Error: set REVIEWER_PASSWORD (12 or more characters) in the environment.');
+  process.exit(1);
+}
 
 async function setup() {
   console.log(`Setting up reviewer account: ${email}`);

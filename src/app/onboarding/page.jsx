@@ -1,6 +1,7 @@
 'use client';
 import { useAuth } from '@/lib/context/auth';
 import { safeFetch } from '@/lib/safeFetch';
+import { getAppType } from '@/lib/app-type';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -189,7 +190,20 @@ export default function OnboardingPage() {
       }
 
       if (referralCode.trim()) {
-        try { safeFetch('/api/referral').catch(()=>{}); } catch {}
+        // Apply the code to this new account (it used to be read but never applied).
+        try {
+          const { data: sess } = await supabase.auth.getSession();
+          const tok = sess?.session?.access_token;
+          if (tok) {
+            await fetch('/api/referral', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+              body: JSON.stringify({ code: referralCode.trim(), app: getAppType() === 'business' ? 'business' : 'personal' }),
+            });
+          }
+        } catch (codeErr) {
+          console.error('[onboarding] code not applied', codeErr);
+        }
       }
 
       if (firstKeep.trim()) {
@@ -418,11 +432,11 @@ export default function OnboardingPage() {
               style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 16px', color: 'var(--text)', fontSize: '15px', outline: 'none', boxSizing: 'border-box', resize: 'none', lineHeight: '1.5' }}
             />
             <div style={{ marginTop: '14px' }}>
-              <label style={{ fontSize: '12px', color: 'var(--text-subtle)', display: 'block', marginBottom: '6px' }}>Got a referral code? (optional)</label>
+              <label style={{ fontSize: '12px', color: 'var(--text-subtle)', display: 'block', marginBottom: '6px' }}>Got a code? It gives you a plan free for a period (optional)</label>
               <input
                 value={referralCode}
                 onChange={e => setReferralCode(e.target.value.toUpperCase())}
-                placeholder="e.g. PRASHANTH1234"
+                placeholder="e.g. QKAB12CD34"
                 style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', color: 'var(--text)', fontSize: '14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'monospace', letterSpacing: '0.06em' }}
               />
             </div>

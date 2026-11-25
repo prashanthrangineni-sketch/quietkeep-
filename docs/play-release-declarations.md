@@ -174,14 +174,9 @@ Owned by the voice thread (SOS countdown, PR #161). Drive calls the existing SOS
 > [!IMPORTANT]
 > **Use the following test credentials to log in and review the application:**
 >
-> ### Personal App Flavor (`com.pranix.quietkeep`)
-> * **Test Account Email:** `reviewer-demo@quietkeep.com`
-> * **Authentication Method:** Email OTP Code (One-Time Password)
-> * **Static OTP / Verification Code:** `888888`
+> The reviewer test account's email, one-time code and password are **not kept in this file** (this repository is public).
+> They live only in Play Console → App content → App access, for both the Personal (`com.pranix.quietkeep`) and
+> Business (`com.pranix.quietkeep.business`) apps. Removed from here on 25 Nov 2026; the old values must be treated
+> as known to anyone and changed.
 >
-> ### Business App Flavor (`com.pranix.quietkeep.business`)
-> * **Test Account Email:** `reviewer-demo@quietkeep.com`
-> * **Authentication Method:** Email / Password (using the "Sign in with Email / Beta Code" flow)
-> * **Password:** `QuietKeepReviewer2026!`
->
-> *Note to Founder: Configure `reviewer-demo@quietkeep.com` with the static OTP `888888` in the Supabase Dashboard under **Auth -> Settings -> Test OTPs** before submitting the Personal app for review.*
+> *Note to Founder: set the reviewer account's one-time code in the Supabase Dashboard under **Auth -> Settings -> Test OTPs** before submitting the Personal app for review.*

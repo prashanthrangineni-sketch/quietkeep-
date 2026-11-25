@@ -26,7 +26,7 @@ public class WakeWordMatcher {
     // as "Hey aria", nearly always with a comma or a full stop attached.
     // "hai" and "ari" were added after measuring the Hindi and Telugu recognisers the same day: they write
     // "hai araya" for "Hey Aaria" and "ari arya" for "are aariya" (their own letters, shown here in Latin).
-    private static final String[] LOOSE_PREFIXES = {"a", "hay", "ay", "he", "eh", "high", "hai", "ari"};
+    // The list itself is now a tuning dial, WakeTuning.looseGreetings (these same eight spellings by default).
 
     /** One spoken word as bare lower-case Latin letters and digits. Recognisers add capitals, commas and full stops. */
     static String token(String rawWord) {
@@ -71,7 +71,7 @@ public class WakeWordMatcher {
         for (String p : prefixes) {
             if (token.equals(token(p))) return true;
         }
-        for (String p : LOOSE_PREFIXES) {
+        for (String p : WakeTuning.current().looseGreetings) {
             if (token.equals(p)) return true;
         }
         return false;
@@ -111,6 +111,32 @@ public class WakeWordMatcher {
         return best;
     }
 
+    /** A greeting the recogniser ran into the name, as one word: Telugu writes "Hey Aaria" as "హరియా" (hariya). */
+    private static final String[] RUN_IN_GREETINGS = {"hey", "hay", "hai", "hi", "he", "h"};
+
+    /**
+     * How much a one-word phrase sounds like the name: 0 to 1. The word itself, and the word with a greeting
+     * that was run into it removed, are compared; like nameScore, the first sound must be the name's.
+     * Measured 23 Nov 2026 on the founder's own 30 "Aaria" recordings: the Telugu recogniser writes "ఆర్యా"
+     * about 27 times in 30, so these now wake; none of the 660 measured ordinary sentences newly wakes.
+     */
+    static float wholePhraseScore(String word, String name) {
+        String nameKey = soundKey(token(name));
+        if (nameKey.isEmpty() || word == null || word.isEmpty()) return 0.0f;
+        List<String> candidates = new ArrayList<>();
+        candidates.add(word);
+        for (String g : RUN_IN_GREETINGS) {
+            if (word.length() > g.length() && word.startsWith(g)) candidates.add(word.substring(g.length()));
+        }
+        float best = 0.0f;
+        for (String c : candidates) {
+            String k = soundKey(c);
+            if (k.isEmpty() || k.charAt(0) != nameKey.charAt(0)) continue;
+            best = Math.max(best, getEditDistanceRatio(k, nameKey));
+        }
+        return best;
+    }
+
     /**
      * Does this transcript begin with a greeting followed by the wake name (or one of its taught spellings)?
      * The greeting is required: the name alone never wakes.
@@ -129,10 +155,21 @@ public class WakeWordMatcher {
                     bestName = name;
                 }
             }
+        } else if (w.tokens.size() == 1 && WakeTuning.current().nameAloneWakes) {
+            // The name said on its own, as the whole phrase (founder decision, 23 Nov 2026): "Aaria." / "ఆర్యా".
+            // Only a one-word phrase counts, so the name inside a sentence ("Arya today") still never wakes.
+            for (String name : validNames(wakeName, aliases)) {
+                float s = wholePhraseScore(w.tokens.get(0), name);
+                if (s > maxScore) {
+                    maxScore = s;
+                    bestName = name;
+                }
+            }
         }
 
-        boolean isShort = bestName.length() <= 3; 
-        float threshold = isShort ? 0.9f : 0.8f;
+        WakeTuning tuning = WakeTuning.current();
+        boolean isShort = bestName.length() <= tuning.shortNameMaxLetters; 
+        float threshold = isShort ? tuning.shortNameThreshold : tuning.matchThreshold;
 
         MatchResult result = new MatchResult();
         result.score = maxScore;
@@ -201,15 +238,15 @@ public class WakeWordMatcher {
         for (String h : validHeard) {
             if (h.isEmpty() || h.equals(typedNorm)) continue;
             float sim = getEditDistanceRatio(h, typedNorm);
-            if (sim < ENROLL_MIN_SIMILARITY) continue;
+            if (sim < WakeTuning.current().learnMinSimilarity) continue;
             
             int count = 0;
             for (String other : validHeard) {
                 if (other.equals(h)) count++;
             }
-            if (count >= 2 && !selected.contains(h)) {
+            if (count >= WakeTuning.current().learnMinTimesHeard && !selected.contains(h)) {
                 selected.add(h);
-                if (selected.size() == 5) break;
+                if (selected.size() >= WakeTuning.current().learnMaxSpellings) break;
             }
         }
         return selected;

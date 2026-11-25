@@ -1,4 +1,5 @@
 Repository: https://github.com/PranixQuick/aaria-edge
-Commit: 8874c02543b595276cfc02ee5b48219af274b695 (main line of aaria-edge, after PR #17: wake log line, licence list)
-Date: 2026-11-13
-Tests: live and run in PranixQuick/aaria-edge (not vendored)
+Commit: 1c16eae32a8d0a218033e5545992b351d8ec8ecf (main line of aaria-edge, after PR #20: wake W1/W2 — one log line per speech segment, Battery Saver does not pause, listener survives the page closing, the name alone wakes)
+Date: 2026-11-25
+Copied: android/src/main/** (the module's build.gradle keeps QuietKeep's own trimmed copy: no buildscript block, no unit-test options)
+Tests: live and run in PranixQuick/aaria-edge (not vendored); 300/300 x2 + assembleRelease on the laptop (C:\PranixEvidence\W12\RESULT.md)

@@ -5,6 +5,7 @@ import { apiPost } from '@/lib/safeFetch';
 // src/app/subscription/page.jsx — In-app subscription upgrade page
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getAppType } from '@/lib/app-type';
 import NavbarClient from '@/components/NavbarClient';
 
 const PLANS = [
@@ -46,7 +47,42 @@ const PLANS = [
     features: ['Everything in Plus', 'Unlimited family members', 'Kids Space + PIN lock', 'Memory Vault 20GB', 'Admin dashboard'],
     cta: 'Get Family Plan',
   },
+  {
+    id: 'business',
+    tier: 'business',
+    group: 'business',
+    name: 'Business',
+    label: '₹299 / month',
+    yearlyLabel: '₹249 / month (₹2990/yr)',
+    price: 299,
+    yearlyPrice: 2990,
+    color: '#10b981',
+    monthlyKey: 'business',
+    yearlyKey: 'business_yearly',
+    badge: 'SMALL SHOP',
+    features: ['For one shop or a solo business', 'GST invoicing', 'Voice business ledger', 'Stock and inventory', 'Customer list and reminders'],
+    cta: 'Get Business',
+  },
+  {
+    id: 'business_team',
+    tier: 'growth',
+    group: 'business',
+    name: 'Business Team',
+    label: '₹999 / month',
+    yearlyLabel: '₹833 / month (₹9990/yr)',
+    price: 999,
+    yearlyPrice: 9990,
+    color: '#0ea5e9',
+    monthlyKey: 'business_team',
+    yearlyKey: 'business_team_yearly',
+    badge: 'STAFF OR FLEET',
+    features: ['Everything in Business', 'For a business with staff or a fleet', 'Attendance and GPS check-in', 'Payroll and payslips', 'Team task board'],
+    cta: 'Get Business Team',
+  },
 ];
+
+// Which card is "active" for the plan stored on the account.
+const TIER_TO_CARD = { premium: 'plus', pro: 'plus', growth: 'business_team' };
 
 export default function SubscriptionPage() {
   const router = useRouter();
@@ -56,21 +92,46 @@ export default function SubscriptionPage() {
   const [paying, setPaying] = useState(null);
   const [annual, setAnnual] = useState(false);
   const [toast, setToast] = useState('');
+  const [planEnds, setPlanEnds] = useState(null);
+  const [codeText, setCodeText] = useState('');
+  const [codeBusy, setCodeBusy] = useState(false);
+  const [codeMsg, setCodeMsg] = useState('');
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.replace('/login'); return; }
-    supabase
-            .from('subscriptions')
-            .select('plan_id, is_active')
-            .eq('user_id', user?.id)
-            .eq('is_active', true)
-            .single()
-            .then(({ data }) => {
-              if (data?.plan_id) setCurrentPlan(data.plan_id.replace('_yearly', ''));
-              setLoading(false);
-            });
+    loadPlan();
   }, [user, authLoading]);
+
+  // The plan is read from the account itself, so a plan given by a free-period
+  // code shows here the same way a paid one does.
+  async function loadPlan() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('subscription_tier, subscription_expires_at')
+      .eq('user_id', user?.id)
+      .maybeSingle();
+    const tier = data?.subscription_tier || 'free';
+    setCurrentPlan(TIER_TO_CARD[tier] || tier);
+    setPlanEnds(data?.subscription_expires_at || null);
+    setLoading(false);
+  }
+
+  async function handleCode() {
+    const code = codeText.trim().toUpperCase();
+    if (!code || !accessToken || codeBusy) return;
+    setCodeBusy(true);
+    setCodeMsg('');
+    const { data: res, error: resErr } = await apiPost('/api/referral', { code, app: getAppType() === 'business' ? 'business' : 'personal' }, accessToken);
+    if (res?.success) {
+      setCodeMsg(`✅ Code accepted: ${res.days} days free.`);
+      setCodeText('');
+      await loadPlan();
+    } else {
+      setCodeMsg(`❌ ${res?.error || resErr?.message || resErr || 'Could not apply the code. Try again.'}`);
+    }
+    setCodeBusy(false);
+  }
 
   async function handleUpgrade(plan) {
     if (!user || !accessToken) return;
@@ -97,6 +158,7 @@ export default function SubscriptionPage() {
           const result = verifyRes;
           if (result.success) {
             setCurrentPlan(plan.id);
+            loadPlan();
             setToast(`✅ ${order.plan_name} activated! Enjoy your upgrade.`);
             setTimeout(() => setToast(''), 5000);
           } else {
@@ -137,7 +199,8 @@ export default function SubscriptionPage() {
       <main style={{ maxWidth: 860, margin: '0 auto', padding: '80px 16px 60px' }}>
         <h1 style={{ fontSize: 28, fontWeight: 900, textAlign: 'center', margin: '0 0 8px', letterSpacing: '-0.5px' }}>Choose your plan</h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', textAlign: 'center', margin: '0 0 32px' }}>
-          Current plan: <strong style={{ color: 'var(--primary)', textTransform: 'capitalize' }}>{currentPlan}</strong>
+          Current plan: <strong style={{ color: 'var(--primary)', textTransform: 'capitalize' }}>{currentPlan.replace('_', ' ')}</strong>
+          {planEnds && currentPlan !== 'free' ? ` · until ${new Date(planEnds).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
         </p>
 
         {/* Monthly / Yearly toggle */}
@@ -155,8 +218,14 @@ export default function SubscriptionPage() {
 
         {/* Plan cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
-          {PLANS.map((plan) => {
-            const isCurrent = currentPlan === plan.id || (currentPlan === 'premium' && plan.id === 'plus');
+          {PLANS.filter((p) => {
+            // Inside the Android apps each app shows its own plans; on the website all are shown.
+            const isNative = typeof window !== 'undefined' && window.Capacitor
+              && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform();
+            if (!isNative) return true;
+            return getAppType() === 'business' ? p.group === 'business' : p.group !== 'business';
+          }).map((plan) => {
+            const isCurrent = currentPlan === plan.id;
             const price = annual && plan.yearlyPrice ? Math.round(plan.yearlyPrice / 12) : plan.price;
             const label = annual && plan.yearlyLabel ? plan.yearlyLabel : plan.label;
 
@@ -205,6 +274,32 @@ export default function SubscriptionPage() {
               </div>
             );
           })}
+        </div>
+
+        {/* Free-period code */}
+        <div style={{ maxWidth: 420, margin: '32px auto 0', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+          <label htmlFor="qk-free-code" style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Have a code?</label>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 10px' }}>Enter a QuietKeep code or a friend's code to use a plan free for a period. No payment is taken.</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              id="qk-free-code"
+              value={codeText}
+              onChange={(e) => setCodeText(e.target.value.toUpperCase())}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCode(); }}
+              placeholder="e.g. QKAB12CD34"
+              maxLength={32}
+              autoCapitalize="characters"
+              style={{ flex: 1, minWidth: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'monospace', letterSpacing: '0.06em' }}
+            />
+            <button
+              onClick={handleCode}
+              disabled={codeBusy || !codeText.trim()}
+              style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: codeBusy || !codeText.trim() ? 'default' : 'pointer', opacity: codeBusy || !codeText.trim() ? 0.6 : 1, fontFamily: 'inherit' }}
+            >
+              {codeBusy ? 'Checking…' : 'Apply'}
+            </button>
+          </div>
+          {codeMsg && <p role="status" style={{ fontSize: 13, color: 'var(--text)', margin: '10px 0 0' }}>{codeMsg}</p>}
         </div>
 
         <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-subtle)', marginTop: 28 }}>

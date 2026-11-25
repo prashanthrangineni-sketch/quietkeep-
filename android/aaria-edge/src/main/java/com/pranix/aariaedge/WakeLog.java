@@ -40,6 +40,43 @@ final class WakeLog {
         } catch (Throwable ignored) {}
     }
 
+    /**
+     * One line for every piece of speech the listener finished hearing, whatever happened to it, so a real phone
+     * shows where a wake was lost: how long the speech was, how loud (peak, in dB below full scale), what was
+     * decided (outcome) and the name score. The spoken words are added only while the diagnostic dial
+     * diagnosticTranscripts is on (off by default, never saved). Audio is never written.
+     */
+    static String segmentLine(long durationMs, int peakDb, String outcome, float score, String transcript) {
+        String line = String.format(Locale.ROOT, "segment durMs=%d peakDb=%d outcome=%s score=%.3f",
+            durationMs, peakDb, safeId(outcome), score);
+        if (transcript != null) {
+            String t = transcript.replace('\n', ' ').replace('\r', ' ').replace('"', '\'');
+            if (t.length() > 120) t = t.substring(0, 120);
+            line += " text=\"" + t + "\"";
+        }
+        return line;
+    }
+
+    /** Writes the segment line. Logging must never break listening, so any failure here is ignored. */
+    static void segment(long durationMs, short[] audio, String outcome, float score, String transcript) {
+        try {
+            String words = WakeTuning.current().diagnosticTranscripts ? transcript : null;
+            sink.info(TAG, segmentLine(durationMs, peakDb(audio), outcome, score, words));
+        } catch (Throwable ignored) {}
+    }
+
+    /** The loudest sample in dB below full scale: 0 is clipping, -99 is silence. */
+    static int peakDb(short[] audio) {
+        if (audio == null) return -99;
+        int peak = 0;
+        for (short s : audio) {
+            int a = Math.abs((int) s);
+            if (a > peak) peak = a;
+        }
+        if (peak == 0) return -99;
+        return (int) Math.round(20.0 * Math.log10(peak / 32768.0));
+    }
+
     /** Listener ids are short internal names; anything else is replaced so nothing unexpected reaches the log. */
     static String safeId(String id) {
         if (id == null || id.isEmpty()) return "unknown";

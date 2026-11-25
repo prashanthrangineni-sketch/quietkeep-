@@ -8,9 +8,9 @@ existing `useFeatureGate` hook. While no row exists in `feature_flags`, the
 gate says OPEN and everyone keeps every face (today's behaviour).
 
 Free for everyone regardless of this row: no face, the simple face, both
-anime faces, and Look 1 of the realistic woman and man. The row only
-controls the extra realistic looks (woman Look 2, man Looks 2–4, and future
-looks).
+anime faces, Look 1 of the realistic woman and man, and the woman in a saree
+and the man in a kurta (founder, 25 Nov 2026). The row only controls the
+extra realistic looks (woman Look 2, man Looks 2-4, and future looks).
 
 To make the extra looks paid (Plus and above), add one row:
 

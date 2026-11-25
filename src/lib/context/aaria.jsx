@@ -60,6 +60,7 @@ import { reportOutcome, outcomeFromCapture, outcomeFromClientAction } from '@/li
 import { handleFaceCommand } from '@/lib/avatar/face-command'; // "change your face" by voice (Thread 4)
 
 import { offerAnswer } from '@/lib/habit-offers'; // T31: spoken yes / no to an offered habit
+import { tellEdgeLanguage } from '@/lib/edge-language'; // T17: wake check in the person's language
 
 // AG-I3: Shared brain v0 flag gate (default off: existing path unchanged byte-for-byte in behaviour)
 const USE_SHARED_BRAIN = process.env.NEXT_PUBLIC_SHARED_BRAIN === '1';
@@ -559,6 +560,11 @@ export function AariaProvider({ children }) {
       if (!listeningRef.current) { autoTurnRef.current = true; startListenRef.current?.(); }
     }, 150);
   }, [checkPhoneLocked]);
+
+  // T17 (25 Nov 2026): the on-phone wake listener checks the name in the
+  // person's language. It forgets the language when the app closes, so tell it
+  // on every open and whenever the language changes.
+  useEffect(() => { tellEdgeLanguage(voiceLang); }, [voiceLang]);
 
   // T31 (23 Nov 2026): once after the app opens, if Aaria is sure of a habit
   // and it is the right moment, she asks ONCE (hybrid). Then she listens for

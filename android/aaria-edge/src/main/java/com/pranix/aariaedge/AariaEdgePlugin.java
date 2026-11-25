@@ -123,7 +123,7 @@ public class AariaEdgePlugin extends Plugin {
         public void start() throws Exception {
             NightlySyncWorker.microphoneActive = true;
             try {
-                implementation.start(16000, 250, 600);
+                implementation.start(16000, WakeTuning.current().minSpeechMs, WakeTuning.current().minSilenceMs);
             } catch (Exception e) {
                 NightlySyncWorker.microphoneActive = false;
                 throw e;
@@ -187,6 +187,7 @@ public class AariaEdgePlugin extends Plugin {
             if (replyManager == null) replyManager = new ReplyManager(getContext());
             if (modelStore == null) modelStore = new ModelStore(getContext());
             if (commandRecognizer == null) commandRecognizer = new CommandRecognizer(getContext(), modelStore);
+            WakeTuning.loadAssetOnce(getContext());
             if (wakeWordDetector == null) loadWakeWordDetector();
             
             if (implementation == null) {
@@ -207,28 +208,43 @@ public class AariaEdgePlugin extends Plugin {
 
                         // Speech that arrives while a turn-off is under way, or from a recorder that has been told
                         // to stop, is thrown away here and now, whatever happens before its turn would have come.
-                        if (turningOff || speechUnwanted) return;
+                        if (turningOff || speechUnwanted) {
+                            WakeLog.segment(durationMs, audioData, "dropped_turning_off", 0f, null);
+                            return;
+                        }
                         // Speech heard before a turn-off is thrown away when its turn comes.
                         final int offCountWhenHeard = offCount.get();
-                        executor.submit(() -> {
-                            if (stale(offCountWhenHeard)) return;
-                            if (System.currentTimeMillis() - lastWakeWordTime < 1500) return;
+                        getExecutor().submit(() -> {
+                            if (stale(offCountWhenHeard)) {
+                                WakeLog.segment(durationMs, audioData, "dropped_turned_off", 0f, null);
+                                return;
+                            }
+                            if (System.currentTimeMillis() - lastWakeWordTime < 1500) {
+                                WakeLog.segment(durationMs, audioData, "just_after_wake", 0f, null);
+                                return;
+                            }
                             final int nameEpochAtStart;
                             synchronized (nameLock) { nameEpochAtStart = nameEpoch; }
                             // The app holds the microphone: whatever was still being worked out is dropped.
-                            if (listenController.isHeldByApp()) return;
+                            if (listenController.isHeldByApp()) {
+                                WakeLog.segment(durationMs, audioData, "app_holds_mic", 0f, null);
+                                return;
+                            }
                             statsHeard++;
 
                             // Read once: a turn-off in the middle must not turn a wake check into a command.
                             final boolean checkForName = isWaitingForWakeWord;
+                            if (!checkForName) WakeLog.segment(durationMs, audioData, "command_mode", 0f, null);
                             if (checkForName) {
-                                if (durationMs < 300) {
+                                if (durationMs < WakeTuning.current().minWakeSpeechMs) {
                                     statsSkipped++;
+                                    WakeLog.segment(durationMs, audioData, "too_short", 0f, null);
                                     return;
                                 }
 
+                                if (wakeWordDetector == null) WakeLog.segment(durationMs, audioData, "no_detector", 0f, null);
                                 if (wakeWordDetector != null) {
-                                    int wakeSamples = 1500 * 16;
+                                    int wakeSamples = WakeTuning.current().wakeWindowMs * 16;
                                     short[] wakeData = audioData;
                                     if (audioData.length > wakeSamples) {
                                         wakeData = new short[wakeSamples];
@@ -243,12 +259,14 @@ public class AariaEdgePlugin extends Plugin {
                                     // the next thing said is the command. A wake the existing check heard is handled as before.
                                     final boolean spotterAlone = detectorNow instanceof EitherWakeWord
                                             && "keyword_spotter".equals(((EitherWakeWord) detectorNow).heardBy());
-                                    if (score >= 0.8f) {
+                                    final boolean nameHeard = score >= Math.min(WakeTuning.current().matchThreshold, WakeTuning.current().shortNameThreshold);
+                                    if (!nameHeard) WakeLog.segment(durationMs, audioData, "no_name", score, heardText(detectorNow));
+                                    if (nameHeard) {
                                         boolean hasCommand = false;
                                         String commandTranscript = "";
 
-                                        if (durationMs > 1500 + 300 && !spotterAlone) {
-                                            int maxSamples = 8000 * 16;
+                                        if (durationMs > WakeTuning.current().wakeWindowMs + WakeTuning.current().minWakeSpeechMs && !spotterAlone) {
+                                            int maxSamples = WakeTuning.current().maxCommandMs * 16;
                                             short[] cmdData = audioData;
                                             if (audioData.length > maxSamples) {
                                                 cmdData = new short[maxSamples];
@@ -286,7 +304,10 @@ public class AariaEdgePlugin extends Plugin {
 
                                         // The app took the microphone, or listening was turned off, while this was being
                                         // worked out: drop it. Nobody is told of a wake after "Turn off".
-                                        if (listenController.isHeldByApp() || stale(offCountWhenHeard)) return;
+                                        if (listenController.isHeldByApp() || stale(offCountWhenHeard)) {
+                                            WakeLog.segment(durationMs, audioData, "wake_dropped_late", score, null);
+                                            return;
+                                        }
 
                                         JSObject ev = new JSObject();
                                         ev.put("id", wakeWordDetector.id());
@@ -315,6 +336,7 @@ public class AariaEdgePlugin extends Plugin {
                                         // One log line per wake the app was told of: time, score, who heard it, command or not.
                                         // Never audio, never the spoken words.
                                         WakeLog.wake(t, score, heardByForLog, hasCommand);
+                                        WakeLog.segment(durationMs, audioData, "wake", score, heardText(usedDetector));
                                         playChime();
                                         lastWakeWordTime = System.currentTimeMillis();
 
@@ -452,6 +474,25 @@ public class AariaEdgePlugin extends Plugin {
         }
     }
 
+    /**
+     * The worker that works out heard speech. The page shuts it down when it closes (handleOnDestroy), but the
+     * listening service can outlive the page; before 23 Nov 2026 the next speech then threw
+     * RejectedExecutionException and killed the recording thread (founder's phone, T16). Re-made when needed.
+     */
+    private synchronized ExecutorService getExecutor() {
+        if (executor == null || executor.isShutdown()) {
+            executor = Executors.newSingleThreadExecutor();
+        }
+        return executor;
+    }
+
+    /** What the recogniser wrote for the last wake check, for the diagnostic log only (null if unknown). */
+    private static String heardText(WakeWordDetector detector) {
+        WakeWordDetector d = detector;
+        if (d instanceof EitherWakeWord) d = ((EitherWakeWord) d).first();
+        return (d instanceof AsrWakeWord) ? ((AsrWakeWord) d).lastTranscript() : null;
+    }
+
     @PluginMethod
     public void getStatus(PluginCall call) {
         boolean ready = ensureReady();
@@ -540,8 +581,8 @@ public class AariaEdgePlugin extends Plugin {
         }
 
         int sampleRate = call.getInt("sampleRate", 16000);
-        int minSpeechMs = call.getInt("minSpeechMs", 250);
-        int minSilenceMs = call.getInt("minSilenceMs", 600);
+        int minSpeechMs = call.getInt("minSpeechMs", WakeTuning.current().minSpeechMs);
+        int minSilenceMs = call.getInt("minSilenceMs", WakeTuning.current().minSilenceMs);
 
         try {
             NightlySyncWorker.microphoneActive = true;
@@ -1499,6 +1540,36 @@ public class AariaEdgePlugin extends Plugin {
 
     static PcmSource.Factory enrollPcmFactory = PcmSource.defaultFactory;
 
+    /**
+     * Phase 1 tuning: changes named wake dials while the app runs (kept until the app closes); see WakeTuning.
+     * Dials not named keep their value; a value outside its allowed range is ignored. Pass { reset: true } to go
+     * back to the shipped file (assets/wakeword/tuning.json). Resolves with every dial's current value.
+     */
+    @PluginMethod
+    public void setWakeTuning(PluginCall call) {
+        JSObject data = call.getData();
+        if (data != null && data.optBoolean("reset", false)) {
+            WakeTuning.set(WakeTuning.loadAsset(getContext()));
+        } else {
+            WakeTuning.set(WakeTuning.current().with(data));
+        }
+        call.resolve(wakeTuningResult());
+    }
+
+    /** Every wake dial's current value. */
+    @PluginMethod
+    public void getWakeTuning(PluginCall call) {
+        call.resolve(wakeTuningResult());
+    }
+
+    private JSObject wakeTuningResult() {
+        try {
+            return JSObject.fromJSONObject(WakeTuning.current().toJson());
+        } catch (Exception e) {
+            return new JSObject();
+        }
+    }
+
     private List<String> getPrefixes() {
         List<String> prefixes = new ArrayList<>();
         try {
@@ -1554,7 +1625,7 @@ public class AariaEdgePlugin extends Plugin {
         }
         final String typedName = wakeName;
 
-        executor.submit(() -> {
+        getExecutor().submit(() -> {
             boolean wasActive = NightlySyncWorker.microphoneActive;
             if (wasActive) {
                 implementation.stop();
@@ -1605,7 +1676,7 @@ public class AariaEdgePlugin extends Plugin {
                 pcmSource = null;
 
                 if (wasActive) {
-                    implementation.start(16000, 250, 600);
+                    implementation.start(16000, WakeTuning.current().minSpeechMs, WakeTuning.current().minSilenceMs);
                     wasActive = false;
                 }
 
@@ -1635,7 +1706,7 @@ public class AariaEdgePlugin extends Plugin {
                     try { pcmSource.close(); } catch(Exception ignored) {}
                 }
                 if (wasActive) {
-                    try { implementation.start(16000, 250, 600); } catch(Exception ignored) {}
+                    try { implementation.start(16000, WakeTuning.current().minSpeechMs, WakeTuning.current().minSilenceMs); } catch(Exception ignored) {}
                 }
             }
         });

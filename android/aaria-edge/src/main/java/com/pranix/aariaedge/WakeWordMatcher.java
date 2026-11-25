@@ -71,7 +71,7 @@ public class WakeWordMatcher {
         for (String p : prefixes) {
             if (token.equals(token(p))) return true;
         }
-        for (String p : LOOSE_PREFIXES) {
+        for (String p : WakeTuning.current().looseGreetings) {
             if (token.equals(p)) return true;
         }
         return false;

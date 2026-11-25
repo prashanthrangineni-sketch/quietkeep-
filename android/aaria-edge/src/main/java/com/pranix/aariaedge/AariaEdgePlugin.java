@@ -187,6 +187,7 @@ public class AariaEdgePlugin extends Plugin {
             if (replyManager == null) replyManager = new ReplyManager(getContext());
             if (modelStore == null) modelStore = new ModelStore(getContext());
             if (commandRecognizer == null) commandRecognizer = new CommandRecognizer(getContext(), modelStore);
+            WakeTuning.loadAssetOnce(getContext());
             if (wakeWordDetector == null) loadWakeWordDetector();
             
             if (implementation == null) {

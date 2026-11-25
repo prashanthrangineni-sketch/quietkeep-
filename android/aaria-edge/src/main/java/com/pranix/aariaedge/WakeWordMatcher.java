@@ -201,7 +201,7 @@ public class WakeWordMatcher {
         for (String h : validHeard) {
             if (h.isEmpty() || h.equals(typedNorm)) continue;
             float sim = getEditDistanceRatio(h, typedNorm);
-            if (sim < ENROLL_MIN_SIMILARITY) continue;
+            if (sim < WakeTuning.current().learnMinSimilarity) continue;
             
             int count = 0;
             for (String other : validHeard) {

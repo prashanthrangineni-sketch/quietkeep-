@@ -82,9 +82,9 @@ woman in a saree and an Indian man in a kurta. Taken from commit
 | `female-adult-11/f011_head_color.jpg` | 118,006 | `3722f48010b2afcec6cfc6d7a4a2f4bb32f57a45ede37c6a7903f66fb7c0f27d` | From `f011_head_color.tga`: a red bindi painted between the eyebrows. |
 | `female-adult-11/f011_opacity_color.png` | 139,160 | `1e3fc9a28d8526d9bea4235b6ef0f376405503f4821cc4266bf8cc44b1e61aad` | From `f011_opacity_color.tga`: resized, at most 256 colours. |
 | `female-adult-11/f011_pallu_color.jpg` | 26,925 | `d20acdb7ecf383b4245f09998db404f07c2336dac43a9f86b5ca5a7b82515474` | Drawn by Pranix AI Labs (not from Rocketbox): the saree cloth for the end piece over her shoulder. The end piece itself is built on the device by `src/components/avatar/saree-pallu.js`. |
-| `male-adult-15/Male_Adult_15_facial.glb` | 828,696 | `0d3e9c3abb9e2e55bd1c72bce22c62c89650225c70684add0da728696c5cbdc5` | Converted and shrunk the same way. |
+| `male-adult-15/Male_Adult_15_facial.glb` | 828,704 | `c756c2ddab821f4c67f8cd80a867af636b7d688d0d89da7d0e1da8c6886790c4` | Converted and shrunk the same way; then (25 Nov) the cap's 172 points pulled inside the head by `scripts/avatar-kurta-hair.py`, so his own hair shows and no cap edge remains. |
 | `male-adult-15/m204_body_color.jpg` | 104,027 | `4993a29f8bd897ad6776ae6de3b9c9ad5ea1d4ce9dd5764f826edd24b50349a3` | From `m204_body_color.tga` (white kurta and pyjama): resized only. |
-| `male-adult-15/m204_head_color.jpg` | 88,845 | `9fb705398f2216667090b6dc254caed34304f1e165fe5c0dfe674789cefe1790` | From `m204_head_color.tga`: the embroidered cap painted over in dark hair colour, so the default kurta look carries no religious cap. |
+| `male-adult-15/m204_head_color.jpg` | 88,845 | `9fb705398f2216667090b6dc254caed34304f1e165fe5c0dfe674789cefe1790` | From `m204_head_color.tga`: the embroidered cap painted over in dark hair colour (a safety net; the cap shape itself is now hidden, see above), so the kurta look carries no religious cap. |
 
 The page names these two looks by their clothing ("Saree", "Kurta"), never by origin. Like
 the others they are sculpted game-style characters, not photographs and not made by AI.

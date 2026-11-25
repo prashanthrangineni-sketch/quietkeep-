@@ -259,12 +259,14 @@ public class AariaEdgePlugin extends Plugin {
                                     // the next thing said is the command. A wake the existing check heard is handled as before.
                                     final boolean spotterAlone = detectorNow instanceof EitherWakeWord
                                             && "keyword_spotter".equals(((EitherWakeWord) detectorNow).heardBy());
-                                    if (score >= 0.8f) {
+                                    final boolean nameHeard = score >= Math.min(WakeTuning.current().matchThreshold, WakeTuning.current().shortNameThreshold);
+                                    if (!nameHeard) WakeLog.segment(durationMs, audioData, "no_name", score, heardText(detectorNow));
+                                    if (nameHeard) {
                                         boolean hasCommand = false;
                                         String commandTranscript = "";
 
-                                        if (durationMs > 1500 + 300 && !spotterAlone) {
-                                            int maxSamples = 8000 * 16;
+                                        if (durationMs > WakeTuning.current().wakeWindowMs + WakeTuning.current().minWakeSpeechMs && !spotterAlone) {
+                                            int maxSamples = WakeTuning.current().maxCommandMs * 16;
                                             short[] cmdData = audioData;
                                             if (audioData.length > maxSamples) {
                                                 cmdData = new short[maxSamples];

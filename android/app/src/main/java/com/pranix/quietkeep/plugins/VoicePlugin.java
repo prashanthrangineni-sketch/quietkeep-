@@ -281,7 +281,6 @@ public class VoicePlugin extends Plugin {
                 context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             prefs.edit()
                 .putBoolean("voice_service_active", true)
-                .putString("auth_token",    authToken)
                 .putString("server_url",    serverUrl)
                 .putString("voice_mode",    mode)
                 .putString("workspace_id",  workspaceId)

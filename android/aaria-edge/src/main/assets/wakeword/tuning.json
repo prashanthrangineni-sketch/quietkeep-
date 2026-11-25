@@ -1,0 +1,15 @@
+{
+  "looseGreetings": ["a", "hay", "ay", "he", "eh", "high", "hai", "ari"],
+  "matchThreshold": 0.8,
+  "shortNameThreshold": 0.9,
+  "shortNameMaxLetters": 3,
+  "learnMinTimesHeard": 2,
+  "learnMinSimilarity": 0.6,
+  "learnMaxSpellings": 5,
+  "minSpeechMs": 250,
+  "minSilenceMs": 600,
+  "wakeWindowMs": 1500,
+  "minWakeSpeechMs": 300,
+  "maxCommandMs": 8000,
+  "nameAloneWakes": true
+}

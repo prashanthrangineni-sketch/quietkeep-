@@ -118,7 +118,9 @@ export default function OnboardingPage() {
   // Saved on this phone only (like the panel switch). Free looks only here.
   function applyFaceChoice() {
     if (faceChoice === 'none') { setFaceOn(false); return; }
-    saveChosenFace({ style: faceChoice, who: faceWhoNow, look: `${faceWhoNow}-1` });
+    // 'realistic-in' = the Indian looks: woman in a saree (look 3), man in a kurta (look 5).
+    const indian = faceChoice === 'realistic-in';
+    saveChosenFace({ style: indian ? 'realistic' : faceChoice, who: faceWhoNow, look: indian ? (faceWhoNow === 'man' ? 'man-5' : 'woman-3') : `${faceWhoNow}-1` });
     setFaceOn(true);
   }
 

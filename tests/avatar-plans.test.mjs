@@ -32,7 +32,7 @@ const ob = readFileSync(new URL('../src/app/onboarding/page.jsx', import.meta.ur
 t('signup has a face step after voice, off by default', () => {
   assert.match(ob, /id: 'voice'[\s\S]*id: 'face'[\s\S]*id: 'persona'/);
   assert.match(ob, /useState\('none'\)/);
-  assert.match(ob, /look: `\$\{faceWhoNow\}-1`/); // signup only offers free looks
+  assert.match(ob, /look: indian \? \(faceWhoNow === 'man' \? 'man-5' : 'woman-3'\) : `\$\{faceWhoNow\}-1`/); // Look 1, or the Indian look (master plan A2)
   for (let i = 0; i <= 6; i++) assert.match(ob, new RegExp(`step === ${i} `));
   assert.doesNotMatch(ob, /step === 7/);
 });
@@ -43,7 +43,7 @@ t('stage and panel respect the gate', () => {
   assert.match(stage, /router\.push\('\/pricing'\)/);
 });
 t('preview pictures exist and are small', () => {
-  for (const f of ['anime-woman', 'anime-man', 'realistic-woman', 'realistic-man']) {
+  for (const f of ['anime-woman', 'anime-man', 'realistic-woman', 'realistic-man', 'realistic-indian-woman', 'realistic-indian-man']) {
     const b = readFileSync(new URL(`../public/avatars/previews/${f}.jpg`, import.meta.url));
     assert.ok(b.length > 2000 && b.length < 30000, f);
   }

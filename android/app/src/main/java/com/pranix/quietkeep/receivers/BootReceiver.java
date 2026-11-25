@@ -49,7 +49,7 @@ public class BootReceiver extends BroadcastReceiver {
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         if (!prefs.getBoolean("voice_service_active", false)) return;
 
-        String authToken   = prefs.getString("auth_token",   null);
+        String authToken   = com.pranix.quietkeep.security.TokenVault.get(context, PREFS_NAME); // item 1.6
         String mode        = prefs.getString("voice_mode",   "personal");
         String serverUrl   = prefs.getString("server_url",   "https://quietkeep.com");
         String workspaceId = prefs.getString("workspace_id", null);

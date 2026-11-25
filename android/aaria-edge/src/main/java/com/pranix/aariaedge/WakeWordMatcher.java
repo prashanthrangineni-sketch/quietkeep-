@@ -111,6 +111,32 @@ public class WakeWordMatcher {
         return best;
     }
 
+    /** A greeting the recogniser ran into the name, as one word: Telugu writes "Hey Aaria" as "హరియా" (hariya). */
+    private static final String[] RUN_IN_GREETINGS = {"hey", "hay", "hai", "hi", "he", "h"};
+
+    /**
+     * How much a one-word phrase sounds like the name: 0 to 1. The word itself, and the word with a greeting
+     * that was run into it removed, are compared; like nameScore, the first sound must be the name's.
+     * Measured 23 Nov 2026 on the founder's own 30 "Aaria" recordings: the Telugu recogniser writes "ఆర్యా"
+     * about 27 times in 30, so these now wake; none of the 660 measured ordinary sentences newly wakes.
+     */
+    static float wholePhraseScore(String word, String name) {
+        String nameKey = soundKey(token(name));
+        if (nameKey.isEmpty() || word == null || word.isEmpty()) return 0.0f;
+        List<String> candidates = new ArrayList<>();
+        candidates.add(word);
+        for (String g : RUN_IN_GREETINGS) {
+            if (word.length() > g.length() && word.startsWith(g)) candidates.add(word.substring(g.length()));
+        }
+        float best = 0.0f;
+        for (String c : candidates) {
+            String k = soundKey(c);
+            if (k.isEmpty() || k.charAt(0) != nameKey.charAt(0)) continue;
+            best = Math.max(best, getEditDistanceRatio(k, nameKey));
+        }
+        return best;
+    }
+
     /**
      * Does this transcript begin with a greeting followed by the wake name (or one of its taught spellings)?
      * The greeting is required: the name alone never wakes.

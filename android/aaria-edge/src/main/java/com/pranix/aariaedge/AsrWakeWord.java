@@ -18,6 +18,13 @@ public class AsrWakeWord implements WakeWordDetector {
     private final MemoryStore memoryStore;
     private final List<String> prefixes = new ArrayList<>();
     private final AariaEdgePlugin plugin;
+    /** What the recogniser wrote for the last piece of speech checked, for the diagnostic log only. */
+    private volatile String lastTranscript = "";
+
+    /** What the recogniser wrote for the last piece of speech checked ("" when it heard nothing). */
+    public String lastTranscript() {
+        return lastTranscript;
+    }
 
     public AsrWakeWord(Context context, CommandRecognizer recognizer, MemoryStore memoryStore, AariaEdgePlugin plugin) {
         this.context = context;

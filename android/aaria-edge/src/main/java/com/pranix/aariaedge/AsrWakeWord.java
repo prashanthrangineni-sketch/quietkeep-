@@ -70,6 +70,7 @@ public class AsrWakeWord implements WakeWordDetector {
 
     @Override
     public float score(short[] frame16k) {
+        lastTranscript = "";
         if (recognizer == null) return 0.0f;
         CommandRecognizer.RecognizeResult result = recognizer.recognizeCommand(frame16k, 16000);
         if (result == null || result.transcript == null || result.transcript.trim().isEmpty()) {

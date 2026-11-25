@@ -93,7 +93,7 @@ public class LocationService extends Service {
         if (intent == null) {
             // Restarted by system — re-read prefs
             SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            authToken = prefs.getString("auth_token",  null);
+            authToken = com.pranix.quietkeep.security.TokenVault.get(this, PREFS_NAME); // item 1.6
             serverUrl = prefs.getString("server_url",  "https://quietkeep.com");
             if (authToken != null) startPolling();
             return START_STICKY;

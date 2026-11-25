@@ -281,12 +281,13 @@ public class VoicePlugin extends Plugin {
                 context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             prefs.edit()
                 .putBoolean("voice_service_active", true)
-                .putString("auth_token",    authToken)
                 .putString("server_url",    serverUrl)
                 .putString("voice_mode",    mode)
                 .putString("workspace_id",  workspaceId)
                 .putString("language_code", languageCode)  // STT fix
                 .apply();
+            // Item 1.6: the sign-in token is kept only in encrypted form.
+            com.pranix.quietkeep.security.TokenVault.put(context, PREFS_NAME, authToken);
 
             Log.d(TAG, "VoicePlugin.startService → resolve OK");
             JSObject r = new JSObject();
@@ -384,10 +385,10 @@ public class VoicePlugin extends Plugin {
             // Persist for restart-on-kill
             getContext().getSharedPreferences("QuietKeepPrefs", android.content.Context.MODE_PRIVATE)
                 .edit()
-                .putString("auth_token",  authToken)
                 .putString("server_url",  serverUrl)
                 .putBoolean("location_service_active", true)
                 .apply();
+            com.pranix.quietkeep.security.TokenVault.put(getContext(), "QuietKeepPrefs", authToken); // item 1.6
 
             Log.d(TAG, "VoicePlugin.startLocationService → started");
             JSObject r = new JSObject();

@@ -1,10 +1,7 @@
 package com.pranix.quietkeep.plugins;
 
-import android.app.usage.UsageStats;
-import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.BatteryManager;
 import android.provider.Settings;
 import com.getcapacitor.JSObject;
@@ -12,56 +9,28 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
-import java.util.List;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 /**
  * PerceptionPlugin — passive device signals for QuietKeep
  * Called from perception.ts via: window.Capacitor.Plugins.Perception
  * No static @capacitor/core import needed on the web side.
  *
- * REQUIRED PERMISSION (manual grant):
- *   Settings → Apps → Special app access → Usage access → QuietKeep → Allow
+ * No usage-access permission is needed any more (removed 25 Nov 2026, item 1.6).
  */
 @CapacitorPlugin(name = "Perception")
 public class PerceptionPlugin extends Plugin {
 
+    // Item 1.6 (25 Nov 2026): reading which app is on screen is removed, together
+    // with the usage-access permission. Nothing in the product calls this (see
+    // src/lib/capacitor/perception.ts); it stays only so an old caller gets a
+    // clear "not available" instead of a crash.
     @PluginMethod
     public void getForegroundApp(PluginCall call) {
-        try {
-            UsageStatsManager usm = (UsageStatsManager)
-                getContext().getSystemService(Context.USAGE_STATS_SERVICE);
-            long end = System.currentTimeMillis();
-            List<UsageStats> stats = usm.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY, end - 60_000, end);
-
-            if (stats == null || stats.isEmpty()) {
-                JSObject r = new JSObject();
-                r.put("package_name", "unknown");
-                r.put("app_name", "unknown");
-                r.put("permission_required", "PACKAGE_USAGE_STATS");
-                call.resolve(r); return;
-            }
-
-            SortedMap<Long, UsageStats> sorted = new TreeMap<>();
-            for (UsageStats s : stats) sorted.put(s.getLastTimeUsed(), s);
-
-            String pkg  = sorted.get(sorted.lastKey()).getPackageName();
-            String name = pkg;
-            try {
-                name = getContext().getPackageManager()
-                    .getApplicationLabel(
-                        getContext().getPackageManager().getApplicationInfo(pkg, 0)
-                    ).toString();
-            } catch (PackageManager.NameNotFoundException ignored) {}
-
-            JSObject r = new JSObject();
-            r.put("package_name", pkg);
-            r.put("app_name",     name);
-            r.put("last_used_ms", sorted.lastKey());
-            call.resolve(r);
-        } catch (Exception e) { call.reject("getForegroundApp: " + e.getMessage()); }
+        JSObject r = new JSObject();
+        r.put("package_name", "unavailable");
+        r.put("app_name", "unavailable");
+        r.put("removed", true);
+        call.resolve(r);
     }
 
     @PluginMethod

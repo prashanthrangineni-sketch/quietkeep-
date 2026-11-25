@@ -385,10 +385,10 @@ public class VoicePlugin extends Plugin {
             // Persist for restart-on-kill
             getContext().getSharedPreferences("QuietKeepPrefs", android.content.Context.MODE_PRIVATE)
                 .edit()
-                .putString("auth_token",  authToken)
                 .putString("server_url",  serverUrl)
                 .putBoolean("location_service_active", true)
                 .apply();
+            com.pranix.quietkeep.security.TokenVault.put(getContext(), "QuietKeepPrefs", authToken); // item 1.6
 
             Log.d(TAG, "VoicePlugin.startLocationService → started");
             JSObject r = new JSObject();

@@ -163,10 +163,11 @@ public class VoiceService extends Service {
             sessionId    = intent.getStringExtra("session_id");
 
             SharedPreferences prefs = getSharedPreferences("qk_auth", MODE_PRIVATE);
+            // Item 1.6: the sign-in token is kept only in encrypted form.
             if (authToken == null || authToken.isEmpty()) {
-                authToken = prefs.getString("auth_token", null);
+                authToken = com.pranix.quietkeep.security.TokenVault.get(this, "qk_auth");
             } else {
-                prefs.edit().putString("auth_token", authToken).apply();
+                com.pranix.quietkeep.security.TokenVault.put(this, "qk_auth", authToken);
             }
             if (serverUrl == null || serverUrl.isEmpty()) {
                 serverUrl = prefs.getString("server_url", "https://quietkeep.com");

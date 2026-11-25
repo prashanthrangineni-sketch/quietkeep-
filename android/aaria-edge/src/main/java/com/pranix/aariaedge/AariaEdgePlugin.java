@@ -304,7 +304,10 @@ public class AariaEdgePlugin extends Plugin {
 
                                         // The app took the microphone, or listening was turned off, while this was being
                                         // worked out: drop it. Nobody is told of a wake after "Turn off".
-                                        if (listenController.isHeldByApp() || stale(offCountWhenHeard)) return;
+                                        if (listenController.isHeldByApp() || stale(offCountWhenHeard)) {
+                                            WakeLog.segment(durationMs, audioData, "wake_dropped_late", score, null);
+                                            return;
+                                        }
 
                                         JSObject ev = new JSObject();
                                         ev.put("id", wakeWordDetector.id());

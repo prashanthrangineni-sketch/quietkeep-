@@ -1540,6 +1540,36 @@ public class AariaEdgePlugin extends Plugin {
 
     static PcmSource.Factory enrollPcmFactory = PcmSource.defaultFactory;
 
+    /**
+     * Phase 1 tuning: changes named wake dials while the app runs (kept until the app closes); see WakeTuning.
+     * Dials not named keep their value; a value outside its allowed range is ignored. Pass { reset: true } to go
+     * back to the shipped file (assets/wakeword/tuning.json). Resolves with every dial's current value.
+     */
+    @PluginMethod
+    public void setWakeTuning(PluginCall call) {
+        JSObject data = call.getData();
+        if (data != null && data.optBoolean("reset", false)) {
+            WakeTuning.set(WakeTuning.loadAsset(getContext()));
+        } else {
+            WakeTuning.set(WakeTuning.current().with(data));
+        }
+        call.resolve(wakeTuningResult());
+    }
+
+    /** Every wake dial's current value. */
+    @PluginMethod
+    public void getWakeTuning(PluginCall call) {
+        call.resolve(wakeTuningResult());
+    }
+
+    private JSObject wakeTuningResult() {
+        try {
+            return JSObject.fromJSONObject(WakeTuning.current().toJson());
+        } catch (Exception e) {
+            return new JSObject();
+        }
+    }
+
     private List<String> getPrefixes() {
         List<String> prefixes = new ArrayList<>();
         try {

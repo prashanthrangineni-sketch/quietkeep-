@@ -123,7 +123,7 @@ public class AariaEdgePlugin extends Plugin {
         public void start() throws Exception {
             NightlySyncWorker.microphoneActive = true;
             try {
-                implementation.start(16000, 250, 600);
+                implementation.start(16000, WakeTuning.current().minSpeechMs, WakeTuning.current().minSilenceMs);
             } catch (Exception e) {
                 NightlySyncWorker.microphoneActive = false;
                 throw e;
@@ -1605,7 +1605,7 @@ public class AariaEdgePlugin extends Plugin {
                 pcmSource = null;
 
                 if (wasActive) {
-                    implementation.start(16000, 250, 600);
+                    implementation.start(16000, WakeTuning.current().minSpeechMs, WakeTuning.current().minSilenceMs);
                     wasActive = false;
                 }
 
@@ -1635,7 +1635,7 @@ public class AariaEdgePlugin extends Plugin {
                     try { pcmSource.close(); } catch(Exception ignored) {}
                 }
                 if (wasActive) {
-                    try { implementation.start(16000, 250, 600); } catch(Exception ignored) {}
+                    try { implementation.start(16000, WakeTuning.current().minSpeechMs, WakeTuning.current().minSilenceMs); } catch(Exception ignored) {}
                 }
             }
         });

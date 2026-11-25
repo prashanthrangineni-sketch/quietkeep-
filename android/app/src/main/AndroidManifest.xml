@@ -47,9 +47,8 @@
     <!-- Battery optimization exemption — prevents OplusHansManager UID freeze -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <!-- Usage stats: PerceptionPlugin.getForegroundApp() -->
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
-        tools:ignore="ProtectedPermissions"/>
+    <!-- Item 1.6 (25 Nov 2026): usage-access permission removed. QuietKeep no
+         longer reads which app is on screen (founder decision 3.1, 13 Nov). -->
 
     <!-- Push notifications: Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

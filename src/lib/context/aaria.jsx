@@ -60,6 +60,7 @@ import { reportOutcome, outcomeFromCapture, outcomeFromClientAction } from '@/li
 import { handleFaceCommand } from '@/lib/avatar/face-command'; // "change your face" by voice (Thread 4)
 
 import { offerAnswer } from '@/lib/habit-offers'; // T31: spoken yes / no to an offered habit
+import { tellEdgeLanguage } from '@/lib/edge-language'; // T17: wake check in the person's language
 
 // AG-I3: Shared brain v0 flag gate (default off: existing path unchanged byte-for-byte in behaviour)
 const USE_SHARED_BRAIN = process.env.NEXT_PUBLIC_SHARED_BRAIN === '1';

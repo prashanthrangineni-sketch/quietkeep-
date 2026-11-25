@@ -286,6 +286,8 @@ public class VoicePlugin extends Plugin {
                 .putString("workspace_id",  workspaceId)
                 .putString("language_code", languageCode)  // STT fix
                 .apply();
+            // Item 1.6: the sign-in token is kept only in encrypted form.
+            com.pranix.quietkeep.security.TokenVault.put(context, PREFS_NAME, authToken);
 
             Log.d(TAG, "VoicePlugin.startService → resolve OK");
             JSObject r = new JSObject();

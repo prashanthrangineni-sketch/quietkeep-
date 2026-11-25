@@ -100,12 +100,32 @@ const PLANS = [
       'WhatsApp payslips',
     ],
   },
+  {
+    id: 'business_team',
+    name: 'Business Team',
+    monthlyPrice: 999,
+    yearlyPrice: 833, // 9990/yr = ₹833/mo
+    monthlyPlanKey: 'business_team',
+    yearlyPlanKey: 'business_team_yearly',
+    color: '#0ea5e9',
+    highlight: false,
+    badge: 'STAFF OR FLEET',
+    cta: 'Start Business Team',
+    ctaHref: '/biz-login',
+    features: [
+      'Everything in Business',
+      'For a business with staff or a fleet',
+      'Attendance + GPS check-in for the team',
+      'Payroll and payslips for staff',
+      'Team task board',
+    ],
+  },
 ];
 
 const FAQS = [
   { q: 'Is the Free plan really free?', a: 'Yes — no credit card, no trial expiry. Free plan is yours forever with genuinely useful features.' },
   { q: 'What happens after the free trial?', a: 'After 14 days you automatically move to the Free plan. No charge. Upgrade whenever you want.' },
-  { q: 'How does the referral reward work?', a: 'Share your unique link from the Dashboard. When a friend activates, both get 30 days of Plus free.' },
+  { q: 'How do free-period codes work?', a: 'Enter a QuietKeep code, or a friend\'s code, when you sign up or later under Plans. It gives you a plan free for the period on the code (usually 30 days), with no payment. Your own code is in Settings: when a friend uses it you both get 30 days free, for up to 12 friends. One code per account.' },
   { q: 'Can I cancel anytime?', a: 'Yes. Cancel from Settings → Subscription. You keep the paid plan until end of billing period, then revert to Free. Data is never deleted.' },
   { q: 'What payment methods are accepted?', a: 'UPI, credit/debit cards, net banking, Razorpay wallets. All payments in ₹ INR.' },
   { q: 'Is my data private?', a: 'All data is stored with row-level security. Even the QuietKeep team cannot read your keeps or personal data.' },
@@ -138,6 +158,7 @@ export default function PricingPage() {
               { '@type': 'Offer', name: 'Plus', price: '99', priceCurrency: 'INR', billingIncrement: 'P1M' },
               { '@type': 'Offer', name: 'Family', price: '199', priceCurrency: 'INR', billingIncrement: 'P1M' },
               { '@type': 'Offer', name: 'Business', price: '299', priceCurrency: 'INR', billingIncrement: 'P1M' },
+              { '@type': 'Offer', name: 'Business Team', price: '999', priceCurrency: 'INR', billingIncrement: 'P1M' },
             ],
           }),
         }}
@@ -186,7 +207,7 @@ export default function PricingPage() {
 
         {/* Plan cards */}
         <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 16px 80px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
-          {PLANS.filter(p => !isNative || (appType === 'business' ? p.id === 'business' : p.id !== 'business')).map((plan) => {
+          {PLANS.filter(p => !isNative || (appType === 'business' ? p.id.startsWith('business') : !p.id.startsWith('business'))).map((plan) => {
             const price = annual ? plan.yearlyPrice : plan.monthlyPrice;
             const planKey = annual ? plan.yearlyPlanKey : plan.monthlyPlanKey;
 

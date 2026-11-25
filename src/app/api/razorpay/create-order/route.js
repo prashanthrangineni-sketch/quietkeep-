@@ -1,5 +1,5 @@
 // src/app/api/razorpay/create-order/route.js
-// Handles all plan types: plus/premium (monthly+yearly), family (monthly+yearly), business (monthly+yearly)
+// Handles all plan types: plus/premium, family, business (Rs 299) and business_team (Rs 999), each monthly and yearly
 import { createClient } from '@supabase/supabase-js';
 import Razorpay from 'razorpay';
 
@@ -28,11 +28,13 @@ export async function POST(request) {
       premium:           { amount: 9900,   currency: 'INR', plan_name: 'QuietKeep Plus (Monthly)',     cycle: 'monthly', tier: 'plus',     plan_id: process.env.RAZORPAY_PLAN_ID_PLUS },
       family:            { amount: 19900,  currency: 'INR', plan_name: 'QuietKeep Family (Monthly)',   cycle: 'monthly', tier: 'family',   plan_id: process.env.RAZORPAY_PLAN_ID_FAMILY },
       business:          { amount: 29900,  currency: 'INR', plan_name: 'QuietKeep Business (Monthly)', cycle: 'monthly', tier: 'business', plan_id: process.env.RAZORPAY_PLAN_ID_BUSINESS_MONTHLY },
+      business_team:     { amount: 99900,  currency: 'INR', plan_name: 'QuietKeep Business Team (Monthly)', cycle: 'monthly', tier: 'growth', plan_id: null },
       // Yearly plans (2 months free)
       plus_yearly:       { amount: 99000,  currency: 'INR', plan_name: 'QuietKeep Plus (Yearly)',     cycle: 'yearly',  tier: 'plus',     plan_id: process.env.RAZORPAY_PLAN_ID_PLUS_YEARLY },
       premium_yearly:    { amount: 99000,  currency: 'INR', plan_name: 'QuietKeep Plus (Yearly)',     cycle: 'yearly',  tier: 'plus',     plan_id: process.env.RAZORPAY_PLAN_ID_PLUS_YEARLY },
       family_yearly:     { amount: 199000, currency: 'INR', plan_name: 'QuietKeep Family (Yearly)',   cycle: 'yearly',  tier: 'family',   plan_id: process.env.RAZORPAY_PLAN_ID_FAMILY_YEARLY },
       business_yearly:   { amount: 299000, currency: 'INR', plan_name: 'QuietKeep Business (Yearly)', cycle: 'yearly',  tier: 'business', plan_id: process.env.RAZORPAY_PLAN_ID_BUSINESS_YEARLY },
+      business_team_yearly: { amount: 999000, currency: 'INR', plan_name: 'QuietKeep Business Team (Yearly)', cycle: 'yearly', tier: 'growth', plan_id: null },
     };
 
     const selected = plans[plan];

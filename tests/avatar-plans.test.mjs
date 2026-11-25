@@ -8,6 +8,11 @@ t('2D and anime are free', () => {
   assert.equal(isPaidLook('2d', 'woman', 'woman-2'), false);
   assert.equal(isPaidLook('anime3d', 'man', 'man-3'), false);
 });
+t('saree and kurta looks are free (founder 25 Nov)', () => {
+  assert.equal(isPaidLook('realistic', 'woman', 'woman-3'), false);
+  assert.equal(isPaidLook('realistic', 'man', 'man-5'), false);
+  assert.deepEqual(allowedFace({ style: 'realistic', who: 'man', look: 'man-5' }, false).look, 'man-5');
+});
 t('realistic Look 1 free, others paid', () => {
   assert.equal(isPaidLook('realistic', 'woman', 'woman-1'), false);
   assert.equal(isPaidLook('realistic', 'woman', 'woman-2'), true);

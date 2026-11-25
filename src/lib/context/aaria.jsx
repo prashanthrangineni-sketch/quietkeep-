@@ -561,6 +561,11 @@ export function AariaProvider({ children }) {
     }, 150);
   }, [checkPhoneLocked]);
 
+  // T17 (25 Nov 2026): the on-phone wake listener checks the name in the
+  // person's language. It forgets the language when the app closes, so tell it
+  // on every open and whenever the language changes.
+  useEffect(() => { tellEdgeLanguage(voiceLang); }, [voiceLang]);
+
   // T31 (23 Nov 2026): once after the app opens, if Aaria is sure of a habit
   // and it is the right moment, she asks ONCE (hybrid). Then she listens for
   // the answer; a spoken yes / no within two minutes is handled in askBrain.

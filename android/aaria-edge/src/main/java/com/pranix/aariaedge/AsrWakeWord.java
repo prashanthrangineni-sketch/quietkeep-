@@ -78,6 +78,7 @@ public class AsrWakeWord implements WakeWordDetector {
         }
 
         String rawTranscript = result.transcript;
+        lastTranscript = rawTranscript;
 
         String wakeName = "Aaria";
         List<String> aliases = new ArrayList<>();

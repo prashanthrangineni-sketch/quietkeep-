@@ -15,7 +15,7 @@ A company code gives a QuietKeep plan free for a set number of days. Codes are m
 | `GET /api/founder/codes` | Every request, waiting ones first, with `codes_made` and `times_used` |
 | `GET /api/founder/codes?batch=<id>` | The codes of one batch, each with `uses_count`, `max_uses`, `is_active` |
 | `POST {action:"request", requested_by, app, plan_tier, days, code_count, uses_each?, purpose?, codes_expire_at?}` | Saves a request as `pending`. Makes no codes. |
-| `POST {action:"approve", batch, by}` | Makes the codes and returns them once in `codes` |
+| `POST {action:"approve", batch, by}` | Makes the codes and returns them in `codes`, each as `{code, uses_count, max_uses, is_active, expires_at}` (the same shape as `GET ?batch=`) |
 | `POST {action:"decline", batch, by, reason?}` | Declines a waiting request |
 | `POST {action:"cancel", batch, by}` | Switches off every code in an approved batch. Plans already given stay until their end date. |
 

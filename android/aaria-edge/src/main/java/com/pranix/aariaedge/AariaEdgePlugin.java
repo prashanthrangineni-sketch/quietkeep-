@@ -210,7 +210,7 @@ public class AariaEdgePlugin extends Plugin {
                         if (turningOff || speechUnwanted) return;
                         // Speech heard before a turn-off is thrown away when its turn comes.
                         final int offCountWhenHeard = offCount.get();
-                        executor.submit(() -> {
+                        getExecutor().submit(() -> {
                             if (stale(offCountWhenHeard)) return;
                             if (System.currentTimeMillis() - lastWakeWordTime < 1500) return;
                             final int nameEpochAtStart;
@@ -1554,7 +1554,7 @@ public class AariaEdgePlugin extends Plugin {
         }
         final String typedName = wakeName;
 
-        executor.submit(() -> {
+        getExecutor().submit(() -> {
             boolean wasActive = NightlySyncWorker.microphoneActive;
             if (wasActive) {
                 implementation.stop();

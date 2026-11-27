@@ -10,7 +10,9 @@ import {
   calculateAvailabilityLabel,
   isAccuracyScoreLow,
   isShopOpen,
+  CART2SAVE_AVAILABILITY_LABELS,
 } from '../src/lib/cart2save/availability.js';
+import { readFileSync } from 'node:fs';
 
 import {
   buildShopPayload,
@@ -33,6 +35,8 @@ import {
   computeHmacSignature,
   calculateBackoffMs,
   processFeedOutboxBatch,
+  groupRowsByShop,
+  isFeedEnabled,
   MAX_RETRY_ATTEMPTS,
   BASE_BACKOFF_MS,
 } from '../src/lib/cart2save/feed-sender.js';
@@ -73,7 +77,9 @@ test('1.1 Item payload contains only public fields and never private/cost/suppli
   assert.equal(payload.unit, 'bag');
   assert.equal(payload.selling_price, 1450);
   assert.equal(payload.availability_label, 'in_stock');
-  assert.equal(payload.updated_time, '2026-11-24T10:00:00.000Z');
+  // 27 Nov 2026: the freshness time is when the availability word was worked out (now),
+  // not when the owner last edited the item.
+  assert.equal(payload.updated_time, '2026-11-24T10:30:00.000Z');
 
   // Assert sensitive fields are completely absent
   assert.equal(payload.purchase_price, undefined);
@@ -328,9 +334,11 @@ test('3.4 Items marked "made on the spot": available_while_open during opening h
 
   // Outside opening hours: 23:00 UTC = 04:30 IST (shop closed)
   const outsideOpen = new Date('2026-11-24T23:00:00Z');
+  // 27 Nov 2026: never 'closed'. Cart2Save's product table refuses that word, and it works
+  // out "open now" from the shop's hours itself.
   assert.equal(
     calculateAvailabilityLabel({ item: samosa, shop, now: outsideOpen }),
-    'closed'
+    'available_while_open'
   );
 });
 
@@ -425,12 +433,19 @@ test('3.6 Shop accuracy score scale (0-100, default 100 matching PR #269): low s
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. Tests: Server job retry with backoff & HMAC (AG-1 / AG-3 Requirement 5)
 // ─────────────────────────────────────────────────────────────────────────────
-test('4.1 Off by default behind CART2SAVE_FEED_ENABLED', async () => {
+test('4.1 On by default; CART2SAVE_FEED_ENABLED=false switches the feed off', async () => {
+  process.env.CART2SAVE_FEED_ENABLED = 'false';
+  const off = await processFeedOutboxBatch({ db: {} });
+  assert.equal(off.enabled, false);
+  assert.equal(off.skipped, true);
+  assert.match(off.reason, /switched off/);
+
+  // Not set at all: the feed runs (and here stops at the missing secret, proving it got past the switch).
   delete process.env.CART2SAVE_FEED_ENABLED;
-  const result = await processFeedOutboxBatch({ db: {} });
-  assert.equal(result.enabled, false);
-  assert.equal(result.skipped, true);
-  assert.match(result.reason, /CART2SAVE_FEED_ENABLED is not enabled/);
+  delete process.env.QK_BUSINESS_FEED_SECRET;
+  const on = await processFeedOutboxBatch({ db: {} });
+  assert.equal(on.enabled, true);
+  assert.match(on.error, /QK_BUSINESS_FEED_SECRET is not configured/);
 });
 
 test('4.2 Missing QK_BUSINESS_FEED_SECRET fails closed without sending', async () => {
@@ -930,4 +945,123 @@ test('5.3 PR #189 drops unpublish when item name is missing, confirming the bug 
   assert.equal(fixedResult[0].name, 'Tata Salt 1kg');
   assert.equal(fixedResult[0].published, false);
   assert.equal(fixedResult[0].availability, 'hidden');
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. The publish path, end to end (27 Nov 2026)
+// Traced on the live systems: nothing ever called the sender, the feed was switched off,
+// one call could mix shops (Cart2Save reads one shop per call), outside opening hours the
+// label was a word Cart2Save refuses, and an item nobody edited for a day dropped out of
+// Cart2Save's 24-hour freshness rule.
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('6.1 Every availability word QuietKeep can send is one Cart2Save accepts', () => {
+  const shop = { hours: { open: '09:00', close: '21:00' }, accuracy_score: 100 };
+  const lowShop = { hours: { open: '09:00', close: '21:00' }, accuracy_score: 40 };
+  const times = ['2026-11-24T06:00:00Z', '2026-11-24T18:00:00Z', '2026-11-24T23:00:00Z']; // open, shut, shut
+  const items = [
+    { current_stock: 10, updated_at: '2026-11-24T05:30:00Z' },
+    { current_stock: 2, updated_at: '2026-11-24T05:30:00Z' },
+    { current_stock: 0, updated_at: '2026-11-24T05:30:00Z' },
+    { current_stock: 10, updated_at: '2026-11-20T05:30:00Z' },
+    { is_made_on_spot: true, updated_at: '2026-11-24T05:30:00Z' },
+    { updated_at: '2026-11-24T05:30:00Z' },
+  ];
+  for (const t of times) for (const item of items) for (const s of [shop, lowShop, {}]) {
+    const label = calculateAvailabilityLabel({ item, shop: s, now: new Date(t) });
+    assert.ok(CART2SAVE_AVAILABILITY_LABELS.includes(label), `"${label}" is not a word Cart2Save accepts`);
+  }
+});
+
+test('6.2 Outside opening hours the stock still speaks; the 3-hour rule waits for opening time', () => {
+  const shop = { hours: { open: '09:00', close: '21:00' }, accuracy_score: 100 };
+  const shut = new Date('2026-11-24T20:00:00Z'); // 01:30 IST
+  assert.equal(calculateAvailabilityLabel({ item: { current_stock: 10, updated_at: '2026-11-20T00:00:00Z' }, shop, now: shut }), 'in_stock');
+  assert.equal(calculateAvailabilityLabel({ item: { current_stock: 2 }, shop, now: shut }), 'few_left');
+  assert.equal(calculateAvailabilityLabel({ item: { current_stock: 0 }, shop, now: shut }), 'hidden');
+});
+
+test('6.3 An item with no selling price is never shown to shoppers', () => {
+  const open = { hours: { open: '00:00', close: '23:59' } };
+  const now = new Date('2026-11-24T10:30:00.000Z');
+  for (const price of [null, undefined, '', 0, -5, 'abc']) {
+    const p = buildItemPayload({ name: 'No price', current_stock: 9, selling_price: price, updated_at: now.toISOString() }, open, now);
+    assert.equal(p.availability_label, 'hidden');
+    assert.equal(p.selling_price, null);
+  }
+  assert.equal(buildItemPayload({ name: 'Priced', current_stock: 9, selling_price: 20, updated_at: now.toISOString() }, open, now).availability_label, 'in_stock');
+});
+
+test('6.4 One call per shop, newest row per item, shop first', () => {
+  const rows = [
+    { id: 'a1', workspace_id: 'A', entity_type: 'item', entity_id: 'i1', payload: { item_name: 'old' } },
+    { id: 'b1', workspace_id: 'B', entity_type: 'item', entity_id: 'i9', payload: { item_name: 'b' } },
+    { id: 'a2', workspace_id: 'A', entity_type: 'shop', entity_id: 'A', payload: { shop_name: 'A' } },
+    { id: 'a3', workspace_id: 'A', entity_type: 'item', entity_id: 'i1', payload: { item_name: 'new' } },
+  ];
+  const groups = groupRowsByShop(rows);
+  assert.equal(groups.length, 2);
+  const a = groups.find((g) => g.workspaceId === 'A');
+  assert.deepEqual(a.send.map((r) => r.id), ['a2', 'a3']);       // shop first, newest item row only
+  assert.deepEqual(a.superseded.map((r) => r.id), ['a1']);       // the older duplicate is closed with it
+  assert.deepEqual(a.all.map((r) => r.id).sort(), ['a1', 'a2', 'a3']);
+});
+
+test('6.5 Two shops waiting: two calls, each carrying only its own shop; one failing does not block the other', async () => {
+  process.env.QK_BUSINESS_FEED_SECRET = 'mock_secret_key_12345';
+  delete process.env.CART2SAVE_FEED_ENABLED;
+  const rowsInDb = [
+    { id: 'o1', workspace_id: 'A', entity_type: 'shop', entity_id: 'A', action: 'upsert', payload: { shop_name: 'Shop A' }, attempts: 0 },
+    { id: 'o2', workspace_id: 'B', entity_type: 'shop', entity_id: 'B', action: 'upsert', payload: { shop_name: 'Shop B' }, attempts: 0 },
+    { id: 'o3', workspace_id: 'A', entity_type: 'item', entity_id: 'i1', action: 'upsert', payload: { item_name: 'Rice' }, attempts: 0 },
+    { id: 'o4', workspace_id: 'B', entity_type: 'item', entity_id: 'i2', action: 'upsert', payload: { item_name: 'Dal' }, attempts: 0 },
+  ];
+  const updates = [];
+  const db = {
+    from: () => ({
+      select: () => ({ in: () => ({ lte: () => ({ lt: () => ({ order: () => ({ limit: () => ({ data: rowsInDb, error: null }) }) }) }) }) }),
+      update: (fields) => ({
+        in: (col, ids) => { updates.push({ ids, status: fields.status }); return Promise.resolve({ error: null }); },
+        eq: (col, id) => { updates.push({ ids: [id], status: fields.status, attempts: fields.attempts }); return Promise.resolve({ error: null }); },
+      }),
+    }),
+  };
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    const body = JSON.parse(options.body);
+    calls.push(body);
+    const isB = body.items.some((i) => i.workspace_id === 'B');
+    return { ok: !isB, status: isB ? 500 : 200, text: async () => (isB ? 'boom' : '{"ok":true}') };
+  };
+  const result = await processFeedOutboxBatch({ db, fetchImpl, now: new Date('2026-11-24T12:00:00Z') });
+
+  assert.equal(calls.length, 2);
+  for (const body of calls) {
+    assert.equal(new Set(body.items.map((i) => i.workspace_id)).size, 1, 'a call mixed two shops');
+    assert.equal(body.items[0].entity_type, 'shop');
+  }
+  assert.equal(result.sent, 2);
+  assert.equal(result.failed, 2);
+  assert.equal(result.success, false);
+  assert.deepEqual(updates.find((u) => u.status === 'sent').ids, ['o1', 'o3']);
+  assert.equal(updates.filter((u) => u.status === 'pending' && u.attempts === 1).length, 2);
+});
+
+test('6.6 The sender is on a schedule, and the secret is never written in the file', () => {
+  const sql = readFileSync(new URL('../supabase/migrations/20261127_cart2save_feed_schedule.sql', import.meta.url), 'utf8');
+  assert.match(sql, /cron\.schedule\('quietkeep-cart2save-feed', '\*\/5 \* \* \* \*'/);
+  assert.match(sql, /cron\.schedule\('quietkeep-cart2save-full-resend', '10 \* \* \* \*'/);
+  assert.match(sql, /https:\/\/quietkeep\.com\/api\/cron\/cart2save-feed\?mode=nightly_full/);
+  assert.match(sql, /vault\.decrypted_secrets where name = 'quietkeep_nudge_cron_bearer'/);
+  assert.doesNotMatch(sql, /Bearer [A-Za-z0-9._-]{16,}/);
+});
+
+test('6.7 The sending page refuses to run without the scheduler secret', () => {
+  const route = readFileSync(new URL('../src/app/api/cron/cart2save-feed/route.js', import.meta.url), 'utf8');
+  assert.match(route, /if \(!cronSecret\) \{[\s\S]{0,220}status: 503/);
+  assert.match(route, /!== `Bearer \$\{cronSecret\}`/);
+  assert.equal(isFeedEnabled({}), true);
+  assert.equal(isFeedEnabled({ CART2SAVE_FEED_ENABLED: 'false' }), false);
+  assert.equal(isFeedEnabled({ CART2SAVE_FEED_ENABLED: 'true' }), true);
 });

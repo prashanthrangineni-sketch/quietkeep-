@@ -134,7 +134,7 @@ export function isAccuracyScoreLow(score) {
  * @param {object|string} [params.shop.hours]
  * @param {object|string} [params.shop.opening_hours]
  * @param {Date|string|number} [params.now]
- * @returns {'in_stock' | 'few_left' | 'hidden' | 'available_while_open' | 'call_to_confirm' | 'closed'}
+ * @returns {'in_stock' | 'few_left' | 'hidden' | 'available_while_open' | 'call_to_confirm'}
  */
 export function calculateAvailabilityLabel({ item, shop = {}, now = new Date() }) {
   if (!item) return 'hidden';
@@ -155,8 +155,15 @@ export function calculateAvailabilityLabel({ item, shop = {}, now = new Date() }
   const open = isShopOpen(hours, currentDate);
 
   if (!open) {
-    // Outside opening hours
-    return 'closed';
+    // Outside opening hours (27 Nov 2026): the label used to be 'closed'. Cart2Save's
+    // product table only accepts five words (in_stock, few_left, available_while_open,
+    // call_to_confirm, hidden), so every 'closed' row was refused there and the product
+    // silently never appeared or never updated. Cart2Save already works out "open now"
+    // from the shop's hours, so outside hours we send what the stock says. The 3-hour
+    // "no sale" rule is skipped while shut: no sales are expected then.
+    if (isMadeOnSpot) return 'available_while_open';
+    if (stock !== null) return stock > 3 ? 'in_stock' : 'few_left';
+    return 'in_stock';
   }
 
   // 3. Shop accuracy score check: low score triggers call_to_confirm during open hours
@@ -197,3 +204,8 @@ export function calculateAvailabilityLabel({ item, shop = {}, now = new Date() }
   // Fallback if stock is undefined on a non-spot item
   return 'in_stock';
 }
+
+/** The only availability words Cart2Save's product table accepts. */
+export const CART2SAVE_AVAILABILITY_LABELS = Object.freeze([
+  'in_stock', 'few_left', 'available_while_open', 'call_to_confirm', 'hidden',
+]);

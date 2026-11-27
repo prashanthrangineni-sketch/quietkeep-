@@ -134,13 +134,21 @@ export function buildItemPayload(item, shop = {}, now = new Date()) {
     ? Number(item.selling_price)
     : null;
 
+  const hasPrice = Number.isFinite(sellingPrice) && sellingPrice > 0;
+  const nowDate = now instanceof Date ? now : new Date(now);
+
   const payload = {
     item_name: item.name || item.item_name || '',
     barcode: item.barcode || null,
     unit: item.unit || 'pcs',
-    selling_price: Number.isFinite(sellingPrice) ? sellingPrice : null,
-    availability_label: calculateAvailabilityLabel({ item, shop, now }),
-    updated_time: item.updated_at || item.created_at || new Date().toISOString(),
+    selling_price: hasPrice ? sellingPrice : null,
+    // An item with no selling price is never shown to shoppers (it would appear as Rs 0).
+    availability_label: hasPrice ? calculateAvailabilityLabel({ item, shop, now: nowDate }) : 'hidden',
+    // 27 Nov 2026: this is the moment the availability word above was worked out, not the
+    // last time the owner edited the item. Cart2Save hides anything older than 24 hours and
+    // shows shoppers "updated X min ago", so an item nobody edited for a day used to vanish
+    // even though its stock was re-checked on every re-send.
+    updated_time: nowDate.toISOString(),
   };
 
   assertNoPrivateFields(payload);
